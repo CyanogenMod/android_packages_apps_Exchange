@@ -15,13 +15,23 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_MODULE_TAGS := eng development
+# We only want this apk build for tests.
+LOCAL_MODULE_TAGS := tests
 
+LOCAL_JAVA_LIBRARIES := android.test.runner
+
+# Include all test java files.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
-LOCAL_PACKAGE_NAME := Email
+# Notice that we don't have to include the src files of Email because, by
+# running the tests using an instrumentation targeting Eamil, we
+# automatically get all of its classes loaded into our environment.
+
+LOCAL_PACKAGE_NAME := EmailTests
+
+LOCAL_INSTRUMENTATION_FOR := Email
+
+LOCAL_SDK_VERSION := current
 
 include $(BUILD_PACKAGE)
 
-# additionally, build unit tests in a separate .apk
-include $(call all-makefiles-under,$(LOCAL_PATH))
