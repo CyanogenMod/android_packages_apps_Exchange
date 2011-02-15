@@ -15,14 +15,14 @@
 
 package com.android.exchange.utility;
 
-import com.android.email.Utility;
+import com.android.emailcommon.utility.Utility;
 
 import junit.framework.TestCase;
 
 /**
  * Test for {@link SimpleIcsWriter}.
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.utility.SimpleIcsWriterTests email
+ *   runtest -c com.android.exchange.utility.SimpleIcsWriterTests exchange
  */
 public class SimpleIcsWriterTests extends TestCase {
     private static final String CRLF = "\r\n";

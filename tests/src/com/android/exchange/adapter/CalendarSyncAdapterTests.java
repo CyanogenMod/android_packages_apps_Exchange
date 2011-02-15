@@ -22,13 +22,20 @@ import com.android.exchange.provider.MockProvider;
 
 import android.content.ContentProviderOperation;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.OperationApplicationException;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.os.RemoteException;
 import android.provider.Calendar.Attendees;
 import android.provider.Calendar.Events;
+import android.test.IsolatedContext;
+import android.test.RenamingDelegatingContext;
+import android.test.mock.MockContentResolver;
+import android.test.mock.MockContext;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -36,7 +43,7 @@ import java.util.TimeZone;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.adapter.CalendarSyncAdapterTests email
+ *   runtest -c com.android.exchange.adapter.CalendarSyncAdapterTests exchange
  */
 
 public class CalendarSyncAdapterTests extends SyncAdapterTestCase<CalendarSyncAdapter> {
@@ -49,12 +56,50 @@ public class CalendarSyncAdapterTests extends SyncAdapterTestCase<CalendarSyncAd
     private static final String SINGLE_ATTENDEE_EMAIL = "attendee@host.com";
     private static final String SINGLE_ATTENDEE_NAME = "Bill Attendee";
 
+    private Context mMockContext;
+    private MockContentResolver mMockResolver;
+
     // This is the US/Pacific time zone as a base64-encoded TIME_ZONE_INFORMATION structure, as
     // it would appear coming from an Exchange server
     private static final String TEST_TIME_ZONE = "4AEAAFAAYQBjAGkAZgBpAGMAIABTAHQAYQBuAGQAYQByA" +
         "GQAIABUAGkAbQBlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAABAAIAAAAAAAAAAAAAAFAAY" +
         "QBjAGkAZgBpAGMAIABEAGEAeQBsAGkAZwBoAHQAIABUAGkAbQBlAAAAAAAAAAAAAAAAAAAAAAAAA" +
         "AAAAAAAAAMAAAACAAIAAAAAAAAAxP///w==";
+
+    private class MockContext2 extends MockContext {
+
+        @Override
+        public Resources getResources() {
+            return getContext().getResources();
+        }
+
+        @Override
+        public File getDir(String name, int mode) {
+            // name the directory so the directory will be separated from
+            // one created through the regular Context
+            return getContext().getDir("mockcontext2_" + name, mode);
+        }
+
+        @Override
+        public Context getApplicationContext() {
+            return this;
+        }
+    }
+
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+
+        mMockResolver = new MockContentResolver();
+        final String filenamePrefix = "test.";
+        RenamingDelegatingContext targetContextWrapper = new
+        RenamingDelegatingContext(
+                new MockContext2(), // The context that most methods are delegated to
+                getContext(), // The context that file methods are delegated to
+                filenamePrefix);
+        mMockContext = new IsolatedContext(mMockResolver, targetContextWrapper);
+        mMockResolver.addProvider(MockProvider.AUTHORITY, new MockProvider(mMockContext));
+    }
 
     public CalendarSyncAdapterTests() {
         super();

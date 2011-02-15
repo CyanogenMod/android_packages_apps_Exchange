@@ -17,7 +17,7 @@
 
 package com.android.exchange;
 
-import com.android.email.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Account;
 
 import org.apache.http.Header;
 import org.apache.http.client.methods.HttpPost;
@@ -32,7 +32,7 @@ import java.io.IOException;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.EasSyncServiceTests email
+ *   runtest -c com.android.exchange.EasSyncServiceTests exchange
  */
 
 public class EasSyncServiceTests extends AndroidTestCase {

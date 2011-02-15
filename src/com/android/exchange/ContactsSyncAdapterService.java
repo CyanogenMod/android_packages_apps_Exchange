@@ -16,10 +16,9 @@
 
 package com.android.exchange;
 
-import com.android.email.Email;
-import com.android.email.provider.EmailContent.AccountColumns;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 
 import android.accounts.Account;
 import android.accounts.OperationCanceledException;
@@ -104,15 +103,12 @@ public class ContactsSyncAdapterService extends Service {
             String authority, ContentProviderClient provider, SyncResult syncResult)
             throws OperationCanceledException {
         ContentResolver cr = context.getContentResolver();
-        if (Email.DEBUG) {
-            Log.d(TAG, "performSync");
-        }
 
         // If we've been asked to do an upload, make sure we've got work to do
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
             Uri uri = RawContacts.CONTENT_URI.buildUpon()
                 .appendQueryParameter(RawContacts.ACCOUNT_NAME, account.name)
-                .appendQueryParameter(RawContacts.ACCOUNT_TYPE, Email.EXCHANGE_ACCOUNT_MANAGER_TYPE)
+                .appendQueryParameter(RawContacts.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)
                 .build();
             // See if we've got dirty contacts or dirty groups containing our contacts
             boolean changed = hasDirtyRows(cr, uri, RawContacts.DIRTY);
@@ -120,7 +116,7 @@ public class ContactsSyncAdapterService extends Service {
                 uri = Groups.CONTENT_URI.buildUpon()
                     .appendQueryParameter(RawContacts.ACCOUNT_NAME, account.name)
                     .appendQueryParameter(RawContacts.ACCOUNT_TYPE,
-                            Email.EXCHANGE_ACCOUNT_MANAGER_TYPE)
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)
                     .build();
                 changed = hasDirtyRows(cr, uri, Groups.DIRTY);
             }
@@ -132,7 +128,7 @@ public class ContactsSyncAdapterService extends Service {
 
         // Find the (EmailProvider) account associated with this email address
         Cursor accountCursor =
-            cr.query(com.android.email.provider.EmailContent.Account.CONTENT_URI, ID_PROJECTION,
+            cr.query(com.android.emailcommon.provider.EmailContent.Account.CONTENT_URI, ID_PROJECTION,
                 AccountColumns.EMAIL_ADDRESS + "=?", new String[] {account.name}, null);
         try {
             if (accountCursor.moveToFirst()) {

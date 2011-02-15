@@ -16,19 +16,18 @@
 
 package com.android.exchange.utility;
 
-import com.android.email.Email;
-import com.android.email.R;
-import com.android.email.Utility;
-import com.android.email.mail.Address;
-import com.android.email.provider.EmailContent;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Attachment;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailContent.Message;
+import com.android.emailcommon.mail.Address;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.service.AccountServiceProxy;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
+import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 
@@ -37,8 +36,8 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
-import android.content.EntityIterator;
 import android.content.Entity.NamedContentValues;
+import android.content.EntityIterator;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.RemoteException;
@@ -1208,7 +1207,7 @@ public class CalendarUtilities {
         // TODO How will this change if the user changes his account display name?
         cv.put(Calendars.DISPLAY_NAME, account.mDisplayName);
         cv.put(Calendars._SYNC_ACCOUNT, account.mEmailAddress);
-        cv.put(Calendars._SYNC_ACCOUNT_TYPE, Email.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+        cv.put(Calendars._SYNC_ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         cv.put(Calendars.SYNC_EVENTS, 1);
         cv.put(Calendars.SELECTED, 1);
         // Don't show attendee status if we're the organizer
@@ -1409,7 +1408,7 @@ public class CalendarUtilities {
      * @param the user's account
      * @return a Message with many fields pre-filled (more later)
      */
-    static public EmailContent.Message createMessageForEntity(Context context, Entity entity,
+    static public Message createMessageForEntity(Context context, Entity entity,
             int messageFlag, String uid, Account account) {
         return createMessageForEntity(context, entity, messageFlag, uid, account,
                 null /*specifiedAttendee*/);

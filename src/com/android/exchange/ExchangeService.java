@@ -17,25 +17,26 @@
 
 package com.android.exchange;
 
-import com.android.email.Email;
-import com.android.email.Utility;
-import com.android.email.mail.transport.SSLUtils;
-import com.android.email.provider.EmailContent;
-import com.android.email.provider.EmailProvider;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Attachment;
-import com.android.email.provider.EmailContent.HostAuth;
-import com.android.email.provider.EmailContent.HostAuthColumns;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailContent.MailboxColumns;
-import com.android.email.provider.EmailContent.Message;
-import com.android.email.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.Api;
+import com.android.emailcommon.Device;
+import com.android.emailcommon.Logging;
+import com.android.emailcommon.TempDirectory;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.HostAuth;
+import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.utility.AccountReconciler;
+import com.android.emailcommon.utility.SSLUtils;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.utility.FileLogger;
@@ -67,21 +68,21 @@ import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.net.NetworkInfo.State;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.os.Process;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
-import android.os.PowerManager.WakeLock;
 import android.provider.Calendar;
-import android.provider.ContactsContract;
 import android.provider.Calendar.Calendars;
 import android.provider.Calendar.Events;
+import android.provider.ContactsContract;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -333,6 +334,10 @@ public class ExchangeService extends Service implements Runnable {
      */
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
 
+        public int getApiLevel() {
+            return Api.LEVEL;
+        }
+
         public Bundle validate(String protocol, String host, String userName, String password,
                 int port, boolean ssl, boolean trustCertificates) throws RemoteException {
             return AbstractSyncService.validate(EasSyncService.class, host, userName, password,
@@ -382,7 +387,7 @@ public class ExchangeService extends Service implements Runnable {
 
         public void loadAttachment(long attachmentId, String destinationFile,
                 String contentUriString, boolean background) throws RemoteException {
-            if (Email.DEBUG) {
+            if (Eas.USER_LOG) {
                 Log.d(TAG, "loadAttachment: " + attachmentId + " to " + destinationFile);
             }
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
@@ -461,11 +466,6 @@ public class ExchangeService extends Service implements Runnable {
             ExchangeService.stopAccountSyncs(accountId);
             // Delete the data
             ExchangeService.deleteAccountPIMData(accountId);
-        }
-
-        @Override
-        public int getApiLevel() throws RemoteException {
-             return Api.LEVEL;
         }
     };
 
@@ -635,7 +635,7 @@ public class ExchangeService extends Service implements Runnable {
                         stopAccountSyncs(account.mId, true);
                         // Delete this from AccountManager...
                         android.accounts.Account acct = new android.accounts.Account(
-                                account.mEmailAddress, Email.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                                account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
                         AccountManager.get(ExchangeService.this)
                         .removeAccount(acct, null, null);
                         mSyncableEasMailboxSelector = null;
@@ -779,7 +779,7 @@ public class ExchangeService extends Service implements Runnable {
             Cursor c = mResolver.query(Calendars.CONTENT_URI,
                     new String[] {Calendars._ID, Calendars.SYNC_EVENTS},
                     CalendarSyncAdapter.CALENDAR_SELECTION,
-                    new String[] {account.mEmailAddress, Email.EXCHANGE_ACCOUNT_MANAGER_TYPE},
+                    new String[] {account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE},
                     null);
             if (c != null) {
                 // Save its id and its sync events status
@@ -1039,14 +1039,15 @@ public class ExchangeService extends Service implements Runnable {
      */
     private void runAccountReconcilerSync(Context context) {
         android.accounts.Account[] accountMgrList = AccountManager.get(context)
-                .getAccountsByType(Email.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                .getAccountsByType(Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         // Make sure we have an up-to-date sAccountList.  If not (for example, if the
         // service has been destroyed), we would be reconciling against an empty account
         // list, which would cause the deletion of all of our accounts
         AccountList accountList = collectEasAccounts(context, new AccountList());
         alwaysLog("Reconciling accounts...");
-        boolean accountsDeleted = AccountReconciler.reconcileAccounts(context, accountList,
-                accountMgrList, context.getContentResolver());
+        boolean accountsDeleted =
+            AccountReconciler.reconcileAccounts(context, accountList, accountMgrList,
+                context.getContentResolver());
         if (accountsDeleted) {
             try {
                 new AccountServiceProxy(context).accountDeleted();
@@ -1112,15 +1113,15 @@ public class ExchangeService extends Service implements Runnable {
                 rdr.close();
                 return id;
             } else {
-                Log.w(Email.LOG_TAG, f.getAbsolutePath() + ": File exists, but can't read?" +
+                Log.w(Logging.LOG_TAG, f.getAbsolutePath() + ": File exists, but can't read?" +
                         "  Trying to remove.");
                 if (!f.delete()) {
-                    Log.w(Email.LOG_TAG, "Remove failed. Tring to overwrite.");
+                    Log.w(Logging.LOG_TAG, "Remove failed. Tring to overwrite.");
                 }
             }
         }
         BufferedWriter w = new BufferedWriter(new FileWriter(f), 128);
-        final String consistentDeviceId = Utility.getConsistentDeviceId(context);
+        final String consistentDeviceId = Device.getConsistentDeviceId(context);
         if (consistentDeviceId != null) {
             // Use different prefix from random IDs.
             id = "androidc" + consistentDeviceId;
@@ -1241,8 +1242,8 @@ public class ExchangeService extends Service implements Runnable {
         try {
             if (c.moveToFirst()) {
                 synchronized(sSyncLock) {
-                    Mailbox m = new Mailbox();
-                    m.restore(c);
+                    Mailbox mailbox = new Mailbox();
+                    mailbox.restore(c);
                     Account acct = Account.restoreAccountWithId(context, accountId);
                     if (acct == null) {
                         reloadFolderListFailed(accountId);
@@ -1263,7 +1264,7 @@ public class ExchangeService extends Service implements Runnable {
                             new String[] {Long.toString(accountId)});
                     log("Set push/ping boxes to push/hold");
 
-                    long id = m.mId;
+                    long id = mailbox.mId;
                     AbstractSyncService svc = exchangeService.mServiceMap.get(id);
                     // Tell the service we're done
                     if (svc != null) {
@@ -1488,7 +1489,7 @@ public class ExchangeService extends Service implements Runnable {
             // Create an AccountManager style Account
             android.accounts.Account acct =
                 new android.accounts.Account(providerAccount.mEmailAddress,
-                        Email.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
             // Get the mailbox; this happens rarely so it's ok to get it all
             Mailbox mailbox = Mailbox.restoreMailboxWithId(this, mailboxId);
             if (mailbox == null) return;
@@ -1530,7 +1531,7 @@ public class ExchangeService extends Service implements Runnable {
             for (Account account : mAccountList) {
                 updatePIMSyncSettings(account, Mailbox.TYPE_CONTACTS, ContactsContract.AUTHORITY);
                 updatePIMSyncSettings(account, Mailbox.TYPE_CALENDAR, Calendar.AUTHORITY);
-                updatePIMSyncSettings(account, Mailbox.TYPE_INBOX, EmailProvider.EMAIL_AUTHORITY);
+                updatePIMSyncSettings(account, Mailbox.TYPE_INBOX, EmailContent.AUTHORITY);
             }
         }
     }
@@ -1833,6 +1834,8 @@ public class ExchangeService extends Service implements Runnable {
             Eas.FILE_LOG = true;
         }
 
+        TempDirectory.setTempDirectory(this);
+
         // If we need to wait for the debugger, do so
         if (Eas.WAIT_DEBUG) {
             Debug.waitForDebugger();
@@ -2076,7 +2079,7 @@ public class ExchangeService extends Service implements Runnable {
                     // TODO: Don't rebuild this account manager account each time through
                     android.accounts.Account accountManagerAccount =
                         new android.accounts.Account(account.mEmailAddress,
-                                Email.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
 
                     if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
                         // We don't sync these automatically if master auto sync is off
@@ -2109,7 +2112,7 @@ public class ExchangeService extends Service implements Runnable {
                         continue;
                     } else if (type < Mailbox.TYPE_NOT_EMAIL &&
                             !ContentResolver.getSyncAutomatically(accountManagerAccount,
-                                    EmailProvider.EMAIL_AUTHORITY)) {
+                                    EmailContent.AUTHORITY)) {
                         // Don't sync mail if user hasn't chosen to sync it automatically
                         continue;
                     }
@@ -2433,7 +2436,8 @@ public class ExchangeService extends Service implements Runnable {
                 // These errors are not retried automatically
                 case AbstractSyncService.EXIT_LOGIN_FAILURE:
                     try {
-                        new AccountServiceProxy(exchangeService).notifyLoginFailed(m.mAccountKey);
+                        new AccountServiceProxy(exchangeService).notifyLoginFailed(
+                                m.mAccountKey);
                     } catch (RemoteException e) {
                         // ? Anything to do?
                     }

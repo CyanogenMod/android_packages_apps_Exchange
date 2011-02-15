@@ -16,16 +16,16 @@
 
 package com.android.exchange.adapter;
 
-import com.android.email.provider.EmailContent;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Body;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailContent.Message;
-import com.android.email.provider.EmailContent.SyncColumns;
-import com.android.email.provider.ProviderTestUtils;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Body;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser.ServerChange;
+import com.android.exchange.provider.EmailContentSetupUtils;
 
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -37,6 +37,12 @@ import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
 public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter> {
+
+    private static final String WHERE_ACCOUNT_KEY = Message.ACCOUNT_KEY + "=?";
+    private static final String[] ACCOUNT_ARGUMENT = new String[1];
+
+    // A server id that is guaranteed to be test-related
+    private static final String TEST_SERVER_ID = "__1:22";
 
     public EmailSyncAdapterTests() {
         super();
@@ -86,66 +92,75 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
     }
 
     public void testSendDeletedItems() throws IOException {
-        EasSyncService service = getTestService();
-        EmailSyncAdapter adapter = new EmailSyncAdapter(service);
+        setupAccountMailboxAndMessages(0);
+        // Setup our adapter and parser
+        setupSyncParserAndAdapter(mAccount, mMailbox);
+
         Serializer s = new Serializer();
         ArrayList<Long> ids = new ArrayList<Long>();
         ArrayList<Long> deletedIds = new ArrayList<Long>();
 
-        adapter.mContext = mMockContext;
-
         // Create account and two mailboxes
-        Account acct = ProviderTestUtils.setupAccount("account", true, mMockContext);
-        adapter.mAccount = acct;
-        Mailbox box1 = ProviderTestUtils.setupMailbox("box1", acct.mId, true, mMockContext);
-        adapter.mMailbox = box1;
+        mSyncAdapter.mAccount = mAccount;
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox("box1", mAccount.mId, true,
+                mProviderContext);
+        mSyncAdapter.mMailbox = box1;
 
         // Create 3 messages
-        Message msg1 = ProviderTestUtils.setupMessage("message1", acct.mId, box1.mId,
-                true, true, mMockContext);
+        Message msg1 = EmailContentSetupUtils.setupMessage("message1", mAccount.mId, box1.mId,
+                true, true, mProviderContext);
         ids.add(msg1.mId);
-        Message msg2 = ProviderTestUtils.setupMessage("message2", acct.mId, box1.mId,
-                true, true, mMockContext);
+        Message msg2 = EmailContentSetupUtils.setupMessage("message2", mAccount.mId, box1.mId,
+                true, true, mProviderContext);
         ids.add(msg2.mId);
-        Message msg3 = ProviderTestUtils.setupMessage("message3", acct.mId, box1.mId,
-                true, true, mMockContext);
+        Message msg3 = EmailContentSetupUtils.setupMessage("message3", mAccount.mId, box1.mId,
+                true, true, mProviderContext);
         ids.add(msg3.mId);
-        assertEquals(3, EmailContent.count(mMockContext, Message.CONTENT_URI, null, null));
+        assertEquals(3, EmailContent.count(mProviderContext, Message.CONTENT_URI, WHERE_ACCOUNT_KEY,
+                getAccountArgument(mAccount.mId)));
 
         // Delete them
         for (long id: ids) {
-            mMockResolver.delete(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI, id),
+            mResolver.delete(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI, id),
                     null, null);
         }
 
         // Confirm that the messages are in the proper table
-        assertEquals(0, EmailContent.count(mMockContext, Message.CONTENT_URI, null, null));
-        assertEquals(3, EmailContent.count(mMockContext, Message.DELETED_CONTENT_URI, null, null));
+        assertEquals(0, EmailContent.count(mProviderContext, Message.CONTENT_URI, WHERE_ACCOUNT_KEY,
+                getAccountArgument(mAccount.mId)));
+        assertEquals(3, EmailContent.count(mProviderContext, Message.DELETED_CONTENT_URI,
+                WHERE_ACCOUNT_KEY, getAccountArgument(mAccount.mId)));
 
         // Call code to send deletions; the id's of the ones actually deleted will be in the
         // deletedIds list
-        adapter.sendDeletedItems(s, deletedIds, true);
+        mSyncAdapter.sendDeletedItems(s, deletedIds, true);
         assertEquals(3, deletedIds.size());
 
         // Clear this out for the next test
         deletedIds.clear();
 
         // Create a new message
-        Message msg4 = ProviderTestUtils.setupMessage("message4", acct.mId, box1.mId,
-                true, true, mMockContext);
-        assertEquals(1, EmailContent.count(mMockContext, Message.CONTENT_URI, null, null));
+        Message msg4 = EmailContentSetupUtils.setupMessage("message4", mAccount.mId, box1.mId,
+                true, true, mProviderContext);
+        assertEquals(1, EmailContent.count(mProviderContext, Message.CONTENT_URI, WHERE_ACCOUNT_KEY,
+                getAccountArgument(mAccount.mId)));
         // Find the body for this message
-        Body body = Body.restoreBodyWithMessageId(mMockContext, msg4.mId);
+        Body body = Body.restoreBodyWithMessageId(mProviderContext, msg4.mId);
         // Set its source message to msg2's id
         ContentValues values = new ContentValues();
         values.put(Body.SOURCE_MESSAGE_KEY, msg2.mId);
-        body.update(mMockContext, values);
+        body.update(mProviderContext, values);
 
         // Now send deletions again; this time only two should get deleted; msg2 should NOT be
         // deleted as it's referenced by msg4
-        adapter.sendDeletedItems(s, deletedIds, true);
+        mSyncAdapter.sendDeletedItems(s, deletedIds, true);
         assertEquals(2, deletedIds.size());
         assertFalse(deletedIds.contains(msg2.mId));
+    }
+
+    private String[] getAccountArgument(long id) {
+        ACCOUNT_ARGUMENT[0] = Long.toString(id);
+        return ACCOUNT_ARGUMENT;
     }
 
     void setupSyncParserAndAdapter(Account account, Mailbox mailbox) throws IOException {
@@ -158,17 +173,18 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         ArrayList<Long> ids = new ArrayList<Long>();
 
         // Create account and two mailboxes
-        mAccount = ProviderTestUtils.setupAccount("account", true, mMockContext);
-        mMailbox = ProviderTestUtils.setupMailbox("box1", mAccount.mId, true, mMockContext);
+        mAccount = EmailContentSetupUtils.setupAccount("account", true, mProviderContext);
+        mMailbox = EmailContentSetupUtils.setupMailbox("box1", mAccount.mId, true,
+                mProviderContext);
 
         for (int i = 0; i < numMessages; i++) {
-            Message msg = ProviderTestUtils.setupMessage("message" + i, mAccount.mId, mMailbox.mId,
-                    true, true, mMockContext);
+            Message msg = EmailContentSetupUtils.setupMessage("message" + i, mAccount.mId,
+                    mMailbox.mId, true, true, mProviderContext);
             ids.add(msg.mId);
         }
 
-        assertEquals(numMessages, EmailContent.count(mMockContext, Message.CONTENT_URI,
-                null, null));
+        assertEquals(numMessages, EmailContent.count(mProviderContext, Message.CONTENT_URI,
+                WHERE_ACCOUNT_KEY, getAccountArgument(mAccount.mId)));
         return ids;
     }
 
@@ -176,9 +192,9 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         // Setup some messages
         ArrayList<Long> messageIds = setupAccountMailboxAndMessages(3);
         ContentValues cv = new ContentValues();
-        cv.put(SyncColumns.SERVER_ID, "1:22");
+        cv.put(SyncColumns.SERVER_ID, TEST_SERVER_ID);
         long deleteMessageId = messageIds.get(1);
-        mMockResolver.update(ContentUris.withAppendedId(Message.CONTENT_URI, deleteMessageId), cv,
+        mResolver.update(ContentUris.withAppendedId(Message.CONTENT_URI, deleteMessageId), cv,
                 null, null);
 
         // Setup our adapter and parser
@@ -186,7 +202,7 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
 
         // Set up an input stream with a delete command
         Serializer s = new Serializer(false);
-        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, "1:22").end().done();
+        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, TEST_SERVER_ID).end().done();
         byte[] bytes = s.toByteArray();
         mSyncParser.resetInput(new ByteArrayInputStream(bytes));
         mSyncParser.nextTag(0);
@@ -205,18 +221,18 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         // Setup some messages
         ArrayList<Long> messageIds = setupAccountMailboxAndMessages(3);
         ContentValues cv = new ContentValues();
-        cv.put(SyncColumns.SERVER_ID, "1:22");
+        cv.put(SyncColumns.SERVER_ID, TEST_SERVER_ID);
         long changeMessageId = messageIds.get(1);
-        mMockResolver.update(ContentUris.withAppendedId(Message.CONTENT_URI, changeMessageId), cv,
+        mResolver.update(ContentUris.withAppendedId(Message.CONTENT_URI, changeMessageId), cv,
                 null, null);
 
         // Setup our adapter and parser
         setupSyncParserAndAdapter(mAccount, mMailbox);
 
-        // Set up an input stream with a change command (marking 1:22 unread)
+        // Set up an input stream with a change command (marking TEST_SERVER_ID unread)
         // Note that the test message creation code sets read to "true"
         Serializer s = new Serializer(false);
-        s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, "1:22");
+        s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, TEST_SERVER_ID);
         s.start(Tags.SYNC_APPLICATION_DATA).data(Tags.EMAIL_READ, "0").end();
         s.end().done();
         byte[] bytes = s.toByteArray();
@@ -243,32 +259,37 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
 
         // Delete two of the messages, change one
         long id = messageIds.get(0);
-        mMockResolver.delete(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI, id),
+        mResolver.delete(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI, id),
                 null, null);
         mSyncAdapter.mDeletedIdList.add(id);
         id = messageIds.get(1);
-        mMockResolver.delete(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI,
+        mResolver.delete(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI,
                 id), null, null);
         mSyncAdapter.mDeletedIdList.add(id);
         id = messageIds.get(2);
         ContentValues cv = new ContentValues();
         cv.put(Message.FLAG_READ, 0);
-        mMockResolver.update(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI,
+        mResolver.update(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI,
                 id), cv, null, null);
         mSyncAdapter.mUpdatedIdList.add(id);
 
         // The changed message should still exist
-        assertEquals(1, EmailContent.count(mMockContext, Message.CONTENT_URI, null, null));
+        assertEquals(1, EmailContent.count(mProviderContext, Message.CONTENT_URI, WHERE_ACCOUNT_KEY,
+                getAccountArgument(mAccount.mId)));
 
         // As well, the two deletions and one update
-        assertEquals(2, EmailContent.count(mMockContext, Message.DELETED_CONTENT_URI, null, null));
-        assertEquals(1, EmailContent.count(mMockContext, Message.UPDATED_CONTENT_URI, null, null));
+        assertEquals(2, EmailContent.count(mProviderContext, Message.DELETED_CONTENT_URI,
+                WHERE_ACCOUNT_KEY, getAccountArgument(mAccount.mId)));
+        assertEquals(1, EmailContent.count(mProviderContext, Message.UPDATED_CONTENT_URI,
+                WHERE_ACCOUNT_KEY, getAccountArgument(mAccount.mId)));
 
         // Cleanup (i.e. after sync); should remove items from delete/update tables
         mSyncAdapter.cleanup();
 
         // The three should be gone
-        assertEquals(0, EmailContent.count(mMockContext, Message.DELETED_CONTENT_URI, null, null));
-        assertEquals(0, EmailContent.count(mMockContext, Message.UPDATED_CONTENT_URI, null, null));
+        assertEquals(0, EmailContent.count(mProviderContext, Message.DELETED_CONTENT_URI,
+                WHERE_ACCOUNT_KEY, getAccountArgument(mAccount.mId)));
+        assertEquals(0, EmailContent.count(mProviderContext, Message.UPDATED_CONTENT_URI,
+                WHERE_ACCOUNT_KEY, getAccountArgument(mAccount.mId)));
     }
 }

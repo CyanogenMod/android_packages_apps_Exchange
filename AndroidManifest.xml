@@ -16,13 +16,10 @@
 
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.email"
+    package="com.android.exchange"
     android:versionCode="300000"
     android:versionName="3.0"
-    >
-
-    <original-package
-        android:name="com.android.email" />
+    android:sharedUserId="com.android.email" >
 
     <uses-permission
         android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -49,7 +46,6 @@
     <uses-permission
         android:name="android.permission.WRITE_SYNC_SETTINGS" />
 
-    <!--  For EAS purposes; could be removed when EAS has a permanent home -->
     <uses-permission
         android:name="android.permission.WRITE_CONTACTS"/>
     <uses-permission
@@ -63,215 +59,27 @@
     <uses-permission
         android:name="android.permission.READ_PHONE_STATE"/>
 
-    <!-- Grant permission to other apps to view attachments -->
-    <permission
-        android:name="com.android.email.permission.READ_ATTACHMENT"
-        android:permissionGroup="android.permission-group.MESSAGES"
-        android:protectionLevel="dangerous"
-        android:label="@string/read_attachment_label"
-        android:description="@string/read_attachment_desc"/>
     <uses-permission
         android:name="com.android.email.permission.READ_ATTACHMENT"/>
 
-    <!-- Grant permission to system apps to access provider (see provider below) -->
-    <permission
-        android:name="com.android.email.permission.ACCESS_PROVIDER"
-        android:protectionLevel="signatureOrSystem"
-        android:label="@string/permission_access_provider_label"
-        android:description="@string/permission_access_provider_desc"/>
     <uses-permission
         android:name="com.android.email.permission.ACCESS_PROVIDER"/>
 
-    <!-- Note:  Actually, android:hardwareAccelerated could be "true", but in order to switch it
-         on/off in the debug screen, we have to set it "false" here and enable it at runtime.  -->
     <application
-        android:icon="@mipmap/ic_launcher_email"
-        android:label="@string/app_name"
-        android:name="Email"
+        android:icon="@mipmap/icon"
+        android:label="@string/account_setup_account_type_exchange_action"
+        android:name="Exchange"
         android:theme="@android:style/Theme.Holo.Light"
-        android:hardwareAccelerated="false"
+        android:process="com.android.email"
         >
-        <activity
-            android:name=".activity.Welcome"
-            >
-            <intent-filter>
-                <action
-                    android:name="android.intent.action.MAIN" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-                <category
-                    android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <!-- Must be exported in order for the AccountManager to launch it -->
-        <!-- Also available for continuous test systems to force account creation -->
-        <activity
-            android:name=".activity.setup.AccountSetupBasics"
-            android:label="@string/account_setup_basics_title"
-            android:exported="true"
-            >
-            <intent-filter>
-                <action
-                    android:name="com.android.email.CREATE_ACCOUNT" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".activity.setup.AccountSetupAccountType"
-            android:label="@string/account_setup_account_type_title"
-            >
-        </activity>
-        <activity
-            android:name=".activity.setup.AccountSetupIncoming"
-            android:label="@string/account_setup_incoming_title"
-            >
-        </activity>
-        <activity
-            android:name=".activity.setup.AccountSetupOutgoing"
-            android:label="@string/account_setup_outgoing_title"
-            >
-        </activity>
-        <!--EXCHANGE-REMOVE-SECTION-START-->
-        <activity
-            android:name=".activity.setup.AccountSetupExchange"
-            android:label="@string/account_setup_exchange_title"
-            >
-        </activity>
-        <!--EXCHANGE-REMOVE-SECTION-END-->
-        <activity
-            android:name=".activity.setup.AccountSetupOptions"
-            android:label="@string/account_setup_options_title"
-            >
-        </activity>
-        <activity
-            android:name=".activity.setup.AccountSetupNames"
-            android:label="@string/account_setup_names_title"
-            >
-        </activity>
-        <activity
-            android:name=".activity.setup.AccountSettingsXL"
-            android:label="@string/account_settings_action"
-            >
-            <intent-filter>
-                <action
-                    android:name="com.android.email.activity.setup.ACCOUNT_MANAGER_ENTRY" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".activity.setup.AccountSecurity"
-            android.label="@string/account_security_title"
-            >
-        </activity>
 
-        <activity
-            android:name=".activity.AccountFolderList"
-            android:launchMode="singleTop"
-            >
-        </activity>
-
-        <activity
-            android:name=".activity.AccountShortcutPicker"
-            android:label="@string/account_shortcut_picker_title"
-            android:enabled="false"
-            android:theme="@android:style/Theme.Holo.DialogWhenLarge"
-            >
-            <intent-filter
-                android:label="@string/account_shortcut_picker_name">
-                <action
-                    android:name="android.intent.action.CREATE_SHORTCUT" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".activity.MailboxList"
-            >
-        </activity>
-
-        <activity
-            android:name=".activity.MessageList"
-            >
-        </activity>
-        <activity
-            android:name=".activity.MessageListXL"
-            >
-        </activity>
-        <activity
-            android:name=".activity.MessageView"
-            >
-        </activity>
-        <activity
-            android:name=".activity.MessageFileView"
-            >
-            <intent-filter
-                android:label="@string/app_name">
-                <action
-                    android:name="android.intent.action.VIEW" />
-                <data
-                    android:mimeType="application/eml" />
-                <data
-                    android:mimeType="message/rfc822" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".activity.MessageCompose"
-            android:label="@string/compose_title"
-            android:enabled="false"
-            >
-            <intent-filter>
-                <action
-                    android:name="android.intent.action.VIEW" />
-                <action
-                    android:name="android.intent.action.SENDTO" />
-                <data
-                    android:scheme="mailto" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-                <category
-                    android:name="android.intent.category.BROWSABLE" />
-            </intent-filter>
-            <intent-filter
-                android:label="@string/app_name">
-                <action
-                    android:name="android.intent.action.SEND" />
-                <data
-                    android:mimeType="*/*" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <intent-filter
-                android:label="@string/app_name">
-                <action
-                    android:name="android.intent.action.SEND_MULTIPLE" />
-                <data
-                    android:mimeType="*/*" />
-                <category
-                    android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <intent-filter>
-                <action
-                    android:name="com.android.email.intent.action.REPLY" />
-            </intent-filter>
-        </activity>
-        <!--EXCHANGE-REMOVE-SECTION-START-->
         <receiver
             android:name="com.android.exchange.EmailSyncAlarmReceiver"/>
         <receiver
             android:name="com.android.exchange.MailboxAlarmReceiver"/>
-        <!--EXCHANGE-REMOVE-SECTION-END-->
 
         <receiver
-            android:name=".service.AttachmentDownloadService$Watchdog"
-            android:enabled="true"/>
-
-        <receiver
-            android:name=".service.EmailBroadcastReceiver"
+            android:name=".service.ExchangeBroadcastReceiver"
             android:enabled="true">
             <intent-filter>
                 <action
@@ -280,108 +88,12 @@
                     android:name="android.intent.action.DEVICE_STORAGE_LOW" />
                 <action
                     android:name="android.intent.action.DEVICE_STORAGE_OK" />
-                <action
-                    android:name="android.accounts.LOGIN_ACCOUNTS_CHANGED" />
-            </intent-filter>
-            <!-- To handle secret code to activate the debug screen. -->
-            <intent-filter>
-                <action
-                    android:name="android.provider.Telephony.SECRET_CODE" />
-                <!-- "36245" = "email" -->
-                <data
-                    android:scheme="android_secret_code"
-                    android:host="36245" />
-            </intent-filter>
-        </receiver>
-        <service
-            android:name=".service.EmailBroadcastProcessorService" />
-
-        <!-- Support for DeviceAdmin / DevicePolicyManager.  See SecurityPolicy class for impl. -->
-        <receiver
-            android:name=".SecurityPolicy$PolicyAdmin"
-            android:label="@string/device_admin_label"
-            android:description="@string/device_admin_description"
-            android:permission="android.permission.BIND_DEVICE_ADMIN" >
-            <meta-data
-                android:name="android.app.device_admin"
-                android:resource="@xml/device_admin" />
-            <intent-filter>
-                <action
-                    android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
 
         <service
-            android:name=".service.MailService"
-            android:enabled="false"
-            >
-        </service>
+            android:name=".service.ExchangeBroadcastProcessorService" />
 
-        <service
-            android:name=".Controller$ControllerService"
-            android:enabled="true"
-            >
-        </service>
-
-        <service
-            android:name=".service.AttachmentDownloadService"
-            android:enabled="false"
-            >
-        </service>
-
-        <!--EXCHANGE-REMOVE-SECTION-START-->
-        <!--Required stanza to register the PopImapAuthenticatorService with AccountManager -->
-        <service
-            android:name=".service.PopImapAuthenticatorService"
-            android:exported="true"
-            android:enabled="true"
-            >
-            <intent-filter>
-                <action
-                    android:name="android.accounts.AccountAuthenticator" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accounts.AccountAuthenticator"
-                android:resource="@xml/pop_imap_authenticator"
-                />
-        </service>
-
-        <!--Required stanza to register the PopImapSyncAdapterService with SyncManager -->
-        <service
-            android:name="com.android.email.service.PopImapSyncAdapterService"
-            android:exported="true">
-            <intent-filter>
-                <action
-                    android:name="android.content.SyncAdapter" />
-            </intent-filter>
-            <meta-data android:name="android.content.SyncAdapter"
-                       android:resource="@xml/syncadapter_pop_imap" />
-        </service>
-
-        <!-- Require provider permission to use our Policy and Account services -->
-        <service
-            android:name=".service.PolicyService"
-            android:enabled="true"
-            android:permission="com.android.email.permission.ACCESS_PROVIDER"
-            >
-            <intent-filter>
-                <action
-                    android:name="com.android.email.POLICY_INTENT" />
-            </intent-filter>
-        </service>
-
-        <service
-            android:name=".service.AccountService"
-            android:enabled="true"
-            android:permission="com.android.email.permission.ACCESS_PROVIDER"
-            >
-            <intent-filter>
-                <action
-                    android:name="com.android.email.ACCOUNT_INTENT" />
-            </intent-filter>
-        </service>
-
-        <!--EXCHANGE-REMOVE-SECTION-START-->
         <!--Required stanza to register the EAS EmailSyncAdapterService with SyncManager -->
         <service
             android:name="com.android.exchange.EmailSyncAdapterService"
@@ -422,63 +134,14 @@
         <service
             android:name="com.android.exchange.ExchangeService"
             android:enabled="true"
-            >
-        </service>
-
-        <!--Required stanza to register the EasAuthenticatorService with AccountManager -->
-        <service
-            android:name=".service.EasAuthenticatorService"
-            android:exported="true"
-            android:enabled="true"
-            >
-            <intent-filter>
-                <action
-                    android:name="android.accounts.AccountAuthenticator" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accounts.AccountAuthenticator"
-                android:resource="@xml/eas_authenticator"
-                />
-        </service>
-        <!--
-            EasAuthenticatorService with the alternative label.  Disabled by default,
-            and OneTimeInitializer enables it if the vendor policy tells so.
-        -->
-        <service
-            android:name=".service.EasAuthenticatorServiceAlternate"
-            android:exported="true"
-            android:enabled="false"
-            >
-            <intent-filter>
-                <action
-                    android:name="android.accounts.AccountAuthenticator" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accounts.AccountAuthenticator"
-                android:resource="@xml/authenticator_alternate"
-                />
-        </service>
-        <!--EXCHANGE-REMOVE-SECTION-END-->
-
-        <provider
-            android:name=".provider.AttachmentProvider"
-            android:authorities="com.android.email.attachmentprovider"
-            android:multiprocess="true"
-            android:grantUriPermissions="true"
-            android:readPermission="com.android.email.permission.READ_ATTACHMENT"
-            />
-
-        <!-- This provider MUST be protected by strict permissions, as granting access to
-             it exposes user passwords and other confidential information. -->
-        <provider
-            android:name=".provider.EmailProvider"
-            android:authorities="com.android.email.provider;com.android.email.notifier"
-            android:multiprocess="true"
             android:permission="com.android.email.permission.ACCESS_PROVIDER"
-            android:label="@string/app_name"
-            />
+            >
+            <intent-filter>
+                <action
+                    android:name="com.android.email.EXCHANGE_INTENT" />
+            </intent-filter>
+        </service>
 
-        <!--EXCHANGE-REMOVE-SECTION-START-->
         <provider
             android:name="com.android.exchange.provider.ExchangeDirectoryProvider"
             android:authorities="com.android.exchange.directory.provider"
@@ -489,23 +152,5 @@
               android:name="android.content.ContactDirectory"
               android:value="true"/>
         </provider>
-        <!--EXCHANGE-REMOVE-SECTION-END-->
-
-        <!-- Email AppWidget definitions -->
-        <service
-            android:name=".provider.WidgetProvider$WidgetService"
-            android:permission="android.permission.BIND_REMOTEVIEWS"
-            android:exported="false"
-            />
-        <receiver
-            android:name=".provider.WidgetProvider" >
-            <intent-filter>
-                <action
-                    android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info" />
-        </receiver>
     </application>
 </manifest>

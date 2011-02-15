@@ -16,18 +16,18 @@
 
 package com.android.exchange.utility;
 
-import com.android.email.R;
-import com.android.email.Utility;
-import com.android.email.mail.Address;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Attachment;
-import com.android.email.provider.EmailContent.Message;
+import com.android.emailcommon.mail.Address;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.utility.Utility;
+import com.android.exchange.R;
 import com.android.exchange.adapter.CalendarSyncAdapter;
+import com.android.exchange.adapter.CalendarSyncAdapter.EasCalendarSyncParser;
 import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SyncAdapterTestCase;
 import com.android.exchange.adapter.Tags;
-import com.android.exchange.adapter.CalendarSyncAdapter.EasCalendarSyncParser;
 
 import android.content.ContentValues;
 import android.content.Entity;
@@ -51,7 +51,7 @@ import java.util.TimeZone;
 /**
  * Tests of EAS Calendar Utilities
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.utility.CalendarUtilitiesTests email
+ *   runtest -c com.android.exchange.utility.CalendarUtilitiesTests exchange
  *
  * Please see RFC2445 for RRULE definition
  * http://www.ietf.org/rfc/rfc2445.txt

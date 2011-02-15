@@ -16,14 +16,11 @@
 
 package com.android.exchange;
 
-import com.android.email.Email;
-import com.android.email.NotificationController;
-import com.android.email.R;
+import com.android.emailcommon.Logging;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Notification;
-import android.app.Notification.Builder;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
@@ -53,10 +50,10 @@ public class CalendarSyncEnabler {
      * Enable calendar sync for all the existing exchange accounts, and post a notification if any.
      */
     public final void enableEasCalendarSync() {
-        String emailAddresses = enableEasCalendarSyncInternal();
+        String emailAddresses = enableEasCalendarSyncInternalForTest();
         if (emailAddresses.length() > 0) {
             // Exchange account(s) found.
-            showNotification(emailAddresses.toString());
+            showNotificationForTest(emailAddresses.toString());
         }
     }
 
@@ -66,14 +63,14 @@ public class CalendarSyncEnabler {
      * @return email addresses of the Exchange accounts joined with spaces as delimiters,
      *     or the empty string if there's no Exchange accounts.
      */
-    /* package for testing */ final String enableEasCalendarSyncInternal() {
+    /* package for testing */ final String enableEasCalendarSyncInternalForTest() {
         StringBuilder emailAddresses = new StringBuilder();
 
         Account[] exchangeAccounts = AccountManager.get(mContext)
-                .getAccountsByType(Email.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                .getAccountsByType(Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         for (Account account : exchangeAccounts) {
             final String emailAddress = account.name;
-            Log.i(Email.LOG_TAG, "Enabling Exchange calendar sync for " + emailAddress);
+            Log.i(Logging.LOG_TAG, "Enabling Exchange calendar sync for " + emailAddress);
 
             ContentResolver.setIsSyncable(account, Calendar.AUTHORITY, 1);
             ContentResolver.setSyncAutomatically(account, Calendar.AUTHORITY, true);
@@ -87,30 +84,30 @@ public class CalendarSyncEnabler {
         return emailAddresses.toString();
     }
 
+    // *** Taken from NotificationController
+    // STOPSHIP This should be cleaned up (per stadler)
+    public static final int NOTIFICATION_ID_EXCHANGE_CALENDAR_ADDED = 2;
+
     /**
      * Show the "Exchange calendar added" notification.
      *
      * @param emailAddresses space delimited list of email addresses of Exchange accounts.  It'll
      *     be shown on the notification.
      */
-    /* package for testing */ void showNotification(String emailAddresses) {
+    /* package for testing */ void showNotificationForTest(String emailAddresses) {
         // Launch Calendar app when clicked.
         PendingIntent launchCalendarPendingIntent = PendingIntent.getActivity(mContext, 0,
                 createLaunchCalendarIntent(), 0);
 
         String tickerText = mContext.getString(R.string.notification_exchange_calendar_added);
-        Builder b = new Builder(mContext);
-        b.setSmallIcon(R.drawable.stat_notify_calendar)
-            .setTicker(tickerText)
-            .setWhen(System.currentTimeMillis())
-            .setContentTitle(tickerText)
-            .setContentText(emailAddresses)
-            .setContentIntent(launchCalendarPendingIntent)
-            .setAutoCancel(true);
-        Notification n = b.getNotification();
+        Notification n = new Notification(R.drawable.stat_notify_calendar,
+                tickerText, System.currentTimeMillis());
+        n.setLatestEventInfo(mContext, tickerText, emailAddresses, launchCalendarPendingIntent);
+        n.flags = Notification.FLAG_AUTO_CANCEL;
+
         NotificationManager nm =
                 (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.notify(NotificationController.NOTIFICATION_ID_EXCHANGE_CALENDAR_ADDED, n);
+        nm.notify(NOTIFICATION_ID_EXCHANGE_CALENDAR_ADDED, n);
     }
 
     /** @return {@link Intent} to launch the Calendar app. */

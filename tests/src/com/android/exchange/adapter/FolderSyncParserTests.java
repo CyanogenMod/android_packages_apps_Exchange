@@ -16,17 +16,16 @@
 
 package com.android.exchange.adapter;
 
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.ProviderTestUtils;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.provider.EmailContentSetupUtils;
 
 import java.io.IOException;
 import java.util.HashMap;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.adapter.FolderSyncParserTests email
+ *   runtest -c com.android.exchange.adapter.FolderSyncParserTests exchange
  */
 
 public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter> {
@@ -40,31 +39,31 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
         EmailSyncAdapter adapter = new EmailSyncAdapter(service);
         FolderSyncParser parser = new FolderSyncParser(getTestInputStream(), adapter);
         HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
-        Account acct = ProviderTestUtils.setupAccount("account", true, mMockContext);
         // The parser needs the mAccount set
-        parser.mAccount = acct;
+        parser.mAccount = mAccount;
+        mAccount.save(getContext());
 
         // Don't save the box; just create it, and give it a server id
-        Mailbox boxMailType = ProviderTestUtils.setupMailbox("box1", acct.mId, false, mMockContext,
-                Mailbox.TYPE_MAIL);
-        boxMailType.mServerId = "1:1";
+        Mailbox boxMailType = EmailContentSetupUtils.setupMailbox("box1", mAccount.mId, false,
+                mProviderContext, Mailbox.TYPE_MAIL);
+        boxMailType.mServerId = "__1:1";
         // Automatically valid since TYPE_MAIL
         assertTrue(parser.isValidMailFolder(boxMailType, mailboxMap));
 
-        Mailbox boxCalendarType = ProviderTestUtils.setupMailbox("box", acct.mId, false,
-                mMockContext, Mailbox.TYPE_CALENDAR);
-        Mailbox boxContactsType = ProviderTestUtils.setupMailbox("box", acct.mId, false,
-                mMockContext, Mailbox.TYPE_CONTACTS);
-        Mailbox boxTasksType = ProviderTestUtils.setupMailbox("box", acct.mId, false,
-                mMockContext, Mailbox.TYPE_TASKS);
+        Mailbox boxCalendarType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
+                mProviderContext, Mailbox.TYPE_CALENDAR);
+        Mailbox boxContactsType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
+                mProviderContext, Mailbox.TYPE_CONTACTS);
+        Mailbox boxTasksType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
+                mProviderContext, Mailbox.TYPE_TASKS);
         // Automatically invalid since TYPE_CALENDAR and TYPE_CONTACTS
         assertFalse(parser.isValidMailFolder(boxCalendarType, mailboxMap));
         assertFalse(parser.isValidMailFolder(boxContactsType, mailboxMap));
         assertFalse(parser.isValidMailFolder(boxTasksType, mailboxMap));
 
         // Unknown boxes are invalid unless they have a parent that's valid
-        Mailbox boxUnknownType = ProviderTestUtils.setupMailbox("box", acct.mId, false,
-                mMockContext, Mailbox.TYPE_UNKNOWN);
+        Mailbox boxUnknownType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
+                mProviderContext, Mailbox.TYPE_UNKNOWN);
         assertFalse(parser.isValidMailFolder(boxUnknownType, mailboxMap));
         boxUnknownType.mParentServerId = boxMailType.mServerId;
         // We shouldn't find the parent yet
@@ -76,17 +75,17 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
         // Clear the map, but save away the parent box
         mailboxMap.clear();
         assertFalse(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-        boxMailType.save(mMockContext);
+        boxMailType.save(mProviderContext);
         // The box should now be valid
         assertTrue(parser.isValidMailFolder(boxUnknownType, mailboxMap));
 
         // Somewhat harder case.  The parent will be in the map, but also unknown.  The parent's
         // parent will be in the database.
-        Mailbox boxParentUnknownType = ProviderTestUtils.setupMailbox("box", acct.mId, false,
-                mMockContext, Mailbox.TYPE_UNKNOWN);
+        Mailbox boxParentUnknownType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId,
+                false, mProviderContext, Mailbox.TYPE_UNKNOWN);
         assertFalse(parser.isValidMailFolder(boxParentUnknownType, mailboxMap));
         // Give the unknown type parent a parent (boxMailType)
-        boxParentUnknownType.mServerId = "1:2";
+        boxParentUnknownType.mServerId = "__1:2";
         boxParentUnknownType.mParentServerId = boxMailType.mServerId;
         // Give our unknown box an unknown parent
         boxUnknownType.mParentServerId = boxParentUnknownType.mServerId;

@@ -15,9 +15,9 @@
 
 package com.android.exchange.adapter;
 
-import com.android.emailcommon.service.PolicyServiceProxy;
-import com.android.emailcommon.service.PolicySet;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.SecurityPolicyDelegate;
+import com.android.emailcommon.service.PolicySet;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -61,7 +61,7 @@ public class ProvisionParser extends Parser {
     }
 
     public void clearUnsupportedPolicies() {
-        mPolicySet = PolicyServiceProxy.clearUnsupportedPolicies(mService.mContext, mPolicySet);
+        mPolicySet = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicySet);
         mIsSupportable = true;
     }
 
@@ -213,7 +213,7 @@ public class ProvisionParser extends Parser {
                 passwordComplexChars, encryptionRequired);
 
         // We can only determine whether encryption is supported on device by using isSupported here
-        if (!PolicyServiceProxy.isSupported(mService.mContext, mPolicySet)) {
+        if (!SecurityPolicyDelegate.isSupported(mService.mContext, mPolicySet)) {
             log("SecurityPolicy reports PolicySet not supported.");
             mIsSupportable = false;
         }

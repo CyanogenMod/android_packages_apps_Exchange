@@ -23,7 +23,7 @@ import java.io.IOException;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.adapter.ProvisionParserTests email
+ *   runtest -c com.android.exchange.adapter.ProvisionParserTests exchange
  */
 public class ProvisionParserTests extends SyncAdapterTestCase {
     private final ByteArrayInputStream mTestInputStream =

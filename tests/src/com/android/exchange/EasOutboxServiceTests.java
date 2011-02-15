@@ -16,28 +16,18 @@
 
 package com.android.exchange;
 
-import com.android.email.provider.EmailContent.Mailbox;
-
-import android.content.Context;
-import android.test.AndroidTestCase;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.exchange.utility.ExchangeTestCase;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.EasOutboxServiceTests email
+ *   runtest -c com.android.exchange.EasOutboxServiceTests exchange
  */
 
-public class EasOutboxServiceTests extends AndroidTestCase {
-
-    Context mMockContext;
-
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        mMockContext = getContext();
-    }
+public class EasOutboxServiceTests extends ExchangeTestCase {
 
     public void testGenerateSmartSendCmd() {
-        EasOutboxService svc = new EasOutboxService(mMockContext, new Mailbox());
+        EasOutboxService svc = new EasOutboxService(mProviderContext, new Mailbox());
         // Test encoding of collection id; colon should be preserved
         String cmd = svc.generateSmartSendCmd(true, "1339085683659694034", "Mail:^f");
         assertEquals("SmartReply&ItemId=1339085683659694034&CollectionId=Mail:%5Ef", cmd);

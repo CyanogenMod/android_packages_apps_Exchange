@@ -17,38 +17,25 @@
 
 package com.android.exchange;
 
-import com.android.email.AccountTestCase;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailProvider;
-import com.android.email.provider.ProviderTestUtils;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.exchange.ExchangeService.SyncError;
-
-import android.content.Context;
+import com.android.exchange.provider.EmailContentSetupUtils;
+import com.android.exchange.utility.ExchangeTestCase;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.ExchangeServiceAccountTests email
+ *   runtest -c com.android.exchange.ExchangeServiceAccountTests exchange
  */
-public class ExchangeServiceAccountTests extends AccountTestCase {
-
-    EmailProvider mProvider;
-    Context mMockContext;
+public class ExchangeServiceAccountTests extends ExchangeTestCase {
 
     public ExchangeServiceAccountTests() {
         super();
     }
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        mMockContext = getMockContext();
-    }
-
     public void testReleaseSyncHolds() {
-        Context context = mMockContext;
         ExchangeService exchangeService = new ExchangeService();
         SyncError securityErrorAccount1 =
             exchangeService.new SyncError(AbstractSyncService.EXIT_SECURITY_FAILURE, false);
@@ -57,12 +44,16 @@ public class ExchangeServiceAccountTests extends AccountTestCase {
         SyncError securityErrorAccount2 =
             exchangeService.new SyncError(AbstractSyncService.EXIT_SECURITY_FAILURE, false);
         // Create account and two mailboxes
-        Account acct1 = ProviderTestUtils.setupAccount("acct1", true, context);
-        Mailbox box1 = ProviderTestUtils.setupMailbox("box1", acct1.mId, true, context);
-        Mailbox box2 = ProviderTestUtils.setupMailbox("box2", acct1.mId, true, context);
-        Account acct2 = ProviderTestUtils.setupAccount("acct2", true, context);
-        Mailbox box3 = ProviderTestUtils.setupMailbox("box3", acct2.mId, true, context);
-        Mailbox box4 = ProviderTestUtils.setupMailbox("box4", acct2.mId, true, context);
+        Account acct1 = setupTestAccount("acct1", true);
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox("box1", acct1.mId, true,
+                mProviderContext);
+        Mailbox box2 = EmailContentSetupUtils.setupMailbox("box2", acct1.mId, true,
+                mProviderContext);
+        Account acct2 = setupTestAccount("acct2", true);
+        Mailbox box3 = EmailContentSetupUtils.setupMailbox("box3", acct2.mId, true,
+                mProviderContext);
+        Mailbox box4 = EmailContentSetupUtils.setupMailbox("box4", acct2.mId, true,
+                mProviderContext);
 
         ConcurrentHashMap<Long, SyncError> errorMap = exchangeService.mSyncErrorMap;
         // Add errors into the map
@@ -73,7 +64,7 @@ public class ExchangeServiceAccountTests extends AccountTestCase {
         // We should have 4
         assertEquals(4, errorMap.keySet().size());
         // Release the holds on acct2 (there are two of them)
-        assertTrue(exchangeService.releaseSyncHolds(context,
+        assertTrue(exchangeService.releaseSyncHolds(mProviderContext,
                 AbstractSyncService.EXIT_SECURITY_FAILURE, acct2));
         // There should be two left
         assertEquals(2, errorMap.keySet().size());
@@ -87,7 +78,7 @@ public class ExchangeServiceAccountTests extends AccountTestCase {
         // We should have 4 again
         assertEquals(4, errorMap.keySet().size());
         // Release all of the security holds
-        assertTrue(exchangeService.releaseSyncHolds(context,
+        assertTrue(exchangeService.releaseSyncHolds(mProviderContext,
                 AbstractSyncService.EXIT_SECURITY_FAILURE, null));
         // There should be one left
         assertEquals(1, errorMap.keySet().size());
@@ -95,31 +86,30 @@ public class ExchangeServiceAccountTests extends AccountTestCase {
         assertNotNull(errorMap.get(box2.mId));
 
         // Release the i/o holds on account 2 (there aren't any)
-        assertFalse(exchangeService.releaseSyncHolds(context,
+        assertFalse(exchangeService.releaseSyncHolds(mProviderContext,
                 AbstractSyncService.EXIT_IO_ERROR, acct2));
         // There should still be one left
         assertEquals(1, errorMap.keySet().size());
 
         // Release the i/o holds on account 1 (there's one)
-        assertTrue(exchangeService.releaseSyncHolds(context,
+        assertTrue(exchangeService.releaseSyncHolds(mProviderContext,
                 AbstractSyncService.EXIT_IO_ERROR, acct1));
         // There should still be one left
         assertEquals(0, errorMap.keySet().size());
     }
 
     public void testIsSyncable() {
-        Context context = mMockContext;
-        Account acct1 = ProviderTestUtils.setupAccount("acct1", true, context);
-        Mailbox box1 = ProviderTestUtils.setupMailbox("box1", acct1.mId, true, context,
-                Mailbox.TYPE_DRAFTS);
-        Mailbox box2 = ProviderTestUtils.setupMailbox("box2", acct1.mId, true, context,
-                Mailbox.TYPE_OUTBOX);
-        Mailbox box3 = ProviderTestUtils.setupMailbox("box2", acct1.mId, true, context,
-                Mailbox.TYPE_ATTACHMENT);
-        Mailbox box4 = ProviderTestUtils.setupMailbox("box2", acct1.mId, true, context,
-                Mailbox.TYPE_NOT_SYNCABLE + 64);
-        Mailbox box5 = ProviderTestUtils.setupMailbox("box2", acct1.mId, true, context,
-                Mailbox.TYPE_MAIL);
+        Account acct1 = setupTestAccount("acct1", true);
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox("box1", acct1.mId, true,
+                mProviderContext, Mailbox.TYPE_DRAFTS);
+        Mailbox box2 = EmailContentSetupUtils.setupMailbox("box2", acct1.mId, true,
+                mProviderContext, Mailbox.TYPE_OUTBOX);
+        Mailbox box3 = EmailContentSetupUtils.setupMailbox("box2", acct1.mId, true,
+                mProviderContext, Mailbox.TYPE_ATTACHMENT);
+        Mailbox box4 = EmailContentSetupUtils.setupMailbox("box2", acct1.mId, true,
+                mProviderContext, Mailbox.TYPE_NOT_SYNCABLE + 64);
+        Mailbox box5 = EmailContentSetupUtils.setupMailbox("box2", acct1.mId, true,
+                mProviderContext, Mailbox.TYPE_MAIL);
         assertFalse(ExchangeService.isSyncable(null));
         assertFalse(ExchangeService.isSyncable(box1));
         assertFalse(ExchangeService.isSyncable(box2));

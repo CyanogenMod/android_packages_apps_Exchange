@@ -32,7 +32,7 @@ import java.util.ArrayList;
 
 /**
  * You can run this entire test case with:
- *   runtest -c com.android.exchange.provider.MockProviderTests email
+ *   runtest -c com.android.exchange.provider.MockProviderTests exchange
  */
 public class MockProviderTests extends ProviderTestCase2<MockProvider> {
     Context mMockContext;

@@ -20,15 +20,18 @@ LOCAL_MODULE_TAGS := tests
 
 LOCAL_JAVA_LIBRARIES := android.test.runner
 
+# STOPSHIP Use appropriate cert (the Google app cert for now)
+LOCAL_CERTIFICATE := vendor/unbundled_google/libraries/certs/app
+
 # Include all test java files.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
-# Notice that we don't have to include the src files of Email because, by
-# running the tests using an instrumentation targeting Eamil, we
+# Notice that we don't have to include the src files of Exchange because, by
+# running the tests using an instrumentation targeting Exchange, we
 # automatically get all of its classes loaded into our environment.
 
-LOCAL_PACKAGE_NAME := EmailTests
+LOCAL_PACKAGE_NAME := ExchangeTests
 
-LOCAL_INSTRUMENTATION_FOR := Email
+LOCAL_INSTRUMENTATION_FOR := Exchange
 
 include $(BUILD_PACKAGE)

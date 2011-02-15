@@ -16,47 +16,50 @@
 
 package com.android.exchange.adapter;
 
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailProvider;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
-import com.android.exchange.provider.MockProvider;
 
+import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
-import android.test.ProviderTestCase2;
-import android.test.mock.MockContentResolver;
+import android.test.AndroidTestCase;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-public class SyncAdapterTestCase<T extends AbstractSyncAdapter>
-        extends ProviderTestCase2<EmailProvider> {
-    EmailProvider mProvider;
-    Context mMockContext;
-    MockContentResolver mMockResolver;
-    Mailbox mMailbox;
-    Account mAccount;
-    EmailSyncAdapter mSyncAdapter;
-    EasEmailSyncParser mSyncParser;
+public class SyncAdapterTestCase<T extends AbstractSyncAdapter> extends AndroidTestCase {
+    public Context mContext;
+    public Context mProviderContext;
+    public ContentResolver mResolver;
+    public Mailbox mMailbox;
+    public Account mAccount;
+    public EmailSyncAdapter mSyncAdapter;
+    public EasEmailSyncParser mSyncParser;
 
     public SyncAdapterTestCase() {
-        super(EmailProvider.class, EmailProvider.EMAIL_AUTHORITY);
     }
 
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mMockContext = getMockContext();
-        mMockResolver = (MockContentResolver)mMockContext.getContentResolver();
-        mMockResolver.addProvider(MockProvider.AUTHORITY, new MockProvider(mMockContext));
+        mContext = getContext();
+        // This could be used with a MockContext if we switch over
+        mProviderContext = mContext;
+        mResolver = mContext.getContentResolver();
     }
 
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
+        // If we've created and saved an account, delete it
+        if (mAccount != null && mAccount.mId > 0) {
+            mResolver.delete(ContentUris.withAppendedId(Account.CONTENT_URI, mAccount.mId), null,
+                    null);
+        }
     }
 
     /**
@@ -69,20 +72,20 @@ public class SyncAdapterTestCase<T extends AbstractSyncAdapter>
     }
 
     EasSyncService getTestService() {
-        Account account = new Account();
-        account.mEmailAddress = "__test__@android.com";
-        account.mId = -1;
+        mAccount = new Account();
+        mAccount.mEmailAddress = "__test__@android.com";
+        mAccount.mId = -1;
         Mailbox mailbox = new Mailbox();
         mailbox.mId = -1;
-        return getTestService(account, mailbox);
+        return getTestService(mAccount, mailbox);
     }
 
     EasSyncService getTestService(Account account, Mailbox mailbox) {
         EasSyncService service = new EasSyncService();
-        service.mContext = mMockContext;
+        service.mContext = mContext;
         service.mMailbox = mailbox;
         service.mAccount = account;
-        service.mContentResolver = mMockResolver;
+        service.mContentResolver = mContext.getContentResolver();
         return service;
     }
 

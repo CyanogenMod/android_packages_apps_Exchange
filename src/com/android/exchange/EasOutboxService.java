@@ -17,18 +17,18 @@
 
 package com.android.exchange;
 
-import com.android.email.Utility;
-import com.android.email.mail.MessagingException;
-import com.android.email.mail.transport.Rfc822Output;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.Body;
-import com.android.email.provider.EmailContent.BodyColumns;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailContent.MailboxColumns;
-import com.android.email.provider.EmailContent.Message;
-import com.android.email.provider.EmailContent.MessageColumns;
-import com.android.email.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.mail.MessagingException;
+import com.android.emailcommon.internet.Rfc822Output;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Body;
+import com.android.emailcommon.provider.EmailContent.BodyColumns;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailcommon.utility.Utility;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;

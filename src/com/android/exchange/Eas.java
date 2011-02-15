@@ -17,6 +17,8 @@
 
 package com.android.exchange;
 
+import com.android.emailcommon.service.EmailServiceProxy;
+
 import android.util.Log;
 
 /**
@@ -33,10 +35,6 @@ public class Eas {
     public static boolean PARSER_LOG = false;   // DO NOT CHECK IN WITH THIS SET TO TRUE
     public static boolean FILE_LOG = false;     // DO NOT CHECK IN WITH THIS SET TO TRUE
 
-    public static final int DEBUG_BIT = 1;
-    public static final int DEBUG_EXCHANGE_BIT = 2;
-    public static final int DEBUG_FILE_BIT = 4;
-
     public static final String CLIENT_VERSION = "EAS-1.2";
     public static final String ACCOUNT_MAILBOX_PREFIX = "__eas";
 
@@ -48,6 +46,8 @@ public class Eas {
     public static final String SUPPORTED_PROTOCOL_EX2007_SP1 = "12.1";
     public static final double SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE = 12.1;
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
+
+    public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE = "com.android.exchange";
 
     // From EAS spec
     //                Mail Cal
@@ -86,9 +86,9 @@ public class Eas {
     public static void setUserDebug(int state) {
         // DEBUG takes precedence and is never true in a user build
         if (!DEBUG) {
-            USER_LOG = (state & DEBUG_BIT) != 0;
-            PARSER_LOG = (state & DEBUG_EXCHANGE_BIT) != 0;
-            FILE_LOG = (state & DEBUG_FILE_BIT) != 0;
+            USER_LOG = (state & EmailServiceProxy.DEBUG_BIT) != 0;
+            PARSER_LOG = (state & EmailServiceProxy.DEBUG_VERBOSE_BIT) != 0;
+            FILE_LOG = (state & EmailServiceProxy.DEBUG_FILE_BIT) != 0;
             if (FILE_LOG || PARSER_LOG) {
                 USER_LOG = true;
             }

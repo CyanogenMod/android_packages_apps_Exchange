@@ -16,34 +16,40 @@
 
 package com.android.exchange;
 
-import com.android.email.AccountTestCase;
-import com.android.email.Email;
-import com.android.email.NotificationController;
+import com.android.emailcommon.AccountManagerTypes;
+import com.android.emailcommon.Logging;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.exchange.utility.ExchangeTestCase;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
+import android.accounts.AccountManagerFuture;
+import android.accounts.AuthenticatorException;
+import android.accounts.OperationCanceledException;
 import android.app.NotificationManager;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.database.Cursor;
 import android.provider.Calendar;
 import android.test.MoreAsserts;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
-public class CalendarSyncEnablerTest extends AccountTestCase {
+public class CalendarSyncEnablerTest extends ExchangeTestCase {
+
+    protected static final String TEST_ACCOUNT_PREFIX = "__test";
+    protected static final String TEST_ACCOUNT_SUFFIX = "@android.com";
 
     private HashMap<Account, Boolean> origCalendarSyncStates = new HashMap<Account, Boolean>();
 
     // To make the rest of the code shorter thus more readable...
-    private static final String EAT = Email.EXCHANGE_ACCOUNT_MANAGER_TYPE;
-
-    public CalendarSyncEnablerTest() {
-        super();
-    }
+    private static final String EAT = AccountManagerTypes.TYPE_EXCHANGE;
 
     @Override
     public void setUp() throws Exception {
@@ -89,7 +95,7 @@ public class CalendarSyncEnablerTest extends AccountTestCase {
         // Add exchange accounts
         createAccountManagerAccount(a1);
 
-        String emailAddresses = enabler.enableEasCalendarSyncInternal();
+        String emailAddresses = enabler.enableEasCalendarSyncInternalForTest();
 
         // Verify
         verifyCalendarSyncState();
@@ -108,7 +114,7 @@ public class CalendarSyncEnablerTest extends AccountTestCase {
         createAccountManagerAccount(a1);
         createAccountManagerAccount(a2);
 
-        emailAddresses = enabler.enableEasCalendarSyncInternal();
+        emailAddresses = enabler.enableEasCalendarSyncInternalForTest();
 
         // Verify
         verifyCalendarSyncState();
@@ -172,12 +178,12 @@ public class CalendarSyncEnablerTest extends AccountTestCase {
         // set up on the device.  Otherwise there'll be no difference from
         // testEnableEasCalendarSync.
         if (AccountManager.get(getContext()).getAccountsByType(EAT).length > 0) {
-            Log.w(Email.LOG_TAG, "testEnableEasCalendarSyncWithNoExchangeAccounts skipped:"
+            Log.w(Logging.LOG_TAG, "testEnableEasCalendarSyncWithNoExchangeAccounts skipped:"
                     + " It only runs when there's no Exchange account on the device.");
             return;
         }
         CalendarSyncEnabler enabler = new CalendarSyncEnabler(getContext());
-        String emailAddresses = enabler.enableEasCalendarSyncInternal();
+        String emailAddresses = enabler.enableEasCalendarSyncInternalForTest();
 
         // Verify (nothing should change)
         verifyCalendarSyncState();
@@ -190,12 +196,97 @@ public class CalendarSyncEnablerTest extends AccountTestCase {
         CalendarSyncEnabler enabler = new CalendarSyncEnabler(getContext());
 
         // We can't really check the result, but at least we can make sure it won't crash....
-        enabler.showNotification("a@b.com");
+        enabler.showNotificationForTest("a@b.com");
 
         // Remove the notification.  Comment it out when you want to know how it looks like.
         // TODO If NotificationController supports this notification, we can just mock it out
         // and remove this code.
         ((NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE))
-                .cancel(NotificationController.NOTIFICATION_ID_EXCHANGE_CALENDAR_ADDED);
+                .cancel(CalendarSyncEnabler.NOTIFICATION_ID_EXCHANGE_CALENDAR_ADDED);
+    }
+
+    protected Account[] getExchangeAccounts() {
+        return AccountManager.get(getContext()).getAccountsByType(
+                AccountManagerTypes.TYPE_EXCHANGE);
+    }
+
+    protected Account makeAccountManagerAccount(String username) {
+        return new Account(username, AccountManagerTypes.TYPE_EXCHANGE);
+    }
+
+    protected void createAccountManagerAccount(String username) {
+        final Account account = makeAccountManagerAccount(username);
+        AccountManager.get(getContext()).addAccountExplicitly(account, "password", null);
+    }
+
+    protected EmailContent.Account setupProviderAndAccountManagerAccount(String username) {
+        // Note that setupAccount creates the email address username@android.com, so that's what
+        // we need to use for the account manager
+        createAccountManagerAccount(username + TEST_ACCOUNT_SUFFIX);
+        return setupTestAccount(username, true);
+    }
+
+    protected ArrayList<EmailContent.Account> makeExchangeServiceAccountList() {
+        ArrayList<EmailContent.Account> accountList = new ArrayList<EmailContent.Account>();
+        Cursor c = mProviderContext.getContentResolver().query(EmailContent.Account.CONTENT_URI,
+                EmailContent.Account.CONTENT_PROJECTION, null, null, null);
+        try {
+            while (c.moveToNext()) {
+                EmailContent.Account account = new EmailContent.Account();
+                account.restore(c);
+                accountList.add(account);
+            }
+        } finally {
+            c.close();
+        }
+        return accountList;
+    }
+
+    protected void deleteAccountManagerAccount(Account account) {
+        AccountManagerFuture<Boolean> future =
+            AccountManager.get(getContext()).removeAccount(account, null, null);
+        try {
+            future.getResult();
+        } catch (OperationCanceledException e) {
+        } catch (AuthenticatorException e) {
+        } catch (IOException e) {
+        }
+    }
+
+    protected void deleteTemporaryAccountManagerAccounts() {
+        for (Account accountManagerAccount: getExchangeAccounts()) {
+            if (accountManagerAccount.name.startsWith(TEST_ACCOUNT_PREFIX) &&
+                    accountManagerAccount.name.endsWith(TEST_ACCOUNT_SUFFIX)) {
+                deleteAccountManagerAccount(accountManagerAccount);
+            }
+        }
+    }
+
+    protected String getTestAccountName(String name) {
+        return TEST_ACCOUNT_PREFIX + name;
+    }
+
+    protected String getTestAccountEmailAddress(String name) {
+        return TEST_ACCOUNT_PREFIX + name + TEST_ACCOUNT_SUFFIX;
+    }
+
+
+    /**
+     * Helper to retrieve account manager accounts *and* remove any preexisting accounts
+     * from the list, to "hide" them from the reconciler.
+     */
+    protected Account[] getAccountManagerAccounts(Account[] baseline) {
+        Account[] rawList = getExchangeAccounts();
+        if (baseline.length == 0) {
+            return rawList;
+        }
+        HashSet<Account> set = new HashSet<Account>();
+        for (Account addAccount : rawList) {
+            set.add(addAccount);
+        }
+        for (Account removeAccount : baseline) {
+            set.remove(removeAccount);
+        }
+        return set.toArray(new Account[0]);
     }
 }

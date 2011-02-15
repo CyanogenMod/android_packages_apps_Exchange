@@ -17,26 +17,25 @@
 
 package com.android.exchange;
 
-import com.android.email.Utility;
-import com.android.email.mail.Address;
-import com.android.email.mail.MeetingInfo;
-import com.android.email.mail.MessagingException;
-import com.android.email.mail.PackedString;
-import com.android.email.provider.EmailContent.Account;
-import com.android.email.provider.EmailContent.AccountColumns;
-import com.android.email.provider.EmailContent.Attachment;
-import com.android.email.provider.EmailContent.AttachmentColumns;
-import com.android.email.provider.EmailContent.HostAuth;
-import com.android.email.provider.EmailContent.Mailbox;
-import com.android.email.provider.EmailContent.MailboxColumns;
-import com.android.email.provider.EmailContent.Message;
-import com.android.email.provider.EmailContent.MessageColumns;
-import com.android.email.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.mail.Address;
+import com.android.emailcommon.mail.MeetingInfo;
+import com.android.emailcommon.mail.MessagingException;
+import com.android.emailcommon.mail.PackedString;
+import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.AttachmentColumns;
+import com.android.emailcommon.provider.EmailContent.HostAuth;
+import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.service.PolicySet;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
 import com.android.exchange.adapter.CalendarSyncAdapter;
@@ -46,11 +45,11 @@ import com.android.exchange.adapter.FolderSyncParser;
 import com.android.exchange.adapter.GalParser;
 import com.android.exchange.adapter.MeetingResponseParser;
 import com.android.exchange.adapter.MoveItemsParser;
+import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.utility.CalendarUtilities;
 
@@ -241,7 +240,7 @@ public class EasSyncService extends AbstractSyncService {
             return;
         }
         mSsl = (ha.mFlags & HostAuth.FLAG_SSL) != 0;
-        mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL_CERTIFICATES) != 0;
+        mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0;
     }
 
     private EasSyncService(String prefix) {
@@ -852,7 +851,7 @@ public class EasSyncService extends AbstractSyncService {
                 svc.mUserName = ha.mLogin;
                 svc.mPassword = ha.mPassword;
                 svc.mSsl = (ha.mFlags & HostAuth.FLAG_SSL) != 0;
-                svc.mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL_CERTIFICATES) != 0;
+                svc.mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0;
                 svc.mDeviceId = ExchangeService.getDeviceId();
                 svc.mAccount = acct;
                 Serializer s = new Serializer();
@@ -1441,17 +1440,17 @@ public class EasSyncService extends AbstractSyncService {
             // temporary and cannot be used for syncing)
             ps.writeAccount(mAccount, null, true, mContext);
             // Make sure that SecurityPolicy is up-to-date
-            PolicyServiceProxy.updatePolicies(mContext, mAccount.mId);
+            SecurityPolicyDelegate.updatePolicies(mContext, mAccount.mId);
             if (pp.getRemoteWipe()) {
                 // We've gotten a remote wipe command
                 ExchangeService.alwaysLog("!!! Remote wipe request received");
                 // Start by setting the account to security hold
-                PolicyServiceProxy.setAccountHoldFlag(mContext, mAccount, true);
+                SecurityPolicyDelegate.setAccountHoldFlag(mContext, mAccount, true);
                 // Force a stop to any running syncs for this account (except this one)
                 ExchangeService.stopNonAccountMailboxSyncsForAccount(mAccount.mId);
 
                 // If we're not the admin, we can't do the wipe, so just return
-                if (!PolicyServiceProxy.isActiveAdmin(mContext)) {
+                if (!SecurityPolicyDelegate.isActiveAdmin(mContext)) {
                     ExchangeService.alwaysLog("!!! Not device admin; can't wipe");
                     return false;
                 }
@@ -1467,9 +1466,9 @@ public class EasSyncService extends AbstractSyncService {
                 }
                 // Then, tell SecurityPolicy to wipe the device
                 ExchangeService.alwaysLog("!!! Executing remote wipe");
-                PolicyServiceProxy.remoteWipe(mContext);
+                SecurityPolicyDelegate.remoteWipe(mContext);
                 return false;
-            } else if (PolicyServiceProxy.isActive(mContext, ps)) {
+            } else if (SecurityPolicyDelegate.isActive(mContext, ps)) {
                 // See if the required policies are in force; if they are, acknowledge the policies
                 // to the server and get the final policy key
                 String policyKey = acknowledgeProvision(pp.getPolicyKey(), PROVISION_STATUS_OK);
@@ -1482,7 +1481,7 @@ public class EasSyncService extends AbstractSyncService {
                 }
             } else {
                 // Notify that we are blocked because of policies
-                PolicyServiceProxy.policiesRequired(mContext, mAccount.mId);
+                SecurityPolicyDelegate.policiesRequired(mContext, mAccount.mId);
             }
         }
         return false;
@@ -1761,14 +1760,14 @@ public class EasSyncService extends AbstractSyncService {
                 String key = mAccount.mSecuritySyncKey;
                 if (!TextUtils.isEmpty(key)) {
                     PolicySet ps = new PolicySet(mAccount);
-                    if (!PolicyServiceProxy.isActive(mContext, ps)) {
+                    if (!SecurityPolicyDelegate.isActive(mContext, ps)) {
                         cv.clear();
                         cv.put(AccountColumns.SECURITY_FLAGS, 0);
                         cv.putNull(AccountColumns.SECURITY_SYNC_KEY);
                         long accountId = mAccount.mId;
                         mContentResolver.update(ContentUris.withAppendedId(
                                 Account.CONTENT_URI, accountId), cv, null, null);
-                        PolicyServiceProxy.policiesRequired(mContext, accountId);
+                        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
                     }
                 }
 

@@ -16,14 +16,14 @@
 
 package com.android.exchange;
 
-import com.android.email.provider.EmailContent.Account;
+import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.service.PolicySet;
 
 import android.content.Context;
 import android.os.RemoteException;
 
-public class PolicyServiceDelegate {
+public class SecurityPolicyDelegate {
 
     public static boolean isActive(Context context, PolicySet policies) {
         try {
