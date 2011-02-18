@@ -345,6 +345,16 @@ public class ExchangeService extends Service implements Runnable {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return;
             checkExchangeServiceServiceRunning();
+            if (sConnectivityHold && userRequest) {
+                try {
+                    // UI is expecting the callbacks....
+                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
+                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.CONNECTION_ERROR,
+                            0);
+                } catch (RemoteException ignore) {
+                }
+                return;
+            }
             Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
             if (m == null) return;
             if (m.mType == Mailbox.TYPE_OUTBOX) {
