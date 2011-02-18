@@ -836,6 +836,10 @@ public class EasSyncService extends AbstractSyncService {
             acct = Account.restoreAccountWithId(context, accountId);
         }
         if (acct != null) {
+            // Don't attempt gal lookup if we're on security hold
+            if ((acct.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+                return null;
+            }
             HostAuth ha = HostAuth.restoreHostAuthWithId(context, acct.mHostAuthKeyRecv);
             EasSyncService svc = new EasSyncService("%GalLookupk%");
             try {
