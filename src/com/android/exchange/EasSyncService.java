@@ -1602,6 +1602,22 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
+     * Translate exit status code to service status code (used in callbacks)
+     * @param exitStatus the service's exit status
+     * @return the corresponding service status
+     */
+    private int exitStatusToServiceStatus(int exitStatus) {
+        switch(exitStatus) {
+            case EXIT_SECURITY_FAILURE:
+                return EmailServiceStatus.SECURITY_FAILURE;
+            case EXIT_LOGIN_FAILURE:
+                return EmailServiceStatus.LOGIN_FAILED;
+            default:
+                return EmailServiceStatus.SUCCESS;
+        }
+    }
+
+    /**
      * Performs FolderSync
      *
      * @throws IOException
@@ -1753,7 +1769,8 @@ public class EasSyncService extends AbstractSyncService {
 
                 try {
                     ExchangeService.callback()
-                        .syncMailboxListStatus(mAccount.mId, mExitStatus, 0);
+                        .syncMailboxListStatus(mAccount.mId, exitStatusToServiceStatus(mExitStatus),
+                                0);
                 } catch (RemoteException e1) {
                     // Don't care if this fails
                 }
