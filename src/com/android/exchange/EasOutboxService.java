@@ -17,8 +17,8 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.internet.Rfc822Output;
+import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.BodyColumns;
@@ -197,7 +197,7 @@ public class EasOutboxService extends EasSyncService {
         setupService();
         File cacheDir = mContext.getCacheDir();
         try {
-            mDeviceId = ExchangeService.getDeviceId();
+            mDeviceId = ExchangeService.getDeviceId(mContext);
             Cursor c = mContext.getContentResolver().query(Message.CONTENT_URI,
                     Message.ID_COLUMN_PROJECTION, MAILBOX_KEY_AND_NOT_SEND_FAILED,
                     new String[] {Long.toString(mMailbox.mId)}, null);

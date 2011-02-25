@@ -18,8 +18,6 @@
 package com.android.exchange;
 
 import com.android.emailcommon.Api;
-import com.android.emailcommon.Device;
-import com.android.emailcommon.Logging;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Account;
@@ -85,11 +83,6 @@ import android.provider.Calendar.Events;
 import android.provider.ContactsContract;
 import android.util.Log;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -385,13 +378,12 @@ public class ExchangeService extends Service implements Runnable {
             stopManualSync(mailboxId);
         }
 
-        public void loadAttachment(long attachmentId, String destinationFile,
-                String contentUriString, boolean background) throws RemoteException {
-            if (Eas.USER_LOG) {
-                Log.d(TAG, "loadAttachment: " + attachmentId + " to " + destinationFile);
-            }
+        public void loadAttachment(long attachmentId, boolean background) throws RemoteException {
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
-            sendMessageRequest(new PartRequest(att, destinationFile, contentUriString));
+            if (Eas.USER_LOG) {
+                Log.d(TAG, "loadAttachment " + attachmentId + ": " + att.mFileName);
+            }
+            sendMessageRequest(new PartRequest(att, null, null));
         }
 
         public void updateFolderList(long accountId) throws RemoteException {
@@ -1081,56 +1073,19 @@ public class ExchangeService extends Service implements Runnable {
     /**
      * EAS requires a unique device id, so that sync is possible from a variety of different
      * devices (e.g. the syncKey is specific to a device)  If we're on an emulator or some other
-     * device that doesn't provide one, we can create it as droid<n> where <n> is system time.
+     * device that doesn't provide one, we can create it as "device".
      * This would work on a real device as well, but it would be better to use the "real" id if
      * it's available
      */
-    static public String getDeviceId() throws IOException {
-        return getDeviceId(null);
-    }
-
-    static public synchronized String getDeviceId(Context context) throws IOException {
+    static public String getDeviceId(Context context) throws IOException {
         if (sDeviceId == null) {
-            sDeviceId = getDeviceIdInternal(context);
-        }
-        return sDeviceId;
-    }
-
-    static private String getDeviceIdInternal(Context context) throws IOException {
-        if (INSTANCE == null && context == null) {
-            throw new IOException("No context for getDeviceId");
-        } else if (context == null) {
-            context = INSTANCE;
-        }
-
-        File f = context.getFileStreamPath("deviceName");
-        BufferedReader rdr = null;
-        String id;
-        if (f.exists()) {
-            if (f.canRead()) {
-                rdr = new BufferedReader(new FileReader(f), 128);
-                id = rdr.readLine();
-                rdr.close();
-                return id;
-            } else {
-                Log.w(Logging.LOG_TAG, f.getAbsolutePath() + ": File exists, but can't read?" +
-                        "  Trying to remove.");
-                if (!f.delete()) {
-                    Log.w(Logging.LOG_TAG, "Remove failed. Tring to overwrite.");
-                }
+            try {
+                sDeviceId = new AccountServiceProxy(context).getDeviceId();
+                alwaysLog("Received deviceId from Email app: " + sDeviceId);
+            } catch (RemoteException e) {
             }
         }
-        BufferedWriter w = new BufferedWriter(new FileWriter(f), 128);
-        final String consistentDeviceId = Device.getConsistentDeviceId(context);
-        if (consistentDeviceId != null) {
-            // Use different prefix from random IDs.
-            id = "androidc" + consistentDeviceId;
-        } else {
-            id = "android" + System.currentTimeMillis();
-        }
-        w.write(id);
-        w.close();
-        return id;
+        return sDeviceId;
     }
 
     @Override
@@ -1738,14 +1693,6 @@ public class ExchangeService extends Service implements Runnable {
             if (sStop) {
                 return;
             }
-            if (sDeviceId == null) {
-                try {
-                    getDeviceId(this);
-                } catch (IOException e) {
-                    // We can't run in this situation
-                    throw new RuntimeException(e);
-                }
-            }
         }
     }
 
@@ -1760,6 +1707,19 @@ public class ExchangeService extends Service implements Runnable {
                     if (!new AccountServiceProxy(ExchangeService.this).test()) {
                         log("!!! Email application not found; stopping self");
                         stopSelf();
+                    }
+                    if (sDeviceId == null) {
+                        try {
+                            String deviceId = getDeviceId(ExchangeService.this);
+                            if (deviceId != null) {
+                                sDeviceId = deviceId;
+                            }
+                        } catch (IOException e) {
+                        }
+                        if (sDeviceId == null) {
+                            log("!!! deviceId not determined; stopping self");
+                            stopSelf();
+                        }
                     }
                     // Restore accounts, if it has not happened already
                     try {

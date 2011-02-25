@@ -35,6 +35,7 @@ import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.PolicySet;
+import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
@@ -93,9 +94,10 @@ import android.util.Xml;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.Thread.State;
 import java.net.URI;
 import java.security.cert.CertificateException;
@@ -852,7 +854,7 @@ public class EasSyncService extends AbstractSyncService {
                 svc.mPassword = ha.mPassword;
                 svc.mSsl = (ha.mFlags & HostAuth.FLAG_SSL) != 0;
                 svc.mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0;
-                svc.mDeviceId = ExchangeService.getDeviceId();
+                svc.mDeviceId = ExchangeService.getDeviceId(context);
                 svc.mAccount = acct;
                 Serializer s = new Serializer();
                 s.start(Tags.SEARCH_SEARCH).start(Tags.SEARCH_STORE);
@@ -967,15 +969,16 @@ public class EasSyncService extends AbstractSyncService {
             if (status == HttpStatus.SC_OK) {
                 int len = (int)entity.getContentLength();
                 InputStream is = entity.getContent();
-                File f = (req.mDestination != null) ? new File(req.mDestination) :
-                    createUniqueFileInternal(req.mDestination, att.mFileName);
-                if (f != null) {
-                    // Ensure that the target directory exists
-                    File destDir = f.getParentFile();
-                    if (!destDir.exists()) {
-                        destDir.mkdirs();
-                    }
-                    FileOutputStream os = new FileOutputStream(f);
+                OutputStream os = null;
+                Uri attachmentUri = AttachmentUtilities.getAttachmentUri(att.mAccountKey, att.mId);
+                String fileName = null;
+                try {
+                    os = mContentResolver.openOutputStream(attachmentUri);
+                    userLog("Attachment filename retrieved as: " + fileName);
+                } catch (FileNotFoundException e) {
+                    userLog("Can't get attachment; write file not found?");
+                }
+                if (os != null) {
                     // len > 0 means that Content-Length was set in the headers
                     // len < 0 means "chunked" transfer-encoding
                     if (len != 0) {
@@ -1023,11 +1026,8 @@ public class EasSyncService extends AbstractSyncService {
 
                     // EmailProvider will throw an exception if update an unsaved attachment
                     if (att.isSaved()) {
-                        String contentUriString = (req.mContentUriString != null) ?
-                            req.mContentUriString :
-                            "file://" + f.getAbsolutePath();
                         ContentValues cv = new ContentValues();
-                        cv.put(AttachmentColumns.CONTENT_URI, contentUriString);
+                        cv.put(AttachmentColumns.CONTENT_URI, attachmentUri.toString());
                         att.update(mContext, cv);
                         doStatusCallback(msg.mId, att.mId, EmailServiceStatus.SUCCESS);
                     }
@@ -2385,7 +2385,7 @@ public class EasSyncService extends AbstractSyncService {
 
         // Whether or not we're the account mailbox
         try {
-            mDeviceId = ExchangeService.getDeviceId();
+            mDeviceId = ExchangeService.getDeviceId(mContext);
             if ((mMailbox == null) || (mAccount == null)) {
                 return;
             } else if (mMailbox.mType == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
