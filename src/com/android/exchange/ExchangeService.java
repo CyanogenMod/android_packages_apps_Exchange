@@ -29,6 +29,7 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.service.AccountServiceProxy;
+import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
@@ -1699,7 +1700,10 @@ public class ExchangeService extends Service implements Runnable {
     @Override
     public void onCreate() {
         synchronized (sSyncLock) {
-            log("!!! EAS ExchangeService, onCreate");
+            alwaysLog("!!! EAS ExchangeService, onCreate");
+            // Try to start up properly; we might be coming back from a crash that the Email
+            // application isn't aware of.
+            startService(new Intent(EmailServiceProxy.EXCHANGE_INTENT));
             if (sStop) {
                 return;
             }
@@ -1708,14 +1712,14 @@ public class ExchangeService extends Service implements Runnable {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        log("!!! EAS ExchangeService, onStartCommand");
+        alwaysLog("!!! EAS ExchangeService, onStartCommand");
         Utility.runAsync(new Runnable() {
             @Override
             public void run() {
                 synchronized (sSyncLock) {
                     // ExchangeService cannot start unless we can connect to AccountService
                     if (!new AccountServiceProxy(ExchangeService.this).test()) {
-                        log("!!! Email application not found; stopping self");
+                        alwaysLog("!!! Email application not found; stopping self");
                         stopSelf();
                     }
                     if (sDeviceId == null) {
@@ -1727,8 +1731,19 @@ public class ExchangeService extends Service implements Runnable {
                         } catch (IOException e) {
                         }
                         if (sDeviceId == null) {
-                            log("!!! deviceId not determined; stopping self");
+                            alwaysLog("!!! deviceId not determined; stopping self and retrying");
                             stopSelf();
+                            // Try to restart ourselves in a few seconds
+                            Utility.runAsync(new Runnable() {
+                               @Override
+                               public void run() {
+                                   try {
+                                       Thread.sleep(5000);
+                                   } catch (InterruptedException e) {
+                                   }
+                                   startService(new Intent(EmailServiceProxy.EXCHANGE_INTENT));
+                               }});
+                            return;
                         }
                     }
                     // Restore accounts, if it has not happened already
