@@ -20,9 +20,6 @@ LOCAL_MODULE_TAGS := tests
 
 LOCAL_JAVA_LIBRARIES := android.test.runner
 
-# STOPSHIP Use appropriate cert (the Google app cert for now)
-LOCAL_CERTIFICATE := vendor/unbundled_google/libraries/certs/app
-
 # Include all test java files.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
