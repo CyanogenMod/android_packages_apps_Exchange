@@ -137,7 +137,7 @@ public class EasOutboxService extends EasSyncService {
 
             // Write the message in rfc822 format to the temporary file
             FileOutputStream fileStream = new FileOutputStream(tmpFile);
-            Rfc822Output.writeTo(mContext, msgId, fileStream, !smartSend, true);
+            Rfc822Output.writeTo(mContext, msgId, fileStream, smartSend, true);
             fileStream.close();
 
             // Now, get an input stream to our temporary file and create an entity with it
