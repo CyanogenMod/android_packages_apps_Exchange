@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  Copyright (C) 2008 The Android Open Source Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="exchange_name_alternate" msgid="5772529644749041052">"Microsoft Exchange ActiveSync"</string>
+    <string name="meeting_accepted" msgid="8796609373330400268">"Έγινε αποδοχή: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_declined" msgid="6707617183246608552">"Απορρίφθηκε: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_tentative" msgid="8250995722130443785">"Αβέβαιη παρουσία: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_canceled" msgid="3949893881872084244">"Ακυρώθηκε: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_updated" msgid="8529675857361702860">"Ενημερώθηκε: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_when" msgid="2765696159697448656">"Πότε: <xliff:g id="WHEN">%s</xliff:g>"</string>
+    <string name="meeting_where" msgid="5992367535856553079">"Που: <xliff:g id="WHERE">%s</xliff:g>"</string>
+    <string name="meeting_recurring" msgid="3134262212606714023">"Πότε: <xliff:g id="EVENTDATE">%s</xliff:g> (επαναλαμβανόμενο)"</string>
+    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Προστέθηκε ημερολόγιο Exchange"</string>
+    <string name="exception_cancel" msgid="6160117429428313805">"Αυτό το συμβάν ακυρώθηκε για: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_updated" msgid="3397583105901142050">"Οι λεπτομέρειες αυτού του συμβάντος άλλαξαν για: <xliff:g id="DATE">%s</xliff:g>"</string>
+</resources>
