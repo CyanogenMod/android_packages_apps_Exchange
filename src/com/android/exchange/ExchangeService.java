@@ -223,6 +223,7 @@ public class ExchangeService extends Service implements Runnable {
     // Count of ClientConnectionManager shutdowns
     private static volatile int sClientConnectionManagerShutdownCount = 0;
 
+    private static volatile boolean sStartingUp = false;
     private static volatile boolean sStop = false;
 
     // The reason for ExchangeService's next wakeup call
@@ -1712,61 +1713,71 @@ public class ExchangeService extends Service implements Runnable {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        alwaysLog("!!! EAS ExchangeService, onStartCommand");
-        Utility.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                synchronized (sSyncLock) {
-                    // ExchangeService cannot start unless we can connect to AccountService
-                    if (!new AccountServiceProxy(ExchangeService.this).test()) {
-                        alwaysLog("!!! Email application not found; stopping self");
-                        stopSelf();
-                    }
-                    if (sDeviceId == null) {
-                        try {
-                            String deviceId = getDeviceId(ExchangeService.this);
-                            if (deviceId != null) {
-                                sDeviceId = deviceId;
-                            }
-                        } catch (IOException e) {
-                        }
-                        if (sDeviceId == null) {
-                            alwaysLog("!!! deviceId not determined; stopping self and retrying");
-                            stopSelf();
-                            // Try to restart ourselves in a few seconds
-                            Utility.runAsync(new Runnable() {
-                               @Override
-                               public void run() {
-                                   try {
-                                       Thread.sleep(5000);
-                                   } catch (InterruptedException e) {
-                                   }
-                                   startService(new Intent(EmailServiceProxy.EXCHANGE_INTENT));
-                               }});
-                            return;
-                        }
-                    }
-                    // Restore accounts, if it has not happened already
+        alwaysLog("!!! EAS ExchangeService, onStartCommand, startingUp = " + sStartingUp +
+                ", running = " + (INSTANCE != null));
+        if (!sStartingUp && INSTANCE == null) {
+            sStartingUp = true;
+            Utility.runAsync(new Runnable() {
+                @Override
+                public void run() {
                     try {
-                        new AccountServiceProxy(ExchangeService.this).restoreAccountsIfNeeded();
-                    } catch (RemoteException e) {
-                        // If we can't restore accounts, don't run
-                        return;
+                        synchronized (sSyncLock) {
+                            // ExchangeService cannot start unless we can connect to AccountService
+                            if (!new AccountServiceProxy(ExchangeService.this).test()) {
+                                alwaysLog("!!! Email application not found; stopping self");
+                                stopSelf();
+                            }
+                            if (sDeviceId == null) {
+                                try {
+                                    String deviceId = getDeviceId(ExchangeService.this);
+                                    if (deviceId != null) {
+                                        sDeviceId = deviceId;
+                                    }
+                                } catch (IOException e) {
+                                }
+                                if (sDeviceId == null) {
+                                    alwaysLog("!!! deviceId unknown; stopping self and retrying");
+                                    stopSelf();
+                                    // Try to restart ourselves in a few seconds
+                                    Utility.runAsync(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                Thread.sleep(5000);
+                                            } catch (InterruptedException e) {
+                                            }
+                                            startService(new Intent(
+                                                    EmailServiceProxy.EXCHANGE_INTENT));
+                                        }});
+                                    return;
+                                }
+                            }
+                            // Restore accounts, if it has not happened already
+                            try {
+                                new AccountServiceProxy(
+                                        ExchangeService.this).restoreAccountsIfNeeded();
+                            } catch (RemoteException e) {
+                                // If we can't restore accounts, don't run
+                                return;
+                            }
+                            // Run the reconciler and clean up mismatched accounts - if we weren't
+                            // running when accounts were deleted, it won't have been called.
+                            runAccountReconcilerSync(ExchangeService.this);
+                            // Update other services depending on final account configuration
+                            maybeStartExchangeServiceThread();
+                            if (sServiceThread == null) {
+                                log("!!! EAS ExchangeService, stopping self");
+                                stopSelf();
+                            } else if (sStop) {
+                                // If we were trying to stop, attempt a restart in 5 secs
+                                setAlarm(EXCHANGE_SERVICE_MAILBOX_ID, 5*SECONDS);
+                            }
+                        }
+                    } finally {
+                        sStartingUp = false;
                     }
-                    // Run the reconciler and clean up any mismatched accounts - if we weren't
-                    // running when accounts were deleted, it won't have been called.
-                    runAccountReconcilerSync(ExchangeService.this);
-                    // Update other services depending on final account configuration
-                    maybeStartExchangeServiceThread();
-                    if (sServiceThread == null) {
-                        log("!!! EAS ExchangeService, stopping self");
-                        stopSelf();
-                    } else if (sStop) {
-                        // If we were in the middle of trying to stop, attempt a restart in 5 secs
-                        setAlarm(EXCHANGE_SERVICE_MAILBOX_ID, 5*SECONDS);
-                    }
-                }
-            }});
+                }});
+        }
         return Service.START_STICKY;
     }
 
