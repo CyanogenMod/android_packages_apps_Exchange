@@ -86,12 +86,8 @@
         automatically enabled for pre-existing Exchange accounts on upgrade -->
     <string name="notification_exchange_calendar_added">Exchange calendar added</string>
 
-    <string name="account_setup_account_type_exchange_action"
-        translatable="false">Exchange</string>
-    <!-- Do Not Translate. "Add new email account" screen, button name in response
-        to what type of account this is -->
-    <string name="account_setup_account_type_exchange_action_alternate"
-        translatable="false">Microsoft Exchange ActiveSync</string>
+    <!-- The name of this APK as shown in manage applications settings. [CHAR LIMIT=30] -->
+    <string name="app_name" >Exchange Services</string>
 
     <!-- Used as the body text of a message reporting to an attendee that a
         specific instance of a recurring meeting has been canceled -->
