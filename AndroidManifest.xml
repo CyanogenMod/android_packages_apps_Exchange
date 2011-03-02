@@ -87,6 +87,8 @@
                     android:name="android.intent.action.DEVICE_STORAGE_LOW" />
                 <action
                     android:name="android.intent.action.DEVICE_STORAGE_OK" />
+                <action
+                    android:name="android.accounts.LOGIN_ACCOUNTS_CHANGED" />
             </intent-filter>
         </receiver>
 

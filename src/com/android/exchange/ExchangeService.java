@@ -1039,6 +1039,21 @@ public class ExchangeService extends Service implements Runnable {
     }
 
     /**
+     * Reconcile Exchange accounts with AccountManager (asynchronous)
+     * @param context the caller's Context
+     */
+    public static void reconcileAccounts(final Context context) {
+        Utility.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                ExchangeService exchangeService = INSTANCE;
+                if (exchangeService != null) {
+                    exchangeService.runAccountReconcilerSync(context);
+                }
+            }});
+    }
+
+    /**
      * Blocking call to the account reconciler
      */
     private void runAccountReconcilerSync(Context context) {

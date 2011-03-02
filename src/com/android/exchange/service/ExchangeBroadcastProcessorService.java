@@ -16,11 +16,15 @@
 
 package com.android.exchange.service;
 
+import com.android.emailcommon.Logging;
+import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
 
+import android.accounts.AccountManager;
 import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 /**
  * The service that really handles broadcast intents on a worker thread.
@@ -63,6 +67,11 @@ public class ExchangeBroadcastProcessorService extends IntentService {
 
             if (Intent.ACTION_BOOT_COMPLETED.equals(broadcastAction)) {
                 onBootCompleted();
+            } else if (AccountManager.LOGIN_ACCOUNTS_CHANGED_ACTION.equals(broadcastAction)) {
+                if (Eas.DEBUG) {
+                    Log.d(Logging.LOG_TAG, "Login accounts changed; reconciling...");
+                }
+                ExchangeService.reconcileAccounts(this);
             }
        }
     }
