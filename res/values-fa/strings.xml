@@ -26,6 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"مکان: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"زمان: <xliff:g id="EVENTDATE">%s</xliff:g> (تکرار)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"تقویم Exchange اضافه شد"</string>
+    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"ایمیل"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"این رویداد لغو شده است به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"جزئیات این رویداد تغییر کرده اند به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

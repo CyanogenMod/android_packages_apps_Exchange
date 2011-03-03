@@ -26,6 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"สถานที่: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"เวลา: <xliff:g id="EVENTDATE">%s</xliff:g> (เกิดซ้ำ)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"เพิ่มปฏิทิน Exchange แล้ว"</string>
+    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"อีเมล"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"กิจกรรมถูกยกเลิกแล้วในวันที่: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"วันที่ของกิจกรรมนี้ถูกเปลี่ยนเป็น: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

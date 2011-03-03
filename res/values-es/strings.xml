@@ -26,6 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"Dónde: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Cuándo: <xliff:g id="EVENTDATE">%s</xliff:g> (periódico)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Se ha añadido un calendario de Exchange."</string>
+    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"Correo electrónico"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Este evento se ha cancelado el día: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Los detalles de este evento se han cambiado al día: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

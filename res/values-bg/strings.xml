@@ -26,6 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"Къде: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Кога: <xliff:g id="EVENTDATE">%s</xliff:g> (с повторения)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Добавен е календар от Exchange"</string>
+    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"Имейл адрес"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Това събитие от <xliff:g id="DATE">%s</xliff:g> е анулирано"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Подробностите за това събитие са променени за: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

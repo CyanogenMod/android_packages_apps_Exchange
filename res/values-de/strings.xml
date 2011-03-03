@@ -26,6 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"Wo: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Wann: <xliff:g id="EVENTDATE">%s</xliff:g> (wiederkehrend)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Exchange-Kalender hinzugefügt"</string>
+    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"E-Mail"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Dieser Termin wurde storniert für: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Die Details dieses Termins wurden geändert für: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

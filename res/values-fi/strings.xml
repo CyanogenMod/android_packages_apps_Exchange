@@ -26,6 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"Missä: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Milloin: <xliff:g id="EVENTDATE">%s</xliff:g> (toistuva)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Exchange-kalenteri lisätty"</string>
+    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"Sähköposti"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Poikkeus toistuvassa tapahtumassa, peruutettu <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Poikkeus toistuvassa tapahtumassa, muutettu <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>
