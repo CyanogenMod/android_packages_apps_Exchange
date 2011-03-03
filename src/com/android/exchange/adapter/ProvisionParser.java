@@ -74,6 +74,7 @@ public class ProvisionParser extends Parser {
         int passwordHistory = 0;
         int passwordComplexChars = 0;
         boolean encryptionRequired = false;
+        boolean encryptionRequiredExternal = false;
 
         while (nextTag(Tags.PROVISION_EAS_PROVISION_DOC) != END) {
             boolean tagIsSupported = true;
@@ -142,10 +143,15 @@ public class ProvisionParser extends Parser {
                         encryptionRequired = true;
                     }
                     break;
-                // The following policies, if true, can't be supported at the moment
-                // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which we do
-                // not yet support.
+                // We may now support SD card (external) encryption; we'll check this capability
+                // below with the call to SecurityPolicy.isSupported().  Note, despite the name,
+                // PROVISION_DEVICE_ENCRYPTION_ENABLED really does refer to external storage.
                 case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
+                    if (getValueInt() == 1) {
+                        encryptionRequiredExternal = true;
+                    }
+                    break;
+                // The following policies, if true, can't be supported at the moment
                 case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
@@ -210,7 +216,7 @@ public class ProvisionParser extends Parser {
 
         mPolicySet = new PolicySet(minPasswordLength, passwordMode,
                 maxPasswordFails, maxScreenLockTime, true, passwordExpirationDays, passwordHistory,
-                passwordComplexChars, encryptionRequired);
+                passwordComplexChars, encryptionRequired, encryptionRequiredExternal);
 
         // We can only determine whether encryption is supported on device by using isSupported here
         if (!SecurityPolicyDelegate.isSupported(mService.mContext, mPolicySet)) {
@@ -273,7 +279,7 @@ public class ProvisionParser extends Parser {
 
         mPolicySet = new PolicySet(sps.mMinPasswordLength, sps.mPasswordMode, sps.mMaxPasswordFails,
                 sps.mMaxScreenLockTime, true, sps.mPasswordExpiration, sps.mPasswordHistory,
-                sps.mPasswordComplexChars, false);
+                sps.mPasswordComplexChars, false, false);
     }
 
     /**
