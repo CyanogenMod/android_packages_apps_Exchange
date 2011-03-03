@@ -54,11 +54,16 @@ public class EmailContentSetupUtils {
      */
     public static Mailbox setupMailbox(String name, long accountId, boolean saveIt,
             Context context) {
-        return setupMailbox(name, accountId, saveIt, context, Mailbox.TYPE_MAIL);
+        return setupMailbox(name, accountId, saveIt, context, Mailbox.TYPE_MAIL, null);
     }
 
     public static Mailbox setupMailbox(String name, long accountId, boolean saveIt,
             Context context, int type) {
+        return setupMailbox(name, accountId, saveIt, context, type, null);
+    }
+
+    public static Mailbox setupMailbox(String name, long accountId, boolean saveIt,
+            Context context, int type, Mailbox parentBox) {
         Mailbox box = new Mailbox();
 
         box.mDisplayName = name;
@@ -68,7 +73,7 @@ public class EmailContentSetupUtils {
         box.mSyncInterval = EmailContent.Account.CHECK_INTERVAL_NEVER;
         box.mType = type;
         box.mServerId = "serverid-" + name;
-        box.mParentServerId = "parent-serverid-" + name;
+        box.mParentServerId = parentBox != null ? parentBox.mServerId : "parent-serverid-" + name;
 
         if (saveIt) {
             box.save(context);

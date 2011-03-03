@@ -38,6 +38,7 @@ import com.android.emailcommon.utility.SSLUtils;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
+import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.FileLogger;
 
 import org.apache.http.conn.ClientConnectionManager;
@@ -1889,6 +1890,10 @@ public class ExchangeService extends Service implements Runnable {
 
                 // See if any settings have changed while we weren't running...
                 checkPIMSyncSettings();
+
+                // Do any required work to clean up our Mailboxes (this serves to upgrade
+                // mailboxes that existed prior to EmailProvider database version 17)
+                MailboxUtilities.fixupUninitializedParentKeys(this, getEasAccountSelector());
             }
         }
 
