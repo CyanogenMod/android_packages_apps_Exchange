@@ -52,6 +52,7 @@ import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
+import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.CalendarUtilities;
 
 import org.apache.http.Header;
@@ -1713,6 +1714,8 @@ public class EasSyncService extends AbstractSyncService {
             }
 
             while (!mStop) {
+                // Check that the account's mailboxes are consistent
+                MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
                 userLog("Sending Account syncKey: ", mAccount.mSyncKey);
                 Serializer s = new Serializer();
                 s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
@@ -1909,6 +1912,8 @@ public class EasSyncService extends AbstractSyncService {
         long inboxId = -1;
 
         while ((System.currentTimeMillis() < endTime) && !mStop) {
+            // Check that the account's mailboxes are consistent
+            MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
             // Count of pushable mailboxes
             int pushCount = 0;
             // Count of mailboxes that can be pushed right now
