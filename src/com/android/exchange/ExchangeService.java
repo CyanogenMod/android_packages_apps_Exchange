@@ -1716,15 +1716,21 @@ public class ExchangeService extends Service implements Runnable {
      */
     @Override
     public void onCreate() {
-        synchronized (sSyncLock) {
-            alwaysLog("!!! EAS ExchangeService, onCreate");
-            // Try to start up properly; we might be coming back from a crash that the Email
-            // application isn't aware of.
-            startService(new Intent(EmailServiceProxy.EXCHANGE_INTENT));
-            if (sStop) {
-                return;
-            }
-        }
+        Utility.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                // Quick checks first, before getting the lock
+                if (sStartingUp) return;
+                synchronized (sSyncLock) {
+                    alwaysLog("!!! EAS ExchangeService, onCreate");
+                    // Try to start up properly; we might be coming back from a crash that the Email
+                    // application isn't aware of.
+                    startService(new Intent(EmailServiceProxy.EXCHANGE_INTENT));
+                    if (sStop) {
+                        return;
+                    }
+                }
+            }});
     }
 
     @Override
@@ -1800,13 +1806,20 @@ public class ExchangeService extends Service implements Runnable {
     @Override
     public void onDestroy() {
         log("!!! EAS ExchangeService, onDestroy");
-        synchronized(sSyncLock) {
-            // Stop the sync manager thread and return
-            if (sServiceThread != null) {
-                sStop = true;
-                sServiceThread.interrupt();
-            }
-        }
+        // Handle shutting down off the UI thread
+        Utility.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                // Quick checks first, before getting the lock
+                if (INSTANCE == null || sServiceThread == null) return;
+                synchronized(sSyncLock) {
+                    // Stop the sync manager thread and return
+                    if (sServiceThread != null) {
+                        sStop = true;
+                        sServiceThread.interrupt();
+                    }
+                }
+            }});
     }
 
     void maybeStartExchangeServiceThread() {
