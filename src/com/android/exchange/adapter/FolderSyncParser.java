@@ -26,7 +26,7 @@ import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
-import com.android.exchange.MockParserStream;
+import com.android.exchange.provider.MailboxUtilities;
 
 import android.content.ContentProviderOperation;
 import android.content.ContentUris;
@@ -34,6 +34,7 @@ import android.content.ContentValues;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.os.RemoteException;
+import android.text.TextUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,22 +88,30 @@ public class FolderSyncParser extends AbstractSyncParser {
         MailboxColumns.PARENT_SERVER_ID +"=? and " + MailboxColumns.ACCOUNT_KEY + "=?";
 
     private static final String[] MAILBOX_ID_COLUMNS_PROJECTION =
-        new String[] {MailboxColumns.ID, MailboxColumns.SERVER_ID};
+        new String[] {MailboxColumns.ID, MailboxColumns.SERVER_ID, MailboxColumns.PARENT_SERVER_ID};
+    private static final int MAILBOX_ID_COLUMNS_ID = 0;
+    private static final int MAILBOX_ID_COLUMNS_SERVER_ID = 1;
+    private static final int MAILBOX_ID_COLUMNS_PARENT_SERVER_ID = 2;
 
     private long mAccountId;
     private String mAccountIdAsString;
-    private MockParserStream mMock = null;
     private String[] mBindArguments = new String[2];
     private ArrayList<ContentProviderOperation> mOperations =
         new ArrayList<ContentProviderOperation>();
+    private boolean mInitialSync;
+    private ArrayList<String> mParentFixupsNeeded = new ArrayList<String>();
+    private boolean mFixupUninitializedNeeded = false;
+
+    private static final ContentValues UNINITIALIZED_PARENT_KEY = new ContentValues();
+
+    {
+        UNINITIALIZED_PARENT_KEY.put(MailboxColumns.PARENT_KEY, Mailbox.PARENT_KEY_UNINITIALIZED);
+    }
 
     public FolderSyncParser(InputStream in, AbstractSyncAdapter adapter) throws IOException {
         super(in, adapter);
         mAccountId = mAccount.mId;
         mAccountIdAsString = Long.toString(mAccountId);
-        if (in instanceof MockParserStream) {
-            mMock = (MockParserStream)in;
-        }
     }
 
     @Override
@@ -113,8 +122,8 @@ public class FolderSyncParser extends AbstractSyncParser {
         // Since we're now (potentially) committing mailboxes in chunks, ensure that we start with
         // only the account mailbox
         String key = mAccount.mSyncKey;
-        boolean initialSync = (key == null) || "0".equals(key);
-        if (initialSync) {
+        mInitialSync = (key == null) || "0".equals(key);
+        if (mInitialSync) {
             mContentResolver.delete(Mailbox.CONTENT_URI, ALL_BUT_ACCOUNT_MAILBOX,
                     new String[] {Long.toString(mAccountId)});
         }
@@ -153,7 +162,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                 mAccount.mSyncKey = getValue();
                 userLog("New Account SyncKey: ", mAccount.mSyncKey);
             } else if (tag == Tags.FOLDER_CHANGES) {
-                changesParser(mOperations, initialSync);
+                changesParser(mOperations, mInitialSync);
             } else
                 skipTag();
         }
@@ -169,7 +178,7 @@ public class FolderSyncParser extends AbstractSyncParser {
     private Cursor getServerIdCursor(String serverId) {
         mBindArguments[0] = serverId;
         mBindArguments[1] = mAccountIdAsString;
-        return mContentResolver.query(Mailbox.CONTENT_URI, EmailContent.ID_PROJECTION,
+        return mContentResolver.query(Mailbox.CONTENT_URI, MAILBOX_ID_COLUMNS_PROJECTION,
                 WHERE_SERVER_ID_AND_ACCOUNT, mBindArguments, null);
     }
 
@@ -185,9 +194,15 @@ public class FolderSyncParser extends AbstractSyncParser {
                             userLog("Deleting ", serverId);
                             ops.add(ContentProviderOperation.newDelete(
                                     ContentUris.withAppendedId(Mailbox.CONTENT_URI,
-                                            c.getLong(0))).build());
+                                            c.getLong(MAILBOX_ID_COLUMNS_ID))).build());
                             AttachmentUtilities.deleteAllMailboxAttachmentFiles(mContext,
                                     mAccountId, mMailbox.mId);
+                            if (!mInitialSync) {
+                                String parentId = c.getString(MAILBOX_ID_COLUMNS_PARENT_SERVER_ID);
+                                if (!TextUtils.isEmpty(parentId)) {
+                                    mParentFixupsNeeded.add(parentId);
+                                }
+                            }
                         }
                     } finally {
                         c.close();
@@ -275,6 +290,10 @@ public class FolderSyncParser extends AbstractSyncParser {
 
             if (!parentId.equals("0")) {
                 mailbox.mParentServerId = parentId;
+                mFixupUninitializedNeeded = true;
+                if (!mInitialSync) {
+                    mParentFixupsNeeded.add(parentId);
+                }
             }
 
             return mailbox;
@@ -351,16 +370,28 @@ public class FolderSyncParser extends AbstractSyncParser {
                 // If we find the mailbox (using serverId), make the change
                 if (c.moveToFirst()) {
                     userLog("Updating ", serverId);
+                    // Fix up old and new parents, as needed
+                    if (!TextUtils.isEmpty(parentId)) {
+                        mParentFixupsNeeded.add(parentId);
+                    }
+                    String oldParentId = c.getString(MAILBOX_ID_COLUMNS_PARENT_SERVER_ID);
+                    if (!TextUtils.isEmpty(oldParentId)) {
+                        mParentFixupsNeeded.add(oldParentId);
+                    }
+                    // Set display name if we've got one
                     ContentValues cv = new ContentValues();
                     if (displayName != null) {
                         cv.put(Mailbox.DISPLAY_NAME, displayName);
                     }
-                    if (parentId != null) {
-                        cv.put(Mailbox.PARENT_SERVER_ID, parentId);
-                    }
+                    // Save away the server id and uninitialize the parent key
+                    cv.put(Mailbox.PARENT_SERVER_ID, parentId);
+                    // Clear the parent key; it will be fixed up after the commit
+                    cv.put(Mailbox.PARENT_KEY, Mailbox.PARENT_KEY_UNINITIALIZED);
                     ops.add(ContentProviderOperation.newUpdate(
                             ContentUris.withAppendedId(Mailbox.CONTENT_URI,
-                                    c.getLong(0))).withValues(cv).build());
+                                    c.getLong(MAILBOX_ID_COLUMNS_ID))).withValues(cv).build());
+                    // Say we need to fixup uninitialized mailboxes
+                    mFixupUninitializedNeeded = true;
                 }
             } finally {
                 c.close();
@@ -409,6 +440,9 @@ public class FolderSyncParser extends AbstractSyncParser {
             final boolean initialSync) throws IOException {
         // Array of added mailboxes
         final ArrayList<Mailbox> addMailboxes = new ArrayList<Mailbox>();
+
+        // Indicate start of (potential) mailbox changes
+        MailboxUtilities.startMailboxChanges(mContext, mAccount.mId);
 
         while (nextTag(Tags.FOLDER_CHANGES) != END) {
             if (tag == Tags.FOLDER_ADD) {
@@ -471,6 +505,27 @@ public class FolderSyncParser extends AbstractSyncParser {
                     if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap, ops)) {
                         mService.stop();
                     }
+                    // For new boxes, setup the parent key and flags
+                    if (mFixupUninitializedNeeded) {
+                        MailboxUtilities.fixupUninitializedParentKeys(mContext,
+                                Mailbox.ACCOUNT_KEY + "=" + mAccount.mId);
+                    }
+                    // For modified parents, reset the flags (and children's parent key)
+                    for (String parentServerId: mParentFixupsNeeded) {
+                        Cursor c = mContentResolver.query(Mailbox.CONTENT_URI,
+                                Mailbox.CONTENT_PROJECTION, Mailbox.PARENT_SERVER_ID + "=?",
+                                new String[] {parentServerId}, null);
+                        try {
+                            if (c.moveToFirst()) {
+                                MailboxUtilities.setFlagsAndChildrensParentKey(mContext, c);
+                            }
+                        } finally {
+                            c.close();
+                        }
+                    }
+
+                    // Signal completion of mailbox changes
+                    MailboxUtilities.endMailboxChanges(mContext, mAccount.mId);
                 }
             }});
     }
@@ -498,8 +553,8 @@ public class FolderSyncParser extends AbstractSyncParser {
         long id = 0;
         try {
             if (c.moveToFirst()) {
-                id = c.getLong(0);
-                parentServerId = c.getString(1);
+                id = c.getLong(MAILBOX_ID_COLUMNS_ID);
+                parentServerId = c.getString(MAILBOX_ID_COLUMNS_SERVER_ID);
             }
         } finally {
             c.close();
