@@ -20,10 +20,21 @@ package com.android.exchange;
  * MeetingResponseRequest is the EAS wrapper for responding to meeting requests.
  */
 public class MeetingResponseRequest extends Request {
-    public int mResponse;
+    public final int mResponse;
 
     MeetingResponseRequest(long messageId, int response) {
-        mMessageId = messageId;
+        super(messageId);
         mResponse = response;
+    }
+
+    // MeetingResponseRequests are unique by their message id (i.e. there's only one response to
+    // a given message)
+    public boolean equals(Object o) {
+        if (!(o instanceof MeetingResponseRequest)) return false;
+        return ((MeetingResponseRequest)o).mMessageId == mMessageId;
+    }
+
+    public int hashCode() {
+        return (int)mMessageId;
     }
 }

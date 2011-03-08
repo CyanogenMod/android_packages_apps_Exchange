@@ -25,20 +25,27 @@ import com.android.emailcommon.provider.EmailContent.Attachment;
  * updates to the UI.
  */
 public class PartRequest extends Request {
-    public Attachment mAttachment;
-    public String mDestination;
-    public String mContentUriString;
-    public String mLocation;
-
-    public PartRequest(Attachment _att) {
-        mMessageId = _att.mMessageKey;
-        mAttachment = _att;
-        mLocation = mAttachment.mLocation;
-    }
+    public final Attachment mAttachment;
+    public final String mDestination;
+    public final String mContentUriString;
+    public final String mLocation;
 
     public PartRequest(Attachment _att, String _destination, String _contentUriString) {
-        this(_att);
+        super(_att.mId);
+        mAttachment = _att;
+        mLocation = mAttachment.mLocation;
         mDestination = _destination;
         mContentUriString = _contentUriString;
+    }
+
+    // PartRequests are unique by their attachment id (i.e. multiple attachments might be queued
+    // for a particular message, but any individual attachment can only be loaded once)
+    public boolean equals(Object o) {
+        if (!(o instanceof PartRequest)) return false;
+        return ((PartRequest)o).mAttachment.mId == mAttachment.mId;
+    }
+
+    public int hashCode() {
+        return (int)mAttachment.mId;
     }
 }
