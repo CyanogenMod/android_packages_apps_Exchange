@@ -60,21 +60,31 @@ public class MailboxUtilities {
         }
         // There's no concept of "append" in EAS so FLAG_ACCEPTS_APPENDED_MAIL is never used
         // Mark parent mailboxes as parents & add parent key to children
-        selectionArgs[0] = parentServerId;
-        Cursor childCursor = resolver.query(Mailbox.CONTENT_URI,
-                Mailbox.ID_PROJECTION, MailboxColumns.PARENT_SERVER_ID + "=?",
-                selectionArgs, null);
-        try {
-            while (childCursor.moveToNext()) {
-                parentFlags |= Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE;
-                ContentValues childValues = new ContentValues();
-                childValues.put(Mailbox.PARENT_KEY, parentId);
-                long childId = childCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
-                resolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, childId),
-                        childValues, null, null);
+        // An example of a mailbox with a null serverId would be an Outbox that we create locally
+        // for hotmail accounts (which don't have a server-based Outbox)
+        if (parentServerId != null) {
+            selectionArgs[0] = parentServerId;
+            Cursor childCursor = resolver.query(Mailbox.CONTENT_URI,
+                    Mailbox.ID_PROJECTION, MailboxColumns.PARENT_SERVER_ID + "=?",
+                    selectionArgs, null);
+            try {
+                while (childCursor.moveToNext()) {
+                    parentFlags |= Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE;
+                    ContentValues childValues = new ContentValues();
+                    childValues.put(Mailbox.PARENT_KEY, parentId);
+                    long childId = childCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
+                    resolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, childId),
+                            childValues, null, null);
+                }
+            } finally {
+                childCursor.close();
             }
-        } finally {
-            childCursor.close();
+        } else {
+            // Mark this is having no parent, so that we don't examine this mailbox again
+            parentValues.put(Mailbox.PARENT_KEY, Mailbox.PARENT_KEY_NONE);
+            Log.w(Logging.LOG_TAG, "Mailbox with null serverId: " +
+                    parentCursor.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN) + ", type: " +
+                    parentType);
         }
         // Save away updated flags and parent key (if any)
         parentValues.put(Mailbox.FLAGS, parentFlags);
