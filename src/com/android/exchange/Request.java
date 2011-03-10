@@ -18,10 +18,19 @@ package com.android.exchange;
 
 /**
  * Requests for mailbox actions are handled by subclasses of this abstract class.
- * Two subclasses are now defined: PartRequest (attachment load) and MeetingResponseRequest
- * (respond to a meeting invitation)
+ * Three subclasses are now defined: PartRequest (attachment load), MeetingResponseRequest
+ * (respond to a meeting invitation), and MessageMoveRequest (move a message to another folder)
  */
 public abstract class Request {
-    public long mTimeStamp = System.currentTimeMillis();
-    public long mMessageId;
+    public final long mTimeStamp = System.currentTimeMillis();
+    public final long mMessageId;
+
+    public Request(long messageId) {
+        mMessageId = messageId;
+    }
+
+    // Subclasses of Request may have different semantics regarding equality; therefore,
+    // we force them to implement the equals method
+    public abstract boolean equals(Object o);
+    public abstract int hashCode();
 }

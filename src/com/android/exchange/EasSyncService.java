@@ -348,6 +348,14 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
+    @Override
+    public void addRequest(Request request) {
+        // Don't allow duplicates of requests; just refuse them
+        if (mRequestQueue.contains(request)) return;
+        // Add the request
+        super.addRequest(request);
+    }
+
     /**
      * Determine whether an HTTP code represents an authentication error
      * @param code the HTTP code returned by the server
