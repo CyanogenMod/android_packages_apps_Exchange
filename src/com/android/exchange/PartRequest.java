@@ -31,7 +31,7 @@ public class PartRequest extends Request {
     public final String mLocation;
 
     public PartRequest(Attachment _att, String _destination, String _contentUriString) {
-        super(_att.mId);
+        super(_att.mMessageKey);
         mAttachment = _att;
         mLocation = mAttachment.mLocation;
         mDestination = _destination;
