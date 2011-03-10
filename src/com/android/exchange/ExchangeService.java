@@ -1253,11 +1253,13 @@ public class ExchangeService extends Service implements Runnable {
                     if (svc != null) {
                         synchronized (svc.getSynchronizer()) {
                             svc.stop();
+                            // Interrupt the thread so that it can stop
+                            Thread thread = svc.mThread;
+                            if (thread != null) {
+                                thread.setName(thread.getName() + " (Stopped)");
+                                thread.interrupt();
+                            }
                         }
-                        // Interrupt the thread so that it can stop
-                        Thread thread = svc.mThread;
-                        thread.setName(thread.getName() + " (Stopped)");
-                        thread.interrupt();
                         // Abandon the service
                         exchangeService.releaseMailbox(id);
                         // And have it start naturally
