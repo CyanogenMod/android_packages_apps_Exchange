@@ -25,6 +25,12 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 
+/**
+ * Tests of MailboxUtilities.
+ *
+ * You can run this entire test case with:
+ *   runtest -c com.android.exchange.provider.MailboxUtilitiesTests exchange
+ */
 public class MailboxUtilitiesTests extends ExchangeTestCase {
 
     // All tests must build their accounts in mAccount so it will be deleted from live data
@@ -519,6 +525,41 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
 
         assertEquals(CHILD_FLAGS, box2.mFlags);        // Should still be a child (no parent)
         assertEquals(-1, box2.mParentKey);
+    }
+
+    /**
+     * Test a mailbox that has no server id (Hotmail Outbox is an example of this)
+     */
+    public void testNoServerId() {
+        // Set up account and mailboxes
+        mAccount = setupTestAccount("acct1", true);
+        String accountSelector = MailboxColumns.ACCOUNT_KEY + " IN (" + mAccount.mId + ")";
+
+        // Initial configuration for this test:  box1 has no serverId, box2 is a child of box1
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox(
+                "box1", mAccount.mId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box1.mServerId = null;
+        box1.save(mProviderContext);
+        Mailbox box2 = EmailContentSetupUtils.setupMailbox(
+                "box2", mAccount.mId, true, mProviderContext, Mailbox.TYPE_OUTBOX, box1);
+
+        // Manually set parentKey to null for all mailboxes, as if an initial sync or post-upgrade
+        mResolver.update(Mailbox.CONTENT_URI, mNullParentKey, null, null);
+
+        // Confirm initial configuration as expected
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector);
+        box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
+        box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
+
+        // Box 1 should be a child, even though it is defined as the parent of box2, because it
+        // has no serverId (presumably, this case can't happen, because a child stores the parent's
+        // serverId, but it's nice to know it's handled properly). Box 1 should have no parent.
+        assertEquals(Mailbox.PARENT_KEY_NONE, box1.mParentKey);
+        assertEquals(CHILD_FLAGS, box1.mFlags);
+        // Box 2 should be a child with no parent (see above).  Since it's an outbox, the flags are
+        // only "holds mail".
+        assertEquals(Mailbox.PARENT_KEY_NONE, box2.mParentKey);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL, box2.mFlags);
     }
 
     /**
