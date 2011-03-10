@@ -23,7 +23,18 @@ public class MessageMoveRequest extends Request {
     public final long mMailboxId;
 
     public MessageMoveRequest(long messageId, long mailboxId) {
-        mMessageId = messageId;
+        super(messageId);
         mMailboxId = mailboxId;
+    }
+
+    // MessageMoveRequests are unique by their message id (i.e. it's meaningless to have two
+    // separate message moves queued at the same time)
+    public boolean equals(Object o) {
+        if (!(o instanceof MessageMoveRequest)) return false;
+        return ((MessageMoveRequest)o).mMessageId == mMessageId;
+    }
+
+    public int hashCode() {
+        return (int)mMessageId;
     }
 }
