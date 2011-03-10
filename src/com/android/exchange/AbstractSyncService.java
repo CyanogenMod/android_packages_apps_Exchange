@@ -59,7 +59,6 @@ public abstract class AbstractSyncService implements Runnable {
 
     public Mailbox mMailbox;
     protected long mMailboxId;
-    protected Thread mThread;
     protected int mExitStatus = EXIT_EXCEPTION;
     protected String mMailboxName;
     public Account mAccount;
@@ -67,7 +66,8 @@ public abstract class AbstractSyncService implements Runnable {
     public int mChangeCount = 0;
     public volatile int mSyncReason = 0;
     protected volatile boolean mStop = false;
-    protected Object mSynchronizer = new Object();
+    protected volatile Thread mThread;
+    protected final Object mSynchronizer = new Object();
 
     protected volatile long mRequestTime = 0;
     protected LinkedBlockingQueue<Request> mRequestQueue = new LinkedBlockingQueue<Request>();

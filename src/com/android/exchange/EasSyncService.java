@@ -2378,15 +2378,16 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     protected boolean setupService() {
+        synchronized(getSynchronizer()) {
+            mThread = Thread.currentThread();
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+            TAG = mThread.getName();
+        }
         // Make sure account and mailbox are always the latest from the database
         mAccount = Account.restoreAccountWithId(mContext, mAccount.mId);
         if (mAccount == null) return false;
         mMailbox = Mailbox.restoreMailboxWithId(mContext, mMailbox.mId);
         if (mMailbox == null) return false;
-        mThread = Thread.currentThread();
-        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
-        TAG = mThread.getName();
-
         HostAuth ha = HostAuth.restoreHostAuthWithId(mContext, mAccount.mHostAuthKeyRecv);
         if (ha == null) return false;
         mHostAddress = ha.mAddress;
@@ -2407,7 +2408,10 @@ public class EasSyncService extends AbstractSyncService {
      * @see java.lang.Runnable#run()
      */
     public void run() {
+        // Make sure account and mailbox are still valid
         if (!setupService()) return;
+        // If we've been stopped, we're done
+        if (mStop) return;
         if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START) {
             try {
                 ExchangeService.callback().syncMailboxStatus(mMailboxId,
