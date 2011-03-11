@@ -24,6 +24,7 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.EasOutboxService;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.ExchangeService;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.exchange.utility.Duration;
 
@@ -198,6 +199,8 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 "=" + DatabaseUtils.sqlEscapeString(mEmailAddress) + " AND " +
                 Calendars._SYNC_ACCOUNT_TYPE + "=" +
                 DatabaseUtils.sqlEscapeString(AccountManagerTypes.TYPE_EXCHANGE), null);
+        // Invalidate our calendar observers
+        ExchangeService.unregisterCalendarObservers();
     }
 
     @Override
