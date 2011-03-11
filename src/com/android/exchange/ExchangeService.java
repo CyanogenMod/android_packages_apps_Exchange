@@ -209,8 +209,9 @@ public class ExchangeService extends Service implements Runnable {
     private EasSyncStatusObserver mSyncStatusObserver;
     private Object mStatusChangeListener;
 
-    private HashMap<Long, CalendarObserver> mCalendarObservers =
-        new HashMap<Long, CalendarObserver>();
+    // Concurrent because CalendarSyncAdapter can modify the map during a wipe
+    private ConcurrentHashMap<Long, CalendarObserver> mCalendarObservers =
+        new ConcurrentHashMap<Long, CalendarObserver>();
 
     private ContentResolver mResolver;
 
@@ -745,11 +746,14 @@ public class ExchangeService extends Service implements Runnable {
     /**
      * Unregister all CalendarObserver's
      */
-    private void unregisterCalendarObservers() {
-        for (CalendarObserver observer: mCalendarObservers.values()) {
-            mResolver.unregisterContentObserver(observer);
+    static public void unregisterCalendarObservers() {
+        ExchangeService exchangeService = INSTANCE;
+        if (exchangeService == null) return;
+        ContentResolver resolver = exchangeService.mResolver;
+        for (CalendarObserver observer: exchangeService.mCalendarObservers.values()) {
+            resolver.unregisterContentObserver(observer);
         }
-        mCalendarObservers.clear();
+        exchangeService.mCalendarObservers.clear();
     }
 
     /**
