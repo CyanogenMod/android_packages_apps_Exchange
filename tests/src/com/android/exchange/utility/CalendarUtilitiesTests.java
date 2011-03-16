@@ -34,6 +34,7 @@ import android.content.Entity;
 import android.content.res.Resources;
 import android.provider.Calendar.Attendees;
 import android.provider.Calendar.Events;
+import android.test.suitebuilder.annotation.MediumTest;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -56,7 +57,7 @@ import java.util.TimeZone;
  * Please see RFC2445 for RRULE definition
  * http://www.ietf.org/rfc/rfc2445.txt
  */
-
+@MediumTest
 public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdapter> {
 
     // Some prebuilt time zones, Base64 encoded (as they arrive from EAS)

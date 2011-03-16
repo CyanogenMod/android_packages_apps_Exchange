@@ -24,6 +24,7 @@ import com.android.exchange.utility.ExchangeTestCase;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.test.suitebuilder.annotation.MediumTest;
 
 /**
  * Tests of MailboxUtilities.
@@ -31,6 +32,7 @@ import android.content.ContentValues;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.provider.MailboxUtilitiesTests exchange
  */
+@MediumTest
 public class MailboxUtilitiesTests extends ExchangeTestCase {
 
     // All tests must build their accounts in mAccount so it will be deleted from live data

@@ -19,9 +19,10 @@ package com.android.exchange;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import java.io.File;
-
+@SmallTest
 public class ExchangeServiceTest extends AndroidTestCase {
     private static class MyContext extends ContextWrapper {
         public boolean isGetFileStreamPathCalled;

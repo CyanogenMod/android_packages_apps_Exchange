@@ -27,11 +27,13 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.provider.ContactsContract.CommonDataKinds;
 import android.provider.ContactsContract.Contacts;
+import android.test.suitebuilder.annotation.SmallTest;
 
 /**
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.provider.ExchangeDirectoryProviderTests exchange
  */
+@SmallTest
 public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
 
     public ExchangeDirectoryProviderTests() {

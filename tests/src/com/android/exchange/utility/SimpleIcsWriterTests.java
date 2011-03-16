@@ -17,6 +17,8 @@ package com.android.exchange.utility;
 
 import com.android.emailcommon.utility.Utility;
 
+import android.test.suitebuilder.annotation.SmallTest;
+
 import junit.framework.TestCase;
 
 /**
@@ -24,6 +26,7 @@ import junit.framework.TestCase;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.utility.SimpleIcsWriterTests exchange
  */
+@SmallTest
 public class SimpleIcsWriterTests extends TestCase {
     private static final String CRLF = "\r\n";
     private static final String UTF8_1_BYTE = "a";

@@ -29,13 +29,14 @@ import com.android.exchange.provider.EmailContentSetupUtils;
 
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.TimeZone;
-
+@SmallTest
 public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter> {
 
     private static final String WHERE_ACCOUNT_KEY = Message.ACCOUNT_KEY + "=?";

@@ -32,6 +32,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.provider.Calendar;
 import android.test.MoreAsserts;
+import android.test.suitebuilder.annotation.MediumTest;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -40,7 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-
+@MediumTest
 public class CalendarSyncEnablerTest extends ExchangeTestCase {
 
     protected static final String TEST_ACCOUNT_PREFIX = "__test";

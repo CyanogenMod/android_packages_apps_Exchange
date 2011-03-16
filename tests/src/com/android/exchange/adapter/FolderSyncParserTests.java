@@ -20,6 +20,8 @@ import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.provider.EmailContentSetupUtils;
 
+import android.test.suitebuilder.annotation.MediumTest;
+
 import java.io.IOException;
 import java.util.HashMap;
 
@@ -27,7 +29,7 @@ import java.util.HashMap;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.adapter.FolderSyncParserTests exchange
  */
-
+@MediumTest
 public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter> {
 
     public FolderSyncParserTests() {

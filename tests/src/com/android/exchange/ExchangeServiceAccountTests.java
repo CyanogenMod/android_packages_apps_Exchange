@@ -23,12 +23,15 @@ import com.android.exchange.ExchangeService.SyncError;
 import com.android.exchange.provider.EmailContentSetupUtils;
 import com.android.exchange.utility.ExchangeTestCase;
 
+import android.test.suitebuilder.annotation.MediumTest;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.ExchangeServiceAccountTests exchange
  */
+@MediumTest
 public class ExchangeServiceAccountTests extends ExchangeTestCase {
 
     public ExchangeServiceAccountTests() {
