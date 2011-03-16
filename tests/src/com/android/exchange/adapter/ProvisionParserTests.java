@@ -18,6 +18,8 @@ package com.android.exchange.adapter;
 
 import com.android.emailcommon.service.PolicySet;
 
+import android.test.suitebuilder.annotation.SmallTest;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
@@ -25,6 +27,7 @@ import java.io.IOException;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.adapter.ProvisionParserTests exchange
  */
+@SmallTest
 public class ProvisionParserTests extends SyncAdapterTestCase {
     private final ByteArrayInputStream mTestInputStream =
         new ByteArrayInputStream("ABCDEFG".getBytes());

@@ -27,6 +27,7 @@ import android.net.Uri;
 import android.os.RemoteException;
 import android.test.ProviderTestCase2;
 import android.test.mock.MockContentResolver;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import java.util.ArrayList;
 
@@ -34,6 +35,7 @@ import java.util.ArrayList;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.provider.MockProviderTests exchange
  */
+@SmallTest
 public class MockProviderTests extends ProviderTestCase2<MockProvider> {
     Context mMockContext;
     MockContentResolver mMockResolver;

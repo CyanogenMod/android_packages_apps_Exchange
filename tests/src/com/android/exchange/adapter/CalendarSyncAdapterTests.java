@@ -33,6 +33,7 @@ import android.test.IsolatedContext;
 import android.test.RenamingDelegatingContext;
 import android.test.mock.MockContentResolver;
 import android.test.mock.MockContext;
+import android.test.suitebuilder.annotation.MediumTest;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -45,7 +46,7 @@ import java.util.TimeZone;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.adapter.CalendarSyncAdapterTests exchange
  */
-
+@MediumTest
 public class CalendarSyncAdapterTests extends SyncAdapterTestCase<CalendarSyncAdapter> {
     private static final String[] ATTENDEE_PROJECTION = new String[] {Attendees.ATTENDEE_EMAIL,
             Attendees.ATTENDEE_NAME, Attendees.ATTENDEE_STATUS};

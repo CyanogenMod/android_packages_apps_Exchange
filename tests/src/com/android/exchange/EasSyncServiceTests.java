@@ -25,6 +25,7 @@ import org.apache.http.client.methods.HttpRequestBase;
 
 import android.content.Context;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
 
 import java.io.File;
@@ -34,7 +35,7 @@ import java.io.IOException;
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.EasSyncServiceTests exchange
  */
-
+@SmallTest
 public class EasSyncServiceTests extends AndroidTestCase {
     static private final String USER = "user";
     static private final String PASSWORD = "password";

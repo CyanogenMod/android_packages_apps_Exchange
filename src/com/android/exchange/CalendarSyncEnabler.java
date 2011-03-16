@@ -85,7 +85,6 @@ public class CalendarSyncEnabler {
     }
 
     // *** Taken from NotificationController
-    // STOPSHIP This should be cleaned up (per stadler)
     public static final int NOTIFICATION_ID_EXCHANGE_CALENDAR_ADDED = 2;
 
     /**

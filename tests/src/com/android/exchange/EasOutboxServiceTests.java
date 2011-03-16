@@ -19,11 +19,13 @@ package com.android.exchange;
 import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.exchange.utility.ExchangeTestCase;
 
+import android.test.suitebuilder.annotation.MediumTest;
+
 /**
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.EasOutboxServiceTests exchange
  */
-
+@MediumTest
 public class EasOutboxServiceTests extends ExchangeTestCase {
 
     public void testGenerateSmartSendCmd() {

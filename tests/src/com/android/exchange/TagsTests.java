@@ -19,9 +19,10 @@ package com.android.exchange;
 import com.android.exchange.adapter.Tags;
 
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import java.util.HashMap;
-
+@SmallTest
 public class TagsTests extends AndroidTestCase {
 
     // Make sure there are no duplicates in the tags table
