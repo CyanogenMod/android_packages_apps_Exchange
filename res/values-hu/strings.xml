@@ -26,7 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"Helyszín: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Időpont: <xliff:g id="EVENTDATE">%s</xliff:g> (ismétlődő)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Exchange-naptár hozzáadva"</string>
-    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"E-mail"</string>
+    <string name="app_name" msgid="5316597712787122829">"Exchange szolgáltatások"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Ezt az eseményt törölték: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Az esemény részletei a következőre módosultak: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

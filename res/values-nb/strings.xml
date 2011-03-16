@@ -26,7 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"Hvor: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Når: <xliff:g id="EVENTDATE">%s</xliff:g> (gjentakende)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Exchange-kalender er lagt til"</string>
-    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"E-post"</string>
+    <string name="app_name" msgid="5316597712787122829">"Exchange-tjenester"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Denne aktiviteten er kansellert for: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Detaljene for denne aktiviteten er endret for: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>

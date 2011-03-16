@@ -26,7 +26,7 @@
     <string name="meeting_where" msgid="5992367535856553079">"On: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"Quan: <xliff:g id="EVENTDATE">%s</xliff:g> (periòdica)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"S\'ha afegit el calendari d\'Exchange"</string>
-    <!-- outdated translation 3116658102568068619 -->     <string name="app_name" msgid="5316597712787122829">"Correu electrònic"</string>
+    <string name="app_name" msgid="5316597712787122829">"Serveis d\'Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Aquest esdeveniment s\'ha cancel·lat per a: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Els detalls d\'aquest esdeveniment han canviat per a: <xliff:g id="DATE">%s</xliff:g>"</string>
 </resources>
