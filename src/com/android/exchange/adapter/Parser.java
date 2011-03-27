@@ -37,7 +37,6 @@ import java.util.ArrayList;
  *
  */
 public abstract class Parser {
-
     // The following constants are Wbxml standard
     public static final int START_DOCUMENT = 0;
     public static final int DONE = 1;
@@ -51,7 +50,7 @@ public abstract class Parser {
     private boolean logging = false;
     private boolean capture = false;
     private String logTag = "EAS Parser";
-    
+
     // Where tags start in a page
     private static final int TAG_BASE = 5;
 
@@ -145,7 +144,17 @@ public abstract class Parser {
     }
 
     public Parser(InputStream in) throws IOException {
-        setInput(in);
+        setInput(in, true);
+        logging = Eas.PARSER_LOG;
+    }
+
+    /**
+     * Constructor for use when switching parsers within a input stream
+     * @param parser an existing, initialized parser
+     * @throws IOException
+     */
+    public Parser(Parser parser) throws IOException {
+        setInput(parser.in, false);
         logging = Eas.PARSER_LOG;
     }
 
@@ -217,7 +226,6 @@ public abstract class Parser {
         if (type != END) {
             throw new IOException("No END found!");
         }
-        endTag = startTag;
         return val;
     }
 
@@ -241,7 +249,6 @@ public abstract class Parser {
         if (type != END) {
             throw new IOException("No END found!");
         }
-        endTag = startTag;
         return val;
     }
 
@@ -317,19 +324,21 @@ public abstract class Parser {
      * @param in the InputStream associated with this parser
      * @throws IOException
      */
-    public void setInput(InputStream in) throws IOException {
+    public void setInput(InputStream in, boolean initialize) throws IOException {
         this.in = in;
-        readByte(); // version
-        readInt();  // ?
-        readInt();  // 106 (UTF-8)
-        readInt();  // string table length
+        if (initialize) {
+            readByte(); // version
+            readInt();  // ?
+            readInt();  // 106 (UTF-8)
+            readInt();  // string table length
+        }
         tagTable = tagTables[0];
     }
 
     /*package*/ void resetInput(InputStream in) {
         this.in = in;
     }
-    
+
     void log(String str) {
         int cr = str.indexOf('\n');
         if (cr > 0) {
@@ -339,6 +348,42 @@ public abstract class Parser {
         if (Eas.FILE_LOG) {
             FileLogger.log(logTag, str);
         }
+    }
+
+    protected void pushTag(int id) {
+        page = id >> Tags.PAGE_SHIFT;
+        tagTable = tagTables[page];
+        push(id);
+    }
+
+    protected void popTag() {
+        pop();
+    }
+
+    private void pop() {
+        if (logging) {
+            name = nameArray[depth];
+        }
+        // Retrieve the now-current startTag from our stack
+        startTag = endTag = startTagArray[depth];
+        depth--;
+    }
+
+    private void push(int id) {
+        // The tag is in the low 6 bits
+        startTag = id & 0x3F;
+        // If the high bit is set, there is content (a value) to be read
+        noContent = (id & 0x40) == 0;
+        depth++;
+        if (logging) {
+            name = tagTable[startTag - TAG_BASE];
+            nameArray[depth] = name;
+            if (noContent) {
+                log("<" + name + ">");
+            }
+        }
+        // Save the startTag to our stack
+        startTagArray[depth] = startTag;
     }
 
     /**
@@ -351,17 +396,12 @@ public abstract class Parser {
      * @throws IOException
      */
     private final int getNext(boolean asInt) throws IOException {
-        int savedEndTag = endTag;
-        if (type == END) {
-            depth--;
-        } else {
-            endTag = NOT_ENDED;
-        }
-
         if (noContent) {
+            if (logging) {
+                log('<' + name + "/>");
+            }
             type = END;
             noContent = false;
-            endTag = savedEndTag;
             return type;
         }
 
@@ -388,14 +428,8 @@ public abstract class Parser {
                 break;
 
             case Wbxml.END:
-                // End of tag
                 type = END;
-                if (logging) {
-                    name = nameArray[depth];
-                    //log("</" + name + '>');
-                }
-                // Retrieve the now-current startTag from our stack
-                startTag = endTag = startTagArray[depth];
+                pop();
                 break;
 
             case Wbxml.STR_I:
@@ -413,20 +447,8 @@ public abstract class Parser {
                 break;
 
             default:
-                // Start of tag
                 type = START;
-                // The tag is in the low 6 bits
-                startTag = id & 0x3F;
-                // If the high bit is set, there is content (a value) to be read
-                noContent = (id & 0x40) == 0;
-                depth++;
-                if (logging) {
-                    name = tagTable[startTag - TAG_BASE];
-                    //log('<' + name + '>');
-                    nameArray[depth] = name;
-                }
-                // Save the startTag to our stack
-                startTagArray[depth] = startTag;
+                push(id);
         }
 
         // Return the type of data we're dealing with
