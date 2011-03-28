@@ -1643,12 +1643,6 @@ public class EasSyncService extends AbstractSyncService {
                 // Don't care if this fails
             }
 
-            // Don't run if we're being held
-            if ((mAccount.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
-                mExitStatus = EXIT_SECURITY_FAILURE;
-                return;
-            }
-
             if (mAccount.mSyncKey == null) {
                 mAccount.mSyncKey = "0";
                 userLog("Account syncKey INIT to 0");
@@ -2360,7 +2354,8 @@ public class EasSyncService extends AbstractSyncService {
                 } else {
                     userLog("Sync response error: ", code);
                     if (isProvisionError(code)) {
-                        mExitStatus = EXIT_SECURITY_FAILURE;
+                        // Simply report "ok" here; account mailbox handles security errors
+                        mExitStatus = EXIT_DONE;
                     } else if (isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                     } else {
