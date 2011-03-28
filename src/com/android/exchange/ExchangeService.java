@@ -33,6 +33,7 @@ import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
+import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.utility.AccountReconciler;
 import com.android.emailcommon.utility.SSLUtils;
 import com.android.emailcommon.utility.Utility;
@@ -552,9 +553,11 @@ public class ExchangeService extends Service implements Runnable {
         String mSyncableEasMailboxSelector = null;
         String mEasAccountSelector = null;
 
+        // Runs when ExchangeService first starts
         public AccountObserver(Handler handler) {
             super(handler);
             // At startup, we want to see what EAS accounts exist and cache them
+            // TODO: Move database work out of UI thread
             Context context = getContext();
             synchronized (mAccountList) {
                 collectEasAccounts(context, mAccountList);
@@ -563,10 +566,33 @@ public class ExchangeService extends Service implements Runnable {
                     int cnt = Mailbox.count(context, Mailbox.CONTENT_URI, "accountKey="
                             + account.mId, null);
                     if (cnt == 0) {
+                        // This case handles a newly created account
                         addAccountMailbox(account.mId);
                     }
                 }
             }
+            // Run through accounts and update account hold information
+            Utility.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (mAccountList) {
+                        for (Account account : mAccountList) {
+                            if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+                                // If we're in a security hold, and our policies are active, release
+                                // the hold; otherwise, ping PolicyService that this account's
+                                // policies are required
+                                if (PolicyServiceProxy.isActive(ExchangeService.this, null)) {
+                                    PolicyServiceProxy.setAccountHoldFlag(ExchangeService.this,
+                                            account, false);
+                                    log("isActive true; release hold for " + account.mDisplayName);
+                                } else {
+                                    PolicyServiceProxy.policiesRequired(ExchangeService.this,
+                                            account.mId);
+                                }
+                            }
+                        }
+                    }
+                }});
         }
 
         /**
