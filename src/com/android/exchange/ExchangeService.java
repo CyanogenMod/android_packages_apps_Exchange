@@ -474,6 +474,11 @@ public class ExchangeService extends Service implements Runnable {
             // Delete the data
             ExchangeService.deleteAccountPIMData(accountId);
         }
+
+        public int searchMessages(long accountId, long mailboxId, boolean includeSubfolders,
+                String query, int numResults, int firstResult, long destMailboxId) {
+            return 0;
+        }
     };
 
     private static AccountList collectEasAccounts(Context context, AccountList accounts) {
