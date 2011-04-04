@@ -146,6 +146,7 @@ public class MailboxUtilities {
 
     private static void setAccountSyncAdapterFlag(Context context, long accountId, boolean start) {
         Account account = Account.restoreAccountWithId(context, accountId);
+        if (account == null) return;
         // Set temporary flag indicating state of update of mailbox list
         ContentValues cv = new ContentValues();
         cv.put(Account.FLAGS, start ? (account.mFlags | ACCOUNT_MAILBOX_CHANGE_FLAG) :
