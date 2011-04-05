@@ -49,6 +49,15 @@ public abstract class AbstractSyncParser extends Parser {
 
     public AbstractSyncParser(InputStream in, AbstractSyncAdapter adapter) throws IOException {
         super(in);
+        init(adapter);
+    }
+
+    public AbstractSyncParser(Parser p, AbstractSyncAdapter adapter) throws IOException {
+        super(p);
+        init(adapter);
+    }
+
+    private void init(AbstractSyncAdapter adapter) {
         mAdapter = adapter;
         mService = adapter.mService;
         mContext = mService.mContext;

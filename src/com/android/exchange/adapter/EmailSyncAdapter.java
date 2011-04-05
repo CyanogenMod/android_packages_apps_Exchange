@@ -252,11 +252,17 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             mMailboxIdAsString = Long.toString(mMailbox.mId);
         }
 
-        public void addData (Message msg) throws IOException {
+        public EasEmailSyncParser(Parser parser, EmailSyncAdapter adapter)
+                throws IOException {
+            super(parser, adapter);
+            mMailboxIdAsString = Long.toString(mMailbox.mId);
+        }
+
+        public void addData (Message msg, int endingTag) throws IOException {
             ArrayList<Attachment> atts = new ArrayList<Attachment>();
             boolean truncated = false;
 
-            while (nextTag(Tags.SYNC_APPLICATION_DATA) != END) {
+            while (nextTag(endingTag) != END) {
                 switch (tag) {
                     case Tags.EMAIL_ATTACHMENTS:
                     case Tags.BASE_ATTACHMENTS: // BASE_ATTACHMENTS is used in EAS 12.0 and up
@@ -427,7 +433,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         status = getValueInt();
                         break;
                     case Tags.SYNC_APPLICATION_DATA:
-                        addData(msg);
+                        addData(msg, tag);
                         break;
                     default:
                         skipTag();

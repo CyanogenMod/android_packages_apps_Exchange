@@ -49,6 +49,7 @@ import com.android.exchange.adapter.MoveItemsParser;
 import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.ProvisionParser;
+import com.android.exchange.adapter.SearchParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
@@ -194,6 +195,12 @@ public class EasSyncService extends AbstractSyncService {
     static /*package*/ final String DEVICE_TYPE = "Android";
     static private final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
+
+    // The shortest search query we'll accept
+    // TODO Check with UX whether this is correct
+    static private final int MIN_QUERY_LENGTH = 3;
+    // The largest number of results we'll ask for per server request
+    static private final int MAX_SEARCH_RESULTS = 100;
 
     // Reasonable default
     public String mProtocolVersion = Eas.DEFAULT_PROTOCOL_VERSION;
@@ -402,6 +409,108 @@ public class EasSyncService extends AbstractSyncService {
                 service.mAccount.mProtocolVersion = ourVersion;
             }
         }
+    }
+
+    /**
+     * Create an EasSyncService for the specified account
+     *
+     * @param context the caller's context
+     * @param account the account
+     * @return the service, or null if the account is on hold or hasn't been initialized
+     */
+    private static EasSyncService setupServiceForAccount(Context context, Account account) {
+        // Just return null if we're on security hold
+        if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+            return null;
+        }
+        // If there's no protocol version, we're not initialized
+        String protocolVersion = account.mProtocolVersion;
+        if (protocolVersion == null) {
+            return null;
+        }
+        EasSyncService svc = new EasSyncService("OutOfBand");
+        HostAuth ha = HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv);
+        svc.mProtocolVersion = protocolVersion;
+        svc.mProtocolVersionDouble = Eas.getProtocolVersionDouble(protocolVersion);
+        svc.mContext = context;
+        svc.mHostAddress = ha.mAddress;
+        svc.mUserName = ha.mLogin;
+        svc.mPassword = ha.mPassword;
+        svc.mSsl = (ha.mFlags & HostAuth.FLAG_SSL) != 0;
+        svc.mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0;
+        try {
+            svc.mDeviceId = ExchangeService.getDeviceId(context);
+        } catch (IOException e) {
+            return null;
+        }
+        svc.mAccount = account;
+        return svc;
+    }
+
+    public static int searchMessages(Context context, long accountId, long mailboxId,
+            boolean includeSubfolders, String query, int numResults, int firstResult,
+            long destMailboxId) {
+        // Sanity check for arguments
+        if (numResults < 0 || numResults > MAX_SEARCH_RESULTS || firstResult < 0) return 0;
+        // TODO Should this be checked in UI?  Are there guidelines for minimums?
+        if (query == null || query.length() < MIN_QUERY_LENGTH) return 0;
+
+        int res = 0;
+        Account account = Account.restoreAccountWithId(context, accountId);
+        if (account == null) return res;
+        EasSyncService svc = setupServiceForAccount(context, account);
+        if (svc == null) return res;
+        try {
+            Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
+            // Sanity check; account might have been deleted?
+            if (searchMailbox == null) return res;
+            svc.mMailbox = searchMailbox;
+            svc.mAccount = account;
+            Serializer s = new Serializer();
+            s.start(Tags.SEARCH_SEARCH).start(Tags.SEARCH_STORE);
+            s.data(Tags.SEARCH_NAME, "Mailbox");
+            s.start(Tags.SEARCH_QUERY).start(Tags.SEARCH_AND);
+            s.data(Tags.SYNC_CLASS, "Email");
+            s.data(Tags.SEARCH_FREE_TEXT, query);
+            s.end().end();              // SEARCH_AND, SEARCH_QUERY
+            s.start(Tags.SEARCH_OPTIONS);
+            if (firstResult == 0) {
+                s.tag(Tags.SEARCH_REBUILD_RESULTS);
+            }
+            if (includeSubfolders) {
+                s.tag(Tags.SEARCH_DEEP_TRAVERSAL);
+            }
+            // Range is sent in the form first-last (e.g. 0-9)
+            s.data(Tags.SEARCH_RANGE, firstResult + "-" + (firstResult + numResults - 1));
+            s.start(Tags.BASE_BODY_PREFERENCE);
+            s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
+            s.data(Tags.BASE_TRUNCATION_SIZE, "20000");
+            s.end();                    // BASE_BODY_PREFERENCE
+            s.end().end().end().done(); // SEARCH_OPTIONS, SEARCH_STORE, SEARCH_SEARCH
+            HttpResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
+            HttpEntity entity = resp.getEntity();
+            try {
+                int code = resp.getStatusLine().getStatusCode();
+                if (code == HttpStatus.SC_OK) {
+                    InputStream is = entity.getContent();
+                    try {
+                        new SearchParser(is, svc, query).parse();
+                    } finally {
+                        is.close();
+                    }
+                } else {
+                    svc.userLog("Search returned " + code);
+                }
+            } finally {
+                if (entity != null) {
+                    entity.consumeContent();
+                }
+            }
+        } catch (IOException e) {
+            svc.userLog("Search exception " + e);
+        }
+        // TODO Capture and return the correct value
+        return res;
     }
 
     @Override
@@ -838,44 +947,17 @@ public class EasSyncService extends AbstractSyncService {
      * TODO: figure out why sendHttpClientPost() hangs - possibly pool exhaustion
      */
     static public GalResult searchGal(Context context, long accountId, String filter, int limit) {
-        // Try to get the cached account from ExchangeService (saves a database access)
-        Account acct = ExchangeService.getAccountById(accountId);
-        if (acct == null) {
-            // ExchangeService isn't running; get the account directly from EmailProvider
-            acct = Account.restoreAccountWithId(context, accountId);
-        }
+        Account acct = Account.restoreAccountWithId(context, accountId);
         if (acct != null) {
-            // Don't attempt gal lookup if we're on security hold
-            if ((acct.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
-                return null;
-            }
-            HostAuth ha = HostAuth.restoreHostAuthWithId(context, acct.mHostAuthKeyRecv);
-            EasSyncService svc = new EasSyncService("%GalLookupk%");
+            EasSyncService svc = setupServiceForAccount(context, acct);
+            if (svc == null) return null;
             try {
-                // If there's no protocol version set up, we haven't successfully started syncing
-                // so we can't use GAL yet
-                String protocolVersion = acct.mProtocolVersion;
-                if (protocolVersion == null) {
-                    return null;
-                } else {
-                    svc.mProtocolVersion = protocolVersion;
-                    svc.mProtocolVersionDouble = Eas.getProtocolVersionDouble(protocolVersion);
-                }
-                svc.mContext = context;
-                svc.mHostAddress = ha.mAddress;
-                svc.mUserName = ha.mLogin;
-                svc.mPassword = ha.mPassword;
-                svc.mSsl = (ha.mFlags & HostAuth.FLAG_SSL) != 0;
-                svc.mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0;
-                svc.mDeviceId = ExchangeService.getDeviceId(context);
-                svc.mAccount = acct;
                 Serializer s = new Serializer();
                 s.start(Tags.SEARCH_SEARCH).start(Tags.SEARCH_STORE);
                 s.data(Tags.SEARCH_NAME, "GAL").data(Tags.SEARCH_QUERY, filter);
                 s.start(Tags.SEARCH_OPTIONS);
                 s.data(Tags.SEARCH_RANGE, "0-" + Integer.toString(limit - 1));
                 s.end().end().end().done();
-                if (DEBUG_GAL_SERVICE) svc.userLog("GAL lookup starting for " + ha.mAddress);
                 HttpResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
                 HttpEntity entity = resp.getEntity();
                 try {
@@ -885,10 +967,7 @@ public class EasSyncService extends AbstractSyncService {
                         try {
                             GalParser gp = new GalParser(is, svc);
                             if (gp.parse()) {
-                                if (DEBUG_GAL_SERVICE) svc.userLog("GAL lookup OK: " + ha.mAddress);
                                 return gp.getGalResult();
-                            } else {
-                                if (DEBUG_GAL_SERVICE) svc.userLog("GAL lookup: no matches");
                             }
                         } finally {
                             is.close();

@@ -375,13 +375,13 @@ public class ExchangeService extends Service implements Runnable {
                 kick("start outbox");
                 // Outbox can't be synced in EAS
                 return;
-            } else if (m.mType == Mailbox.TYPE_DRAFTS || m.mType == Mailbox.TYPE_TRASH) {
-                // Drafts & Trash can't be synced in EAS
+            } else if (!isSyncable(m)) {
                 try {
-                    // UI is expecting the callbacks....
+                    // UI may be expecting the callbacks, so send them
                     sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
                     sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.SUCCESS, 0);
                 } catch (RemoteException ignore) {
+                    // We tried
                 }
                 return;
             }
@@ -429,8 +429,8 @@ public class ExchangeService extends Service implements Runnable {
             kick("host changed");
         }
 
-        public void setLogging(int on) throws RemoteException {
-            Eas.setUserDebug(on);
+        public void setLogging(int flags) throws RemoteException {
+            Eas.setUserDebug(flags);
         }
 
         public void sendMeetingResponse(long messageId, int response) throws RemoteException {
@@ -477,7 +477,10 @@ public class ExchangeService extends Service implements Runnable {
 
         public int searchMessages(long accountId, long mailboxId, boolean includeSubfolders,
                 String query, int numResults, int firstResult, long destMailboxId) {
-            return 0;
+            ExchangeService exchangeService = INSTANCE;
+            if (exchangeService == null) return 0;
+            return EasSyncService.searchMessages(exchangeService, accountId, mailboxId,
+                    includeSubfolders, query, numResults, firstResult, destMailboxId);
         }
     };
 
@@ -2284,7 +2287,7 @@ public class ExchangeService extends Service implements Runnable {
      */
     static /*package*/ boolean isSyncable(Mailbox m) {
         if (m == null || m.mType == Mailbox.TYPE_DRAFTS || m.mType == Mailbox.TYPE_OUTBOX ||
-                m.mType >= Mailbox.TYPE_NOT_SYNCABLE) {
+                m.mType == Mailbox.TYPE_SEARCH || m.mType >= Mailbox.TYPE_NOT_SYNCABLE) {
             return false;
         }
         return true;
