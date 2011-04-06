@@ -124,7 +124,6 @@ public class SearchParser extends Parser {
                     msg.mHtml = TextUtilities.highlightTermsInHtml(msg.mHtml, mQuery);
                 }
                 msg.addSaveOps(ops);
-                parser.popTag();
             } else {
                 skipTag();
             }

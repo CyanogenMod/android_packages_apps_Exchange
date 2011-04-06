@@ -356,10 +356,6 @@ public abstract class Parser {
         push(id);
     }
 
-    protected void popTag() {
-        pop();
-    }
-
     private void pop() {
         if (logging) {
             name = nameArray[depth];
@@ -397,6 +393,7 @@ public abstract class Parser {
      */
     private final int getNext(boolean asInt) throws IOException {
         if (noContent) {
+            pop();
             if (logging) {
                 log('<' + name + "/>");
             }
