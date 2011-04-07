@@ -375,7 +375,7 @@ public abstract class Parser {
             name = tagTable[startTag - TAG_BASE];
             nameArray[depth] = name;
             if (noContent) {
-                log("<" + name + ">");
+                log("<" + name + "/>");
             }
         }
         // Save the startTag to our stack
@@ -393,10 +393,7 @@ public abstract class Parser {
      */
     private final int getNext(boolean asInt) throws IOException {
         if (noContent) {
-            pop();
-            if (logging) {
-                log('<' + name + "/>");
-            }
+            nameArray[depth--] = null;
             type = END;
             noContent = false;
             return type;
