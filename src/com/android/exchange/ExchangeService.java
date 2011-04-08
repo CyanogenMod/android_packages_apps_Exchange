@@ -35,6 +35,7 @@ import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.utility.AccountReconciler;
+import com.android.emailcommon.utility.EmailAsyncTask;
 import com.android.emailcommon.utility.SSLUtils;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.CalendarSyncAdapter;
@@ -1593,10 +1594,14 @@ public class ExchangeService extends Service implements Runnable {
                 // Otherwise, stop all syncs
                 } else {
                     log("Background data off: stop all syncs");
-                    synchronized (mAccountList) {
-                        for (Account account : mAccountList)
-                            ExchangeService.stopAccountSyncs(account.mId);
-                    }
+                    EmailAsyncTask.runAsyncParallel(new Runnable() {
+                        @Override
+                        public void run() {
+                            synchronized (mAccountList) {
+                                for (Account account : mAccountList)
+                                    ExchangeService.stopAccountSyncs(account.mId);
+                            }
+                        }});
                 }
             }
         }
