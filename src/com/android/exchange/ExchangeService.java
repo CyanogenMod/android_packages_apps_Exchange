@@ -1618,7 +1618,7 @@ public class ExchangeService extends Service implements Runnable {
         synchronized (sSyncLock) {
             String mailboxName = m.mDisplayName;
             String accountName = service.mAccount.mDisplayName;
-            Thread thread = new Thread(service, mailboxName + "(" + accountName + ")");
+            Thread thread = new Thread(service, mailboxName + "[" + accountName + "]");
             log("Starting thread for " + mailboxName + " in account " + accountName);
             thread.start();
             mServiceMap.put(m.mId, service);
