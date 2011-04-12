@@ -121,7 +121,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     private String getEmailFilter() {
-        switch (mAccount.mSyncLookback) {
+        int syncLookback = mMailbox.mSyncLookback;
+        if (syncLookback == 0 /* Unknown; use SYNC_WINDOW_UNKNOWN after MR1 */) {
+            syncLookback = mAccount.mSyncLookback;
+        }
+        switch (syncLookback) {
             case SyncWindow.SYNC_WINDOW_1_DAY:
                 return Eas.FILTER_1_DAY;
             case SyncWindow.SYNC_WINDOW_3_DAYS:
