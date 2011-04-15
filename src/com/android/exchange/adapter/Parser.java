@@ -105,7 +105,18 @@ public abstract class Parser {
     // The value read, as an int
     public int num;
 
+    /**
+     * Generated when the parser comes to EOF prematurely during parsing (i.e. in error)
+     */
     public class EofException extends IOException {
+        private static final long serialVersionUID = 1L;
+    }
+
+    /**
+     * An EmptyStreamException is an EofException that occurs reading the first byte in the parser's
+     * input stream; in other words, the stream had no content.
+     */
+    public class EmptyStreamException extends EofException {
         private static final long serialVersionUID = 1L;
     }
 
@@ -327,7 +338,12 @@ public abstract class Parser {
     public void setInput(InputStream in, boolean initialize) throws IOException {
         this.in = in;
         if (initialize) {
-            readByte(); // version
+            // If we fail on the very first byte, report an empty stream
+            try {
+                readByte(); // version
+            } catch (EofException e) {
+                throw new EmptyStreamException();
+            }
             readInt();  // ?
             readInt();  // 106 (UTF-8)
             readInt();  // string table length
