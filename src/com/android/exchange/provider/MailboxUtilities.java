@@ -40,7 +40,8 @@ public class MailboxUtilities {
      * @param context the caller's context
      * @param parentCursor a cursor to a mailbox that requires fixup
      */
-    public static void setFlagsAndChildrensParentKey(Context context, Cursor parentCursor) {
+    public static void setFlagsAndChildrensParentKey(Context context, Cursor parentCursor,
+            String accountSelector) {
         ContentResolver resolver = context.getContentResolver();
         String[] selectionArgs = new String[1];
         ContentValues parentValues = new ContentValues();
@@ -65,8 +66,8 @@ public class MailboxUtilities {
         if (parentServerId != null) {
             selectionArgs[0] = parentServerId;
             Cursor childCursor = resolver.query(Mailbox.CONTENT_URI,
-                    Mailbox.ID_PROJECTION, MailboxColumns.PARENT_SERVER_ID + "=?",
-                    selectionArgs, null);
+                    Mailbox.ID_PROJECTION, MailboxColumns.PARENT_SERVER_ID + "=? AND " +
+                    accountSelector, selectionArgs, null);
             try {
                 while (childCursor.moveToNext()) {
                     parentFlags |= Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE;
@@ -105,7 +106,7 @@ public class MailboxUtilities {
                 new String[] {serverId}, null);
         try {
             if (cursor.moveToFirst()) {
-                setFlagsAndChildrensParentKey(context, cursor);
+                setFlagsAndChildrensParentKey(context, cursor, accountSelector);
             }
         } finally {
             cursor.close();
@@ -131,7 +132,7 @@ public class MailboxUtilities {
                 noParentKeySelection, null, null);
         try {
             while (parentCursor.moveToNext()) {
-                setFlagsAndChildrensParentKey(context, parentCursor);
+                setFlagsAndChildrensParentKey(context, parentCursor, accountSelector);
             }
         } finally {
             parentCursor.close();

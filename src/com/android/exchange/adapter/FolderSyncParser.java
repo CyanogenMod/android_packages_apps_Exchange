@@ -505,10 +505,10 @@ public class FolderSyncParser extends AbstractSyncParser {
                     if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap, ops)) {
                         mService.stop();
                     }
+                    String accountSelector = Mailbox.ACCOUNT_KEY + "=" + mAccount.mId;
                     // For new boxes, setup the parent key and flags
                     if (mFixupUninitializedNeeded) {
-                        MailboxUtilities.fixupUninitializedParentKeys(mContext,
-                                Mailbox.ACCOUNT_KEY + "=" + mAccount.mId);
+                        MailboxUtilities.fixupUninitializedParentKeys(mContext, accountSelector);
                     }
                     // For modified parents, reset the flags (and children's parent key)
                     for (String parentServerId: mParentFixupsNeeded) {
@@ -517,7 +517,8 @@ public class FolderSyncParser extends AbstractSyncParser {
                                 new String[] {parentServerId}, null);
                         try {
                             if (c.moveToFirst()) {
-                                MailboxUtilities.setFlagsAndChildrensParentKey(mContext, c);
+                                MailboxUtilities.setFlagsAndChildrensParentKey(mContext, c,
+                                        accountSelector);
                             }
                         } finally {
                             c.close();

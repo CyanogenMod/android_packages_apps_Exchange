@@ -622,4 +622,141 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         assertEquals(CHILD_FLAGS, box3.mFlags);         // Should still be a child (of box2)
         assertEquals(box2.mId, box3.mParentKey);
     }
+
+
+    /**
+     * Tests the proper separation of two accounts using the methodology from the previous test.
+     * This test will fail if MailboxUtilities fails to distinguish between mailboxes in different
+     * accounts that happen to have the same serverId
+     */
+    public void testChangeParentTwoAccounts() {
+        // Set up account and mailboxes
+        mAccount = setupTestAccount("acct1", true);
+        Account acct2 = setupTestAccount("acct2", true);
+
+        String accountSelector1 = MailboxColumns.ACCOUNT_KEY + " IN (" + mAccount.mId + ")";
+        String accountSelector2 = MailboxColumns.ACCOUNT_KEY + " IN (" + acct2.mId + ")";
+
+        // Box3 is in Box1
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox(
+                "box1", mAccount.mId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box1.mServerId = "1:1";
+        box1.save(mProviderContext);
+        Mailbox box2 = EmailContentSetupUtils.setupMailbox(
+                "box2", mAccount.mId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box2.mServerId = "1:2";
+        box2.save(mProviderContext);
+        Mailbox box3 = EmailContentSetupUtils.setupMailbox(
+                "box3", mAccount.mId, false, mProviderContext, Mailbox.TYPE_MAIL, box1);
+        box3.mServerId = "1:3";
+        box3.save(mProviderContext);
+
+        // Box5 is in Box4; Box 6 is in Box5
+        // Note that the three serverId's are identical to those in acct1; we want to make sure
+        // that children get associated only with boxes in their own account
+        Mailbox box4 = EmailContentSetupUtils.setupMailbox(
+                "box4", acct2.mId, false, mProviderContext, Mailbox.TYPE_MAIL, null);
+        box4.mServerId = "1:1";
+        box4.save(mProviderContext);
+        Mailbox box5 = EmailContentSetupUtils.setupMailbox(
+                "box5", acct2.mId, false, mProviderContext, Mailbox.TYPE_MAIL, box4);
+        box5.mServerId = "1:2";
+        box5.save(mProviderContext);
+        Mailbox box6 = EmailContentSetupUtils.setupMailbox(
+                "box6", acct2.mId, false, mProviderContext, Mailbox.TYPE_MAIL, box5);
+        box6.mServerId = "1:3";
+        box6.save(mProviderContext);
+
+        // Manually set parentKey to null for all mailboxes, as if an initial sync or post-upgrade
+        mResolver.update(Mailbox.CONTENT_URI, mNullParentKey, null, null);
+
+        // Confirm initial configuration as expected for mAccount
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector1);
+        box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
+        box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
+        box3 = Mailbox.restoreMailboxWithId(mProviderContext, box3.mId);
+
+        // Confirm flags and parent key(s) as expected
+        assertEquals(PARENT_FLAGS, box1.mFlags);
+        assertEquals(-1, box1.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box2.mFlags);
+        assertEquals(-1, box2.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box3.mFlags);
+        assertEquals(box1.mId, box3.mParentKey);
+
+        // Confirm initial configuration as expected for acct2
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector2);
+        box4 = Mailbox.restoreMailboxWithId(mProviderContext, box4.mId);
+        box5 = Mailbox.restoreMailboxWithId(mProviderContext, box5.mId);
+        box6 = Mailbox.restoreMailboxWithId(mProviderContext, box6.mId);
+
+        // Confirm flags and parent key(s) as expected
+        assertEquals(PARENT_FLAGS, box4.mFlags);
+        assertEquals(-1, box4.mParentKey);
+
+        assertEquals(PARENT_FLAGS, box5.mFlags);
+        assertEquals(box4.mId, box5.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box6.mFlags);
+        assertEquals(box5.mId, box6.mParentKey);
+
+        // The specific test:  Change box1 to have a different serverId
+        ContentValues values = new ContentValues();
+        values.put(MailboxColumns.SERVER_ID, "1:4");
+        mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, box1.mId), values,
+                null, null);
+        // Manually set parentKey to null for all mailboxes, as if an initial sync or post-upgrade
+        mResolver.update(Mailbox.CONTENT_URI, mNullParentKey, null, null);
+        // Fix up the parent keys
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector1);
+
+        // Make sure that box1 reflects the change properly AND that other boxes remain correct
+        // The reason for all of the seemingly-duplicated tests is to make sure that the fixup of
+        // any account doesn't end up affecting the other account's mailboxes
+        box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
+        box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
+        box3 = Mailbox.restoreMailboxWithId(mProviderContext, box3.mId);
+
+        // Confirm flags and parent key(s) as expected
+        assertEquals(CHILD_FLAGS, box1.mFlags);
+        assertEquals(-1, box1.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box2.mFlags);
+        assertEquals(-1, box2.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box3.mFlags);
+        assertEquals(-1, box3.mParentKey);
+
+        // Fix up the 2nd account now, and check that ALL boxes are correct
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector2);
+
+        box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
+        box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
+        box3 = Mailbox.restoreMailboxWithId(mProviderContext, box3.mId);
+
+        // Confirm flags and parent key(s) as expected
+        assertEquals(CHILD_FLAGS, box1.mFlags);
+        assertEquals(-1, box1.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box2.mFlags);
+        assertEquals(-1, box2.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box3.mFlags);
+        assertEquals(-1, box3.mParentKey);
+
+        box4 = Mailbox.restoreMailboxWithId(mProviderContext, box4.mId);
+        box5 = Mailbox.restoreMailboxWithId(mProviderContext, box5.mId);
+        box6 = Mailbox.restoreMailboxWithId(mProviderContext, box6.mId);
+
+        assertEquals(PARENT_FLAGS, box4.mFlags);
+        assertEquals(-1, box4.mParentKey);
+
+        assertEquals(PARENT_FLAGS, box5.mFlags);
+        assertEquals(box4.mId, box5.mParentKey);
+
+        assertEquals(CHILD_FLAGS, box6.mFlags);
+        assertEquals(box5.mId, box6.mParentKey);
+    }
 }
