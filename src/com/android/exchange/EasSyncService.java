@@ -47,6 +47,7 @@ import com.android.exchange.adapter.GalParser;
 import com.android.exchange.adapter.MeetingResponseParser;
 import com.android.exchange.adapter.MoveItemsParser;
 import com.android.exchange.adapter.Parser.EasParserException;
+import com.android.exchange.adapter.Parser.EmptyStreamException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.SearchParser;
@@ -105,6 +106,7 @@ import java.net.URI;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.zip.GZIPInputStream;
 
 public class EasSyncService extends AbstractSyncService {
     // DO NOT CHECK IN SET TO TRUE
@@ -447,6 +449,84 @@ public class EasSyncService extends AbstractSyncService {
         return svc;
     }
 
+    /**
+     * Encapsulate a response to an HTTP POST
+     */
+    public static class EasResponse {
+        private final HttpResponse mResponse;
+        private final HttpEntity mEntity;
+        private final int mLength;
+        private InputStream mInputStream;
+        private boolean mClosed;
+
+        public EasResponse(HttpResponse response) {
+            mResponse = response;
+            mEntity = mResponse.getEntity();
+            if (mEntity !=  null) {
+                mLength = (int)mEntity.getContentLength();
+            } else {
+                mLength = 0;
+            }
+        }
+
+        /**
+         * Return an appropriate input stream for the response, either a GZIPInputStream, for
+         * compressed data, or a generic InputStream otherwise
+         * @return the input stream for the response
+         */
+        public InputStream getInputStream() {
+            if (mInputStream != null || mClosed) {
+                throw new IllegalStateException("Can't reuse stream or get closed stream");
+            } else if (mEntity == null) {
+                throw new IllegalStateException("Can't get input stream without entity");
+            }
+            InputStream is = null;
+            try {
+                // Get the default input stream for the entity
+                is = mEntity.getContent();
+                Header ceHeader = mResponse.getFirstHeader("Content-Encoding");
+                if (ceHeader != null) {
+                    String encoding = ceHeader.getValue();
+                    // If we're gzip encoded, wrap appropriately
+                    if (encoding.toLowerCase().equals("gzip")) {
+                        is = new GZIPInputStream(is);
+                    }
+                }
+            } catch (IllegalStateException e1) {
+            } catch (IOException e1) {
+            }
+            mInputStream = is;
+            return is;
+        }
+
+        public boolean isEmpty() {
+            return mLength == 0;
+        }
+
+        public int getStatus() {
+            return mResponse.getStatusLine().getStatusCode();
+        }
+
+        public Header getHeader(String name) {
+            return mResponse.getFirstHeader(name);
+        }
+
+        public int getLength() {
+            return mLength;
+        }
+
+        public void close() {
+            if (mEntity != null && !mClosed) {
+                try {
+                    mEntity.consumeContent();
+                } catch (IOException e) {
+                    // No harm, no foul
+                }
+            }
+            mClosed = true;
+        }
+    }
+
     public static int searchMessages(Context context, long accountId, long mailboxId,
             boolean includeSubfolders, String query, int numResults, int firstResult,
             long destMailboxId) {
@@ -487,12 +567,11 @@ public class EasSyncService extends AbstractSyncService {
             s.data(Tags.BASE_TRUNCATION_SIZE, "20000");
             s.end();                    // BASE_BODY_PREFERENCE
             s.end().end().end().done(); // SEARCH_OPTIONS, SEARCH_STORE, SEARCH_SEARCH
-            HttpResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
-            HttpEntity entity = resp.getEntity();
+            EasResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
             try {
-                int code = resp.getStatusLine().getStatusCode();
+                int code = resp.getStatus();
                 if (code == HttpStatus.SC_OK) {
-                    InputStream is = entity.getContent();
+                    InputStream is = resp.getInputStream();
                     try {
                         new SearchParser(is, svc, query).parse();
                     } finally {
@@ -502,9 +581,7 @@ public class EasSyncService extends AbstractSyncService {
                     svc.userLog("Search returned " + code);
                 }
             } finally {
-                if (entity != null) {
-                    entity.consumeContent();
-                }
+                resp.close();
             }
         } catch (IOException e) {
             svc.userLog("Search exception " + e);
@@ -530,15 +607,14 @@ public class EasSyncService extends AbstractSyncService {
             // We mustn't use the "real" device id or we'll screw up current accounts
             // Any string will do, but we'll go for "validate"
             svc.mDeviceId = "validate";
-            HttpResponse resp = svc.sendHttpClientOptions();
-            HttpEntity entity = resp.getEntity();
+            EasResponse resp = svc.sendHttpClientOptions();
             try {
-                int code = resp.getStatusLine().getStatusCode();
+                int code = resp.getStatus();
                 userLog("Validation (OPTIONS) response: " + code);
                 if (code == HttpStatus.SC_OK) {
                     // No exception means successful validation
-                    Header commands = resp.getFirstHeader("MS-ASProtocolCommands");
-                    Header versions = resp.getFirstHeader("ms-asprotocolversions");
+                    Header commands = resp.getHeader("MS-ASProtocolCommands");
+                    Header versions = resp.getHeader("ms-asprotocolversions");
                     // Make sure we've got the right protocol version set up
                     try {
                         if (commands == null || versions == null) {
@@ -566,7 +642,7 @@ public class EasSyncService extends AbstractSyncService {
                     s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY).text(syncKey)
                         .end().end().done();
                     resp = svc.sendHttpClientPost("FolderSync", s.toByteArray());
-                    code = resp.getStatusLine().getStatusCode();
+                    code = resp.getStatus();
                     // We'll get one of the following responses if policies are required
                     if (code == HttpStatus.SC_FORBIDDEN || code == HTTP_NEED_PROVISIONING) {
                         // Get the policies and see if we are able to support them
@@ -602,10 +678,8 @@ public class EasSyncService extends AbstractSyncService {
                     resultCode = MessagingException.IOERROR;
                 }
             } finally {
-                if (entity != null) {
-                    entity.consumeContent();
-                }
-            }
+                resp.close();
+           }
         } catch (IOException e) {
             Throwable cause = e.getCause();
             if (cause != null && cause instanceof CertificateException) {
@@ -653,14 +727,14 @@ public class EasSyncService extends AbstractSyncService {
      * @throws IOException on any IOException within the HttpClient code
      * @throws MessagingException
      */
-    private HttpResponse postAutodiscover(HttpClient client, HttpPost post, boolean canRetry)
+    private EasResponse postAutodiscover(HttpClient client, HttpPost post, boolean canRetry)
             throws IOException, MessagingException {
         userLog("Posting autodiscover to: " + post.getURI());
-        HttpResponse resp = executePostWithTimeout(client, post, COMMAND_TIMEOUT);
-        int code = resp.getStatusLine().getStatusCode();
+        EasResponse resp = executePostWithTimeout(client, post, COMMAND_TIMEOUT);
+        int code = resp.getStatus();
         // On a redirect, try the new location
         if (code == AUTO_DISCOVER_REDIRECT_CODE) {
-            post = getRedirect(resp, post);
+            post = getRedirect(resp.mResponse, post);
             if (post != null) {
                 userLog("Posting autodiscover to redirect: " + post.getURI());
                 return executePostWithTimeout(client, post, COMMAND_TIMEOUT);
@@ -745,7 +819,7 @@ public class EasSyncService extends AbstractSyncService {
             post.setHeader("Content-Type", "text/xml");
             post.setEntity(new StringEntity(req));
             HttpClient client = getHttpClient(COMMAND_TIMEOUT);
-            HttpResponse resp;
+            EasResponse resp;
             try {
                 resp = postAutodiscover(client, post, true /*canRetry*/);
             } catch (IOException e1) {
@@ -757,14 +831,13 @@ public class EasSyncService extends AbstractSyncService {
                 resp = postAutodiscover(client, post, true /*canRetry*/);
             }
 
-            HttpEntity entity = resp.getEntity();
             try {
                 // Get the "final" code; if it's not 200, just return null
-                int code = resp.getStatusLine().getStatusCode();
+                int code = resp.getStatus();
                 userLog("Code: " + code);
                 if (code != HttpStatus.SC_OK) return null;
 
-                InputStream is = entity.getContent();
+                InputStream is = resp.getInputStream();
                 // The response to Autodiscover is regular XML (not WBXML)
                 // If we ever get an error in this process, we'll just punt and return null
                 XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -802,9 +875,7 @@ public class EasSyncService extends AbstractSyncService {
                 // This would indicate an I/O error of some sort
                 // We will simply return null and user can configure manually
             } finally {
-               if (entity != null) {
-                   entity.consumeContent();
-               }
+               resp.close();
             }
         // There's no reason at all for exceptions to be thrown, and it's ok if so.
         // We just won't do auto-discover; user can configure manually
@@ -958,12 +1029,11 @@ public class EasSyncService extends AbstractSyncService {
                 s.start(Tags.SEARCH_OPTIONS);
                 s.data(Tags.SEARCH_RANGE, "0-" + Integer.toString(limit - 1));
                 s.end().end().end().done();
-                HttpResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
-                HttpEntity entity = resp.getEntity();
+                EasResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
                 try {
-                    int code = resp.getStatusLine().getStatusCode();
+                    int code = resp.getStatus();
                     if (code == HttpStatus.SC_OK) {
-                        InputStream is = entity.getContent();
+                        InputStream is = resp.getInputStream();
                         try {
                             GalParser gp = new GalParser(is, svc);
                             if (gp.parse()) {
@@ -976,9 +1046,7 @@ public class EasSyncService extends AbstractSyncService {
                         svc.userLog("GAL lookup returned " + code);
                     }
                 } finally {
-                    if (entity != null) {
-                        entity.consumeContent();
-                    }
+                    resp.close();
                 }
             } catch (IOException e) {
                 // GAL is non-critical; we'll just go on
@@ -1053,14 +1121,13 @@ public class EasSyncService extends AbstractSyncService {
         }
 
         String cmd = "GetAttachment&AttachmentName=" + att.mLocation;
-        HttpResponse res = sendHttpClientPost(cmd, null, COMMAND_TIMEOUT);
-        HttpEntity entity = res.getEntity();
+        EasResponse resp = sendHttpClientPost(cmd, null, COMMAND_TIMEOUT);
 
         try {
-            int status = res.getStatusLine().getStatusCode();
+            int status = resp.getStatus();
             if (status == HttpStatus.SC_OK) {
-                int len = (int)entity.getContentLength();
-                InputStream is = entity.getContent();
+                int len = (int)resp.getLength();
+                InputStream is = resp.getInputStream();
                 OutputStream os = null;
                 Uri attachmentUri = AttachmentUtilities.getAttachmentUri(att.mAccountKey, att.mId);
                 String fileName = null;
@@ -1128,9 +1195,7 @@ public class EasSyncService extends AbstractSyncService {
                 doStatusCallback(msg.mId, att.mId, EmailServiceStatus.MESSAGE_NOT_FOUND);
             }
         } finally {
-            if (entity != null) {
-                entity.consumeContent();
-            }
+            resp.close();
         }
     }
 
@@ -1236,43 +1301,41 @@ public class EasSyncService extends AbstractSyncService {
         s.data(Tags.MOVE_SRCFLDID, srcMailbox.mServerId);
         s.data(Tags.MOVE_DSTFLDID, dstMailbox.mServerId);
         s.end().end().done();
-        HttpResponse res = sendHttpClientPost("MoveItems", s.toByteArray());
-        HttpEntity entity = res.getEntity();
+        EasResponse resp = sendHttpClientPost("MoveItems", s.toByteArray());
         try {
-            int status = res.getStatusLine().getStatusCode();
+            int status = resp.getStatus();
             if (status == HttpStatus.SC_OK) {
-                    int len = (int) entity.getContentLength();
-                    InputStream is = res.getEntity().getContent();
-                    if (len != 0) {
-                        MoveItemsParser p = new MoveItemsParser(is, this);
-                        p.parse();
-                        int statusCode = p.getStatusCode();
-                        ContentValues cv = new ContentValues();
-                        if (statusCode == MoveItemsParser.STATUS_CODE_REVERT) {
-                            // Restore the old mailbox id
-                            cv.put(MessageColumns.MAILBOX_KEY, srcMailbox.mServerId);
-                            mContentResolver.update(
-                                    ContentUris.withAppendedId(Message.CONTENT_URI, req.mMessageId),
-                                    cv, null, null);
-                        } else if (statusCode == MoveItemsParser.STATUS_CODE_SUCCESS) {
-                            // Update with the new server id
-                            cv.put(SyncColumns.SERVER_ID, p.getNewServerId());
-                            cv.put(Message.FLAGS, msg.mFlags | MESSAGE_FLAG_MOVED_MESSAGE);
-                            mContentResolver.update(
-                                    ContentUris.withAppendedId(Message.CONTENT_URI, req.mMessageId),
-                                    cv, null, null);
-                        }
-                        if (statusCode == MoveItemsParser.STATUS_CODE_SUCCESS
-                                || statusCode == MoveItemsParser.STATUS_CODE_REVERT) {
-                            // If we revert or succeed, we no longer need the update information
-                            // OR the now-duplicate email (the new copy will be synced down)
-                            mContentResolver.delete(ContentUris.withAppendedId(
-                                    Message.UPDATED_CONTENT_URI, req.mMessageId), null, null);
-                        } else {
-                            // In this case, we're retrying, so do nothing.  The request will be
-                            // handled next sync
-                        }
+                if (!resp.isEmpty()) {
+                    InputStream is = resp.getInputStream();
+                    MoveItemsParser p = new MoveItemsParser(is, this);
+                    p.parse();
+                    int statusCode = p.getStatusCode();
+                    ContentValues cv = new ContentValues();
+                    if (statusCode == MoveItemsParser.STATUS_CODE_REVERT) {
+                        // Restore the old mailbox id
+                        cv.put(MessageColumns.MAILBOX_KEY, srcMailbox.mServerId);
+                        mContentResolver.update(
+                                ContentUris.withAppendedId(Message.CONTENT_URI, req.mMessageId),
+                                cv, null, null);
+                    } else if (statusCode == MoveItemsParser.STATUS_CODE_SUCCESS) {
+                        // Update with the new server id
+                        cv.put(SyncColumns.SERVER_ID, p.getNewServerId());
+                        cv.put(Message.FLAGS, msg.mFlags | MESSAGE_FLAG_MOVED_MESSAGE);
+                        mContentResolver.update(
+                                ContentUris.withAppendedId(Message.CONTENT_URI, req.mMessageId),
+                                cv, null, null);
                     }
+                    if (statusCode == MoveItemsParser.STATUS_CODE_SUCCESS
+                            || statusCode == MoveItemsParser.STATUS_CODE_REVERT) {
+                        // If we revert or succeed, we no longer need the update information
+                        // OR the now-duplicate email (the new copy will be synced down)
+                        mContentResolver.delete(ContentUris.withAppendedId(
+                                Message.UPDATED_CONTENT_URI, req.mMessageId), null, null);
+                    } else {
+                        // In this case, we're retrying, so do nothing.  The request will be
+                        // handled next sync
+                    }
+                }
             } else if (isAuthError(status)) {
                 throw new EasAuthenticationException();
             } else {
@@ -1280,9 +1343,7 @@ public class EasSyncService extends AbstractSyncService {
                 throw new IOException();
             }
         } finally {
-            if (entity != null) {
-                entity.consumeContent();
-            }
+            resp.close();
         }
     }
 
@@ -1304,14 +1365,12 @@ public class EasSyncService extends AbstractSyncService {
         s.data(Tags.MREQ_COLLECTION_ID, mailbox.mServerId);
         s.data(Tags.MREQ_REQ_ID, msg.mServerId);
         s.end().end().done();
-        HttpResponse res = sendHttpClientPost("MeetingResponse", s.toByteArray());
-        HttpEntity entity = res.getEntity();
+        EasResponse resp = sendHttpClientPost("MeetingResponse", s.toByteArray());
         try {
-            int status = res.getStatusLine().getStatusCode();
+            int status = resp.getStatus();
             if (status == HttpStatus.SC_OK) {
-                int len = (int)entity.getContentLength();
-                if (len != 0) {
-                    InputStream is = res.getEntity().getContent();
+                if (!resp.isEmpty()) {
+                    InputStream is = resp.getInputStream();
                     new MeetingResponseParser(is, this).parse();
                     String meetingInfo = msg.mMeetingInfo;
                     if (meetingInfo != null) {
@@ -1331,9 +1390,7 @@ public class EasSyncService extends AbstractSyncService {
                 throw new IOException();
             }
         } finally {
-            if (entity != null) {
-                entity.consumeContent();
-            }
+            resp.close();
        }
     }
 
@@ -1376,6 +1433,7 @@ public class EasSyncService extends AbstractSyncService {
         method.setHeader("MS-ASProtocolVersion", mProtocolVersion);
         method.setHeader("Connection", "keep-alive");
         method.setHeader("User-Agent", USER_AGENT);
+        method.setHeader("Accept-Encoding", "gzip");
         if (usePolicyKey) {
             // If there's an account in existence, use its key; otherwise (we're creating the
             // account), send "0".  The server will respond with code 449 if there are policies
@@ -1404,15 +1462,15 @@ public class EasSyncService extends AbstractSyncService {
         return client;
     }
 
-    protected HttpResponse sendHttpClientPost(String cmd, byte[] bytes) throws IOException {
+    protected EasResponse sendHttpClientPost(String cmd, byte[] bytes) throws IOException {
         return sendHttpClientPost(cmd, new ByteArrayEntity(bytes), COMMAND_TIMEOUT);
     }
 
-    protected HttpResponse sendHttpClientPost(String cmd, HttpEntity entity) throws IOException {
+    protected EasResponse sendHttpClientPost(String cmd, HttpEntity entity) throws IOException {
         return sendHttpClientPost(cmd, entity, COMMAND_TIMEOUT);
     }
 
-    protected HttpResponse sendPing(byte[] bytes, int heartbeat) throws IOException {
+    protected EasResponse sendPing(byte[] bytes, int heartbeat) throws IOException {
        Thread.currentThread().setName(mAccount.mDisplayName + ": Ping");
        if (Eas.USER_LOG) {
            userLog("Send ping, timeout: " + heartbeat + "s, high: " + mPingHighWaterMark + 's');
@@ -1423,7 +1481,7 @@ public class EasSyncService extends AbstractSyncService {
     /**
      * Convenience method for executePostWithTimeout for use other than with the Ping command
      */
-    protected HttpResponse executePostWithTimeout(HttpClient client, HttpPost method, int timeout)
+    protected EasResponse executePostWithTimeout(HttpClient client, HttpPost method, int timeout)
             throws IOException {
         return executePostWithTimeout(client, method, timeout, false);
     }
@@ -1437,7 +1495,7 @@ public class EasSyncService extends AbstractSyncService {
      * @return the HttpResponse
      * @throws IOException
      */
-    protected HttpResponse executePostWithTimeout(HttpClient client, HttpPost method, int timeout,
+    protected EasResponse executePostWithTimeout(HttpClient client, HttpPost method, int timeout,
             boolean isPingCommand) throws IOException {
         synchronized(getSynchronizer()) {
             mPendingPost = method;
@@ -1449,7 +1507,7 @@ public class EasSyncService extends AbstractSyncService {
             }
         }
         try {
-            return client.execute(method);
+            return new EasResponse(client.execute(method));
         } finally {
             synchronized(getSynchronizer()) {
                 if (isPingCommand) {
@@ -1462,7 +1520,7 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
-    protected HttpResponse sendHttpClientPost(String cmd, HttpEntity entity, int timeout)
+    protected EasResponse sendHttpClientPost(String cmd, HttpEntity entity, int timeout)
             throws IOException {
         HttpClient client = getHttpClient(timeout);
         boolean isPingCommand = cmd.equals(PING_COMMAND);
@@ -1493,12 +1551,12 @@ public class EasSyncService extends AbstractSyncService {
         return executePostWithTimeout(client, method, timeout, isPingCommand);
     }
 
-    protected HttpResponse sendHttpClientOptions() throws IOException {
+    protected EasResponse sendHttpClientOptions() throws IOException {
         HttpClient client = getHttpClient(COMMAND_TIMEOUT);
         String us = makeUriString("OPTIONS", null);
         HttpOptions method = new HttpOptions(URI.create(us));
         setHeaders(method, false);
-        return client.execute(method);
+        return new EasResponse(client.execute(method));
     }
 
     String getTargetCollectionClassFromCursor(Cursor c) {
@@ -1596,12 +1654,11 @@ public class EasSyncService extends AbstractSyncService {
         s.start(Tags.PROVISION_PROVISION).start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY).data(Tags.PROVISION_POLICY_TYPE, getPolicyType())
             .end().end().end().done();
-        HttpResponse resp = sendHttpClientPost("Provision", s.toByteArray());
-        HttpEntity entity = resp.getEntity();
+        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
-            int code = resp.getStatusLine().getStatusCode();
+            int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
-                InputStream is = entity.getContent();
+                InputStream is = resp.getInputStream();
                 ProvisionParser pp = new ProvisionParser(is, this);
                 if (pp.parse()) {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
@@ -1627,9 +1684,7 @@ public class EasSyncService extends AbstractSyncService {
                 }
             }
         } finally {
-            if (entity != null) {
-                entity.consumeContent();
-            }
+            resp.close();
         }
         // On failures, simply return null
         return null;
@@ -1668,12 +1723,11 @@ public class EasSyncService extends AbstractSyncService {
             s.end();
         }
         s.end().done(); // PROVISION_PROVISION
-        HttpResponse resp = sendHttpClientPost("Provision", s.toByteArray());
-        HttpEntity entity = resp.getEntity();
+        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
-            int code = resp.getStatusLine().getStatusCode();
+            int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
-                InputStream is = entity.getContent();
+                InputStream is = resp.getInputStream();
                 ProvisionParser pp = new ProvisionParser(is, this);
                 if (pp.parse()) {
                     // Return the final policy key from the ProvisionParser
@@ -1681,9 +1735,7 @@ public class EasSyncService extends AbstractSyncService {
                 }
             }
         } finally {
-            if (entity != null) {
-                entity.consumeContent();
-            }
+            resp.close();
         }
         // On failures, return null
         return null;
@@ -1755,37 +1807,41 @@ public class EasSyncService extends AbstractSyncService {
             if (mAccount.mProtocolVersion == null ||
                     ((System.currentTimeMillis() - mMailbox.mSyncTime) > DAYS)) {
                 userLog("Determine EAS protocol version");
-                HttpResponse resp = sendHttpClientOptions();
-                int code = resp.getStatusLine().getStatusCode();
-                userLog("OPTIONS response: ", code);
-                if (code == HttpStatus.SC_OK) {
-                    Header header = resp.getFirstHeader("MS-ASProtocolCommands");
-                    userLog(header.getValue());
-                    header = resp.getFirstHeader("ms-asprotocolversions");
-                    try {
-                        setupProtocolVersion(this, header);
-                    } catch (MessagingException e) {
-                        // Since we've already validated, this can't really happen
-                        // But if it does, we'll rethrow this...
+                EasResponse resp = sendHttpClientOptions();
+                try {
+                    int code = resp.getStatus();
+                    userLog("OPTIONS response: ", code);
+                    if (code == HttpStatus.SC_OK) {
+                        Header header = resp.getHeader("MS-ASProtocolCommands");
+                        userLog(header.getValue());
+                        header = resp.getHeader("ms-asprotocolversions");
+                        try {
+                            setupProtocolVersion(this, header);
+                        } catch (MessagingException e) {
+                            // Since we've already validated, this can't really happen
+                            // But if it does, we'll rethrow this...
+                            throw new IOException();
+                        }
+                        // Save the protocol version
+                        cv.clear();
+                        // Save the protocol version in the account; if we're using 12.0 or greater,
+                        // set the flag for support of SmartForward
+                        cv.put(Account.PROTOCOL_VERSION, mProtocolVersion);
+                        if (mProtocolVersionDouble >= 12.0) {
+                            cv.put(Account.FLAGS,
+                                    mAccount.mFlags | Account.FLAGS_SUPPORTS_SMART_FORWARD);
+                        }
+                        mAccount.update(mContext, cv);
+                        cv.clear();
+                        // Save the sync time of the account mailbox to current time
+                        cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
+                        mMailbox.update(mContext, cv);
+                     } else {
+                        errorLog("OPTIONS command failed; throwing IOException");
                         throw new IOException();
                     }
-                    // Save the protocol version
-                    cv.clear();
-                    // Save the protocol version in the account; if we're using 12.0 or greater,
-                    // set the flag for support of SmartForward
-                    cv.put(Account.PROTOCOL_VERSION, mProtocolVersion);
-                    if (mProtocolVersionDouble >= 12.0) {
-                        cv.put(Account.FLAGS,
-                                mAccount.mFlags | Account.FLAGS_SUPPORTS_SMART_FORWARD);
-                    }
-                    mAccount.update(mContext, cv);
-                    cv.clear();
-                    // Save the sync time of the account mailbox to current time
-                    cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
-                    mMailbox.update(mContext, cv);
-                 } else {
-                    errorLog("OPTIONS command failed; throwing IOException");
-                    throw new IOException();
+                } finally {
+                    resp.close();
                 }
             }
 
@@ -1807,21 +1863,18 @@ public class EasSyncService extends AbstractSyncService {
                 Serializer s = new Serializer();
                 s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
                     .text(mAccount.mSyncKey).end().end().done();
-                HttpResponse resp = sendHttpClientPost("FolderSync", s.toByteArray());
-                HttpEntity entity = resp.getEntity();
+                EasResponse resp = sendHttpClientPost("FolderSync", s.toByteArray());
                 try {
                     if (mStop) break;
-                    int code = resp.getStatusLine().getStatusCode();
+                    int code = resp.getStatus();
                     if (code == HttpStatus.SC_OK) {
-                            int len = (int)entity.getContentLength();
-                            if (len != 0) {
-                                InputStream is = entity.getContent();
-                                // Returns true if we need to sync again
-                                if (new FolderSyncParser(is, new AccountSyncAdapter(this))
-                                        .parse()) {
-                                    continue;
-                                }
+                        if (!resp.isEmpty()) {
+                            InputStream is = resp.getInputStream();
+                            // Returns true if we need to sync again
+                            if (new FolderSyncParser(is, new AccountSyncAdapter(this)).parse()) {
+                                continue;
                             }
+                        }
                     } else if (isProvisionError(code)) {
                         // If the sync error is a provisioning failure (perhaps policies changed),
                         // let's try the provisioning procedure
@@ -1843,9 +1896,7 @@ public class EasSyncService extends AbstractSyncService {
                         userLog("FolderSync response error: ", code);
                     }
                 } finally {
-                    if (entity != null) {
-                        entity.consumeContent();
-                    }
+                    resp.close();
                 }
 
                 // Change all push/hold boxes to push
@@ -2093,12 +2144,11 @@ public class EasSyncService extends AbstractSyncService {
                     if (forcePing) {
                         userLog("Forcing ping after waiting for all boxes to be ready");
                     }
-                    HttpResponse res =
+                    EasResponse resp =
                         sendPing(s.toByteArray(), forcePing ? mPingForceHeartbeat : pingHeartbeat);
-                    HttpEntity entity = res.getEntity();
 
                     try {
-                        int code = res.getStatusLine().getStatusCode();
+                        int code = resp.getStatus();
                         userLog("Ping response: ", code);
 
                         // Return immediately if we've been asked to stop during the ping
@@ -2110,9 +2160,8 @@ public class EasSyncService extends AbstractSyncService {
                         if (code == HttpStatus.SC_OK) {
                             // Make sure to clear out any pending sync errors
                             ExchangeService.removeFromSyncErrorMap(mMailboxId);
-                            int len = (int)entity.getContentLength();
-                            InputStream is = entity.getContent();
-                            if (len != 0) {
+                            if (!resp.isEmpty()) {
+                                InputStream is = resp.getInputStream();
                                 int pingResult = parsePingResult(is, mContentResolver,
                                         pingErrorMap);
                                 // If our ping completed (status = 1), and wasn't forced and we're
@@ -2141,9 +2190,7 @@ public class EasSyncService extends AbstractSyncService {
                             throw new IOException();
                         }
                     } finally {
-                        if (entity != null) {
-                            entity.consumeContent();
-                        }
+                        resp.close();
                     }
                 } catch (IOException e) {
                     String message = e.getMessage();
@@ -2389,16 +2436,43 @@ public class EasSyncService extends AbstractSyncService {
             target.sendLocalChanges(s);
 
             s.end().end().end().done();
-            HttpResponse resp = sendHttpClientPost("Sync", new ByteArrayEntity(s.toByteArray()),
+            EasResponse resp = sendHttpClientPost("Sync", new ByteArrayEntity(s.toByteArray()),
                     timeout);
-            HttpEntity entity = resp.getEntity();
             try {
-                int code = resp.getStatusLine().getStatusCode();
+                int code = resp.getStatus();
                 if (code == HttpStatus.SC_OK) {
                     // In EAS 12.1, we can get "empty" sync responses, which indicate that there are
                     // no changes in the mailbox; handle that case here
-                    Header header = resp.getFirstHeader("content-length");
-                    if (header != null && header.getValue().equals("0")) {
+                    // There are two cases here; if we get back a compressed stream (GZIP), we won't
+                    // know until we try to parse it (and generate an EmptyStreamException). If we
+                    // get uncompressed data, the response will be empty (i.e. have zero length)
+                    boolean emptyStream = false;
+                    if (!resp.isEmpty()) {
+                        InputStream is = resp.getInputStream();
+                        try {
+                            moreAvailable = target.parse(is);
+                            if (target.isLooping()) {
+                                loopingCount++;
+                                userLog("** Looping: " + loopingCount);
+                                // After the maximum number of loops, we'll set moreAvailable to
+                                // false and allow the sync loop to terminate
+                                if (moreAvailable && (loopingCount > MAX_LOOPING_COUNT)) {
+                                    userLog("** Looping force stopped");
+                                    moreAvailable = false;
+                                }
+                            } else {
+                                loopingCount = 0;
+                            }
+                            target.cleanup();
+                        } catch (EmptyStreamException e) {
+                            userLog("Empty stream detected in GZIP response");
+                            emptyStream = true;
+                        }
+                    } else {
+                        emptyStream = true;
+                    }
+
+                    if (emptyStream) {
                         // If this happens, exit cleanly, and change the interval from push to ping
                         // if necessary
                         userLog("Empty sync response; finishing");
@@ -2417,25 +2491,6 @@ public class EasSyncService extends AbstractSyncService {
                             continue;
                         }
                     }
-                    InputStream is = entity.getContent();
-                    if (is != null) {
-                        moreAvailable = target.parse(is);
-                        if (target.isLooping()) {
-                            loopingCount++;
-                            userLog("** Looping: " + loopingCount);
-                            // After the maximum number of loops, we'll set moreAvailable to false
-                            // and allow the sync loop to terminate
-                            if (moreAvailable && (loopingCount > MAX_LOOPING_COUNT)) {
-                                userLog("** Looping force stopped");
-                                moreAvailable = false;
-                            }
-                        } else {
-                            loopingCount = 0;
-                        }
-                        target.cleanup();
-                    } else {
-                        userLog("Empty input stream in sync command response");
-                    }
                 } else {
                     userLog("Sync response error: ", code);
                     if (isProvisionError(code)) {
@@ -2448,9 +2503,7 @@ public class EasSyncService extends AbstractSyncService {
                     return;
                 }
             } finally {
-                if (entity != null) {
-                    entity.consumeContent();
-                }
+                resp.close();
             }
         }
         mExitStatus = EXIT_DONE;
