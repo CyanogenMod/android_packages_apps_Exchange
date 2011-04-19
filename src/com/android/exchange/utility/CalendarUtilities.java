@@ -1209,9 +1209,11 @@ public class CalendarUtilities {
         cv.put(Calendars._SYNC_ACCOUNT, account.mEmailAddress);
         cv.put(Calendars._SYNC_ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         cv.put(Calendars.SYNC_EVENTS, 1);
-        cv.put(Calendars.SELECTED, 1);
+        cv.put(Calendars.VISIBLE, 1);
         // Don't show attendee status if we're the organizer
-        cv.put(Calendars.ORGANIZER_CAN_RESPOND, 0);
+        cv.put(Calendars.CAN_ORGANIZER_RESPOND, 0);
+        cv.put(Calendars.CAN_MODIFY_TIME_ZONE, 0);
+        cv.put(Calendars.MAX_REMINDERS, 1);
 
         // TODO Coordinate account colors w/ Calendar, if possible
         int color = AccountServiceProxy.DEFAULT_ACCOUNT_COLOR;
