@@ -1764,6 +1764,8 @@ public class EasSyncService extends AbstractSyncService {
      * @throws EasParserException
      */
     public void runAccountMailbox() throws IOException, EasParserException {
+        // Check that the account's mailboxes are consistent
+        MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
         // Initialize exit status to success
         mExitStatus = EXIT_DONE;
         try {
@@ -1857,8 +1859,6 @@ public class EasSyncService extends AbstractSyncService {
             }
 
             while (!mStop) {
-                // Check that the account's mailboxes are consistent
-                MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
                 userLog("Sending Account syncKey: ", mAccount.mSyncKey);
                 Serializer s = new Serializer();
                 s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
@@ -2050,8 +2050,6 @@ public class EasSyncService extends AbstractSyncService {
         long inboxId = -1;
 
         while ((System.currentTimeMillis() < endTime) && !mStop) {
-            // Check that the account's mailboxes are consistent
-            MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
             // Count of pushable mailboxes
             int pushCount = 0;
             // Count of mailboxes that can be pushed right now
