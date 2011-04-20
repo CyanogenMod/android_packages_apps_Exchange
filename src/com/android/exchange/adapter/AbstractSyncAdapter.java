@@ -19,6 +19,7 @@ package com.android.exchange.adapter;
 
 import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
 
@@ -50,19 +51,16 @@ public abstract class AbstractSyncAdapter {
     public final android.accounts.Account mAccountManagerAccount;
 
     // Create the data for local changes that need to be sent up to the server
-    public abstract boolean sendLocalChanges(Serializer s)
-        throws IOException;
+    public abstract boolean sendLocalChanges(Serializer s) throws IOException;
     // Parse incoming data from the EAS server, creating, modifying, and deleting objects as
     // required through the EmailProvider
-    public abstract boolean parse(InputStream is)
-        throws IOException;
+    public abstract boolean parse(InputStream is) throws IOException, CommandStatusException;
     // The name used to specify the collection type of the target (Email, Calendar, or Contacts)
     public abstract String getCollectionName();
     public abstract void cleanup();
     public abstract boolean isSyncable();
     // Add sync options (filter, body type - html vs plain, and truncation)
-    public abstract void sendSyncOptions(Double protocolVersion, Serializer s)
-        throws IOException;
+    public abstract void sendSyncOptions(Double protocolVersion, Serializer s) throws IOException;
     /**
      * Delete all records of this class in this account
      */
@@ -135,22 +133,6 @@ public abstract class AbstractSyncAdapter {
 
     public void setSyncKey(String syncKey, boolean inCommands) throws IOException {
         mMailbox.mSyncKey = syncKey;
-    }
-
-    /**
-     * Sync failures can use SyncStatusException, which includes the actual error status and
-     * server id
-     */
-    static class SyncStatusException extends IOException {
-        private static final long serialVersionUID = 1L;
-
-        public final int mStatus;
-        public final String mServerId;
-
-        protected SyncStatusException(String serverId, int status) {
-            mServerId = serverId;
-            mStatus = status;
-        }
     }
 }
 

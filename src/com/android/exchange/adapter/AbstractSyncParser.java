@@ -20,6 +20,8 @@ package com.android.exchange.adapter;
 import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.exchange.CommandStatusException;
+import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 
@@ -69,8 +71,9 @@ public abstract class AbstractSyncParser extends Parser {
     /**
      * Read, parse, and act on incoming commands from the Exchange server
      * @throws IOException if the connection is broken
+     * @throws CommandStatusException
      */
-    public abstract void commandsParser() throws IOException;
+    public abstract void commandsParser() throws IOException, CommandStatusException;
 
     /**
      * Read, parse, and act on server responses
@@ -89,12 +92,24 @@ public abstract class AbstractSyncParser extends Parser {
     }
 
     /**
+     * Skip through tags until we reach the specified end tag
+     * @param endTag the tag we end with
+     * @throws IOException
+     */
+    public void skipParser(int endTag) throws IOException {
+        while (nextTag(endTag) != END) {
+            skipTag();
+        }
+    }
+
+    /**
      * Loop through the top-level structure coming from the Exchange server
      * Sync keys and the more available flag are handled here, whereas specific data parsing
      * is handled by abstract methods implemented for each data class (e.g. Email, Contacts, etc.)
+     * @throws CommandStatusException
      */
     @Override
-    public boolean parse() throws IOException {
+    public boolean parse() throws IOException, CommandStatusException {
         int status;
         boolean moreAvailable = false;
         boolean newSyncKey = false;
@@ -116,9 +131,8 @@ public abstract class AbstractSyncParser extends Parser {
                 // Status = 1 is success; everything else is a failure
                 status = getValueInt();
                 if (status != 1) {
-                    mService.errorLog("Sync failed: " + status);
-                    // Status = 3 means invalid sync key
-                    if (status == 3) {
+                    mService.errorLog("Sync failed: " + CommandStatus.toString(status));
+                    if (status == 3 || CommandStatus.isBadSyncKey(status)) {
                         // Must delete all of the data and start over with syncKey of "0"
                         mAdapter.setSyncKey("0", false);
                         // Make this a push box through the first sync
@@ -132,8 +146,10 @@ public abstract class AbstractSyncParser extends Parser {
                         // This is Bad; it means the server doesn't recognize the serverId it
                         // sent us.  What's needed is a refresh of the folder list.
                         ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
+                    } else {
+                        // Access, provisioning, transient, etc.
+                        throw new CommandStatusException(status);
                     }
-                    // TODO Look at other error codes and consider what's to be done
                 }
             } else if (tag == Tags.SYNC_COMMANDS) {
                 commandsParser();

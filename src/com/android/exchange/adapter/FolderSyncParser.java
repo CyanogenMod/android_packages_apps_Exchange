@@ -23,7 +23,10 @@ import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.utility.AttachmentUtilities;
+import com.android.emailcommon.utility.EmailAsyncTask;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException;
+import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.provider.MailboxUtilities;
@@ -101,6 +104,9 @@ public class FolderSyncParser extends AbstractSyncParser {
     private boolean mInitialSync;
     private ArrayList<String> mParentFixupsNeeded = new ArrayList<String>();
     private boolean mFixupUninitializedNeeded = false;
+    // If true, we only care about status (this is true when validating an account) and ignore
+    // other data
+    private final boolean mStatusOnly;
 
     private static final ContentValues UNINITIALIZED_PARENT_KEY = new ContentValues();
 
@@ -109,13 +115,19 @@ public class FolderSyncParser extends AbstractSyncParser {
     }
 
     public FolderSyncParser(InputStream in, AbstractSyncAdapter adapter) throws IOException {
+        this(in, adapter, false);
+    }
+
+    public FolderSyncParser(InputStream in, AbstractSyncAdapter adapter, boolean statusOnly)
+            throws IOException {
         super(in, adapter);
         mAccountId = mAccount.mId;
         mAccountIdAsString = Long.toString(mAccountId);
+        mStatusOnly = statusOnly;
     }
 
     @Override
-    public boolean parse() throws IOException {
+    public boolean parse() throws IOException, CommandStatusException {
         int status;
         boolean res = false;
         boolean resetFolders = false;
@@ -133,8 +145,14 @@ public class FolderSyncParser extends AbstractSyncParser {
             if (tag == Tags.FOLDER_STATUS) {
                 status = getValueInt();
                 if (status != Eas.FOLDER_STATUS_OK) {
-                    mService.errorLog("FolderSync failed: " + status);
-                    if (status == Eas.FOLDER_STATUS_INVALID_KEY) {
+                    mService.errorLog("FolderSync failed: " + CommandStatus.toString(status));
+                    if (CommandStatus.isDeniedAccess(status) ||
+                            CommandStatus.isNeedsProvisioning(status)) {
+                        throw new CommandStatusException(status);
+                    // Note that we need to catch both old-style (Eas.FOLDER_STATUS_INVALID_KEY)
+                    // and EAS 14 style command status
+                    } else if (status == Eas.FOLDER_STATUS_INVALID_KEY ||
+                            CommandStatus.isBadSyncKey(status)) {
                         mService.errorLog("Bad sync key; RESET and delete all folders");
                         // Reset the sync key and save
                         mAccount.mSyncKey = "0";
@@ -162,10 +180,12 @@ public class FolderSyncParser extends AbstractSyncParser {
                 mAccount.mSyncKey = getValue();
                 userLog("New Account SyncKey: ", mAccount.mSyncKey);
             } else if (tag == Tags.FOLDER_CHANGES) {
+                if (mStatusOnly) return res;
                 changesParser(mOperations, mInitialSync);
             } else
                 skipTag();
         }
+        if (mStatusOnly) return res;
         synchronized (mService.getSynchronizer()) {
             if (!mService.isStopped() || resetFolders) {
                 commit();
@@ -460,7 +480,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                 skipTag();
         }
 
-        Utility.runAsync(new Runnable() {
+        EmailAsyncTask.runAsyncParallel(new Runnable() {
             @Override
             public void run() {
                 // Synchronize on the parser to prevent this being run multiple times concurrently

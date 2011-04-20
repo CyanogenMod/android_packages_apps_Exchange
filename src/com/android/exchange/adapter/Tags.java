@@ -47,6 +47,15 @@ public class Tags {
     public static final int SEARCH = 0x0F;
     public static final int GAL = 0x10;
     public static final int BASE = 0x11;
+    public static final int SETTINGS = 0x12;
+    public static final int DOCS = 0x13;
+    public static final int ITEMS = 0x14;
+    // 14.0
+    public static final int COMPOSE = 0x15;
+    public static final int EMAIL2 = 0x16;
+    // 14.1
+    public static final int NOTES = 0x17;
+    public static final int RIGHTS = 0x18;
 
     // Shift applied to page numbers to generate tag
     public static final int PAGE_SHIFT = 6;
@@ -197,6 +206,23 @@ public class Tags {
     public static final int CALENDAR_UID = CALENDAR_PAGE + 0x28;
     public static final int CALENDAR_ATTENDEE_STATUS = CALENDAR_PAGE + 0x29;
     public static final int CALENDAR_ATTENDEE_TYPE = CALENDAR_PAGE + 0x2A;
+    public static final int CALENDAR_ATTACHMENT = CALENDAR_PAGE + 0x2B;
+    public static final int CALENDAR_ATTACHMENTS = CALENDAR_PAGE + 0x2C;
+    public static final int CALENDAR_ATT_NAME = CALENDAR_PAGE + 0x2D;
+    public static final int CALENDAR_ATT_SIZE = CALENDAR_PAGE + 0x2E;
+    public static final int CALENDAR_ATT_OID = CALENDAR_PAGE + 0x2F;
+    public static final int CALENDAR_ATT_METHOD = CALENDAR_PAGE + 0x30;
+    public static final int CALENDAR_ATT_REMOVED = CALENDAR_PAGE + 0x31;
+    public static final int CALENDAR_DISPLAY_NAME = CALENDAR_PAGE + 0x32;
+    public static final int CALENDAR_DISALLOW_NEW_TIME_PROPOSAL = CALENDAR_PAGE + 0x33;
+    public static final int CALENDAR_RESPONSE_REQUESTED = CALENDAR_PAGE + 0x34;
+    public static final int CALENDAR_APPOINTMENT_REPLY_TIME = CALENDAR_PAGE + 0x35;
+    public static final int CALENDAR_RESPONSE_TYPE = CALENDAR_PAGE + 0x36;
+    public static final int CALENDAR_CALENDAR_TYPE = CALENDAR_PAGE + 0x37;
+    public static final int CALENDAR_IS_LEAP_MONTH = CALENDAR_PAGE + 0x38;
+    public static final int CALENDAR_FIRST_DAY_OF_WEEK = CALENDAR_PAGE + 0x39;
+    public static final int CALENDAR_ONLINE_MEETING_CONFLINK = CALENDAR_PAGE + 0x3A;
+    public static final int CALENDAR_ONLINE_MEETING_EXTERNAL_LINK = CALENDAR_PAGE + 0x3B;
 
     public static final int FOLDER_PAGE = FOLDER << PAGE_SHIFT;
     public static final int FOLDER_FOLDERS = FOLDER_PAGE + 5;
@@ -290,6 +316,7 @@ public class Tags {
     public static final int EMAIL_CONTENT_CLASS = EMAIL_PAGE + 0x3C;
     public static final int EMAIL_FLAG_TYPE = EMAIL_PAGE + 0x3D;
     public static final int EMAIL_COMPLETE_TIME = EMAIL_PAGE + 0x3E;
+    public static final int EMAIL_DISALLOW_NEW_TIME_PROPOSAL = EMAIL_PAGE + 0x3F;
 
     public static final int TASK_PAGE = TASK << PAGE_SHIFT;
     public static final int TASK_BODY = TASK_PAGE + 5;
@@ -478,6 +505,77 @@ public class Tags {
     public static final int BASE_NATIVE_BODY_TYPE = BASE_PAGE + 0x16;
     public static final int BASE_CONTENT_TYPE = BASE_PAGE + 0x17;
 
+    public static final int SETTINGS_PAGE = SETTINGS << PAGE_SHIFT;
+    public static final int SETTINGS_SETTINGS = SETTINGS_PAGE + 5;
+    public static final int SETTINGS_STATUS = SETTINGS_PAGE + 6;
+    public static final int SETTINGS_GET = SETTINGS_PAGE + 7;
+    public static final int SETTINGS_SET = SETTINGS_PAGE + 8;
+    public static final int SETTINGS_OOF = SETTINGS_PAGE + 9;
+    public static final int SETTINGS_OOF_STATE = SETTINGS_PAGE + 0xA;
+    public static final int SETTINGS_START_TIME = SETTINGS_PAGE + 0xB;
+    public static final int SETTINGS_END_TIME = SETTINGS_PAGE + 0xC;
+    public static final int SETTINGS_OOF_MESSAGE = SETTINGS_PAGE + 0xD;
+    public static final int SETTINGS_APPLIES_TO_INTERNAL = SETTINGS_PAGE + 0xE;
+    public static final int SETTINGS_APPLIES_TO_EXTERNAL_KNOWN = SETTINGS_PAGE + 0xF;
+    public static final int SETTINGS_APPLIES_TO_EXTERNAL_UNKNOWN = SETTINGS_PAGE + 0x10;
+    public static final int SETTINGS_ENABLED = SETTINGS_PAGE + 0x11;
+    public static final int SETTINGS_REPLY_MESSAGE = SETTINGS_PAGE + 0x12;
+    public static final int SETTINGS_BODY_TYPE = SETTINGS_PAGE + 0x13;
+    public static final int SETTINGS_DEVICE_PASSWORD = SETTINGS_PAGE + 0x14;
+    public static final int SETTINGS_PASSWORD = SETTINGS_PAGE + 0x15;
+    public static final int SETTINGS_DEVICE_INFORMATION = SETTINGS_PAGE + 0x16;
+    public static final int SETTINGS_MODEL = SETTINGS_PAGE + 0x17;
+    public static final int SETTINGS_IMEI = SETTINGS_PAGE + 0x18;
+    public static final int SETTINGS_FRIENDLY_NAME = SETTINGS_PAGE + 0x19;
+    public static final int SETTINGS_OS = SETTINGS_PAGE + 0x1A;
+    public static final int SETTINGS_OS_LANGUAGE = SETTINGS_PAGE + 0x1B;
+    public static final int SETTINGS_PHONE_NUMBER = SETTINGS_PAGE + 0x1C;
+    public static final int SETTINGS_USER_INFORMATION = SETTINGS_PAGE + 0x1D;
+    public static final int SETTINGS_EMAIL_ADDRESS = SETTINGS_PAGE + 0x1E;
+    public static final int SETTINGS_SMTP_ADDRESS = SETTINGS_PAGE + 0x1F;
+    public static final int SETTINGS_USER_AGENT = SETTINGS_PAGE + 0x20;
+    public static final int SETTINGS_ENABLE_OUTGOING_SMS = SETTINGS_PAGE + 0x21;
+    public static final int SETTINGS_MOBILE_OPERATOR = SETTINGS_PAGE + 0x22;
+
+    public static final int EMAIL2_PAGE = EMAIL2 << PAGE_SHIFT;
+    public static final int EMAIL2_UM_CALLER_ID = EMAIL2_PAGE + 5;
+    public static final int EMAIL2_UM_USER_NOTES = EMAIL2_PAGE + 6;
+    public static final int EMAIL2_UM_ATT_DURATION = EMAIL2_PAGE + 7;
+    public static final int EMAIL2_UM_ATT_ORDER = EMAIL2_PAGE + 8;
+    public static final int EMAIL2_CONVERSATION_ID = EMAIL2_PAGE + 9;
+    public static final int EMAIL2_CONVERSATION_INDEX = EMAIL2_PAGE + 0xA;
+    public static final int EMAIL2_LAST_VERB_EXECUTED = EMAIL2_PAGE + 0xB;
+    public static final int EMAIL2_LAST_VERB_EXECUTION_TIME = EMAIL2_PAGE + 0xC;
+    public static final int EMAIL2_RECEIVED_AS_BCC = EMAIL2_PAGE + 0xD;
+    public static final int EMAIL2_SENDER = EMAIL2_PAGE + 0xE;
+    public static final int EMAIL2_CALENDAR_TYPE = EMAIL2_PAGE + 0xF;
+    public static final int EMAIL2_IS_LEAP_MONTH = EMAIL2_PAGE + 0x10;
+    public static final int EMAIL2_ACCOUNT_ID = EMAIL2_PAGE + 0x11;
+    public static final int EMAIL2_FIRST_DAY_OF_WEEK = EMAIL2_PAGE + 0x12;
+    public static final int EMAIL2_MEETING_MESSAGE_TYPE = EMAIL2_PAGE + 0x13;
+
+    public static final int RIGHTS_PAGE = RIGHTS << PAGE_SHIFT;
+    public static final int RIGHTS_SUPPORT = RIGHTS_PAGE + 5;
+    public static final int RIGHTS_TEMPLATES = RIGHTS_PAGE + 6;
+    public static final int RIGHTS_TEMPLATE = RIGHTS_PAGE + 7;
+    public static final int RIGHTS_LICENSE = RIGHTS_PAGE + 8;
+    public static final int RIGHTS_EDIT_ALLOWED = RIGHTS_PAGE + 9;
+    public static final int RIGHTS_REPLY_ALLOWED = RIGHTS_PAGE + 0xA;
+    public static final int RIGHTS_REPLY_ALL_ALLOWED = RIGHTS_PAGE + 0xB;
+    public static final int RIGHTS_FORWARD_ALLOWED = RIGHTS_PAGE + 0xC;
+    public static final int RIGHTS_MODIFY_RECIPIENTS_ALLOWED = RIGHTS_PAGE + 0xD;
+    public static final int RIGHTS_EXTRACT_ALLOWED = RIGHTS_PAGE + 0xE;
+    public static final int RIGHTS_PRINT_ALLOWED = RIGHTS_PAGE + 0xF;
+    public static final int RIGHTS_EXPORT_ALLOWED = RIGHTS_PAGE + 0x10;
+    public static final int RIGHTS_PROGRAMMATIC_ACCESS_ALLOWED = RIGHTS_PAGE + 0x11;
+    public static final int RIGHTS_OWNER = RIGHTS_PAGE + 0x12;
+    public static final int RIGHTS_CONTENT_EXPIRY_DATE = RIGHTS_PAGE + 0x13;
+    public static final int RIGHTS_TEMPLATE_ID = RIGHTS_PAGE + 0x14;
+    public static final int RIGHTS_TEMPLATE_NAME = RIGHTS_PAGE + 0x15;
+    public static final int RIGHTS_TEMPLATE_DESCRIPTION = RIGHTS_PAGE + 0x16;
+    public static final int RIGHTS_CONTENT_OWNER = RIGHTS_PAGE + 0x17;
+    public static final int RIGHTS_REMOVE_RM_DISTRIBUTION = RIGHTS_PAGE + 0x18;
+
     static public String[][] pages = {
         {    // 0x00 AirSync
             "Sync", "Responses", "Add", "Change", "Delete", "Fetch", "SyncKey", "ClientId",
@@ -516,7 +614,7 @@ public class Tags {
             "Recurrence_DayOfMonth", "Recurrence_WeekOfMonth", "Recurrence_MonthOfYear",
             "StartTime", "Sensitivity", "TimeZone", "GlobalObjId", "ThreadTopic", "MIMEData",
             "MIMETruncated", "MIMESize", "InternetCPID", "Flag", "FlagStatus", "EmailContentClass",
-            "FlagType", "CompleteTime"
+            "FlagType", "CompleteTime", "DisallowNewTimeProposal"
         },
         {
             // 0x03 AirNotify
@@ -532,7 +630,11 @@ public class Tags {
             "CalRecurrence_Interval", "CalRecurrence_DayOfWeek", "CalRecurrence_DayOfMonth",
             "CalRecurrence_WeekOfMonth", "CalRecurrence_MonthOfYear", "CalReminder_MinsBefore",
             "CalSensitivity", "CalSubject", "CalStartTime", "CalUID", "CalAttendee_Status",
-            "CalAttendee_Type"
+            "CalAttendee_Type", "CalAttachment", "CalAttachments", "CalAttName", "CalAttSize",
+            "CalAttOid", "CalAttMethod", "CalAttRemoved", "CalDisplayName",
+            "CalDisallowNewTimeProposal", "CalResponseRequested", "CalAppointmentReplyTime",
+            "CalResponseType", "CalCalendarType", "CalIsLeapMonth", "CalFirstDayOfWeek",
+            "CalOnlineMeetingConfLink", "CalOnlineMeetingExternalLink"
         },
         {
             // 0x05 Move
@@ -627,12 +729,39 @@ public class Tags {
         },
         {
             // 0x12 Settings
+            "Settings", "SettingsStatus", "Get", "Set", "Oof", "OofState", "SettingsStartTime",
+            "SettingsEndTime", "OofMessage", "AppliesToInternal", "AppliesToExternalKnown",
+            "AppliesToExternalUnknown", "Enabled", "ReplyMessage", "BodyType", "DevicePassword",
+            "Password", "DeviceInformation", "Model", "IMEI", "FriendlyName", "OS", "OSLanguage",
+            "PhoneNumber", "UserInformation", "EmailAddress", "StmpAddress", "UserAgent",
+            "EnableOutboundSMS", "MobileOperator"
         },
         {
             // 0x13 DocumentLibrary
         },
         {
             // 0x14 ItemOperations
+        },
+        {
+            // 0x15 ComposeMail
+        },
+        {
+            // 0x16 Email2
+            "UmCallerId", "UmUserNotes", "UmAttDuration", "UmAttOrder", "ConversationId",
+            "ConversationIndex", "LastVerbExecuted", "LastVerbExecutionTime", "ReceivedAsBcc",
+            "Sender", "CalendarType", "IsLeapMonth", "AccountId", "FirstDayOfWeek",
+            "MeetingMessageType"
+        },
+        {
+            // 0x17 Notes
+        },
+        {
+            // 0x18 Rights Management
+            "RMSupport", "RMTemplates", "RMTemplate", "RMLicense", "EditAllowed", "ReplyAllowed",
+            "ReplyAllAllowed", "ForwardAllowed", "ModifyRecipientsAllowed", "ExtractAllowed",
+            "PrintAllowed", "ExportAllowed", "ProgrammaticAccessAllowed", "RMOwner",
+            "ContentExpiryDate", "TemplateID", "TemplateName", "TemplateDescription",
+            "ContentOwner", "RemoveRMDistribution"
         }
     };
 }

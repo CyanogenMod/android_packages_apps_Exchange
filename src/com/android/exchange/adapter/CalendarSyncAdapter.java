@@ -21,6 +21,7 @@ import com.android.emailcommon.AccountManagerTypes;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasOutboxService;
 import com.android.exchange.EasSyncService;
@@ -214,7 +215,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public boolean parse(InputStream is) throws IOException {
+    public boolean parse(InputStream is) throws IOException, CommandStatusException {
         EasCalendarSyncParser p = new EasCalendarSyncParser(is, this);
         return p.parse();
     }
@@ -473,6 +474,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                             }
                         }
                         cv.put(Events.ALL_DAY, allDayEvent);
+                        break;
+                    case Tags.CALENDAR_ATTACHMENTS:
+                        attachmentsParser();
                         break;
                     case Tags.CALENDAR_ATTENDEES:
                         // If eventId >= 0, this is an update; otherwise, a new Event
@@ -802,6 +806,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             String exceptionStartTime = "_noStartTime";
             while (nextTag(Tags.SYNC_APPLICATION_DATA) != END) {
                 switch (tag) {
+                    case Tags.CALENDAR_ATTACHMENTS:
+                        attachmentsParser();
+                        break;
                     case Tags.CALENDAR_EXCEPTION_START_TIME:
                         exceptionStartTime = getValue();
                         cv.put(Events.ORIGINAL_INSTANCE_TIME,
@@ -951,6 +958,21 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 }
             }
             return categories.toString();
+        }
+
+        /**
+         * For now, we ignore (but still have to parse) event attachments; these are new in EAS 14
+         */
+        private void attachmentsParser() throws IOException {
+            while (nextTag(Tags.CALENDAR_ATTACHMENTS) != END) {
+                switch (tag) {
+                    case Tags.CALENDAR_ATTACHMENT:
+                        skipParser(Tags.CALENDAR_ATTACHMENT);
+                        break;
+                    default:
+                        skipTag();
+                }
+            }
         }
 
         private ArrayList<ContentValues> attendeesParser(CalendarOperations ops, long eventId)

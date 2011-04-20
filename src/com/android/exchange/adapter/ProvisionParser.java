@@ -15,9 +15,9 @@
 
 package com.android.exchange.adapter;
 
+import com.android.emailcommon.service.PolicySet;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.SecurityPolicyDelegate;
-import com.android.emailcommon.service.PolicySet;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -438,6 +438,16 @@ public class ProvisionParser extends Parser {
         }
     }
 
+    private void parseDeviceInformation() throws IOException {
+        while (nextTag(Tags.SETTINGS_DEVICE_INFORMATION) != END) {
+            if (tag == Tags.SETTINGS_STATUS) {
+                mService.userLog("DeviceInformation status: " + getValue());
+            } else {
+                skipTag();
+            }
+        }
+    }
+
     @Override
     public boolean parse() throws IOException {
         boolean res = false;
@@ -450,6 +460,9 @@ public class ProvisionParser extends Parser {
                     int status = getValueInt();
                     mService.userLog("Provision status: ", status);
                     res = (status == 1);
+                    break;
+                case Tags.SETTINGS_DEVICE_INFORMATION:
+                    parseDeviceInformation();
                     break;
                 case Tags.PROVISION_POLICIES:
                     parsePolicies();

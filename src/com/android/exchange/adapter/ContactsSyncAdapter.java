@@ -17,6 +17,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
 
@@ -154,7 +155,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public boolean parse(InputStream is) throws IOException {
+    public boolean parse(InputStream is) throws IOException, CommandStatusException {
         EasContactsSyncParser p = new EasContactsSyncParser(is, this);
         return p.parse();
     }

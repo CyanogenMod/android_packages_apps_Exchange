@@ -69,7 +69,7 @@ public abstract class Parser {
     private String[] tagTable;
 
     // An array of tag tables, as defined in EasTags
-    static private String[][] tagTables = new String[24][];
+    static private String[][] tagTables = new String[Tags.pages.length + 1][];
 
     // The stack of names of tags being processed; used when debug = true
     private String[] nameArray = new String[32];
@@ -104,6 +104,9 @@ public abstract class Parser {
 
     // The value read, as an int
     public int num;
+
+    // The value read, as bytes
+    public byte[] bytes;
 
     /**
      * Generated when the parser comes to EOF prematurely during parsing (i.e. in error)
@@ -214,7 +217,20 @@ public abstract class Parser {
     }
 
     /**
-     * Return the value of the current tag, as a String
+     * Return the value of the current tag, as a byte array.  Note that the result of this call
+     * is indeterminate, and possibly null, if the value of the tag is not a byte array
+     *
+     * @return the byte array value of the current tag
+     * @throws IOException
+     */
+    public byte[] getValueBytes() throws IOException {
+        getValue();
+        return bytes;
+    }
+
+    /**
+     * Return the value of the current tag, as a String.  Note that the result of this call is
+     * indeterminate, and possibly null, if the value of the tag is not an immediate string
      *
      * @return the String value of the current tag
      * @throws IOException
@@ -241,7 +257,8 @@ public abstract class Parser {
     }
 
     /**
-     * Return the value of the current tag, as an integer
+     * Return the value of the current tag, as an integer.  Note that the value of this call is
+     * indeterminate if the value of this tag is not an immediate string parsed as an integer
      *
      * @return the integer value of the current tag
      * @throws IOException
@@ -453,6 +470,15 @@ public abstract class Parser {
                 if (logging) {
                     name = tagTable[startTag - TAG_BASE];
                     log(name + ": " + (asInt ? Integer.toString(num) : text));
+                }
+                break;
+
+            case Wbxml.OPAQUE:
+                // Integer length + opaque data
+                int length = readInt();
+                bytes = new byte[length];
+                for (int i = 0; i < length; i++) {
+                    bytes[i] = (byte)readByte();
                 }
                 break;
 

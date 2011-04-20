@@ -38,6 +38,7 @@ import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.ConversionUtilities;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.MessageMoveRequest;
@@ -213,7 +214,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public boolean parse(InputStream is) throws IOException {
+    public boolean parse(InputStream is) throws IOException, CommandStatusException {
         EasEmailSyncParser p = new EasEmailSyncParser(is, this);
         mFetchNeeded = false;
         boolean res = p.parse();
@@ -256,8 +257,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             mMailboxIdAsString = Long.toString(mMailbox.mId);
         }
 
-        public EasEmailSyncParser(Parser parser, EmailSyncAdapter adapter)
-                throws IOException {
+        public EasEmailSyncParser(Parser parser, EmailSyncAdapter adapter) throws IOException {
             super(parser, adapter);
             mMailboxIdAsString = Long.toString(mMailbox.mId);
         }
@@ -338,6 +338,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     case Tags.EMAIL_MEETING_REQUEST:
                         meetingRequestParser(msg);
                         break;
+                    case Tags.RIGHTS_LICENSE:
+                        skipParser(tag);
+                        break;
+                    case Tags.EMAIL2_CONVERSATION_ID:
+                    case Tags.EMAIL2_CONVERSATION_INDEX:
+                        // Note that the value of these two tags is a byte array
+                        getValueBytes();
+                        break;
                     default:
                         skipTag();
                 }
@@ -379,7 +387,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                                 CalendarUtilities.getUidFromGlobalObjId(getValue()));
                         break;
                     case Tags.EMAIL_CATEGORIES:
-                        nullParser();
+                        skipParser(tag);
                         break;
                     case Tags.EMAIL_RECURRENCES:
                         recurrencesParser();
@@ -397,17 +405,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             msg.mMeetingInfo = packedString.toString();
         }
 
-        private void nullParser() throws IOException {
-            while (nextTag(Tags.EMAIL_CATEGORIES) != END) {
-                skipTag();
-            }
-        }
-
         private void recurrencesParser() throws IOException {
             while (nextTag(Tags.EMAIL_RECURRENCES) != END) {
                 switch (tag) {
                     case Tags.EMAIL_RECURRENCE:
-                        nullParser();
+                        skipParser(tag);
                         break;
                     default:
                         skipTag();
@@ -420,7 +422,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
          * @return the parsed Message
          * @throws IOException
          */
-        private Message addParser() throws IOException {
+        private Message addParser() throws IOException, CommandStatusException {
             Message msg = new Message();
             msg.mAccountKey = mAccount.mId;
             msg.mMailboxKey = mMailbox.mId;
@@ -445,7 +447,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
             // For sync, status 1 = success
             if (status != 1) {
-                throw new SyncStatusException(msg.mServerId, status);
+                throw new CommandStatusException(status, msg.mServerId);
             }
             return msg;
         }
@@ -695,7 +697,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
          * @see com.android.exchange.adapter.EasContentParser#commandsParser()
          */
         @Override
-        public void commandsParser() throws IOException {
+        public void commandsParser() throws IOException, CommandStatusException {
             while (nextTag(Tags.SYNC_COMMANDS) != END) {
                 if (tag == Tags.SYNC_ADD) {
                     newEmails.add(addParser());
@@ -719,12 +721,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 } else if (tag == Tags.SYNC_FETCH) {
                     try {
                         fetchedEmails.add(addParser());
-                    } catch (SyncStatusException sse) {
+                    } catch (CommandStatusException sse) {
                         if (sse.mStatus == 8) {
                             // 8 = object not found; delete the message from EmailProvider
                             // No other status should be seen in a fetch response, except, perhaps,
                             // for some temporary server failure
-                            mBindArguments[0] = sse.mServerId;
+                            mBindArguments[0] = sse.mItemId;
                             mBindArguments[1] = mMailboxIdAsString;
                             mContentResolver.delete(Message.CONTENT_URI,
                                     WHERE_SERVER_ID_AND_MAILBOX_KEY, mBindArguments);

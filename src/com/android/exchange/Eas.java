@@ -45,6 +45,10 @@ public class Eas {
     public static final double SUPPORTED_PROTOCOL_EX2007_DOUBLE = 12.0;
     public static final String SUPPORTED_PROTOCOL_EX2007_SP1 = "12.1";
     public static final double SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE = 12.1;
+    public static final String SUPPORTED_PROTOCOL_EX2010 = "14.0";
+    public static final double SUPPORTED_PROTOCOL_EX2010_DOUBLE = 14.0;
+    public static final String SUPPORTED_PROTOCOL_EX2010_SP1 = "14.1";
+    public static final double SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE = 14.1;
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
 
     public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE = "com.android.exchange";
@@ -104,6 +108,10 @@ public class Eas {
             return SUPPORTED_PROTOCOL_EX2007_DOUBLE;
         } if (SUPPORTED_PROTOCOL_EX2007_SP1.equals(version)) {
             return SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE;
+        } if (SUPPORTED_PROTOCOL_EX2010.equals(version)) {
+            return SUPPORTED_PROTOCOL_EX2010_DOUBLE;
+        } if (SUPPORTED_PROTOCOL_EX2010_SP1.equals(version)) {
+            return SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE;
         }
         throw new IllegalArgumentException("illegal protocol version");
     }

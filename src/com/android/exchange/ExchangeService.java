@@ -351,18 +351,33 @@ public class ExchangeService extends Service implements Runnable {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return;
             checkExchangeServiceServiceRunning();
-            if (sConnectivityHold && userRequest) {
-                try {
-                    // UI is expecting the callbacks....
-                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
-                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.CONNECTION_ERROR,
-                            0);
-                } catch (RemoteException ignore) {
-                }
-                return;
-            }
             Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
             if (m == null) return;
+            Account acct = Account.restoreAccountWithId(exchangeService, m.mAccountKey);
+            if (acct == null) return;
+            // If this is a user request and we're being held, release the hold; this allows us to
+            // try again (the hold might have been specific to this account and released already)
+            if (userRequest) {
+                if (onSyncDisabledHold(acct)) {
+                    releaseSyncHolds(exchangeService, AbstractSyncService.EXIT_ACCESS_DENIED, acct);
+                    log("User requested sync of account in sync disabled hold; releasing");
+                } else if (onSecurityHold(acct)) {
+                    releaseSyncHolds(exchangeService, AbstractSyncService.EXIT_SECURITY_FAILURE,
+                            acct);
+                    log("User requested sync of account in security hold; releasing");
+                }
+                if (sConnectivityHold) {
+                    try {
+                        // UI is expecting the callbacks....
+                        sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS,
+                                0);
+                        sCallbackProxy.syncMailboxStatus(mailboxId,
+                                EmailServiceStatus.CONNECTION_ERROR, 0);
+                    } catch (RemoteException ignore) {
+                    }
+                    return;
+                }
+            }
             if (m.mType == Mailbox.TYPE_OUTBOX) {
                 // We're using SERVER_ID to indicate an error condition (it has no other use for
                 // sent mail)  Upon request to sync the Outbox, we clear this so that all messages
@@ -396,9 +411,7 @@ public class ExchangeService extends Service implements Runnable {
 
         public void loadAttachment(long attachmentId, boolean background) throws RemoteException {
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
-            if (Eas.USER_LOG) {
-                Log.d(TAG, "loadAttachment " + attachmentId + ": " + att.mFileName);
-            }
+            log("loadAttachment " + attachmentId + ": " + att.mFileName);
             sendMessageRequest(new PartRequest(att, null, null));
         }
 
@@ -558,6 +571,14 @@ public class ExchangeService extends Service implements Runnable {
         }
     }
 
+    private boolean onSecurityHold(Account account) {
+        return (account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0;
+    }
+
+    private boolean onSyncDisabledHold(Account account) {
+        return (account.mFlags & Account.FLAGS_SYNC_DISABLED) != 0;
+    }
+
     class AccountObserver extends ContentObserver {
         String mSyncableEasMailboxSelector = null;
         String mEasAccountSelector = null;
@@ -652,10 +673,6 @@ public class ExchangeService extends Service implements Runnable {
                 mEasAccountSelector = sb.toString();
             }
             return mEasAccountSelector;
-        }
-
-        private boolean onSecurityHold(Account account) {
-            return (account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0;
         }
 
         private void onAccountChanged() {
@@ -2517,6 +2534,7 @@ public class ExchangeService extends Service implements Runnable {
                     }
                     // Fall through
                 case AbstractSyncService.EXIT_SECURITY_FAILURE:
+                case AbstractSyncService.EXIT_ACCESS_DENIED:
                 case AbstractSyncService.EXIT_EXCEPTION:
                     errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, true));
                     break;

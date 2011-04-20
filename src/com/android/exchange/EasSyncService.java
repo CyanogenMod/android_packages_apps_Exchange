@@ -37,6 +37,7 @@ import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.PolicySet;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
 import com.android.exchange.adapter.CalendarSyncAdapter;
@@ -385,7 +386,7 @@ public class EasSyncService extends AbstractSyncService {
     private void setupProtocolVersion(EasSyncService service, Header versionHeader)
             throws MessagingException {
         // The string is a comma separated list of EAS versions in ascending order
-        // e.g. 1.0,2.0,2.5,12.0,12.1
+        // e.g. 1.0,2.0,2.5,12.0,12.1,14.0,14.1
         String supportedVersions = versionHeader.getValue();
         userLog("Server supports versions: ", supportedVersions);
         String[] supportedVersionsArray = supportedVersions.split(",");
@@ -394,7 +395,9 @@ public class EasSyncService extends AbstractSyncService {
         for (String version: supportedVersionsArray) {
             if (version.equals(Eas.SUPPORTED_PROTOCOL_EX2003) ||
                     version.equals(Eas.SUPPORTED_PROTOCOL_EX2007) ||
-                    version.equals(Eas.SUPPORTED_PROTOCOL_EX2007_SP1)) {
+                    version.equals(Eas.SUPPORTED_PROTOCOL_EX2007_SP1) ||
+                    version.equals(Eas.SUPPORTED_PROTOCOL_EX2010) ||
+                    version.equals(Eas.SUPPORTED_PROTOCOL_EX2010_SP1)) {
                 ourVersion = version;
             }
         }
@@ -606,6 +609,8 @@ public class EasSyncService extends AbstractSyncService {
             // We mustn't use the "real" device id or we'll screw up current accounts
             // Any string will do, but we'll go for "validate"
             svc.mDeviceId = "validate";
+            svc.mAccount = new Account();
+            svc.mAccount.mEmailAddress = userName;
             EasResponse resp = svc.sendHttpClientOptions();
             try {
                 int code = resp.getStatus();
@@ -644,16 +649,7 @@ public class EasSyncService extends AbstractSyncService {
                     code = resp.getStatus();
                     // We'll get one of the following responses if policies are required
                     if (code == HttpStatus.SC_FORBIDDEN || code == HTTP_NEED_PROVISIONING) {
-                        // Get the policies and see if we are able to support them
-                        ProvisionParser pp = svc.canProvision();
-                        if (pp != null) {
-                            // Set the proper result code and save the PolicySet in our Bundle
-                            resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
-                            bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
-                                    pp.getPolicySet());
-                        } else
-                            // If not, set the proper code (the account will not be created)
-                            resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
+                        throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (code == HttpStatus.SC_NOT_FOUND) {
                         // We get a 404 from OWA addresses (which are NOT EAS addresses)
                         resultCode = MessagingException.PROTOCOL_VERSION_UNSUPPORTED;
@@ -662,6 +658,15 @@ public class EasSyncService extends AbstractSyncService {
                         userLog("Unexpected response for FolderSync: ", code);
                         resultCode = MessagingException.UNSPECIFIED_EXCEPTION;
                     } else {
+                        // We need to parse the result to see if we've got a provisioning issue
+                        // (EAS 14.0 only)
+                        if (!resp.isEmpty()) {
+                            InputStream is = resp.getInputStream();
+                            // Create the parser with statusOnly set to true; we only care about
+                            // seeing if a CommandStatusException is thrown (indicating a
+                            // provisioning failure)
+                            new FolderSyncParser(is, new AccountSyncAdapter(svc), true).parse();
+                        }
                         userLog("Validation successful");
                     }
                 } else if (isAuthError(code)) {
@@ -675,6 +680,29 @@ public class EasSyncService extends AbstractSyncService {
                     // TODO Need to catch other kinds of errors (e.g. policy) For now, report code.
                     userLog("Validation failed, reporting I/O error: ", code);
                     resultCode = MessagingException.IOERROR;
+                }
+            } catch (CommandStatusException e) {
+                int status = e.mStatus;
+                if (CommandStatus.isNeedsProvisioning(status)) {
+                    // Get the policies and see if we are able to support them
+                    ProvisionParser pp = svc.canProvision();
+                    if (pp != null) {
+                        // Set the proper result code and save the PolicySet in our Bundle
+                        resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
+                        bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
+                                pp.getPolicySet());
+                    } else
+                        // If not, set the proper code (the account will not be created)
+                        resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
+                } else if (CommandStatus.isDeniedAccess(status)) {
+                    userLog("Denied access: ", CommandStatus.toString(status));
+                    resultCode = MessagingException.ACCESS_DENIED;
+                } else if (CommandStatus.isTransientError(status)) {
+                    userLog("Transient error: ", CommandStatus.toString(status));
+                    resultCode = MessagingException.IOERROR;
+                } else {
+                    userLog("Unexpected response: ", CommandStatus.toString(status));
+                    resultCode = MessagingException.UNSPECIFIED_EXCEPTION;
                 }
             } finally {
                 resp.close();
@@ -1174,8 +1202,8 @@ public class EasSyncService extends AbstractSyncService {
      */
     private void sendMeetingResponseMail(Message msg, int response) {
         // Get the meeting information; we'd better have some...
+        if (msg.mMeetingInfo == null) return;
         PackedString meetingInfo = new PackedString(msg.mMeetingInfo);
-        if (meetingInfo == null) return;
 
         // This will come as "First Last" <box@server.blah>, so we use Address to
         // parse it into parts; we only need the email address part for the ics file
@@ -1619,9 +1647,24 @@ public class EasSyncService extends AbstractSyncService {
      */
     private ProvisionParser canProvision() throws IOException {
         Serializer s = new Serializer();
-        s.start(Tags.PROVISION_PROVISION).start(Tags.PROVISION_POLICIES);
-        s.start(Tags.PROVISION_POLICY).data(Tags.PROVISION_POLICY_TYPE, getPolicyType())
-            .end().end().end().done();
+        s.start(Tags.PROVISION_PROVISION);
+        if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+            // Send settings information in 14.0 and greater
+            s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
+            s.data(Tags.SETTINGS_MODEL, Build.MODEL);
+            //s.data(Tags.SETTINGS_IMEI, "");
+            //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
+            s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
+            //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
+            //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
+            //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
+            s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
+            s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
+        }
+        s.start(Tags.PROVISION_POLICIES);
+        s.start(Tags.PROVISION_POLICY).data(Tags.PROVISION_POLICY_TYPE, getPolicyType()).end();
+        s.end();  // PROVISION_POLICIES
+        s.end().done(); // PROVISION_PROVISION
         EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
@@ -1844,19 +1887,7 @@ public class EasSyncService extends AbstractSyncService {
                             }
                         }
                     } else if (isProvisionError(code)) {
-                        // If the sync error is a provisioning failure (perhaps policies changed),
-                        // let's try the provisioning procedure
-                        // Provisioning must only be attempted for the account mailbox - trying to
-                        // provision any other mailbox may result in race conditions and the
-                        // creation of multiple policy keys.
-                        if (!tryProvision()) {
-                            // Set the appropriate failure status
-                            mExitStatus = EXIT_SECURITY_FAILURE;
-                            return;
-                        } else {
-                            // If we succeeded, try again...
-                            continue;
-                        }
+                        throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                         return;
@@ -1916,7 +1947,27 @@ public class EasSyncService extends AbstractSyncService {
                     Thread.currentThread().setName(threadName);
                 }
             }
-         } catch (IOException e) {
+        } catch (CommandStatusException e) {
+            // If the sync error is a provisioning failure (perhaps policies changed),
+            // let's try the provisioning procedure
+            // Provisioning must only be attempted for the account mailbox - trying to
+            // provision any other mailbox may result in race conditions and the
+            // creation of multiple policy keys.
+            int status = e.mStatus;
+            if (CommandStatus.isNeedsProvisioning(status)) {
+                if (!tryProvision()) {
+                    // Set the appropriate failure status
+                    mExitStatus = EXIT_SECURITY_FAILURE;
+                    return;
+                }
+            } else if (CommandStatus.isDeniedAccess(status)) {
+                mExitStatus = EXIT_ACCESS_DENIED;
+                return;
+            } else {
+                userLog("Unexpected status: " + CommandStatus.toString(status));
+                mExitStatus = EXIT_EXCEPTION;
+            }
+        } catch (IOException e) {
             // We catch this here to send the folder sync status callback
             // A folder sync failed callback will get sent from run()
             try {
@@ -2006,7 +2057,7 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     private void runPingLoop() throws IOException, StaleFolderListException,
-            IllegalHeartbeatException {
+            IllegalHeartbeatException, CommandStatusException {
         int pingHeartbeat = mPingHeartbeat;
         userLog("runPingLoop");
         // Do push for all sync services here
@@ -2248,7 +2299,8 @@ public class EasSyncService extends AbstractSyncService {
 
     private int parsePingResult(InputStream is, ContentResolver cr,
             HashMap<String, Integer> errorMap)
-            throws IOException, StaleFolderListException, IllegalHeartbeatException {
+            throws IOException, StaleFolderListException, IllegalHeartbeatException,
+                CommandStatusException {
         PingParser pp = new PingParser(is, this);
         if (pp.parse()) {
             // True indicates some mailboxes need syncing...
@@ -2433,6 +2485,19 @@ public class EasSyncService extends AbstractSyncService {
                         } catch (EmptyStreamException e) {
                             userLog("Empty stream detected in GZIP response");
                             emptyStream = true;
+                        } catch (CommandStatusException e) {
+                            // TODO 14.1
+                            int status = e.mStatus;
+                            if (CommandStatus.isNeedsProvisioning(status)) {
+                                mExitStatus = EXIT_SECURITY_FAILURE;
+                            } else if (CommandStatus.isDeniedAccess(status)) {
+                                mExitStatus = EXIT_ACCESS_DENIED;
+                            } else if (CommandStatus.isTransientError(status)) {
+                                mExitStatus = EXIT_IO_ERROR;
+                            } else {
+                                mExitStatus = EXIT_EXCEPTION;
+                            }
+                            return;
                         }
                     } else {
                         emptyStream = true;
@@ -2581,6 +2646,9 @@ public class EasSyncService extends AbstractSyncService {
                         // Ask for a new folder list.  This should wake up the account mailbox; a
                         // security error in account mailbox should start the provisioning process
                         ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
+                        break;
+                    case EXIT_ACCESS_DENIED:
+                        status = EmailServiceStatus.ACCESS_DENIED;
                         break;
                     default:
                         status = EmailServiceStatus.REMOTE_EXCEPTION;
