@@ -96,7 +96,6 @@ import android.util.Log;
 import android.util.Xml;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1071,37 +1070,6 @@ public class EasSyncService extends AbstractSyncService {
         } catch (RemoteException e) {
             // No danger if the client is no longer around
         }
-    }
-
-    public File createUniqueFileInternal(String dir, String filename) {
-        File directory;
-        if (dir == null) {
-            directory = mContext.getFilesDir();
-        } else {
-            directory = new File(dir);
-        }
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-        File file = new File(directory, filename);
-        if (!file.exists()) {
-            return file;
-        }
-        // Get the extension of the file, if any.
-        int index = filename.lastIndexOf('.');
-        String name = filename;
-        String extension = "";
-        if (index != -1) {
-            name = filename.substring(0, index);
-            extension = filename.substring(index);
-        }
-        for (int i = 2; i < Integer.MAX_VALUE; i++) {
-            file = new File(directory, name + '-' + i + extension);
-            if (!file.exists()) {
-                return file;
-            }
-        }
-        return null;
     }
 
     /**
