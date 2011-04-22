@@ -28,7 +28,6 @@ import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Base64;
 
-import java.io.File;
 import java.io.IOException;
 
 /**
@@ -48,48 +47,6 @@ public class EasSyncServiceTests extends AndroidTestCase {
     public void setUp() throws Exception {
         super.setUp();
         mMockContext = getContext();
-    }
-
-   /**
-     * Test that our unique file name algorithm works as expected.
-     * @throws IOException
-     */
-    public void testCreateUniqueFile() throws IOException {
-        // Delete existing files, if they exist
-        EasSyncService svc = new EasSyncService();
-        svc.mContext = mMockContext;
-        try {
-            String fileName = "A11achm3n1.doc";
-            File uniqueFile = svc.createUniqueFileInternal(null, fileName);
-            assertEquals(fileName, uniqueFile.getName());
-            if (uniqueFile.createNewFile()) {
-                uniqueFile = svc.createUniqueFileInternal(null, fileName);
-                assertEquals("A11achm3n1-2.doc", uniqueFile.getName());
-                if (uniqueFile.createNewFile()) {
-                    uniqueFile = svc.createUniqueFileInternal(null, fileName);
-                    assertEquals("A11achm3n1-3.doc", uniqueFile.getName());
-                }
-           }
-            fileName = "A11achm3n1";
-            uniqueFile = svc.createUniqueFileInternal(null, fileName);
-            assertEquals(fileName, uniqueFile.getName());
-            if (uniqueFile.createNewFile()) {
-                uniqueFile = svc.createUniqueFileInternal(null, fileName);
-                assertEquals("A11achm3n1-2", uniqueFile.getName());
-            }
-        } finally {
-            // These are the files that should be created earlier in the test.  Make sure
-            // they are deleted for the next go-around
-            File directory = getContext().getFilesDir();
-            String[] fileNames = new String[] {"A11achm3n1.doc", "A11achm3n1-2.doc", "A11achm3n1"};
-            int length = fileNames.length;
-            for (int i = 0; i < length; i++) {
-                File file = new File(directory, fileNames[i]);
-                if (file.exists()) {
-                    file.delete();
-                }
-            }
-        }
     }
 
     public void testAddHeaders() {
