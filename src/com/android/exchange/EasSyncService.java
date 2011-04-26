@@ -1641,8 +1641,7 @@ public class EasSyncService extends AbstractSyncService {
     /**
      * Obtain a set of policies from the server and determine whether those policies are supported
      * by the device.
-     * @return the ProvisionParser (holds policies and key) if we receive policies and they are
-     * supported by the device; null otherwise
+     * @return the ProvisionParser (holds policies and key) if we receive policies; null otherwise
      * @throws IOException
      */
     private ProvisionParser canProvision() throws IOException {
@@ -1674,11 +1673,7 @@ public class EasSyncService extends AbstractSyncService {
                 if (pp.parse()) {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
                     // policies.  If others are required, hasSupportablePolicySet will be false
-                    if (pp.hasSupportablePolicySet()) {
-                        // If the policies are supportable (in this context, meaning there are no
-                        // completely unimplemented policies required), return the parser itself
-                        return pp;
-                    } else {
+                    if (!pp.hasSupportablePolicySet())  {
                         // Try to acknowledge using the "partial" status (i.e. we can partially
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
@@ -1687,11 +1682,9 @@ public class EasSyncService extends AbstractSyncService {
                         // Return either the parser (success) or null (failure)
                         if (policyKey != null) {
                             pp.clearUnsupportedPolicies();
-                            return pp;
-                        } else {
-                            return null;
                         }
                     }
+                    return pp;
                 }
             }
         } finally {

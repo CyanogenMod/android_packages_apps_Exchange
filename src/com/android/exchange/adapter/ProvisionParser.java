@@ -17,15 +17,21 @@ package com.android.exchange.adapter;
 
 import com.android.emailcommon.service.PolicySet;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.ExchangeService;
+import com.android.exchange.R;
 import com.android.exchange.SecurityPolicyDelegate;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
+import android.content.Context;
+import android.content.res.Resources;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 
 /**
  * Parse the result of the Provision command
@@ -38,6 +44,9 @@ public class ProvisionParser extends Parser {
     String mPolicyKey = null;
     boolean mRemoteWipe = false;
     boolean mIsSupportable = true;
+    // An array of string resource id's describing policies that are unsupported by the device/app
+    String[] mUnsupportedPolicies;
+    boolean smimeRequired = false;
 
     public ProvisionParser(InputStream in, EasSyncService service) throws IOException {
         super(in);
@@ -63,6 +72,11 @@ public class ProvisionParser extends Parser {
     public void clearUnsupportedPolicies() {
         mPolicySet = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicySet);
         mIsSupportable = true;
+        mUnsupportedPolicies = null;
+    }
+
+    public String[] getUnsupportedPolicies() {
+        return mUnsupportedPolicies;
     }
 
     private void parseProvisionDocWbxml() throws IOException {
@@ -75,6 +89,7 @@ public class ProvisionParser extends Parser {
         int passwordComplexChars = 0;
         boolean encryptionRequired = false;
         boolean encryptionRequiredExternal = false;
+        ArrayList<Integer> unsupportedList = new ArrayList<Integer>();
 
         while (nextTag(Tags.PROVISION_EAS_PROVISION_DOC) != END) {
             boolean tagIsSupported = true;
@@ -128,12 +143,58 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_ALLOW_INTERNET_SHARING:
                     if (getValueInt() == 0) {
                         tagIsSupported = false;
+                        int res = 0;
+                        switch(tag) {
+                            case Tags.PROVISION_ATTACHMENTS_ENABLED:
+                                res = R.string.policy_dont_allow_attachments;
+                                break;
+                            case Tags.PROVISION_ALLOW_STORAGE_CARD:
+                                res = R.string.policy_dont_allow_storage_cards;
+                                break;
+                            case Tags.PROVISION_ALLOW_CAMERA:
+                                res = R.string.policy_dont_allow_camera;
+                                break;
+                            case Tags.PROVISION_ALLOW_UNSIGNED_APPLICATIONS:
+                                res = R.string.policy_dont_allow_unsigned_apps;
+                                break;
+                            case Tags.PROVISION_ALLOW_UNSIGNED_INSTALLATION_PACKAGES:
+                                res = R.string.policy_dont_allow_unsigned_installers;
+                                break;
+                            case Tags.PROVISION_ALLOW_WIFI:
+                                res = R.string.policy_dont_allow_wifi;
+                                break;
+                            case Tags.PROVISION_ALLOW_TEXT_MESSAGING:
+                                res = R.string.policy_dont_allow_text_messaging;
+                                break;
+                            case Tags.PROVISION_ALLOW_POP_IMAP_EMAIL:
+                                res = R.string.policy_dont_allow_pop_imap;
+                                break;
+                            case Tags.PROVISION_ALLOW_IRDA:
+                                res = R.string.policy_dont_allow_irda;
+                                break;
+                            case Tags.PROVISION_ALLOW_HTML_EMAIL:
+                                res = R.string.policy_dont_allow_html;
+                                break;
+                            case Tags.PROVISION_ALLOW_BROWSER:
+                                res = R.string.policy_dont_allow_browser;
+                                break;
+                            case Tags.PROVISION_ALLOW_CONSUMER_EMAIL:
+                                res = R.string.policy_dont_allow_consumer_email;
+                                break;
+                            case Tags.PROVISION_ALLOW_INTERNET_SHARING:
+                                res = R.string.policy_dont_allow_internet_sharing;
+                                break;
+                        }
+                        if (res > 0) {
+                            unsupportedList.add(res);
+                        }
                     }
                     break;
                 // Bluetooth: 0 = no bluetooth; 1 = only hands-free; 2 = allowed
                 case Tags.PROVISION_ALLOW_BLUETOOTH:
                     if (getValueInt() != 2) {
                         tagIsSupported = false;
+                        unsupportedList.add(R.string.policy_bluetooth_restricted);
                     }
                     break;
                 // We may now support device (internal) encryption; we'll check this capability
@@ -160,12 +221,34 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
                     if (getValueInt() == 1) {
                         tagIsSupported = false;
+                        int res = 0;
+                        switch(tag) {
+                            case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
+                                res = R.string.policy_enable_password_recovery;
+                                break;
+                            case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
+                            case Tags.PROVISION_REQUIRE_ENCRYPTION_SMIME_ALGORITHM:
+                            case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
+                            case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
+                                if (!smimeRequired) {
+                                    res = R.string.policy_require_smime;
+                                    smimeRequired = true;
+                                }
+                                break;
+                            case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
+                                res = R.string.policy_require_manual_sync_roaming;
+                                break;
+                        }
+                        if (res > 0) {
+                            unsupportedList.add(res);
+                        }
                     }
                     break;
                 // The following, if greater than zero, can't be supported at the moment
                 case Tags.PROVISION_MAX_ATTACHMENT_SIZE:
                     if (getValueInt() > 0) {
                         tagIsSupported = false;
+                        unsupportedList.add(R.string.policy_max_attachment_size);
                     }
                     break;
                 // Complex characters are supported
@@ -185,6 +268,11 @@ public class ProvisionParser extends Parser {
                     // Parse and throw away the content
                     if (specifiesApplications(tag)) {
                         tagIsSupported = false;
+                        if (tag == Tags.PROVISION_UNAPPROVED_IN_ROM_APPLICATION_LIST) {
+                            unsupportedList.add(R.string.policy_app_blacklist);
+                        } else {
+                            unsupportedList.add(R.string.policy_app_whitelist);
+                        }
                     }
                     break;
                 // NOTE: We can support these entirely within the email application if we choose
@@ -193,7 +281,12 @@ public class ProvisionParser extends Parser {
                     // 0 indicates no specified filter
                     if (getValueInt() != 0) {
                         tagIsSupported = false;
-                    }
+                        if (tag == Tags.PROVISION_MAX_CALENDAR_AGE_FILTER) {
+                            unsupportedList.add(R.string.policy_max_calendar_age);
+                        } else {
+                            unsupportedList.add(R.string.policy_max_email_age);
+                        }
+                     }
                     break;
                 // NOTE: We can support these entirely within the email application if we choose
                 case Tags.PROVISION_MAX_EMAIL_BODY_TRUNCATION_SIZE:
@@ -202,6 +295,11 @@ public class ProvisionParser extends Parser {
                     // -1 indicates no required truncation
                     if (!value.equals("-1")) {
                         tagIsSupported = false;
+                        if (tag == Tags.PROVISION_MAX_EMAIL_BODY_TRUNCATION_SIZE) {
+                            unsupportedList.add(R.string.policy_text_truncation);
+                        } else {
+                            unsupportedList.add(R.string.policy_html_truncation);
+                        }
                     }
                     break;
                 default:
@@ -222,6 +320,19 @@ public class ProvisionParser extends Parser {
         if (!SecurityPolicyDelegate.isSupported(mService.mContext, mPolicySet)) {
             log("SecurityPolicy reports PolicySet not supported.");
             mIsSupportable = false;
+            unsupportedList.add(R.string.policy_require_encryption);
+        }
+
+        if (!unsupportedList.isEmpty()) {
+            mUnsupportedPolicies = new String[unsupportedList.size()];
+            int i = 0;
+            Context context = ExchangeService.getContext();
+            if (context != null) {
+                Resources resources = context.getResources();
+                for (int res: unsupportedList) {
+                    mUnsupportedPolicies[i++] = resources.getString(res);
+                }
+            }
         }
     }
 
