@@ -212,8 +212,14 @@ public class ProvisionParser extends Parser {
                         encryptionRequiredExternal = true;
                     }
                     break;
-                // The following policies, if true, can't be supported at the moment
+                // We are allowed to accept policies, regardless of value of this tag
+                // TODO: When we DO support a recovery password, we need to store the value in
+                // the account (so we know to utilize it)
                 case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
+                    // Read, but ignore, value
+                    getValueInt();
+                    break;
+                // The following policies, if true, can't be supported at the moment
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
@@ -223,9 +229,6 @@ public class ProvisionParser extends Parser {
                         tagIsSupported = false;
                         int res = 0;
                         switch(tag) {
-                            case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
-                                res = R.string.policy_enable_password_recovery;
-                                break;
                             case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
                             case Tags.PROVISION_REQUIRE_ENCRYPTION_SMIME_ALGORITHM:
                             case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
