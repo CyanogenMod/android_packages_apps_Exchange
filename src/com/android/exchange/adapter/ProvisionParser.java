@@ -15,9 +15,9 @@
 
 package com.android.exchange.adapter;
 
+import com.android.emailcommon.service.PolicySet;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.SecurityPolicyDelegate;
-import com.android.emailcommon.service.PolicySet;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -151,8 +151,12 @@ public class ProvisionParser extends Parser {
                         encryptionRequiredExternal = true;
                     }
                     break;
-                // The following policies, if true, can't be supported at the moment
+                // We are allowed to accept a policy, regardless of value of this tag
                 case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
+                    // Read, but ignore, value
+                    getValueInt();
+                    break;
+                // The following policies, if true, can't be supported at the moment
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
