@@ -472,10 +472,6 @@ public class ExchangeService extends Service implements Runnable {
             mCallbackList.register(cb);
         }
 
-        public void moveMessage(long messageId, long mailboxId) throws RemoteException {
-            sendMessageRequest(new MessageMoveRequest(messageId, mailboxId));
-        }
-
         /**
          * Delete PIM (calendar, contacts) data for the specified account
          *
