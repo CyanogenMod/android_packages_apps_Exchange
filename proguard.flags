@@ -17,3 +17,7 @@
 -keepclasseswithmembers class com.android.exchange.CalendarSyncEnabler {
   public <init>(android.content.Context);
 }
+
+-keepclasseswithmembers class com.android.exchange.provider.MailboxUtilities {
+  *** setFlagsAndChildrensParentKey(android.content.Context, java.lang.String, java.lang.String);
+}
