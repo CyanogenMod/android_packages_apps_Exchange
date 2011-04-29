@@ -29,6 +29,7 @@ import com.android.exchange.ExchangeService;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.exchange.utility.Duration;
 
+import android.accounts.Account;
 import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
@@ -125,12 +126,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     private static final ContentProviderOperation PLACEHOLDER_OPERATION =
         ContentProviderOperation.newInsert(Uri.EMPTY).build();
 
-    private static final Uri EVENTS_URI = asSyncAdapter(Events.CONTENT_URI);
-    private static final Uri ATTENDEES_URI = asSyncAdapter(Attendees.CONTENT_URI);
-    private static final Uri EXTENDED_PROPERTIES_URI =
-        asSyncAdapter(ExtendedProperties.CONTENT_URI);
-    private static final Uri REMINDERS_URI = asSyncAdapter(Reminders.CONTENT_URI);
-
     private static final Object sSyncKeyLock = new Object();
 
     private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
@@ -196,10 +191,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     public void wipe() {
         // Delete the calendar associated with this account
         // CalendarProvider2 does NOT handle selection arguments in deletions
-        mContentResolver.delete(Calendars.CONTENT_URI, Calendars._SYNC_ACCOUNT +
-                "=" + DatabaseUtils.sqlEscapeString(mEmailAddress) + " AND " +
-                Calendars._SYNC_ACCOUNT_TYPE + "=" +
-                DatabaseUtils.sqlEscapeString(AccountManagerTypes.TYPE_EXCHANGE), null);
+        mContentResolver.delete(
+                asSyncAdapter(Calendars.CONTENT_URI, mEmailAddress,
+                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                Calendars._SYNC_ACCOUNT + "=" + DatabaseUtils.sqlEscapeString(mEmailAddress)
+                        + " AND " + Calendars._SYNC_ACCOUNT_TYPE + "="
+                        + DatabaseUtils.sqlEscapeString(AccountManagerTypes.TYPE_EXCHANGE), null);
         // Invalidate our calendar observers
         ExchangeService.unregisterCalendarObservers();
     }
@@ -220,8 +217,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         return p.parse();
     }
 
-    static Uri asSyncAdapter(Uri uri) {
-        return uri.buildUpon().appendQueryParameter(Calendar.CALLER_IS_SYNCADAPTER, "true").build();
+    static Uri asSyncAdapter(Uri uri, String account, String accountType) {
+        return uri.buildUpon().appendQueryParameter(Calendar.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
+                .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
     }
 
     /**
@@ -245,8 +244,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             ContentProviderClient client = mService.mContentResolver
                     .acquireContentProviderClient(Calendar.CONTENT_URI);
             try {
-                byte[] data = SyncStateContract.Helpers.get(client,
-                        asSyncAdapter(Calendar.SyncState.CONTENT_URI), mAccountManagerAccount);
+                byte[] data = SyncStateContract.Helpers.get(
+                        client,
+                        asSyncAdapter(Calendar.SyncState.CONTENT_URI, mEmailAddress,
+                                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount);
                 if (data == null || data.length == 0) {
                     // Initialize the SyncKey
                     setSyncKey("0", false);
@@ -273,8 +274,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 ContentProviderClient client = mService.mContentResolver
                         .acquireContentProviderClient(Calendar.CONTENT_URI);
                 try {
-                    SyncStateContract.Helpers.set(client,
-                            asSyncAdapter(Calendar.SyncState.CONTENT_URI), mAccountManagerAccount,
+                    SyncStateContract.Helpers.set(
+                            client,
+                            asSyncAdapter(Calendar.SyncState.CONTENT_URI, mEmailAddress,
+                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount,
                             syncKey.getBytes());
                     userLog("SyncKey set to ", syncKey, " in CalendarProvider");
                 } catch (RemoteException e) {
@@ -433,9 +436,13 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                             dtStamp = getValue();
                             continue;
                         } else if (tag == Tags.CALENDAR_ATTENDEES) {
-                            // This is an attendees-only update; just delete/re-add attendees
+                            // This is an attendees-only update; just
+                            // delete/re-add attendees
                             mBindArgument[0] = Long.toString(id);
-                            ops.add(ContentProviderOperation.newDelete(ATTENDEES_URI)
+                            ops.add(ContentProviderOperation
+                                    .newDelete(
+                                            asSyncAdapter(Attendees.CONTENT_URI, mEmailAddress,
+                                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
                                     .withSelection(ATTENDEES_EXCEPT_ORGANIZER, mBindArgument)
                                     .build());
                             eventId = id;
@@ -659,8 +666,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 }
 
                 if (isValidEventValues(cv)) {
-                    ops.set(eventOffset, ContentProviderOperation
-                            .newInsert(EVENTS_URI).withValues(cv).build());
+                    ops.set(eventOffset,
+                            ContentProviderOperation
+                                    .newInsert(
+                                            asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
+                                    .withValues(cv).build());
                 } else {
                     // If we can't add this event (it's invalid), remove all of the inserts
                     // we've built for it
@@ -1186,16 +1197,22 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     ContentValues cv = new ContentValues();
                     cv.put(Events._SYNC_DIRTY, 0);
                     cv.put(Events._SYNC_MARK, 0);
-                    for (long eventId: mUploadedIdList) {
-                        mContentResolver.update(ContentUris.withAppendedId(EVENTS_URI, eventId), cv,
+                    for (long eventId : mUploadedIdList) {
+                        mContentResolver.update(
+                                asSyncAdapter(
+                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv,
                                 null, null);
                     }
                 }
                 // Delete events marked for deletion
                 if (!mDeletedIdList.isEmpty()) {
-                    for (long eventId: mDeletedIdList) {
-                        mContentResolver.delete(ContentUris.withAppendedId(EVENTS_URI, eventId),
-                                null, null);
+                    for (long eventId : mDeletedIdList) {
+                        mContentResolver.delete(
+                                asSyncAdapter(
+                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
+                                null);
                     }
                 }
                 // Send any queued up email (invitations replies, etc.)
@@ -1242,10 +1259,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     cv.put(Events._SYNC_DATA, clientId);
                     long id = c.getLong(0);
                     // Write the serverId into the Event
-                    mOps.add(ContentProviderOperation.newUpdate(
-                            ContentUris.withAppendedId(EVENTS_URI, id))
-                                    .withValues(cv)
-                                    .build());
+                    mOps.add(ContentProviderOperation
+                            .newUpdate(
+                                    asSyncAdapter(
+                                            ContentUris.withAppendedId(Events.CONTENT_URI, id),
+                                            mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
+                            .withValues(cv).build());
                     userLog("New event " + clientId + " was given serverId: " + serverId);
                 }
             } finally {
@@ -1319,28 +1338,30 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
         public void newAttendee(ContentValues cv, int eventStart) {
             add(ContentProviderOperation
-                    .newInsert(ATTENDEES_URI)
-                    .withValues(cv)
-                    .withValueBackReference(Attendees.EVENT_ID, eventStart)
-                    .build());
+                    .newInsert(asSyncAdapter(Attendees.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)).withValues(cv)
+                    .withValueBackReference(Attendees.EVENT_ID, eventStart).build());
         }
 
         public void updatedAttendee(ContentValues cv, long id) {
             cv.put(Attendees.EVENT_ID, id);
-            add(ContentProviderOperation.newInsert(ATTENDEES_URI).withValues(cv).build());
+            add(ContentProviderOperation.newInsert(asSyncAdapter(Attendees.CONTENT_URI,
+                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)).withValues(cv).build());
         }
 
         public void newException(ContentValues cv) {
-            add(ContentProviderOperation.newInsert(EVENTS_URI).withValues(cv).build());
+            add(ContentProviderOperation.newInsert(
+                    asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)).withValues(cv).build());
         }
 
         public void newExtendedProperty(String name, String value) {
             add(ContentProviderOperation
-                    .newInsert(EXTENDED_PROPERTIES_URI)
+                    .newInsert(asSyncAdapter(ExtendedProperties.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
                     .withValue(ExtendedProperties.NAME, name)
                     .withValue(ExtendedProperties.VALUE, value)
-                    .withValueBackReference(ExtendedProperties.EVENT_ID, mEventStart)
-                    .build());
+                    .withValueBackReference(ExtendedProperties.EVENT_ID, mEventStart).build());
         }
 
         public void updatedExtendedProperty(String name, String value, long id) {
@@ -1359,13 +1380,16 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     c.close();
                 }
             }
-            // Either do an update or an insert, depending on whether one already exists
+            // Either do an update or an insert, depending on whether one
+            // already exists
             if (extendedPropertyId >= 0) {
                 add(ContentProviderOperation
-                        .newUpdate(ContentUris.withAppendedId(EXTENDED_PROPERTIES_URI,
-                                extendedPropertyId))
-                        .withValue(ExtendedProperties.VALUE, value)
-                        .build());
+                        .newUpdate(
+                                ContentUris.withAppendedId(
+                                        asSyncAdapter(ExtendedProperties.CONTENT_URI,
+                                                mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                        extendedPropertyId))
+                        .withValue(ExtendedProperties.VALUE, value).build());
             } else {
                 newExtendedProperty(name, value);
             }
@@ -1373,11 +1397,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
         public void newReminder(int mins, int eventStart) {
             add(ContentProviderOperation
-                    .newInsert(REMINDERS_URI)
+                    .newInsert(asSyncAdapter(Reminders.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
                     .withValue(Reminders.MINUTES, mins)
                     .withValue(Reminders.METHOD, Reminders.METHOD_ALERT)
-                    .withValueBackReference(ExtendedProperties.EVENT_ID, eventStart)
-                    .build());
+                    .withValueBackReference(ExtendedProperties.EVENT_ID, eventStart).build());
         }
 
         public void newReminder(int mins) {
@@ -1385,12 +1409,15 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         }
 
         public void delete(long id, String syncId) {
+            add(ContentProviderOperation.newDelete(
+                    asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, id),
+                            mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)).build());
+            // Delete the exceptions for this Event (CalendarProvider doesn't do
+            // this)
             add(ContentProviderOperation
-                    .newDelete(ContentUris.withAppendedId(EVENTS_URI, id)).build());
-            // Delete the exceptions for this Event (CalendarProvider doesn't do this)
-            add(ContentProviderOperation
-                    .newDelete(EVENTS_URI).withSelection(Events.ORIGINAL_EVENT + "=?",
-                            new String[] {syncId}).build());
+                    .newDelete(asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
+                    .withSelection(Events.ORIGINAL_EVENT + "=?", new String[] {syncId}).build());
         }
 
         public void execute() {
@@ -1472,7 +1499,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     ContentValues cv = new ContentValues();
                     cv.put(Events.STATUS, Events.STATUS_CANCELED);
                     mService.mContentResolver.update(
-                            ContentUris.withAppendedId(EVENTS_URI, eventId), cv, null, null);
+                            asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv, null,
+                            null);
                 }
             } else {
                 s.data(Tags.CALENDAR_EXCEPTION_IS_DELETED, "0");
@@ -1676,7 +1705,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             // Get busy status from Attendees table
             long eventId = entityValues.getAsLong(Events._ID);
             int busyStatus = CalendarUtilities.BUSY_STATUS_TENTATIVE;
-            Cursor c = mService.mContentResolver.query(ATTENDEES_URI,
+            Cursor c = mService.mContentResolver.query(
+                    asSyncAdapter(Attendees.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
                     ATTENDEE_STATUS_PROJECTION, EVENT_AND_EMAIL,
                     new String[] {Long.toString(eventId), mEmailAddress}, null);
             if (c != null) {
@@ -1753,8 +1784,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 while (c.moveToNext()) {
                     // Mark the parents of dirty exceptions
                     String serverId = c.getString(0);
-                    int cnt = cr.update(EVENTS_URI, cv, SERVER_ID_AND_CALENDAR_ID,
-                            new String[] {serverId, mCalendarIdString});
+                    int cnt = cr.update(
+                            asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv,
+                            SERVER_ID_AND_CALENDAR_ID, new String[] {
+                                    serverId, mCalendarIdString
+                            });
                     // Keep track of any orphaned exceptions
                     if (cnt == 0) {
                         orphanedExceptions.add(c.getLong(1));
@@ -1764,17 +1799,21 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 c.close();
             }
 
-           // Delete any orphaned exceptions
-            for (long orphan: orphanedExceptions) {
+            // Delete any orphaned exceptions
+            for (long orphan : orphanedExceptions) {
                 userLog(TAG, "Deleted orphaned exception: " + orphan);
-                cr.delete(ContentUris.withAppendedId(EVENTS_URI, orphan), null, null);
+                cr.delete(
+                        asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, orphan),
+                                mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null, null);
             }
             orphanedExceptions.clear();
 
-            // Now we can go through dirty/marked top-level events and send them back to the server
-            EntityIterator eventIterator = EventsEntity.newEntityIterator(
-                    cr.query(EVENTS_URI, null, DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR,
-                            mCalendarIdArgument, null), cr);
+            // Now we can go through dirty/marked top-level events and send them
+            // back to the server
+            EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
+                    asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
+                    DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, mCalendarIdArgument, null), cr);
             ContentValues cidValues = new ContentValues();
 
             try {
@@ -1834,8 +1873,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         // And save it in the Event as the local id
                         cidValues.put(Events._SYNC_DATA, clientId);
                         cidValues.put(Events._SYNC_VERSION, "0");
-                        cr.update(ContentUris.withAppendedId(EVENTS_URI, eventId), cidValues,
-                                null, null);
+                        cr.update(
+                                asSyncAdapter(
+                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                cidValues, null, null);
                     } else {
                         if (entityValues.getAsInteger(Calendar.EventsColumns.DELETED) == 1) {
                             userLog("Deleting event with serverId: ", serverId);
@@ -1868,8 +1910,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         cidValues.put(Events._SYNC_VERSION, version);
                         // Also save in entityValues so that we send it this time around
                         entityValues.put(Events._SYNC_VERSION, version);
-                        cr.update(ContentUris.withAppendedId(EVENTS_URI, eventId), cidValues,
-                                null, null);
+                        cr.update(
+                                asSyncAdapter(
+                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                cidValues, null, null);
                         s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, serverId);
                     }
                     s.start(Tags.SYNC_APPLICATION_DATA);
@@ -1878,9 +1923,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
                     // Now, the hard part; find exceptions for this event
                     if (serverId != null) {
-                        EntityIterator exIterator = EventsEntity.newEntityIterator(
-                                cr.query(EVENTS_URI, null, ORIGINAL_EVENT_AND_CALENDAR,
-                                        new String[] {serverId, mCalendarIdString}, null), cr);
+                        EntityIterator exIterator = EventsEntity.newEntityIterator(cr.query(
+                                asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
+                                ORIGINAL_EVENT_AND_CALENDAR, new String[] {
+                                        serverId, mCalendarIdString
+                                }, null), cr);
                         boolean exFirst = true;
                         while (exIterator.hasNext()) {
                             Entity exEntity = exIterator.next();

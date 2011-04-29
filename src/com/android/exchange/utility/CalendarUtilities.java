@@ -1240,7 +1240,9 @@ public class CalendarUtilities {
         cv.put(Calendars.ACCESS_LEVEL, Calendars.OWNER_ACCESS);
         cv.put(Calendars.OWNER_ACCOUNT, account.mEmailAddress);
 
-        Uri uri = service.mContentResolver.insert(Calendars.CONTENT_URI, cv);
+        Uri uri = service.mContentResolver.insert(
+                asSyncAdapter(Calendars.CONTENT_URI, account.mEmailAddress,
+                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv);
         // We save the id of the calendar into mSyncStatus
         if (uri != null) {
             String stringId = uri.getPathSegments().get(1);
@@ -1248,6 +1250,13 @@ public class CalendarUtilities {
             return Long.parseLong(stringId);
         }
         return -1;
+    }
+
+    static Uri asSyncAdapter(Uri uri, String account, String accountType) {
+        return uri.buildUpon()
+                .appendQueryParameter(android.provider.Calendar.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
+                .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
     }
 
     /**
@@ -1720,32 +1729,36 @@ public class CalendarUtilities {
     }
 
     /**
-     * Create a Message for an Event that can be retrieved from CalendarProvider by its unique id
+     * Create a Message for an Event that can be retrieved from CalendarProvider
+     * by its unique id
+     *
      * @param cr a content resolver that can be used to query for the Event
      * @param eventId the unique id of the Event
-     * @param messageFlag the Message.FLAG_XXX constant indicating the type of email to be sent
-     * @param the unique id of this Event, or null if it can be retrieved from the Event
+     * @param messageFlag the Message.FLAG_XXX constant indicating the type of
+     *            email to be sent
+     * @param the unique id of this Event, or null if it can be retrieved from
+     *            the Event
      * @param the user's account
-     * @param requireAddressees if true (the default), no Message is returned if there aren't any
-     *  addressees; if false, return the Message regardless (addressees will be filled in later)
+     * @param requireAddressees if true (the default), no Message is returned if
+     *            there aren't any addressees; if false, return the Message
+     *            regardless (addressees will be filled in later)
      * @return a Message with many fields pre-filled (more later)
-     * @throws RemoteException if there is an issue retrieving the Event from CalendarProvider
+     * @throws RemoteException if there is an issue retrieving the Event from
+     *             CalendarProvider
      */
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
             int messageFlag, String uid, Account account) throws RemoteException {
         return createMessageForEventId(context, eventId, messageFlag, uid, account,
-                null /*specifiedAttendee*/);
+                null /* specifiedAttendee */);
     }
 
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
             int messageFlag, String uid, Account account, String specifiedAttendee)
             throws RemoteException {
         ContentResolver cr = context.getContentResolver();
-        EntityIterator eventIterator =
-            EventsEntity.newEntityIterator(
-                    cr.query(ContentUris.withAppendedId(Events.CONTENT_URI.buildUpon()
-                            .appendQueryParameter(android.provider.Calendar.CALLER_IS_SYNCADAPTER,
-                            "true").build(), eventId), null, null, null, null), cr);
+        EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
+                ContentUris.withAppendedId(Events.CONTENT_URI, eventId), null, null, null, null),
+                cr);
         try {
             while (eventIterator.hasNext()) {
                 Entity entity = eventIterator.next();
