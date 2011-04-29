@@ -15,7 +15,7 @@
 
 package com.android.exchange.adapter;
 
-import com.android.emailcommon.service.PolicySet;
+import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
@@ -40,8 +40,8 @@ import java.util.ArrayList;
  */
 public class ProvisionParser extends Parser {
     private EasSyncService mService;
-    PolicySet mPolicySet = null;
-    String mPolicyKey = null;
+    Policy mPolicy = null;
+    String mSecuritySyncKey = null;
     boolean mRemoteWipe = false;
     boolean mIsSupportable = true;
     // An array of string resource id's describing policies that are unsupported by the device/app
@@ -53,12 +53,12 @@ public class ProvisionParser extends Parser {
         mService = service;
     }
 
-    public PolicySet getPolicySet() {
-        return mPolicySet;
+    public Policy getPolicy() {
+        return mPolicy;
     }
 
-    public String getPolicyKey() {
-        return mPolicyKey;
+    public String getSecuritySyncKey() {
+        return mSecuritySyncKey;
     }
 
     public boolean getRemoteWipe() {
@@ -66,11 +66,11 @@ public class ProvisionParser extends Parser {
     }
 
     public boolean hasSupportablePolicySet() {
-        return (mPolicySet != null) && mIsSupportable;
+        return (mPolicy != null) && mIsSupportable;
     }
 
     public void clearUnsupportedPolicies() {
-        mPolicySet = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicySet);
+        mPolicy = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicy);
         mIsSupportable = true;
         mUnsupportedPolicies = null;
     }
@@ -79,16 +79,13 @@ public class ProvisionParser extends Parser {
         return mUnsupportedPolicies;
     }
 
+    private void setPolicy(Policy policy) {
+        policy.validate();
+        mPolicy = policy;
+    }
+
     private void parseProvisionDocWbxml() throws IOException {
-        int minPasswordLength = 0;
-        int passwordMode = PolicySet.PASSWORD_MODE_NONE;
-        int maxPasswordFails = 0;
-        int maxScreenLockTime = 0;
-        int passwordExpirationDays = 0;
-        int passwordHistory = 0;
-        int passwordComplexChars = 0;
-        boolean encryptionRequired = false;
-        boolean encryptionRequiredExternal = false;
+        Policy policy = new Policy();
         ArrayList<Integer> unsupportedList = new ArrayList<Integer>();
 
         while (nextTag(Tags.PROVISION_EAS_PROVISION_DOC) != END) {
@@ -96,31 +93,31 @@ public class ProvisionParser extends Parser {
             switch (tag) {
                 case Tags.PROVISION_DEVICE_PASSWORD_ENABLED:
                     if (getValueInt() == 1) {
-                        if (passwordMode == PolicySet.PASSWORD_MODE_NONE) {
-                            passwordMode = PolicySet.PASSWORD_MODE_SIMPLE;
+                        if (policy.mPasswordMode == Policy.PASSWORD_MODE_NONE) {
+                            policy.mPasswordMode = Policy.PASSWORD_MODE_SIMPLE;
                         }
                     }
                     break;
                 case Tags.PROVISION_MIN_DEVICE_PASSWORD_LENGTH:
-                    minPasswordLength = getValueInt();
+                    policy.mPasswordMinLength = getValueInt();
                     break;
                 case Tags.PROVISION_ALPHA_DEVICE_PASSWORD_ENABLED:
                     if (getValueInt() == 1) {
-                        passwordMode = PolicySet.PASSWORD_MODE_STRONG;
+                        policy.mPasswordMode = Policy.PASSWORD_MODE_STRONG;
                     }
                     break;
                 case Tags.PROVISION_MAX_INACTIVITY_TIME_DEVICE_LOCK:
                     // EAS gives us seconds, which is, happily, what the PolicySet requires
-                    maxScreenLockTime = getValueInt();
+                    policy.mMaxScreenLockTime = getValueInt();
                     break;
                 case Tags.PROVISION_MAX_DEVICE_PASSWORD_FAILED_ATTEMPTS:
-                    maxPasswordFails = getValueInt();
+                    policy.mPasswordMaxFails = getValueInt();
                     break;
                 case Tags.PROVISION_DEVICE_PASSWORD_EXPIRATION:
-                    passwordExpirationDays = getValueInt();
+                    policy.mPasswordExpirationDays = getValueInt();
                     break;
                 case Tags.PROVISION_DEVICE_PASSWORD_HISTORY:
-                    passwordHistory = getValueInt();
+                    policy.mPasswordHistory = getValueInt();
                     break;
                 case Tags.PROVISION_ALLOW_SIMPLE_DEVICE_PASSWORD:
                     // Ignore this unless there's any MSFT documentation for what this means
@@ -201,7 +198,7 @@ public class ProvisionParser extends Parser {
                 // below with the call to SecurityPolicy.isSupported()
                 case Tags.PROVISION_REQUIRE_DEVICE_ENCRYPTION:
                     if (getValueInt() == 1) {
-                        encryptionRequired = true;
+                        policy.mRequireEncryption = true;
                     }
                     break;
                 // We may now support SD card (external) encryption; we'll check this capability
@@ -209,7 +206,7 @@ public class ProvisionParser extends Parser {
                 // PROVISION_DEVICE_ENCRYPTION_ENABLED really does refer to external storage.
                 case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
                     if (getValueInt() == 1) {
-                        encryptionRequiredExternal = true;
+                        policy.mRequireEncryptionExternal = true;
                     }
                     break;
                 // We are allowed to accept policies, regardless of value of this tag
@@ -256,7 +253,7 @@ public class ProvisionParser extends Parser {
                     break;
                 // Complex characters are supported
                 case Tags.PROVISION_MIN_DEVICE_PASSWORD_COMPLEX_CHARS:
-                    passwordComplexChars = getValueInt();
+                    policy.mPasswordComplexChars = getValueInt();
                     break;
                 // The following policies are moot; they allow functionality that we don't support
                 case Tags.PROVISION_ALLOW_DESKTOP_SYNC:
@@ -315,12 +312,11 @@ public class ProvisionParser extends Parser {
             }
         }
 
-        mPolicySet = new PolicySet(minPasswordLength, passwordMode,
-                maxPasswordFails, maxScreenLockTime, true, passwordExpirationDays, passwordHistory,
-                passwordComplexChars, encryptionRequired, encryptionRequiredExternal);
+        // Make sure policy settings are valid
+        setPolicy(policy);
 
         // We can only determine whether encryption is supported on device by using isSupported here
-        if (!SecurityPolicyDelegate.isSupported(mService.mContext, mPolicySet)) {
+        if (!SecurityPolicyDelegate.isSupported(mService.mContext, policy)) {
             log("SecurityPolicy reports PolicySet not supported.");
             mIsSupportable = false;
             unsupportedList.add(R.string.policy_require_encryption);
@@ -360,18 +356,8 @@ public class ProvisionParser extends Parser {
         return specifiesApplications;
     }
 
-    class ShadowPolicySet {
-        int mMinPasswordLength = 0;
-        int mPasswordMode = PolicySet.PASSWORD_MODE_NONE;
-        int mMaxPasswordFails = 0;
-        int mMaxScreenLockTime = 0;
-        int mPasswordExpiration = 0;
-        int mPasswordHistory = 0;
-        int mPasswordComplexChars = 0;
-    }
-
     /*package*/ void parseProvisionDocXml(String doc) throws IOException {
-        ShadowPolicySet sps = new ShadowPolicySet();
+        Policy policy = new Policy();
 
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -383,7 +369,7 @@ public class ProvisionParser extends Parser {
                 if (type == XmlPullParser.START_TAG) {
                     String tagName = parser.getName();
                     if (tagName.equals("wap-provisioningdoc")) {
-                        parseWapProvisioningDoc(parser, sps);
+                        parseWapProvisioningDoc(parser, policy);
                     }
                 }
             }
@@ -391,15 +377,13 @@ public class ProvisionParser extends Parser {
            throw new IOException();
         }
 
-        mPolicySet = new PolicySet(sps.mMinPasswordLength, sps.mPasswordMode, sps.mMaxPasswordFails,
-                sps.mMaxScreenLockTime, true, sps.mPasswordExpiration, sps.mPasswordHistory,
-                sps.mPasswordComplexChars, false, false);
+        setPolicy(policy);
     }
 
     /**
      * Return true if password is required; otherwise false.
      */
-    private boolean parseSecurityPolicy(XmlPullParser parser, ShadowPolicySet sps)
+    private boolean parseSecurityPolicy(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
         boolean passwordRequired = true;
         while (true) {
@@ -422,7 +406,7 @@ public class ProvisionParser extends Parser {
         return passwordRequired;
     }
 
-    private void parseCharacteristic(XmlPullParser parser, ShadowPolicySet sps)
+    private void parseCharacteristic(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
         boolean enforceInactivityTimer = true;
         while (true) {
@@ -436,9 +420,9 @@ public class ProvisionParser extends Parser {
                     if (name.equals("AEFrequencyValue")) {
                         if (enforceInactivityTimer) {
                             if (value.equals("0")) {
-                                sps.mMaxScreenLockTime = 1;
+                                policy.mMaxScreenLockTime = 1;
                             } else {
-                                sps.mMaxScreenLockTime = 60*Integer.parseInt(value);
+                                policy.mMaxScreenLockTime = 60*Integer.parseInt(value);
                             }
                         }
                     } else if (name.equals("AEFrequencyType")) {
@@ -447,16 +431,16 @@ public class ProvisionParser extends Parser {
                             enforceInactivityTimer = false;
                         }
                     } else if (name.equals("DeviceWipeThreshold")) {
-                        sps.mMaxPasswordFails = Integer.parseInt(value);
+                        policy.mPasswordMaxFails = Integer.parseInt(value);
                     } else if (name.equals("CodewordFrequency")) {
                         // Ignore; has no meaning for us
                     } else if (name.equals("MinimumPasswordLength")) {
-                        sps.mMinPasswordLength = Integer.parseInt(value);
+                        policy.mPasswordMinLength = Integer.parseInt(value);
                     } else if (name.equals("PasswordComplexity")) {
                         if (value.equals("0")) {
-                            sps.mPasswordMode = PolicySet.PASSWORD_MODE_STRONG;
+                            policy.mPasswordMode = Policy.PASSWORD_MODE_STRONG;
                         } else {
-                            sps.mPasswordMode = PolicySet.PASSWORD_MODE_SIMPLE;
+                            policy.mPasswordMode = Policy.PASSWORD_MODE_SIMPLE;
                         }
                     }
                 }
@@ -464,7 +448,7 @@ public class ProvisionParser extends Parser {
         }
     }
 
-    private void parseRegistry(XmlPullParser parser, ShadowPolicySet sps)
+    private void parseRegistry(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
       while (true) {
           int type = parser.nextTag();
@@ -473,13 +457,13 @@ public class ProvisionParser extends Parser {
           } else if (type == XmlPullParser.START_TAG) {
               String name = parser.getName();
               if (name.equals("characteristic")) {
-                  parseCharacteristic(parser, sps);
+                  parseCharacteristic(parser, policy);
               }
           }
       }
     }
 
-    private void parseWapProvisioningDoc(XmlPullParser parser, ShadowPolicySet sps)
+    private void parseWapProvisioningDoc(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
         while (true) {
             int type = parser.nextTag();
@@ -491,11 +475,11 @@ public class ProvisionParser extends Parser {
                     String atype = parser.getAttributeValue(null, "type");
                     if (atype.equals("SecurityPolicy")) {
                         // If a password isn't required, stop here
-                        if (!parseSecurityPolicy(parser, sps)) {
+                        if (!parseSecurityPolicy(parser, policy)) {
                             return;
                         }
                     } else if (atype.equals("Registry")) {
-                        parseRegistry(parser, sps);
+                        parseRegistry(parser, policy);
                         return;
                     }
                 }
@@ -522,7 +506,7 @@ public class ProvisionParser extends Parser {
                     mService.userLog("Policy type: ", policyType);
                     break;
                 case Tags.PROVISION_POLICY_KEY:
-                    mPolicyKey = getValue();
+                    mSecuritySyncKey = getValue();
                     break;
                 case Tags.PROVISION_STATUS:
                     mService.userLog("Policy status: ", getValue());

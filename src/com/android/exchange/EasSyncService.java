@@ -31,10 +31,10 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailcommon.service.PolicySet;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -690,7 +690,7 @@ public class EasSyncService extends AbstractSyncService {
                         // Set the proper result code and save the PolicySet in our Bundle
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
                         bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
-                                pp.getPolicySet());
+                                pp.getPolicy());
                     } else
                         // If not, set the proper code (the account will not be created)
                         resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
@@ -1581,12 +1581,12 @@ public class EasSyncService extends AbstractSyncService {
         ProvisionParser pp = canProvision();
         if (pp != null) {
             // Get the policies from ProvisionParser
-            PolicySet ps = pp.getPolicySet();
+            Policy policy = pp.getPolicy();
             // Update the account with a null policyKey (the key we've gotten is
             // temporary and cannot be used for syncing)
-            ps.writeAccount(mAccount, null, true, mContext);
+            Policy.clearAccountPolicy(mContext, mAccount);
             // Make sure that SecurityPolicy is up-to-date
-            SecurityPolicyDelegate.updatePolicies(mContext, mAccount.mId);
+            SecurityPolicyDelegate.policiesUpdated(mContext, mAccount.mId);
             if (pp.getRemoteWipe()) {
                 // We've gotten a remote wipe command
                 ExchangeService.alwaysLog("!!! Remote wipe request received");
@@ -1605,7 +1605,7 @@ public class EasSyncService extends AbstractSyncService {
                 // we wipe the device regardless of any errors in acknowledgment
                 try {
                     ExchangeService.alwaysLog("!!! Acknowledging remote wipe to server");
-                    acknowledgeRemoteWipe(pp.getPolicyKey());
+                    acknowledgeRemoteWipe(pp.getSecuritySyncKey());
                 } catch (Exception e) {
                     // Because remote wipe is such a high priority task, we don't want to
                     // circumvent it if there's an exception in acknowledgment
@@ -1614,13 +1614,14 @@ public class EasSyncService extends AbstractSyncService {
                 ExchangeService.alwaysLog("!!! Executing remote wipe");
                 SecurityPolicyDelegate.remoteWipe(mContext);
                 return false;
-            } else if (SecurityPolicyDelegate.isActive(mContext, ps)) {
+            } else if (SecurityPolicyDelegate.isActive(mContext, policy)) {
                 // See if the required policies are in force; if they are, acknowledge the policies
                 // to the server and get the final policy key
-                String policyKey = acknowledgeProvision(pp.getPolicyKey(), PROVISION_STATUS_OK);
-                if (policyKey != null) {
+                String securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                        PROVISION_STATUS_OK);
+                if (securitySyncKey != null) {
                     // Write the final policy key to the Account and say we've been successful
-                    ps.writeAccount(mAccount, policyKey, true, mContext);
+                    policy.setAccountPolicy(mContext, mAccount, securitySyncKey);
                     // Release any mailboxes that might be in a security hold
                     ExchangeService.releaseSecurityHold(mAccount);
                     return true;
@@ -1677,7 +1678,7 @@ public class EasSyncService extends AbstractSyncService {
                         // Try to acknowledge using the "partial" status (i.e. we can partially
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
-                        String policyKey = acknowledgeProvision(pp.getPolicyKey(),
+                        String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
                                 PROVISION_STATUS_PARTIAL);
                         // Return either the parser (success) or null (failure)
                         if (policyKey != null) {
@@ -1735,7 +1736,7 @@ public class EasSyncService extends AbstractSyncService {
                 ProvisionParser pp = new ProvisionParser(is, this);
                 if (pp.parse()) {
                     // Return the final policy key from the ProvisionParser
-                    return pp.getPolicyKey();
+                    return pp.getSecuritySyncKey();
                 }
             }
         } finally {
@@ -1913,8 +1914,8 @@ public class EasSyncService extends AbstractSyncService {
                 // error on the next POST, and start the security sequence over again
                 String key = mAccount.mSecuritySyncKey;
                 if (!TextUtils.isEmpty(key)) {
-                    PolicySet ps = new PolicySet(mAccount);
-                    if (!SecurityPolicyDelegate.isActive(mContext, ps)) {
+                    Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+                    if (!SecurityPolicyDelegate.isActive(mContext, policy)) {
                         cv.clear();
                         cv.put(AccountColumns.SECURITY_FLAGS, 0);
                         cv.putNull(AccountColumns.SECURITY_SYNC_KEY);

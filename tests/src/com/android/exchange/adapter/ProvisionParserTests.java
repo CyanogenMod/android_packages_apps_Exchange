@@ -16,7 +16,7 @@
 
 package com.android.exchange.adapter;
 
-import com.android.emailcommon.service.PolicySet;
+import com.android.emailcommon.provider.Policy;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -113,35 +113,35 @@ public class ProvisionParserTests extends SyncAdapterTestCase {
     public void testWapProvisionParser1() throws IOException {
          ProvisionParser parser = new ProvisionParser(mTestInputStream, getTestService());
         parser.parseProvisionDocXml(mWapProvisioningDoc1);
-        PolicySet ps = parser.getPolicySet();
-        assertNotNull(ps);
+        Policy policy = parser.getPolicy();
+        assertNotNull(policy);
         // Check the settings to make sure they were parsed correctly
-        assertEquals(5*60, ps.getMaxScreenLockTimeForTest());  // Screen lock time is in seconds
-        assertEquals(8, ps.getMinPasswordLengthForTest());
-        assertEquals(PolicySet.PASSWORD_MODE_STRONG, ps.getPasswordModeForTest());
-        assertEquals(20, ps.getMaxPasswordFailsForTest());
-        assertTrue(ps.isRequireRemoteWipeForTest());
+        assertEquals(5*60, policy.mMaxScreenLockTime);  // Screen lock time is in seconds
+        assertEquals(8, policy.mPasswordMinLength);
+        assertEquals(Policy.PASSWORD_MODE_STRONG, policy.mPasswordMode);
+        assertEquals(20, policy.mPasswordMaxFails);
+        assertTrue(policy.mRequireRemoteWipe);
     }
 
     public void testWapProvisionParser2() throws IOException {
         ProvisionParser parser = new ProvisionParser(mTestInputStream, getTestService());
         parser.parseProvisionDocXml(mWapProvisioningDoc2);
-        PolicySet ps = parser.getPolicySet();
-        assertNotNull(ps);
+        Policy policy = parser.getPolicy();
+        assertNotNull(policy);
         // Password should be set to none; others are ignored in this case.
-        assertEquals(PolicySet.PASSWORD_MODE_NONE, ps.getPasswordModeForTest());
+        assertEquals(Policy.PASSWORD_MODE_NONE, policy.mPasswordMode);
     }
 
     public void testWapProvisionParser3() throws IOException {
         ProvisionParser parser = new ProvisionParser(mTestInputStream, getTestService());
         parser.parseProvisionDocXml(mWapProvisioningDoc3);
-        PolicySet ps = parser.getPolicySet();
-        assertNotNull(ps);
+        Policy policy = parser.getPolicy();
+        assertNotNull(policy);
         // Password should be set to simple
-        assertEquals(2*60, ps.getMaxScreenLockTimeForTest());  // Screen lock time is in seconds
-        assertEquals(4, ps.getMinPasswordLengthForTest());
-        assertEquals(PolicySet.PASSWORD_MODE_SIMPLE, ps.getPasswordModeForTest());
-        assertEquals(5, ps.getMaxPasswordFailsForTest());
-        assertTrue(ps.isRequireRemoteWipeForTest());
+        assertEquals(2*60, policy.mMaxScreenLockTime);  // Screen lock time is in seconds
+        assertEquals(4, policy.mPasswordMinLength);
+        assertEquals(Policy.PASSWORD_MODE_SIMPLE, policy.mPasswordMode);
+        assertEquals(5, policy.mPasswordMaxFails);
+        assertTrue(policy.mRequireRemoteWipe);
     }
 }

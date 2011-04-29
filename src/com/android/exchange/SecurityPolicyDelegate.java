@@ -17,17 +17,17 @@
 package com.android.exchange;
 
 import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
-import com.android.emailcommon.service.PolicySet;
 
 import android.content.Context;
 import android.os.RemoteException;
 
 public class SecurityPolicyDelegate {
 
-    public static boolean isActive(Context context, PolicySet policies) {
+    public static boolean isActive(Context context, Policy policy) {
         try {
-            return new PolicyServiceProxy(context).isActive(policies);
+            return new PolicyServiceProxy(context).isActive(policy);
         } catch (RemoteException e) {
         }
         return false;
@@ -41,9 +41,9 @@ public class SecurityPolicyDelegate {
         }
     }
 
-    public static void updatePolicies(Context context, long accountId) {
+    public static void policiesUpdated(Context context, long accountId) {
         try {
-            new PolicyServiceProxy(context).updatePolicies(accountId);
+            new PolicyServiceProxy(context).policiesUpdated(accountId);
         } catch (RemoteException e) {
             throw new IllegalStateException("PolicyService transaction failed");
         }
@@ -73,17 +73,17 @@ public class SecurityPolicyDelegate {
         }
     }
 
-    public static boolean isSupported(Context context, PolicySet policies) {
+    public static boolean isSupported(Context context, Policy policy) {
         try {
-            return new PolicyServiceProxy(context).isSupported(policies);
+            return new PolicyServiceProxy(context).isSupported(policy);
         } catch (RemoteException e) {
         }
         return false;
      }
 
-    public static PolicySet clearUnsupportedPolicies(Context context, PolicySet policies) {
+    public static Policy clearUnsupportedPolicies(Context context, Policy policy) {
         try {
-            return new PolicyServiceProxy(context).clearUnsupportedPolicies(policies);
+            return new PolicyServiceProxy(context).clearUnsupportedPolicies(policy);
         } catch (RemoteException e) {
         }
         throw new IllegalStateException("PolicyService transaction failed");
