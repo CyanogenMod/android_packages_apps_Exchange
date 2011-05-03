@@ -155,13 +155,13 @@
     <!-- A policy in which the device allows only email items newer than a specified date
         [CHAR LIMIT=40] -->
     <string name="policy_max_email_age">restrict email dates</string>
-    <!-- A policy in which the device allows only email items newer than a specified date
-        [CHAR LIMIT=40] -->
+    <!-- A policy in which the device limits the amount of text that can be displayed for a
+        given message [CHAR LIMIT=40] -->
     <string name="policy_text_truncation">restrict text email size</string>
-    <!-- A policy in which the device allows only email items newer than a specified date
-        [CHAR LIMIT=40] -->
+    <!-- A policy in which the device limits the amount of HTML text that can be displayed for a
+        given message [CHAR LIMIT=40] -->
     <string name="policy_html_truncation">restrict HTML email size</string>
-    <!-- A policy in which the device allows only email items newer than a specified date
+    <!-- A policy in which the device restricts the size of attachments that can be downloaded
         [CHAR LIMIT=40] -->
     <string name="policy_max_attachment_size">restrict attachment size</string>
     <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
