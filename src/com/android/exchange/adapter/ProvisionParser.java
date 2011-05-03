@@ -80,7 +80,7 @@ public class ProvisionParser extends Parser {
     }
 
     private void setPolicy(Policy policy) {
-        policy.validate();
+        policy.normalize();
         mPolicy = policy;
     }
 
