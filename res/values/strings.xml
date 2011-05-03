@@ -167,4 +167,20 @@
     <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
     <string name="policy_require_encryption">require device or sd card encryption</string>
 
+    <!--  The window length strings below MUST remain in sync with those in com.android.email -->
+    <!-- In account setup options & account settings screens (exchange), sync window length; this
+        implies loading a 'reasonable' number of messages [CHAR LIMIT=25] -->
+    <string name="account_setup_options_mail_window_auto">Automatic</string>
+    <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
+    <string name="account_setup_options_mail_window_1day">One day</string>
+    <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
+    <string name="account_setup_options_mail_window_3days">Three days</string>
+    <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
+    <string name="account_setup_options_mail_window_1week">One week</string>
+    <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
+    <string name="account_setup_options_mail_window_2weeks">Two weeks</string>
+    <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
+    <string name="account_setup_options_mail_window_1month">One month</string>
+    <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
+    <string name="account_setup_options_mail_window_all">All</string>
 </resources>

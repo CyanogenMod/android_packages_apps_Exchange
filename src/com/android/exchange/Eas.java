@@ -18,6 +18,7 @@
 package com.android.exchange;
 
 import com.android.emailcommon.service.EmailServiceProxy;
+import com.android.emailcommon.service.SyncWindow;
 
 import android.util.Log;
 
@@ -64,16 +65,20 @@ public class Eas {
     // 6 3 months ago No   Yes
     // 7 6 months ago No   Yes
 
+    public static final String FILTER_AUTO =  Integer.toString(SyncWindow.SYNC_WINDOW_AUTO);
+    // TODO Rationalize this with SYNC_WINDOW_ALL
     public static final String FILTER_ALL = "0";
-    public static final String FILTER_1_DAY = "1";
-    public static final String FILTER_3_DAYS = "2";
-    public static final String FILTER_1_WEEK = "3";
-    public static final String FILTER_2_WEEKS = "4";
-    public static final String FILTER_1_MONTH = "5";
+    public static final String FILTER_1_DAY = Integer.toString(SyncWindow.SYNC_WINDOW_1_DAY);
+    public static final String FILTER_3_DAYS =  Integer.toString(SyncWindow.SYNC_WINDOW_3_DAYS);
+    public static final String FILTER_1_WEEK =  Integer.toString(SyncWindow.SYNC_WINDOW_1_WEEK);
+    public static final String FILTER_2_WEEKS =  Integer.toString(SyncWindow.SYNC_WINDOW_2_WEEKS);
+    public static final String FILTER_1_MONTH =  Integer.toString(SyncWindow.SYNC_WINDOW_1_MONTH);
     public static final String FILTER_3_MONTHS = "6";
     public static final String FILTER_6_MONTHS = "7";
+
     public static final String BODY_PREFERENCE_TEXT = "1";
     public static final String BODY_PREFERENCE_HTML = "2";
+
     public static final String MIME_BODY_PREFERENCE_TEXT = "0";
     public static final String MIME_BODY_PREFERENCE_MIME = "2";
 

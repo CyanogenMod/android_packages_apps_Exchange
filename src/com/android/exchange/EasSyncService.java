@@ -130,7 +130,7 @@ public class EasSyncService extends AbstractSyncService {
     // Command timeout is the the time allowed for reading data from an open connection before an
     // IOException is thrown.  After a small added allowance, our watchdog alarm goes off (allowing
     // us to detect a silently dropped connection).  The allowance is defined below.
-    static private final int COMMAND_TIMEOUT = 30*SECONDS;
+    static public final int COMMAND_TIMEOUT = 30*SECONDS;
     // Connection timeout is the time given to connect to the server before reporting an IOException
     static private final int CONNECTION_TIMEOUT = 20*SECONDS;
     // The extra time allowed beyond the COMMAND_TIMEOUT before which our watchdog alarm triggers
@@ -1516,7 +1516,7 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
-    protected EasResponse sendHttpClientPost(String cmd, HttpEntity entity, int timeout)
+    public EasResponse sendHttpClientPost(String cmd, HttpEntity entity, int timeout)
             throws IOException {
         HttpClient client = getHttpClient(timeout);
         boolean isPingCommand = cmd.equals(PING_COMMAND);

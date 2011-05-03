@@ -30,6 +30,7 @@ import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.Mailbox;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
@@ -41,8 +42,13 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.EasSyncService.EasResponse;
 import com.android.exchange.MessageMoveRequest;
+import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
+
+import org.apache.http.HttpStatus;
+import org.apache.http.entity.ByteArrayEntity;
 
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
@@ -52,6 +58,7 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import java.io.ByteArrayInputStream;
@@ -123,10 +130,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
     private String getEmailFilter() {
         int syncLookback = mMailbox.mSyncLookback;
-        if (syncLookback == 0 /* Unknown; use SYNC_WINDOW_UNKNOWN after MR1 */) {
+        if (syncLookback == SyncWindow.SYNC_WINDOW_UNKNOWN) {
             syncLookback = mAccount.mSyncLookback;
         }
         switch (syncLookback) {
+            case SyncWindow.SYNC_WINDOW_AUTO:
+                return Eas.FILTER_AUTO;
             case SyncWindow.SYNC_WINDOW_1_DAY:
                 return Eas.FILTER_1_DAY;
             case SyncWindow.SYNC_WINDOW_3_DAYS:
@@ -224,7 +233,155 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         if (mFetchNeeded || !mFetchRequestList.isEmpty()) {
             return true;
         }
+
+        // Don't check for "auto" on the initial sync
+        if (!("0".equals(mMailbox.mSyncKey))) {
+            // We've completed the first successful sync
+            if (getEmailFilter().equals(Eas.FILTER_AUTO)) {
+                getAutomaticLookback();
+             }
+        }
+
         return res;
+    }
+
+    private void getAutomaticLookback() throws IOException {
+        // If we're using an auto lookback, check how many items in the past week
+        // TODO Make the literal ints below constants once we twiddle them a bit
+        int items = getEstimate(Eas.FILTER_1_WEEK);
+        int lookback;
+        if (items > 1050) {
+            // Over 150/day, just use one day (smallest)
+            lookback = SyncWindow.SYNC_WINDOW_1_DAY;
+        } else if (items > 350 || (items == -1)) {
+            // 50-150/day, use 3 days (150 to 450 messages synced)
+            lookback = SyncWindow.SYNC_WINDOW_3_DAYS;
+        } else if (items > 150) {
+            // 20-50/day, use 1 week (140 to 350 messages synced)
+            lookback = SyncWindow.SYNC_WINDOW_1_WEEK;
+        } else if (items > 75) {
+            // 10-25/day, use 1 week (140 to 350 messages synced)
+            lookback = SyncWindow.SYNC_WINDOW_2_WEEKS;
+        } else if (items < 5) {
+            // If there are only a couple, see if it makes sense to get everything
+            items = getEstimate(Eas.FILTER_ALL);
+            if (items >= 0 && items < 100) {
+                lookback = SyncWindow.SYNC_WINDOW_ALL;
+            } else {
+                lookback = SyncWindow.SYNC_WINDOW_1_MONTH;
+            }
+        } else {
+            lookback = SyncWindow.SYNC_WINDOW_1_MONTH;
+        }
+        // Store the new lookback and persist it
+        mMailbox.mSyncLookback = lookback;
+        ContentValues cv = new ContentValues();
+        cv.put(MailboxColumns.SYNC_LOOKBACK, lookback);
+        mContentResolver.update(ContentUris.withAppendedId(
+                Mailbox.CONTENT_URI, mMailbox.mId), cv, null, null);
+        // STOPSHIP Temporary UI - Let the user know
+        CharSequence[] windowEntries = mContext.getResources().getTextArray(
+                R.array.account_settings_mail_window_entries);
+        Utility.showToast(mContext, "Auto lookback: " + windowEntries[lookback]);
+    }
+
+    static class GetItemEstimateParser extends Parser {
+        private static final String TAG = "GetItemEstimateParser";
+        private int mEstimate = -1;
+
+        public GetItemEstimateParser(InputStream in) throws IOException {
+            super(in);
+        }
+
+        public boolean parse() throws IOException {
+            // Loop here through the remaining xml
+            while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
+                if (tag == Tags.GIE_GET_ITEM_ESTIMATE) {
+                    parseGetItemEstimate();
+                } else {
+                    skipTag();
+                }
+            }
+            return true;
+        }
+
+        public void parseGetItemEstimate() throws IOException {
+            while (nextTag(Tags.GIE_GET_ITEM_ESTIMATE) != END) {
+                if (tag == Tags.GIE_RESPONSE) {
+                    parseResponse();
+                } else {
+                    skipTag();
+                }
+            }
+        }
+
+        public void parseResponse() throws IOException {
+            while (nextTag(Tags.GIE_RESPONSE) != END) {
+                if (tag == Tags.GIE_STATUS) {
+                    Log.d(TAG, "GIE status: " + getValue());
+                } else if (tag == Tags.GIE_COLLECTION) {
+                    parseCollection();
+                } else {
+                    skipTag();
+                }
+            }
+        }
+
+        public void parseCollection() throws IOException {
+            while (nextTag(Tags.GIE_COLLECTION) != END) {
+                if (tag == Tags.GIE_CLASS) {
+                    Log.d(TAG, "GIE class: " + getValue());
+                } else if (tag == Tags.GIE_COLLECTION_ID) {
+                    Log.d(TAG, "GIE collectionId: " + getValue());
+                } else if (tag == Tags.GIE_ESTIMATE) {
+                    mEstimate = getValueInt();
+                    Log.d(TAG, "GIE estimate: " + mEstimate);
+                } else {
+                    skipTag();
+                }
+            }
+        }
+    }
+
+    /**
+     * Return the estimated number of items to be synced in the current mailbox, based on the
+     * passed in filter argument
+     * @param filter an EAS "window" filter
+     * @return the estimated number of items to be synced, or -1 if unknown
+     * @throws IOException
+     */
+    private int getEstimate(String filter) throws IOException {
+        Serializer s = new Serializer();
+
+        String className = getCollectionName();
+        String syncKey = getSyncKey();
+        userLog("gie, sending ", className, " syncKey: ", syncKey);
+        s.start(Tags.GIE_GET_ITEM_ESTIMATE).start(Tags.GIE_COLLECTIONS);
+        s.start(Tags.GIE_COLLECTION);
+        // The "Class" element is removed in EAS 12.1 and later versions
+        if (mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE) {
+            s.data(Tags.GIE_CLASS, className);
+        }
+        s.data(Tags.GIE_COLLECTION_ID, mMailbox.mServerId);
+        s.data(Tags.SYNC_FILTER_TYPE, filter);
+        s.data(Tags.SYNC_SYNC_KEY, syncKey);
+        s.end(); // GIE_COLLECTION
+        s.end(); // GIE_COLLECTIONS
+        s.end().done(); // GIE_GET_ITEM_ESTIMATE
+        EasResponse resp = mService.sendHttpClientPost("GetItemEstimate",
+                new ByteArrayEntity(s.toByteArray()), EasSyncService.COMMAND_TIMEOUT);
+        int code = resp.getStatus();
+        if (code == HttpStatus.SC_OK) {
+            if (!resp.isEmpty()) {
+                InputStream is = resp.getInputStream();
+                GetItemEstimateParser gieParser = new GetItemEstimateParser(is);
+                gieParser.parse();
+                // Return the estimated number of items
+                return gieParser.mEstimate;
+            }
+        }
+        // If we can't get an estimate, indicate this...
+        return -1;
     }
 
     /**
