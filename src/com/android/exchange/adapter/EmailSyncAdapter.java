@@ -67,6 +67,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.TimeZone;
 
 /**
@@ -895,11 +896,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         @Override
         public void commit() {
-            int notifyCount = 0;
-
             // Use a batch operation to handle the changes
             // TODO New mail notifications?  Who looks for these?
             ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+            // List of newly added message IDs
+            ArrayList<Long> addedIdList = new ArrayList<Long>();
 
             for (Message msg: fetchedEmails) {
                 // Find the original message's id (by serverId and mailbox)
@@ -931,7 +932,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
             for (Message msg: newEmails) {
                 if (!msg.mFlagRead) {
-                    notifyCount++;
+                    addedIdList.add(msg.mId);
                 }
                 msg.addSaveOps(ops);
             }
@@ -981,21 +982,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 }
             }
 
-            if (notifyCount > 0) {
-                // Use the new atomic add URI in EmailProvider
-                // We could add this to the operations being done, but it's not strictly
-                // speaking necessary, as the previous batch preserves the integrity of the
-                // database, whereas this is purely for notification purposes, and is itself atomic
-                ContentValues cv = new ContentValues();
-                cv.put(EmailContent.FIELD_COLUMN_NAME, AccountColumns.NEW_MESSAGE_COUNT);
-                cv.put(EmailContent.ADD_COLUMN_NAME, notifyCount);
-                Uri uri = ContentUris.withAppendedId(Account.ADD_TO_FIELD_URI, mAccount.mId);
-                mContentResolver.update(uri, cv, null, null);
-                try {
-                    new AccountServiceProxy(mService.mContext).notifyNewMessages(mAccount.mId);
-                } catch (RemoteException e) {
-                    // ? Anything to do here?
-                }
+            if (addedIdList.size() > 0) {
+                new AccountServiceProxy(mService.mContext)
+                        .notifyNewMessages(mAccount.mId, addedIdList);
             }
         }
     }

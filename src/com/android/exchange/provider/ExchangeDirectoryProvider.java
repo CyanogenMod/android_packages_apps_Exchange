@@ -222,13 +222,9 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                                 row[i] = account.type;
                             } else if (column.equals(Directory.TYPE_RESOURCE_ID)) {
                                 Bundle bundle = null;
-                                try {
-                                    String accountType = Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE;
-                                    bundle = new AccountServiceProxy(getContext())
-                                        .getConfigurationData(accountType);
-                                } catch (RemoteException e) {
-                                     //Ignore; bundle will be null
-                                }
+                                String accountType = Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE;
+                                bundle = new AccountServiceProxy(getContext())
+                                    .getConfigurationData(accountType);
                                 // Default to the alternative name, erring on the conservative side
                                 int exchangeName = R.string.exchange_name_alternate;
                                 if (bundle != null && !bundle.getBoolean(

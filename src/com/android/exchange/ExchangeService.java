@@ -1124,11 +1124,7 @@ public class ExchangeService extends Service implements Runnable {
             AccountReconciler.reconcileAccounts(context, accountList, accountMgrList,
                 context.getContentResolver());
         if (accountsDeleted) {
-            try {
-                new AccountServiceProxy(context).accountDeleted();
-            } catch (RemoteException e) {
-                // ?
-            }
+            new AccountServiceProxy(context).accountDeleted();
         }
     }
 
@@ -1162,11 +1158,8 @@ public class ExchangeService extends Service implements Runnable {
      */
     static public String getDeviceId(Context context) throws IOException {
         if (sDeviceId == null) {
-            try {
-                sDeviceId = new AccountServiceProxy(context).getDeviceId();
-                alwaysLog("Received deviceId from Email app: " + sDeviceId);
-            } catch (RemoteException e) {
-            }
+            sDeviceId = new AccountServiceProxy(context).getDeviceId();
+            alwaysLog("Received deviceId from Email app: " + sDeviceId);
         }
         return sDeviceId;
     }
@@ -1837,13 +1830,7 @@ public class ExchangeService extends Service implements Runnable {
                                 }
                             }
                             // Restore accounts, if it has not happened already
-                            try {
-                                new AccountServiceProxy(
-                                        ExchangeService.this).restoreAccountsIfNeeded();
-                            } catch (RemoteException e) {
-                                // If we can't restore accounts, don't run
-                                return;
-                            }
+                            new AccountServiceProxy(ExchangeService.this).restoreAccountsIfNeeded();
                             // Run the reconciler and clean up mismatched accounts - if we weren't
                             // running when accounts were deleted, it won't have been called.
                             runAccountReconcilerSync(ExchangeService.this);
@@ -2527,12 +2514,7 @@ public class ExchangeService extends Service implements Runnable {
                 if (account == null) return;
                 if (exchangeService.releaseSyncHolds(exchangeService,
                         AbstractSyncService.EXIT_LOGIN_FAILURE, account)) {
-                    try {
-                        new AccountServiceProxy(exchangeService).notifyLoginSucceeded(
-                                accountId);
-                    } catch (RemoteException e) {
-                        // No harm if the notification fails
-                    }
+                    new AccountServiceProxy(exchangeService).notifyLoginSucceeded(accountId);
                 }
             }
 
@@ -2559,12 +2541,7 @@ public class ExchangeService extends Service implements Runnable {
                     break;
                 // These errors are not retried automatically
                 case AbstractSyncService.EXIT_LOGIN_FAILURE:
-                    try {
-                        new AccountServiceProxy(exchangeService).notifyLoginFailed(
-                                m.mAccountKey);
-                    } catch (RemoteException e) {
-                        // ? Anything to do?
-                    }
+                    new AccountServiceProxy(exchangeService).notifyLoginFailed(m.mAccountKey);
                     // Fall through
                 case AbstractSyncService.EXIT_SECURITY_FAILURE:
                 case AbstractSyncService.EXIT_ACCESS_DENIED:

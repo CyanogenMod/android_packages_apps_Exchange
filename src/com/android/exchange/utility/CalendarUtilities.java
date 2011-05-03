@@ -1216,12 +1216,7 @@ public class CalendarUtilities {
         cv.put(Calendars.MAX_REMINDERS, 1);
 
         // TODO Coordinate account colors w/ Calendar, if possible
-        int color = AccountServiceProxy.DEFAULT_ACCOUNT_COLOR;
-        try {
-            color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
-        } catch (RemoteException e) {
-            // Use the default
-        }
+        int color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
         cv.put(Calendars.COLOR, color);
         cv.put(Calendars.TIMEZONE, Time.getCurrentTimezone());
         cv.put(Calendars.ACCESS_LEVEL, Calendars.OWNER_ACCESS);
