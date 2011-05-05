@@ -28,6 +28,7 @@ import com.android.emailcommon.provider.EmailContent.Mailbox;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
@@ -239,6 +240,8 @@ public class ExchangeService extends Service implements Runnable {
     private ConnectivityReceiver mConnectivityReceiver = null;
     private ConnectivityReceiver mBackgroundDataSettingReceiver = null;
     private volatile boolean mBackgroundData = true;
+    // The most current NetworkInfo (from ConnectivityManager)
+    private NetworkInfo mNetworkInfo;
 
     // Callbacks as set up via setCallback
     private RemoteCallbackList<IEmailServiceCallback> mCallbackList =
@@ -1716,6 +1719,7 @@ public class ExchangeService extends Service implements Runnable {
         while (!sStop) {
             NetworkInfo info = cm.getActiveNetworkInfo();
             if (info != null) {
+                mNetworkInfo = info;
                 // We're done if there's an active network
                 if (waiting) {
                     // If we've been waiting, release any I/O error holds
@@ -2098,6 +2102,35 @@ public class ExchangeService extends Service implements Runnable {
         return false;
     }
 
+    /**
+     * Determine whether the account is allowed to sync automatically, as opposed to manually, based
+     * on whether the "require manual sync when roaming" policy is in force and applicable
+     * @param account the account
+     * @return whether or not the account can sync automatically
+     */
+    /*package*/ static boolean canAutoSync(Account account) {
+        ExchangeService exchangeService = INSTANCE;
+        if (exchangeService == null) return false;
+        NetworkInfo networkInfo = exchangeService.mNetworkInfo;
+
+        // Enforce manual sync only while roaming here
+        long policyKey = account.mPolicyKey;
+        // Quick exit from this check
+        if ((policyKey != 0) && (networkInfo != null) &&
+                (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE)) {
+            // We'll cache the Policy data here
+            Policy policy = account.mPolicy;
+            if (policy == null) {
+                policy = Policy.restorePolicyWithId(INSTANCE, policyKey);
+                account.mPolicy = policy;
+            }
+            if (policy != null && policy.mRequireManualSyncWhenRoaming && networkInfo.isRoaming()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private long checkMailboxes () {
         // First, see if any running mailboxes have been deleted
         ArrayList<Long> deletedMailboxes = new ArrayList<Long>();
@@ -2167,6 +2200,10 @@ public class ExchangeService extends Service implements Runnable {
                     android.accounts.Account accountManagerAccount =
                         new android.accounts.Account(account.mEmailAddress,
                                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+
+                    if (!canAutoSync(account)) {
+                        continue;
+                    }
 
                     if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
                         // We don't sync these automatically if master auto sync is off

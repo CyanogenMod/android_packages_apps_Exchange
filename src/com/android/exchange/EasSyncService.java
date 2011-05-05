@@ -1864,6 +1864,8 @@ public class EasSyncService extends AbstractSyncService {
             }
 
             while (!mStop) {
+                // If we're not allowed to sync (e.g. roaming policy), leave now
+                if (!ExchangeService.canAutoSync(mAccount)) return;
                 userLog("Sending Account syncKey: ", mAccount.mSyncKey);
                 Serializer s = new Serializer();
                 s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
@@ -2161,6 +2163,12 @@ public class EasSyncService extends AbstractSyncService {
                     try {
                         int code = resp.getStatus();
                         userLog("Ping response: ", code);
+
+                        // If we're not allowed to sync (e.g. roaming policy), terminate gracefully
+                        // now; otherwise we might start a sync based on the response
+                        if (!ExchangeService.canAutoSync(mAccount)) {
+                            mStop = true;
+                        }
 
                         // Return immediately if we've been asked to stop during the ping
                         if (mStop) {

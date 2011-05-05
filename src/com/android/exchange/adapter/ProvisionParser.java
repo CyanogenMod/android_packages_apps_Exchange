@@ -90,6 +90,7 @@ public class ProvisionParser extends Parser {
 
         while (nextTag(Tags.PROVISION_EAS_PROVISION_DOC) != END) {
             boolean tagIsSupported = true;
+            int res = 0;
             switch (tag) {
                 case Tags.PROVISION_DEVICE_PASSWORD_ENABLED:
                     if (getValueInt() == 1) {
@@ -140,7 +141,6 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_ALLOW_INTERNET_SHARING:
                     if (getValueInt() == 0) {
                         tagIsSupported = false;
-                        int res = 0;
                         switch(tag) {
                             case Tags.PROVISION_ATTACHMENTS_ENABLED:
                                 res = R.string.policy_dont_allow_attachments;
@@ -212,6 +212,10 @@ public class ProvisionParser extends Parser {
                         policy.mRequireEncryptionExternal = true;
                     }
                     break;
+                // Note this policy; we enforce it in ExchangeService
+                case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
+                    policy.mRequireManualSyncWhenRoaming = true;
+                    break;
                 // We are allowed to accept policies, regardless of value of this tag
                 // TODO: When we DO support a recovery password, we need to store the value in
                 // the account (so we know to utilize it)
@@ -224,27 +228,12 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
                 case Tags.PROVISION_REQUIRE_ENCRYPTION_SMIME_ALGORITHM:
-                case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
                     if (getValueInt() == 1) {
                         tagIsSupported = false;
-                        int res = 0;
-                        switch(tag) {
-                            case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
-                            case Tags.PROVISION_REQUIRE_ENCRYPTION_SMIME_ALGORITHM:
-                            case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
-                            case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
-                                if (!smimeRequired) {
-                                    res = R.string.policy_require_smime;
-                                    smimeRequired = true;
-                                }
-                                break;
-                            case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
-                                res = R.string.policy_require_manual_sync_roaming;
-                                policy.mRequireManualSyncWhenRoaming = true;
-                                break;
-                        }
-                        if (res > 0) {
-                            unsupportedList.add(res);
+                        if (!smimeRequired) {
+                            res = R.string.policy_require_smime;
+                            unsupportedList.add(R.string.policy_require_smime);
+                            smimeRequired = true;
                         }
                     }
                     break;
