@@ -1122,7 +1122,7 @@ public class EasSyncService extends AbstractSyncService {
         try {
             int status = resp.getStatus();
             if (status == HttpStatus.SC_OK) {
-                int len = (int)resp.getLength();
+                int len = resp.getLength();
                 InputStream is = resp.getInputStream();
                 OutputStream os = null;
                 Uri attachmentUri = AttachmentUtilities.getAttachmentUri(att.mAccountKey, att.mId);

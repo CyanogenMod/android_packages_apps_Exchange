@@ -44,7 +44,7 @@ public class CalendarSyncAdapterService extends Service {
     private static final String ACCOUNT_AND_TYPE_CALENDAR =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CALENDAR;
     private static final String DIRTY_IN_ACCOUNT =
-        Events._SYNC_DIRTY + "=1 AND " + Events._SYNC_ACCOUNT + "=?";
+        Events.DIRTY + "=1 AND " + Events.ACCOUNT_NAME + "=?";
     private static final String[] ID_SYNC_KEY_PROJECTION =
         new String[] {MailboxColumns.ID, MailboxColumns.SYNC_KEY};
     private static final int ID_SYNC_KEY_MAILBOX_ID = 0;

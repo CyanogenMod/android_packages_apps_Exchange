@@ -1230,8 +1230,8 @@ public class CalendarUtilities {
         ContentValues cv = new ContentValues();
         // TODO How will this change if the user changes his account display name?
         cv.put(Calendars.DISPLAY_NAME, account.mDisplayName);
-        cv.put(Calendars._SYNC_ACCOUNT, account.mEmailAddress);
-        cv.put(Calendars._SYNC_ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+        cv.put(Calendars.ACCOUNT_NAME, account.mEmailAddress);
+        cv.put(Calendars.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         cv.put(Calendars.SYNC_EVENTS, 1);
         cv.put(Calendars.VISIBLE, 1);
         // Don't show attendee status if we're the organizer
@@ -1241,8 +1241,8 @@ public class CalendarUtilities {
 
         // TODO Coordinate account colors w/ Calendar, if possible
         int color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
-        cv.put(Calendars.COLOR, color);
-        cv.put(Calendars.TIMEZONE, Time.getCurrentTimezone());
+        cv.put(Calendars.CALENDAR_COLOR, color);
+        cv.put(Calendars.CALENDAR_TIMEZONE, Time.getCurrentTimezone());
         cv.put(Calendars.ACCESS_LEVEL, Calendars.OWNER_ACCESS);
         cv.put(Calendars.OWNER_ACCOUNT, account.mEmailAddress);
 
@@ -1362,7 +1362,7 @@ public class CalendarUtilities {
         // more like... When: Tuesdays, starting March 5th from 2:00pm - 3:00pm
         // This would require code to build complex strings, and it will have to wait
         // For now, we'll just use the meeting_recurring string
-        if (!entityValues.containsKey(Events.ORIGINAL_EVENT) &&
+        if (!entityValues.containsKey(Events.ORIGINAL_SYNC_ID) &&
                 entityValues.containsKey(Events.RRULE)) {
             sb.append(resources.getString(R.string.meeting_recurring, dateTimeString));
         } else {
@@ -1448,7 +1448,7 @@ public class CalendarUtilities {
             int messageFlag, String uid, Account account, String specifiedAttendee) {
         ContentValues entityValues = entity.getEntityValues();
         ArrayList<NamedContentValues> subValues = entity.getSubValues();
-        boolean isException = entityValues.containsKey(Events.ORIGINAL_EVENT);
+        boolean isException = entityValues.containsKey(Events.ORIGINAL_SYNC_ID);
         boolean isReply = false;
 
         EmailContent.Message msg = new EmailContent.Message();
@@ -1495,7 +1495,7 @@ public class CalendarUtilities {
             // recurring events
             if (!isReply && !allDayEvent &&
                     (entityValues.containsKey(Events.RRULE) ||
-                            entityValues.containsKey(Events.ORIGINAL_EVENT))) {
+                            entityValues.containsKey(Events.ORIGINAL_SYNC_ID))) {
                 vCalendarTimeZone = TimeZone.getDefault();
                 // Write the VTIMEZONE block to the writer
                 timeZoneToVTimezone(vCalendarTimeZone, ics);

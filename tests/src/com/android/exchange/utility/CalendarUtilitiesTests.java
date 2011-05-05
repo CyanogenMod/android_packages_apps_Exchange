@@ -259,7 +259,7 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
     private Entity setupTestExceptionEntity(String organizer, String attendee, String title) {
         Entity entity = setupTestEventEntity(organizer, attendee, title);
         ContentValues entityValues = entity.getEntityValues();
-        entityValues.put(Events.ORIGINAL_EVENT, 69);
+        entityValues.put(Events.ORIGINAL_SYNC_ID, 69);
         // The exception will be on April 26th
         entityValues.put(Events.ORIGINAL_INSTANCE_TIME,
                 Utility.parseEmailDateTimeToMillis("2010-04-26T18:30:00Z"));
@@ -519,7 +519,7 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         
         ContentValues entityValues = entity.getEntityValues();
         // Mark the Exception as dirty
-        entityValues.put(Events._SYNC_DIRTY, 1);
+        entityValues.put(Events.DIRTY, 1);
         // And mark it canceled
         entityValues.put(Events.STATUS, Events.STATUS_CANCELED);
 

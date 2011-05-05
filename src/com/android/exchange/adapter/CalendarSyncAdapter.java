@@ -77,21 +77,21 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     // Since exceptions will have the same _SYNC_ID as the original event we have to check that
     // there's no original event when finding an item by _SYNC_ID
     private static final String SERVER_ID_AND_CALENDAR_ID = Events._SYNC_ID + "=? AND " +
-        Events.ORIGINAL_EVENT + " ISNULL AND " + Events.CALENDAR_ID + "=?";
+        Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
     private static final String DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR =
-        "(" + Events._SYNC_DIRTY + "=1 OR " + Events._SYNC_MARK + "= 1) AND " +
-        Events.ORIGINAL_EVENT + " ISNULL AND " + Events.CALENDAR_ID + "=?";
+        "(" + Events.DIRTY + "=1 OR " + Events._SYNC_MARK + "= 1) AND " +
+        Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
     private static final String DIRTY_EXCEPTION_IN_CALENDAR =
-        Events._SYNC_DIRTY + "=1 AND " + Events.ORIGINAL_EVENT + " NOTNULL AND " +
+        Events.DIRTY + "=1 AND " + Events.ORIGINAL_SYNC_ID + " NOTNULL AND " +
         Events.CALENDAR_ID + "=?";
     private static final String CLIENT_ID_SELECTION = Events._SYNC_DATA + "=?";
     private static final String ORIGINAL_EVENT_AND_CALENDAR =
-        Events.ORIGINAL_EVENT + "=? AND " + Events.CALENDAR_ID + "=?";
+        Events.ORIGINAL_SYNC_ID + "=? AND " + Events.CALENDAR_ID + "=?";
     private static final String ATTENDEES_EXCEPT_ORGANIZER = Attendees.EVENT_ID + "=? AND " +
         Attendees.ATTENDEE_RELATIONSHIP + "!=" + Attendees.RELATIONSHIP_ORGANIZER;
     private static final String[] ID_PROJECTION = new String[] {Events._ID};
     private static final String[] ORIGINAL_EVENT_PROJECTION =
-        new String[] {Events.ORIGINAL_EVENT, Events._ID};
+        new String[] {Events.ORIGINAL_SYNC_ID, Events._ID};
     private static final String EVENT_ID_AND_NAME =
         ExtendedProperties.EVENT_ID + "=? AND " + ExtendedProperties.NAME + "=?";
 
@@ -103,7 +103,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         new String[] {Attendees.ATTENDEE_STATUS};
 
     public static final String CALENDAR_SELECTION =
-        Calendars._SYNC_ACCOUNT + "=? AND " + Calendars._SYNC_ACCOUNT_TYPE + "=?";
+        Calendars.ACCOUNT_NAME + "=? AND " + Calendars.ACCOUNT_TYPE + "=?";
     private static final int CALENDAR_SELECTION_ID = 0;
 
     private static final String[] EXTENDED_PROPERTY_PROJECTION =
@@ -194,8 +194,8 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         mContentResolver.delete(
                 asSyncAdapter(Calendars.CONTENT_URI, mEmailAddress,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                Calendars._SYNC_ACCOUNT + "=" + DatabaseUtils.sqlEscapeString(mEmailAddress)
-                        + " AND " + Calendars._SYNC_ACCOUNT_TYPE + "="
+                Calendars.ACCOUNT_NAME + "=" + DatabaseUtils.sqlEscapeString(mEmailAddress)
+                        + " AND " + Calendars.ACCOUNT_TYPE + "="
                         + DatabaseUtils.sqlEscapeString(AccountManagerTypes.TYPE_EXCHANGE), null);
         // Invalidate our calendar observers
         ExchangeService.unregisterCalendarObservers();
@@ -393,8 +393,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 throws IOException {
             ContentValues cv = new ContentValues();
             cv.put(Events.CALENDAR_ID, mCalendarId);
-            cv.put(Events._SYNC_ACCOUNT, mEmailAddress);
-            cv.put(Events._SYNC_ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
             cv.put(Events._SYNC_ID, serverId);
             cv.put(Events.HAS_ATTENDEE_DATA, 1);
             cv.put(Events._SYNC_DATA, "0");
@@ -533,7 +531,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         cv.put(Events.TITLE, getValue());
                         break;
                     case Tags.CALENDAR_SENSITIVITY:
-                        cv.put(Events.VISIBILITY, encodeVisibility(getValueInt()));
+                        cv.put(Events.ACCESS_LEVEL, encodeVisibility(getValueInt()));
                         break;
                     case Tags.CALENDAR_ORGANIZER_NAME:
                         organizerName = getValue();
@@ -791,8 +789,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 long startTime, long endTime) throws IOException {
             ContentValues cv = new ContentValues();
             cv.put(Events.CALENDAR_ID, mCalendarId);
-            cv.put(Events._SYNC_ACCOUNT, mEmailAddress);
-            cv.put(Events._SYNC_ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
 
             // It appears that these values have to be copied from the parent if they are to appear
             // Note that they can be overridden below
@@ -801,7 +797,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             cv.put(Events.DESCRIPTION, parentCv.getAsString(Events.DESCRIPTION));
             cv.put(Events.ORIGINAL_ALL_DAY, parentCv.getAsInteger(Events.ALL_DAY));
             cv.put(Events.EVENT_LOCATION, parentCv.getAsString(Events.EVENT_LOCATION));
-            cv.put(Events.VISIBILITY, parentCv.getAsString(Events.VISIBILITY));
+            cv.put(Events.ACCESS_LEVEL, parentCv.getAsString(Events.ACCESS_LEVEL));
             cv.put(Events.EVENT_TIMEZONE, parentCv.getAsString(Events.EVENT_TIMEZONE));
             // Exceptions should always have this set to zero, since EAS has no concept of
             // separate attendee lists for exceptions; if we fail to do this, then the UI will
@@ -812,7 +808,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             int allDayEvent = 0;
 
             // This column is the key that links the exception to the serverId
-            cv.put(Events.ORIGINAL_EVENT, parentCv.getAsString(Events._SYNC_ID));
+            cv.put(Events.ORIGINAL_SYNC_ID, parentCv.getAsString(Events._SYNC_ID));
 
             String exceptionStartTime = "_noStartTime";
             while (nextTag(Tags.SYNC_APPLICATION_DATA) != END) {
@@ -859,7 +855,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         cv.put(Events.TITLE, getValue());
                         break;
                     case Tags.CALENDAR_SENSITIVITY:
-                        cv.put(Events.VISIBILITY, encodeVisibility(getValueInt()));
+                        cv.put(Events.ACCESS_LEVEL, encodeVisibility(getValueInt()));
                         break;
                     case Tags.CALENDAR_BUSY_STATUS:
                         busyStatus = getValueInt();
@@ -924,16 +920,16 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             int visibility = 0;
             switch(easVisibility) {
                 case 0:
-                    visibility = Events.VISIBILITY_DEFAULT;
+                    visibility = Events.ACCESS_DEFAULT;
                     break;
                 case 1:
-                    visibility = Events.VISIBILITY_PUBLIC;
+                    visibility = Events.ACCESS_PUBLIC;
                     break;
                 case 2:
-                    visibility = Events.VISIBILITY_PRIVATE;
+                    visibility = Events.ACCESS_PRIVATE;
                     break;
                 case 3:
-                    visibility = Events.VISIBILITY_CONFIDENTIAL;
+                    visibility = Events.ACCESS_CONFIDENTIAL;
                     break;
             }
             return visibility;
@@ -1195,7 +1191,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 // Clear dirty and mark flags for updates sent to server
                 if (!mUploadedIdList.isEmpty())  {
                     ContentValues cv = new ContentValues();
-                    cv.put(Events._SYNC_DIRTY, 0);
+                    cv.put(Events.DIRTY, 0);
                     cv.put(Events._SYNC_MARK, 0);
                     for (long eventId : mUploadedIdList) {
                         mContentResolver.update(
@@ -1417,7 +1413,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             add(ContentProviderOperation
                     .newDelete(asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
                             Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
-                    .withSelection(Events.ORIGINAL_EVENT + "=?", new String[] {syncId}).build());
+                    .withSelection(Events.ORIGINAL_SYNC_ID + "=?", new String[] {syncId}).build());
         }
 
         public void execute() {
@@ -1444,16 +1440,16 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     private String decodeVisibility(int visibility) {
         int easVisibility = 0;
         switch(visibility) {
-            case Events.VISIBILITY_DEFAULT:
+            case Events.ACCESS_DEFAULT:
                 easVisibility = 0;
                 break;
-            case Events.VISIBILITY_PUBLIC:
+            case Events.ACCESS_PUBLIC:
                 easVisibility = 1;
                 break;
-            case Events.VISIBILITY_PRIVATE:
+            case Events.ACCESS_PRIVATE:
                 easVisibility = 2;
                 break;
-            case Events.VISIBILITY_CONFIDENTIAL:
+            case Events.ACCESS_CONFIDENTIAL:
                 easVisibility = 3;
                 break;
         }
@@ -1737,7 +1733,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
             // NOTE: Sensitivity must NOT be sent to the server for exceptions in Exchange 2003
             // The result will be a status 6 failure during sync
-            Integer visibility = entityValues.getAsInteger(Events.VISIBILITY);
+            Integer visibility = entityValues.getAsInteger(Events.ACCESS_LEVEL);
             if (visibility != null) {
                 s.data(Tags.CALENDAR_SENSITIVITY, decodeVisibility(visibility));
             } else {
@@ -1939,7 +1935,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                             s.start(Tags.CALENDAR_EXCEPTION);
                             sendEvent(exEntity, null, s);
                             ContentValues exValues = exEntity.getEntityValues();
-                            if (getInt(exValues, Events._SYNC_DIRTY) == 1) {
+                            if (getInt(exValues, Events.DIRTY) == 1) {
                                 // This is a new/updated exception, so we've got to notify our
                                 // attendees about it
                                 long exEventId = exValues.getAsLong(Events._ID);
@@ -2030,7 +2026,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     // if the Event itself is dirty (we might be syncing only because an exception
                     // is dirty, in which case we DON'T send email about the Event)
                     if (selfOrganizer &&
-                            (getInt(entityValues, Events._SYNC_DIRTY) == 1)) {
+                            (getInt(entityValues, Events.DIRTY) == 1)) {
                         EmailContent.Message msg =
                             CalendarUtilities.createMessageForEventId(mContext, eventId,
                                     EmailContent.Message.FLAG_OUTGOING_MEETING_INVITE, clientId,
