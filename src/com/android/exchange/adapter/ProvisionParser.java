@@ -144,12 +144,14 @@ public class ProvisionParser extends Parser {
                         switch(tag) {
                             case Tags.PROVISION_ATTACHMENTS_ENABLED:
                                 res = R.string.policy_dont_allow_attachments;
+                                policy.mDontAllowAttachments = true;
                                 break;
                             case Tags.PROVISION_ALLOW_STORAGE_CARD:
                                 res = R.string.policy_dont_allow_storage_cards;
                                 break;
                             case Tags.PROVISION_ALLOW_CAMERA:
                                 res = R.string.policy_dont_allow_camera;
+                                policy.mDontAllowCamera = true;
                                 break;
                             case Tags.PROVISION_ALLOW_UNSIGNED_APPLICATIONS:
                                 res = R.string.policy_dont_allow_unsigned_apps;
@@ -171,6 +173,7 @@ public class ProvisionParser extends Parser {
                                 break;
                             case Tags.PROVISION_ALLOW_HTML_EMAIL:
                                 res = R.string.policy_dont_allow_html;
+                                policy.mDontAllowHtml = true;
                                 break;
                             case Tags.PROVISION_ALLOW_BROWSER:
                                 res = R.string.policy_dont_allow_browser;
@@ -214,7 +217,7 @@ public class ProvisionParser extends Parser {
                 // the account (so we know to utilize it)
                 case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
                     // Read, but ignore, value
-                    getValueInt();
+                    policy.mPasswordRecoveryEnabled = getValueInt() == 1;
                     break;
                 // The following policies, if true, can't be supported at the moment
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
@@ -237,6 +240,7 @@ public class ProvisionParser extends Parser {
                                 break;
                             case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
                                 res = R.string.policy_require_manual_sync_roaming;
+                                policy.mRequireManualSyncWhenRoaming = true;
                                 break;
                         }
                         if (res > 0) {
@@ -246,9 +250,11 @@ public class ProvisionParser extends Parser {
                     break;
                 // The following, if greater than zero, can't be supported at the moment
                 case Tags.PROVISION_MAX_ATTACHMENT_SIZE:
-                    if (getValueInt() > 0) {
+                    int max = getValueInt();
+                    if (max > 0) {
                         tagIsSupported = false;
                         unsupportedList.add(R.string.policy_max_attachment_size);
+                        policy.mMaxAttachmentSize = max;
                     }
                     break;
                 // Complex characters are supported
@@ -278,8 +284,14 @@ public class ProvisionParser extends Parser {
                 // NOTE: We can support these entirely within the email application if we choose
                 case Tags.PROVISION_MAX_CALENDAR_AGE_FILTER:
                 case Tags.PROVISION_MAX_EMAIL_AGE_FILTER:
+                    max = getValueInt();
                     // 0 indicates no specified filter
-                    if (getValueInt() != 0) {
+                    if (tag == Tags.PROVISION_MAX_CALENDAR_AGE_FILTER) {
+                        policy.mMaxCalendarLookback = max;
+                    } else {
+                        policy.mMaxEmailLookback = max;
+                    }
+                    if (max != 0) {
                         tagIsSupported = false;
                         if (tag == Tags.PROVISION_MAX_CALENDAR_AGE_FILTER) {
                             unsupportedList.add(R.string.policy_max_calendar_age);
@@ -295,10 +307,13 @@ public class ProvisionParser extends Parser {
                     // -1 indicates no required truncation
                     if (!value.equals("-1")) {
                         tagIsSupported = false;
+                        max = Integer.parseInt(value);
                         if (tag == Tags.PROVISION_MAX_EMAIL_BODY_TRUNCATION_SIZE) {
                             unsupportedList.add(R.string.policy_text_truncation);
+                            policy.mMaxTextTruncationSize = max;
                         } else {
                             unsupportedList.add(R.string.policy_html_truncation);
+                            policy.mMaxHtmlTruncationSize = max;
                         }
                     }
                     break;
