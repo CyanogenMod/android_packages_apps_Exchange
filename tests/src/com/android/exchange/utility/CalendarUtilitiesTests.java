@@ -104,6 +104,11 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFUAUwAgAE0AbwB1AG4AdABhAGkAbgAgAEQAYQB5AGwAaQBnAGgA" +
         "dAAgAFQAaQBtAGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
+    private static final String HAWAII_TIME =
+        "WAIAAEgAYQB3AGEAaQBpAGEAbgAgAFMAdABhAG4AZABhAHIAZAAgAFQAaQBtAGUAAAAAAAAAAAAAAAAAAAAA" +
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAYQB3AGEAaQBpAGEAbgAgAEQAYQB5AGwAaQBnAGgAdAAgAFQA" +
+        "aQBtAGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+
     private static final String ORGANIZER = "organizer@server.com";
     private static final String ATTENDEE = "attendee@server.com";
 
@@ -138,9 +143,23 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         tz = CalendarUtilities.tziStringToTimeZone(GMT_UNKNOWN_DAYLIGHT_TIME);
         int bias = tz.getOffset(System.currentTimeMillis());
         assertEquals(0, bias);
-        // Make sure non-DST TZ's work properly
+        // Make sure non-DST TZ's work properly when the tested zone is the default zone
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Phoenix"));
         tz = CalendarUtilities.tziStringToTimeZone(ARIZONA_TIME);
         assertEquals("America/Phoenix", tz.getID());
+        TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Honolulu"));
+        tz = CalendarUtilities.tziStringToTimeZone(HAWAII_TIME);
+        assertEquals("Pacific/Honolulu", tz.getID());
+        // Make sure non-DST TZ's get the proper offset and DST status otherwise
+        CalendarUtilities.clearTimeZoneCache();
+        TimeZone azTime = TimeZone.getTimeZone("America/Phoenix");
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"));
+        tz = CalendarUtilities.tziStringToTimeZone(ARIZONA_TIME);
+        assertFalse("America/Phoenix".equals(tz.getID()));
+        assertFalse(tz.useDaylightTime());
+        // It doesn't matter what time is passed in, since neither TZ has dst
+        long now = System.currentTimeMillis();
+        assertEquals(azTime.getOffset(now), tz.getOffset(now));
     }
 
     public void testGenerateEasDayOfWeek() {

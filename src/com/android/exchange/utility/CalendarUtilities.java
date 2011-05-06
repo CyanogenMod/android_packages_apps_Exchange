@@ -31,6 +31,7 @@ import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.internal.util.ArrayUtils;
+import com.google.common.annotations.VisibleForTesting;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -186,6 +187,11 @@ public class CalendarUtilities {
         int time;
         int hour;
         int minute;
+    }
+
+    @VisibleForTesting
+    static void clearTimeZoneCache() {
+        sTimeZoneCache.clear();
     }
 
     static void putRuleIntoTimeZoneInformation(byte[] bytes, int offset, RRule rrule, int hour,
