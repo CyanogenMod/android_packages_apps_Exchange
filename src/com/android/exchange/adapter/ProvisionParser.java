@@ -39,7 +39,7 @@ import java.util.ArrayList;
  * Assuming a successful parse, we store the PolicySet and the policy key
  */
 public class ProvisionParser extends Parser {
-    private EasSyncService mService;
+    private final EasSyncService mService;
     Policy mPolicy = null;
     String mSecuritySyncKey = null;
     boolean mRemoteWipe = false;
@@ -120,6 +120,9 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_DEVICE_PASSWORD_HISTORY:
                     policy.mPasswordHistory = getValueInt();
                     break;
+                case Tags.PROVISION_ALLOW_CAMERA:
+                    policy.mDontAllowCamera = (getValueInt() == 0);
+                    break;
                 case Tags.PROVISION_ALLOW_SIMPLE_DEVICE_PASSWORD:
                     // Ignore this unless there's any MSFT documentation for what this means
                     // Hint: I haven't seen any that's more specific than "simple"
@@ -127,7 +130,6 @@ public class ProvisionParser extends Parser {
                     break;
                 // The following policies, if false, can't be supported at the moment
                 case Tags.PROVISION_ALLOW_STORAGE_CARD:
-                case Tags.PROVISION_ALLOW_CAMERA:
                 case Tags.PROVISION_ALLOW_UNSIGNED_APPLICATIONS:
                 case Tags.PROVISION_ALLOW_UNSIGNED_INSTALLATION_PACKAGES:
                 case Tags.PROVISION_ALLOW_WIFI:
@@ -143,10 +145,6 @@ public class ProvisionParser extends Parser {
                         switch(tag) {
                             case Tags.PROVISION_ALLOW_STORAGE_CARD:
                                 res = R.string.policy_dont_allow_storage_cards;
-                                break;
-                            case Tags.PROVISION_ALLOW_CAMERA:
-                                res = R.string.policy_dont_allow_camera;
-                                policy.mDontAllowCamera = true;
                                 break;
                             case Tags.PROVISION_ALLOW_UNSIGNED_APPLICATIONS:
                                 res = R.string.policy_dont_allow_unsigned_apps;

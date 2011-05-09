@@ -110,8 +110,6 @@
     <string name="policy_dont_allow_attachments">don\'t allow attachments</string>
     <!-- A policy in which the device may not have a storage card [CHAR LIMIT=40] -->
     <string name="policy_dont_allow_storage_cards">don\'t allow storage cards</string>
-    <!-- A policy in which the device may not have a usable camera [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_camera">don\'t allow a camera</string>
     <!-- A policy in which the device may not have unsigned applications installed
         [CHAR LIMIT=40] -->
     <string name="policy_dont_allow_unsigned_apps">don\'t allow unsigned applications</string>
