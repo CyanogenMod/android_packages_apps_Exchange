@@ -25,8 +25,6 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.mail.Part;
 import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.Account;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.Mailbox;
@@ -56,7 +54,6 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.RemoteException;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
@@ -67,7 +64,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.List;
 import java.util.TimeZone;
 
 /**
@@ -99,6 +95,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int FETCH_REQUEST_SERVER_ID = 1;
 
     private static final String EMAIL_WINDOW_SIZE = "5";
+
+    private static final int LAST_VERB_REPLY = 1;
+    private static final int LAST_VERB_REPLY_ALL = 2;
+    private static final int LAST_VERB_FORWARD = 3;
 
     String[] mBindArguments = new String[2];
     String[] mBindArgument = new String[1];
@@ -503,6 +503,15 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     case Tags.EMAIL2_CONVERSATION_INDEX:
                         // Note that the value of these two tags is a byte array
                         getValueBytes();
+                        break;
+                    case Tags.EMAIL2_LAST_VERB_EXECUTED:
+                        int val = getValueInt();
+                        if (val == LAST_VERB_REPLY || val == LAST_VERB_REPLY_ALL) {
+                            // We aren't required to distinguish between reply and reply all here
+                            msg.mFlags |= Message.FLAG_REPLIED_TO;
+                        } else if (val == LAST_VERB_FORWARD) {
+                            msg.mFlags |= Message.FLAG_FORWARDED;
+                        }
                         break;
                     default:
                         skipTag();
