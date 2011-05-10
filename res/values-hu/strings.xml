@@ -29,4 +29,38 @@
     <string name="app_name" msgid="5316597712787122829">"Exchange szolgáltatások"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Ezt az eseményt törölték: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Az esemény részletei a következőre módosultak: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"a mellékletek nem engedélyezettek"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"a memóriakártyák nem engedélyezettek"</string>
+    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"a kamera nem engedélyezett"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"nincsenek aláíratlan alkalmazások"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"nincsenek aláíratlan alkalmazástelepítők"</string>
+    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"a wifi-kommunikáció nem engedélyezett"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"szöveges üzenetküldés nem engedélyezett"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"a POP3/IMAP-fiókok nem engedélyezettek"</string>
+    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"nincs infravörös kommunikáció"</string>
+    <string name="policy_dont_allow_html" msgid="5004059292137838041">"HTML e-mailek nem engedélyezettek"</string>
+    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"a böngészők nem engedélyezettek"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"fogyasztói e-mailek nem engedélyezettek"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"az internetmegosztás nem engedélyezett"</string>
+    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"helyreállítási jelszó támogatása"</string>
+    <string name="policy_require_smime" msgid="8044392674810605617">"SMIME üzenetek megkövetelése"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"csak kézi szinkronizáció barangolás során"</string>
+    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"a bluetooth használatának korlátozása"</string>
+    <string name="policy_app_blacklist" msgid="5997243461425995435">"meghatározott alkalmazások tiltása"</string>
+    <string name="policy_app_whitelist" msgid="8401297908870017913">"csak adott alkalmazások engedélyezettek"</string>
+    <string name="policy_max_calendar_age" msgid="6394557044887221078">"naptári események dátumának korlátozása"</string>
+    <string name="policy_max_email_age" msgid="3303242808829681352">"e-mailek dátumának korlátozása"</string>
+    <string name="policy_text_truncation" msgid="5800480928209379255">"szöveges e-mailek méretének korlátozása"</string>
+    <string name="policy_html_truncation" msgid="629030762178870832">"a HTML e-mailek méretének korlátozása"</string>
+    <string name="policy_max_attachment_size" msgid="6191034264088052742">"a melléklet méretének korlátozása"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"eszköz/sd-kártya titkosítása kötelező"</string>
+    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
+    <skip />
+    <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Egy nap"</string>
+    <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Három nap"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Egy hét"</string>
+    <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Két hét"</string>
+    <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Egy hónap"</string>
+    <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
+    <skip />
 </resources>

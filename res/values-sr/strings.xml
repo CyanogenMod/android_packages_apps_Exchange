@@ -29,4 +29,38 @@
     <string name="app_name" msgid="5316597712787122829">"Exchange услуге"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Овај догађај је отказан за: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Детаљи овог догађаја су промењени за: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"не дозволи прилоге"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"не дозволи меморијске картице"</string>
+    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"не дозволи камеру"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"не дозволи непотписане апликације"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"не дозволи непотпис. инстал. прогр. аплик."</string>
+    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"не дозволи Wifi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"не дозволи текстуалне поруке"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"не дозволи POP3 или IMAP налоге"</string>
+    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"не дозволи инфрацрвене комуникације"</string>
+    <string name="policy_dont_allow_html" msgid="5004059292137838041">"не дозволи HTML е-пошту"</string>
+    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"не дозволи прегледачe"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"не дозволи потрошачку е-пошту"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"не дозволи дељење интернет везе"</string>
+    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"подржавај лозинку за обнављање"</string>
+    <string name="policy_require_smime" msgid="8044392674810605617">"захтевај SMIME поруке"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"дозволи само ручну синх. у ромингу"</string>
+    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"ограничи коришћење Bluetooth-а"</string>
+    <string name="policy_app_blacklist" msgid="5997243461425995435">"не дозволи наведене апликације"</string>
+    <string name="policy_app_whitelist" msgid="8401297908870017913">"дозволи само одређене апликације"</string>
+    <string name="policy_max_calendar_age" msgid="6394557044887221078">"ограничи датуме догађаја календара"</string>
+    <string name="policy_max_email_age" msgid="3303242808829681352">"ограничи датуме порука е-поште"</string>
+    <string name="policy_text_truncation" msgid="5800480928209379255">"ограничи величину текста порука е-поште"</string>
+    <string name="policy_html_truncation" msgid="629030762178870832">"ограничи величину HTML е-поште"</string>
+    <string name="policy_max_attachment_size" msgid="6191034264088052742">"ограничи величину прилога"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"захтевај шифровање уређаја или SD карт."</string>
+    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
+    <skip />
+    <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Један дан"</string>
+    <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Три дана"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Недељу дана"</string>
+    <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Две недеље"</string>
+    <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Месец дана"</string>
+    <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
+    <skip />
 </resources>
