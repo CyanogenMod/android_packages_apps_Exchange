@@ -310,11 +310,12 @@ public class FolderSyncParser extends AbstractSyncParser {
 
             if (!parentId.equals("0")) {
                 mailbox.mParentServerId = parentId;
-                mFixupUninitializedNeeded = true;
                 if (!mInitialSync) {
                     mParentFixupsNeeded.add(parentId);
                 }
             }
+            // At the least, we'll need to set flags
+            mFixupUninitializedNeeded = true;
 
             return mailbox;
         }
