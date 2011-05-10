@@ -29,4 +29,38 @@
     <string name="app_name" msgid="5316597712787122829">"Servicii Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Acest eveniment a fost anulat pentru: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Detaliile acestui eveniment au fost modificate pentru: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"nu permiteţi ataşamente"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"nu permiteţi carduri de stocare"</string>
+    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"nu permiteţi un aparat foto"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"nu permiteţi aplicaţii nesemnate"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"nu permiteţi instal. aplicaţii nesemnate"</string>
+    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"nu permiteţi Wi-Fi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"nu permiteţi mesagerie text"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"nu permiteţi conturi POP3 sau IMAP"</string>
+    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"nu permiteţi comunicaţii în infraroşu"</string>
+    <string name="policy_dont_allow_html" msgid="5004059292137838041">"nu permiteţi e-mail HTML"</string>
+    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"nu permiteţi browsere"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"nu permiteţi e-mail consumator"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"nu permiteţi distribuirea prin internet"</string>
+    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"acceptaţi o parolă de recuperare"</string>
+    <string name="policy_require_smime" msgid="8044392674810605617">"solicitaţi mesaje SMIME"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"permit. doar sincron. manuală în roaming"</string>
+    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"limitaţi utilizarea fcţ. Bluetooth"</string>
+    <string name="policy_app_blacklist" msgid="5997243461425995435">"nu permiteţi anumite aplicaţii"</string>
+    <string name="policy_app_whitelist" msgid="8401297908870017913">"permiteţi doar anumite aplicaţii"</string>
+    <string name="policy_max_calendar_age" msgid="6394557044887221078">"limitaţi datele even. din calendar"</string>
+    <string name="policy_max_email_age" msgid="3303242808829681352">"limitaţi intervalul de date de e-mailuri"</string>
+    <string name="policy_text_truncation" msgid="5800480928209379255">"limitaţi dimensiunea e-mailului text"</string>
+    <string name="policy_html_truncation" msgid="629030762178870832">"limitaţi dimensiunea e-mailului HTML"</string>
+    <string name="policy_max_attachment_size" msgid="6191034264088052742">"limitaţi dimensiunea ataşamentului"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"solicit. criptarea dispoz./cardului SD"</string>
+    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
+    <skip />
+    <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"O zi"</string>
+    <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Trei zile"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"O săptămână"</string>
+    <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Două săptămâni"</string>
+    <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"O lună"</string>
+    <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
+    <skip />
 </resources>
