@@ -1639,6 +1639,8 @@ public class EasSyncService extends AbstractSyncService {
                     return true;
                 }
             } else {
+                // Write the policy out so that SecurityPolicy can use it...
+                policy.setAccountPolicy(mContext, mAccount, "0");
                 // Notify that we are blocked because of policies
                 SecurityPolicyDelegate.policiesRequired(mContext, mAccount.mId);
             }
