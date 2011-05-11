@@ -186,7 +186,7 @@ public class ProvisionParser extends Parser {
                     }
                     break;
                 case Tags.PROVISION_ATTACHMENTS_ENABLED:
-                    policy.mDontAllowAttachments = true;
+                    policy.mDontAllowAttachments = getValueInt() != 1;
                     break;
                 // Bluetooth: 0 = no bluetooth; 1 = only hands-free; 2 = allowed
                 case Tags.PROVISION_ALLOW_BLUETOOTH:
