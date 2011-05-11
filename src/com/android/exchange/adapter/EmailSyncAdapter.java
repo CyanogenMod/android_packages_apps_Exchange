@@ -32,6 +32,7 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
@@ -111,8 +112,17 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     // Holds the parser's value for isLooping()
     boolean mIsLooping = false;
 
+    // The policy (if any) for this adapter's Account
+    private final Policy mPolicy;
+
     public EmailSyncAdapter(EasSyncService service) {
         super(service);
+        // If we've got an account with a policy, cache it now
+        if (mAccount.mPolicyKey != 0) {
+            mPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+        } else {
+            mPolicy = null;
+        }
     }
 
     @Override
@@ -731,6 +741,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 att.mLocation = location;
                 att.mMimeType = getMimeTypeFromFileName(fileName);
                 att.mAccountKey = mService.mAccount.mId;
+                // Check if this attachment can't be downloaded due to an account policy
+                if (mPolicy != null) {
+                    if (mPolicy.mDontAllowAttachments ||
+                            (mPolicy.mMaxAttachmentSize > 0 &&
+                                    (att.mSize > mPolicy.mMaxAttachmentSize))) {
+                        att.mFlags = Attachment.FLAG_POLICY_DISALLOWS_DOWNLOAD;
+                    }
+                }
                 atts.add(att);
                 msg.mFlagAttachment = true;
             }

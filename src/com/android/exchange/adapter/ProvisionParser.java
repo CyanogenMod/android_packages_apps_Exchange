@@ -126,7 +126,6 @@ public class ProvisionParser extends Parser {
                     getValue();
                     break;
                 // The following policies, if false, can't be supported at the moment
-                case Tags.PROVISION_ATTACHMENTS_ENABLED:
                 case Tags.PROVISION_ALLOW_STORAGE_CARD:
                 case Tags.PROVISION_ALLOW_CAMERA:
                 case Tags.PROVISION_ALLOW_UNSIGNED_APPLICATIONS:
@@ -142,10 +141,6 @@ public class ProvisionParser extends Parser {
                     if (getValueInt() == 0) {
                         tagIsSupported = false;
                         switch(tag) {
-                            case Tags.PROVISION_ATTACHMENTS_ENABLED:
-                                res = R.string.policy_dont_allow_attachments;
-                                policy.mDontAllowAttachments = true;
-                                break;
                             case Tags.PROVISION_ALLOW_STORAGE_CARD:
                                 res = R.string.policy_dont_allow_storage_cards;
                                 break;
@@ -189,6 +184,9 @@ public class ProvisionParser extends Parser {
                             unsupportedList.add(res);
                         }
                     }
+                    break;
+                case Tags.PROVISION_ATTACHMENTS_ENABLED:
+                    policy.mDontAllowAttachments = true;
                     break;
                 // Bluetooth: 0 = no bluetooth; 1 = only hands-free; 2 = allowed
                 case Tags.PROVISION_ALLOW_BLUETOOTH:
@@ -237,12 +235,9 @@ public class ProvisionParser extends Parser {
                         }
                     }
                     break;
-                // The following, if greater than zero, can't be supported at the moment
                 case Tags.PROVISION_MAX_ATTACHMENT_SIZE:
                     int max = getValueInt();
                     if (max > 0) {
-                        tagIsSupported = false;
-                        unsupportedList.add(R.string.policy_max_attachment_size);
                         policy.mMaxAttachmentSize = max;
                     }
                     break;

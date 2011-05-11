@@ -1582,6 +1582,11 @@ public class EasSyncService extends AbstractSyncService {
         if (pp != null) {
             // Get the policies from ProvisionParser
             Policy policy = pp.getPolicy();
+            Policy oldPolicy = null;
+            // Grab the old policy (if any)
+            if (mAccount.mPolicyKey > 0) {
+                oldPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+            }
             // Update the account with a null policyKey (the key we've gotten is
             // temporary and cannot be used for syncing)
             Policy.clearAccountPolicy(mContext, mAccount);
@@ -1620,6 +1625,13 @@ public class EasSyncService extends AbstractSyncService {
                 String securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
                         PROVISION_STATUS_OK);
                 if (securitySyncKey != null) {
+                    // If attachment policies have changed, fix up any affected attachment records
+                    if (oldPolicy != null) {
+                        if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
+                                (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
+                            Policy.setAttachmentFlagsForNewPolicy(mContext, mAccount, policy);
+                        }
+                    }
                     // Write the final policy key to the Account and say we've been successful
                     policy.setAccountPolicy(mContext, mAccount, securitySyncKey);
                     // Release any mailboxes that might be in a security hold
