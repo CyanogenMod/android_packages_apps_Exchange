@@ -136,15 +136,15 @@ public class ExchangeService extends Service implements Runnable {
     public static final int SYNC_PING = 3;
     // Misc.
     public static final int SYNC_KICK = 4;
+    // A part request (attachment load, for now) was sent to ExchangeService
+    public static final int SYNC_SERVICE_PART_REQUEST = 5;
 
     // Requests >= SYNC_CALLBACK_START generate callbacks to the UI
-    public static final int SYNC_CALLBACK_START = 5;
+    public static final int SYNC_CALLBACK_START = 6;
     // startSync was requested of ExchangeService (other than due to user request)
     public static final int SYNC_SERVICE_START_SYNC = SYNC_CALLBACK_START + 0;
     // startSync was requested of ExchangeService (due to user request)
     public static final int SYNC_UI_REQUEST = SYNC_CALLBACK_START + 1;
-    // A part request (attachment load, for now) was sent to ExchangeService
-    public static final int SYNC_SERVICE_PART_REQUEST = SYNC_CALLBACK_START + 2;
 
     private static final String WHERE_PUSH_OR_PING_NOT_ACCOUNT_MAILBOX =
         MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.TYPE + "!=" +

@@ -1188,7 +1188,13 @@ public class EasSyncService extends AbstractSyncService {
                     }
                 }
             } else {
-                doStatusCallback(msg.mId, att.mId, EmailServiceStatus.MESSAGE_NOT_FOUND);
+                // Mark as download failed; this will prevent any automatic attempt to precache
+                ContentValues cv = new ContentValues();
+                int flags = att.mFlags | Attachment.FLAG_DOWNLOAD_FAILED;
+                cv.put(AttachmentColumns.FLAGS, flags);
+                att.update(mContext, cv);
+                // Send proper callback
+                doStatusCallback(msg.mId, att.mId, EmailServiceStatus.ATTACHMENT_NOT_FOUND);
             }
         } finally {
             resp.close();
