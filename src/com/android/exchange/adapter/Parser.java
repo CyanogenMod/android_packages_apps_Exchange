@@ -182,6 +182,10 @@ public abstract class Parser {
         logging = val;
     }
 
+    protected InputStream getInput() {
+        return in;
+    }
+
     /**
      * Set the tag used for logging.  When debugging is on, every token is logged (Log.v) to
      * the console.

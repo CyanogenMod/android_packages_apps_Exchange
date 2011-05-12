@@ -21,13 +21,10 @@ package com.android.exchange.adapter;
  * The wbxml tags for EAS are all defined here.
  *
  * The static final int's, of the form <page>_<tag> = <constant> are used in parsing incoming
- * responses from the server (i.e. EasParser and its subclasses).
+ * responses from the server (i.e. EasParser and its subclasses) and sending requests to the
+ * server (via Serializer)
  *
- * The array of String arrays is used to construct server requests with EasSerializer.  One thing
- * we might do eventually is to "precompile" these requests, in part, although they should be
- * fairly fast to begin with (each tag requires one HashMap lookup, and there aren't all that many
- * of them in a given command).
- *
+ * The array of string arrays is used only for generating logging output
  */
 public class Tags {
 
@@ -537,6 +534,29 @@ public class Tags {
     public static final int SETTINGS_ENABLE_OUTGOING_SMS = SETTINGS_PAGE + 0x21;
     public static final int SETTINGS_MOBILE_OPERATOR = SETTINGS_PAGE + 0x22;
 
+    public static final int ITEMS_PAGE = ITEMS << PAGE_SHIFT;
+    public static final int ITEMS_ITEMS = ITEMS_PAGE + 5;
+    public static final int ITEMS_FETCH = ITEMS_PAGE + 6;
+    public static final int ITEMS_STORE = ITEMS_PAGE + 7;
+    public static final int ITEMS_OPTIONS = ITEMS_PAGE + 8;
+    public static final int ITEMS_RANGE = ITEMS_PAGE + 9;
+    public static final int ITEMS_TOTAL = ITEMS_PAGE + 0xA;
+    public static final int ITEMS_PROPERTIES = ITEMS_PAGE + 0xB;
+    public static final int ITEMS_DATA = ITEMS_PAGE + 0xC;
+    public static final int ITEMS_STATUS = ITEMS_PAGE + 0xD;
+    public static final int ITEMS_RESPONSE = ITEMS_PAGE + 0xE;
+    public static final int ITEMS_VERSION = ITEMS_PAGE + 0xF;
+    public static final int ITEMS_SCHEMA = ITEMS_PAGE + 0x10;
+    public static final int ITEMS_PART = ITEMS_PAGE + 0x11;
+    public static final int ITEMS_EMPTY_FOLDER = ITEMS_PAGE + 0x12;
+    public static final int ITEMS_DELETE_SUB_FOLDERS = ITEMS_PAGE + 0x13;
+    public static final int ITEMS_USERNAME = ITEMS_PAGE + 0x14;
+    public static final int ITEMS_PASSWORD = ITEMS_PAGE + 0x15;
+    public static final int ITEMS_MOVE = ITEMS_PAGE + 0x16;
+    public static final int ITEMS_DSTFLDID = ITEMS_PAGE + 0x17;
+    public static final int ITEMS_CONVERSATION_ID = ITEMS_PAGE + 0x18;
+    public static final int ITEMS_MOVE_ALWAYS = ITEMS_PAGE + 0x19;
+
     public static final int EMAIL2_PAGE = EMAIL2 << PAGE_SHIFT;
     public static final int EMAIL2_UM_CALLER_ID = EMAIL2_PAGE + 5;
     public static final int EMAIL2_UM_USER_NOTES = EMAIL2_PAGE + 6;
@@ -741,6 +761,11 @@ public class Tags {
         },
         {
             // 0x14 ItemOperations
+            "Items", "ItemsFetch", "ItemsStore", "ItemsOptions", "ItemsRange",
+            "ItemsTotal", "ItemsProperties", "ItemsData", "ItemsStatus", "ItemsResponse",
+            "ItemsVersion", "ItemsSchema", "ItemsPart", "ItemsEmptyFolder", "ItemsDeleteSubFolders",
+            "ItemsUserName", "ItemsPassword", "ItemsMove", "ItemsDstFldId", "ItemsConversationId",
+            "ItemsMoveAlways"
         },
         {
             // 0x15 ComposeMail

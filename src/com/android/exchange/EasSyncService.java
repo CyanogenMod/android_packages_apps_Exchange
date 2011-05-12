@@ -23,8 +23,6 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.provider.EmailContent.Attachment;
-import com.android.emailcommon.provider.EmailContent.AttachmentColumns;
 import com.android.emailcommon.provider.EmailContent.HostAuth;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -35,11 +33,11 @@ import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
+import com.android.exchange.adapter.AttachmentLoader;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.EmailSyncAdapter;
@@ -97,10 +95,8 @@ import android.util.Log;
 import android.util.Xml;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.Thread.State;
 import java.net.URI;
 import java.security.cert.CertificateException;
@@ -124,7 +120,6 @@ public class EasSyncService extends AbstractSyncService {
     private static final String WHERE_PUSH_HOLD_NOT_ACCOUNT_MAILBOX =
         MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SYNC_INTERVAL +
         '=' + Mailbox.CHECK_INTERVAL_PUSH_HOLD;
-    static private final int CHUNK_SIZE = 16*1024;
 
     static private final String PING_COMMAND = "Ping";
     // Command timeout is the the time allowed for reading data from an open connection before an
@@ -1082,125 +1077,6 @@ public class EasSyncService extends AbstractSyncService {
         }
         return null;
     }
-
-    private void doStatusCallback(long messageId, long attachmentId, int status) {
-        try {
-            ExchangeService.callback().loadAttachmentStatus(messageId, attachmentId, status, 0);
-        } catch (RemoteException e) {
-            // No danger if the client is no longer around
-        }
-    }
-
-    private void doProgressCallback(long messageId, long attachmentId, int progress) {
-        try {
-            ExchangeService.callback().loadAttachmentStatus(messageId, attachmentId,
-                    EmailServiceStatus.IN_PROGRESS, progress);
-        } catch (RemoteException e) {
-            // No danger if the client is no longer around
-        }
-    }
-
-    /**
-     * Loads an attachment, based on the PartRequest passed in.  The PartRequest is basically our
-     * wrapper for Attachment
-     * @param req the part (attachment) to be retrieved
-     * @throws IOException
-     */
-    protected void loadAttachment(PartRequest req) throws IOException {
-        Attachment att = req.mAttachment;
-        Message msg = Message.restoreMessageWithId(mContext, att.mMessageKey);
-        if (msg == null) {
-            doStatusCallback(att.mMessageKey, att.mId, EmailServiceStatus.MESSAGE_NOT_FOUND);
-            return;
-        } else {
-            doProgressCallback(msg.mId, att.mId, 0);
-        }
-
-        String cmd = "GetAttachment&AttachmentName=" + att.mLocation;
-        EasResponse resp = sendHttpClientPost(cmd, null, COMMAND_TIMEOUT);
-
-        try {
-            int status = resp.getStatus();
-            if (status == HttpStatus.SC_OK) {
-                int len = resp.getLength();
-                InputStream is = resp.getInputStream();
-                OutputStream os = null;
-                Uri attachmentUri = AttachmentUtilities.getAttachmentUri(att.mAccountKey, att.mId);
-                String fileName = null;
-                try {
-                    os = mContentResolver.openOutputStream(attachmentUri);
-                    userLog("Attachment filename retrieved as: " + fileName);
-                } catch (FileNotFoundException e) {
-                    userLog("Can't get attachment; write file not found?");
-                }
-                if (os != null) {
-                    // len > 0 means that Content-Length was set in the headers
-                    // len < 0 means "chunked" transfer-encoding
-                    if (len != 0) {
-                        try {
-                            mPendingRequest = req;
-                            byte[] bytes = new byte[CHUNK_SIZE];
-                            int length = len;
-                            // Loop terminates 1) when EOF is reached or 2) IOException occurs
-                            // One of these is guaranteed to occur
-                            int totalRead = 0;
-                            userLog("Attachment content-length: ", len);
-                            while (true) {
-                                int read = is.read(bytes, 0, CHUNK_SIZE);
-
-                                // read < 0 means that EOF was reached
-                                if (read < 0) {
-                                    userLog("Attachment load reached EOF, totalRead: ", totalRead);
-                                    break;
-                                }
-
-                                // Keep track of how much we've read for progress callback
-                                totalRead += read;
-
-                                // Write these bytes out
-                                os.write(bytes, 0, read);
-
-                                // We can't report percentages if this is chunked; the
-                                // length of incoming data is unknown
-                                if (length > 0) {
-                                    // Belt and suspenders check to prevent runaway reading
-                                    if (totalRead > length) {
-                                        errorLog("totalRead is greater than attachment length?");
-                                        break;
-                                    }
-                                    int pct = (totalRead * 100) / length;
-                                    doProgressCallback(msg.mId, att.mId, pct);
-                                }
-                            }
-                        } finally {
-                            mPendingRequest = null;
-                        }
-                    }
-                    os.flush();
-                    os.close();
-
-                    // EmailProvider will throw an exception if update an unsaved attachment
-                    if (att.isSaved()) {
-                        ContentValues cv = new ContentValues();
-                        cv.put(AttachmentColumns.CONTENT_URI, attachmentUri.toString());
-                        att.update(mContext, cv);
-                        doStatusCallback(msg.mId, att.mId, EmailServiceStatus.SUCCESS);
-                    }
-                }
-            } else {
-                // Mark as download failed; this will prevent any automatic attempt to precache
-                ContentValues cv = new ContentValues();
-                int flags = att.mFlags | Attachment.FLAG_DOWNLOAD_FAILED;
-                cv.put(AttachmentColumns.FLAGS, flags);
-                att.update(mContext, cv);
-                // Send proper callback
-                doStatusCallback(msg.mId, att.mId, EmailServiceStatus.ATTACHMENT_NOT_FOUND);
-            }
-        } finally {
-            resp.close();
-        }
-    }
-
     /**
      * Send an email responding to a Message that has been marked as a meeting request.  The message
      * will consist a little bit of event information and an iCalendar attachment
@@ -1464,7 +1340,7 @@ public class EasSyncService extends AbstractSyncService {
         return client;
     }
 
-    protected EasResponse sendHttpClientPost(String cmd, byte[] bytes) throws IOException {
+    public EasResponse sendHttpClientPost(String cmd, byte[] bytes) throws IOException {
         return sendHttpClientPost(cmd, new ByteArrayEntity(bytes), COMMAND_TIMEOUT);
     }
 
@@ -2427,7 +2303,7 @@ public class EasSyncService extends AbstractSyncService {
                 // Our two request types are PartRequest (loading attachment) and
                 // MeetingResponseRequest (respond to a meeting request)
                 if (req instanceof PartRequest) {
-                    loadAttachment((PartRequest)req);
+                    new AttachmentLoader(this, (PartRequest)req).loadAttachment();
                 } else if (req instanceof MeetingResponseRequest) {
                     sendMeetingResponse((MeetingResponseRequest)req);
                 } else if (req instanceof MessageMoveRequest) {

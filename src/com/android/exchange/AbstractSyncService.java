@@ -72,7 +72,6 @@ public abstract class AbstractSyncService implements Runnable {
 
     protected volatile long mRequestTime = 0;
     protected LinkedBlockingQueue<Request> mRequestQueue = new LinkedBlockingQueue<Request>();
-    protected PartRequest mPendingRequest = null;
 
     /**
      * Sent by SyncManager to request that the service stop itself cleanly
