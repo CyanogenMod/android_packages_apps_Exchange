@@ -265,7 +265,9 @@ public class ProvisionParser extends Parser {
                         }
                     }
                     break;
-                // NOTE: We can support these entirely within the email application if we choose
+                // NOTE: These policies are enforced by the server; the calendar age maximum can
+                // always be accepted, since we don't have a user-settable option. We only reject
+                // email age filters at this point.
                 case Tags.PROVISION_MAX_CALENDAR_AGE_FILTER:
                 case Tags.PROVISION_MAX_EMAIL_AGE_FILTER:
                     max = getValueInt();
@@ -274,29 +276,23 @@ public class ProvisionParser extends Parser {
                         policy.mMaxCalendarLookback = max;
                     } else {
                         policy.mMaxEmailLookback = max;
-                    }
-                    if (max != 0) {
-                        tagIsSupported = false;
-                        if (tag == Tags.PROVISION_MAX_CALENDAR_AGE_FILTER) {
-                            unsupportedList.add(R.string.policy_max_calendar_age);
-                        } else {
+                        if (max != 0) {
                             unsupportedList.add(R.string.policy_max_email_age);
+                            tagIsSupported = false;
                         }
-                     }
+                    }
                     break;
-                // NOTE: We can support these entirely within the email application if we choose
+                // NOTE: These policies are enforced by the server; we can accept them as is, since
+                // we don't allow users to set our truncation size manually
                 case Tags.PROVISION_MAX_EMAIL_BODY_TRUNCATION_SIZE:
                 case Tags.PROVISION_MAX_EMAIL_HTML_BODY_TRUNCATION_SIZE:
                     String value = getValue();
                     // -1 indicates no required truncation
                     if (!value.equals("-1")) {
-                        tagIsSupported = false;
                         max = Integer.parseInt(value);
                         if (tag == Tags.PROVISION_MAX_EMAIL_BODY_TRUNCATION_SIZE) {
-                            unsupportedList.add(R.string.policy_text_truncation);
                             policy.mMaxTextTruncationSize = max;
                         } else {
-                            unsupportedList.add(R.string.policy_html_truncation);
                             policy.mMaxHtmlTruncationSize = max;
                         }
                     }
