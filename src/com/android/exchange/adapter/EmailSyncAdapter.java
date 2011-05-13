@@ -17,6 +17,8 @@
 
 package com.android.exchange.adapter;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import com.android.emailcommon.internet.MimeMessage;
 import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.mail.Address;
@@ -33,7 +35,6 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.Policy;
-import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.ConversionUtilities;
@@ -101,16 +102,18 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int LAST_VERB_REPLY_ALL = 2;
     private static final int LAST_VERB_FORWARD = 3;
 
-    String[] mBindArguments = new String[2];
-    String[] mBindArgument = new String[1];
+    private String[] mBindArguments = new String[2];
+    private String[] mBindArgument = new String[1];
 
-    /*package*/ ArrayList<Long> mDeletedIdList = new ArrayList<Long>();
-    /*package*/ ArrayList<Long> mUpdatedIdList = new ArrayList<Long>();
-    /*package*/ ArrayList<FetchRequest> mFetchRequestList = new ArrayList<FetchRequest>();
+    @VisibleForTesting
+    ArrayList<Long> mDeletedIdList = new ArrayList<Long>();
+    @VisibleForTesting
+    ArrayList<Long> mUpdatedIdList = new ArrayList<Long>();
+    private ArrayList<FetchRequest> mFetchRequestList = new ArrayList<FetchRequest>();
     private boolean mFetchNeeded = false;
 
     // Holds the parser's value for isLooping()
-    boolean mIsLooping = false;
+    private boolean mIsLooping = false;
 
     // The policy (if any) for this adapter's Account
     private final Policy mPolicy;
@@ -167,7 +170,8 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     /**
      * Holder for fetch request information (record id and server id)
      */
-    static class FetchRequest {
+    private static class FetchRequest {
+        @SuppressWarnings("unused")
         final long messageId;
         final String serverId;
 
@@ -296,7 +300,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         Utility.showToast(mContext, "Auto lookback: " + windowEntries[lookback]);
     }
 
-    static class GetItemEstimateParser extends Parser {
+    private static class GetItemEstimateParser extends Parser {
         private static final String TAG = "GetItemEstimateParser";
         private int mEstimate = -1;
 
@@ -304,6 +308,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             super(in);
         }
 
+        @Override
         public boolean parse() throws IOException {
             // Loop here through the remaining xml
             while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
@@ -415,10 +420,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         private String mMailboxIdAsString;
 
-        ArrayList<Message> newEmails = new ArrayList<Message>();
-        ArrayList<Message> fetchedEmails = new ArrayList<Message>();
-        ArrayList<Long> deletedEmails = new ArrayList<Long>();
-        ArrayList<ServerChange> changedEmails = new ArrayList<ServerChange>();
+        private ArrayList<Message> newEmails = new ArrayList<Message>();
+        private ArrayList<Message> fetchedEmails = new ArrayList<Message>();
+        private ArrayList<Long> deletedEmails = new ArrayList<Long>();
+        private ArrayList<ServerChange> changedEmails = new ArrayList<ServerChange>();
 
         public EasEmailSyncParser(InputStream in, EmailSyncAdapter adapter) throws IOException {
             super(in, adapter);
@@ -755,11 +760,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         }
 
         /**
-         * Try to determine a mime type from a file name, defaulting to application/x, where x
-         * is either the extension or (if none) octet-stream
+         * Returns an appropriate mimetype for the given file name's extension. If a mimetype
+         * cannot be determined, {@code application/<<x>>} [where @{code <<x>> is the extension,
+         * if it exists or {@code application/octet-stream}].
          * At the moment, this is somewhat lame, since many file types aren't recognized
          * @param fileName the file name to ponder
-         * @return
          */
         // Note: The MimeTypeMap method currently uses a very limited set of mime types
         // A bug has been filed against this issue.
@@ -789,7 +794,8 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     WHERE_SERVER_ID_AND_MAILBOX_KEY, mBindArguments, null);
         }
 
-        /*package*/ void deleteParser(ArrayList<Long> deletes, int entryTag) throws IOException {
+        @VisibleForTesting
+        void deleteParser(ArrayList<Long> deletes, int entryTag) throws IOException {
             while (nextTag(entryTag) != END) {
                 switch (tag) {
                     case Tags.SYNC_SERVER_ID:
@@ -814,6 +820,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
+        @VisibleForTesting
         class ServerChange {
             long id;
             Boolean read;
@@ -826,7 +833,8 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        /*package*/ void changeParser(ArrayList<ServerChange> changes) throws IOException {
+        @VisibleForTesting
+        void changeParser(ArrayList<ServerChange> changes) throws IOException {
             String serverId = null;
             Boolean oldRead = false;
             Boolean oldFlag = false;
@@ -926,8 +934,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             // Use a batch operation to handle the changes
             // TODO New mail notifications?  Who looks for these?
             ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
-            // List of newly added message IDs
-            ArrayList<Long> addedIdList = new ArrayList<Long>();
 
             for (Message msg: fetchedEmails) {
                 // Find the original message's id (by serverId and mailbox)
@@ -958,9 +964,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
 
             for (Message msg: newEmails) {
-                if (!msg.mFlagRead) {
-                    addedIdList.add(msg.mId);
-                }
                 msg.addSaveOps(ops);
             }
 
@@ -1007,11 +1010,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 } catch (OperationApplicationException e) {
                     // There is nothing to be done here; fail by returning null
                 }
-            }
-
-            if (addedIdList.size() > 0) {
-                new AccountServiceProxy(mService.mContext)
-                        .notifyNewMessages(mAccount.mId, addedIdList);
             }
         }
     }
@@ -1112,6 +1110,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
      * @return true if SYNC_COMMANDS hasn't been sent (false otherwise)
      * @throws IOException
      */
+    @VisibleForTesting
     boolean sendDeletedItems(Serializer s, ArrayList<Long> deletedIds, boolean first)
             throws IOException {
         ContentResolver cr = mContext.getContentResolver();
