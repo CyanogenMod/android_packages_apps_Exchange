@@ -16,6 +16,7 @@
 
 package com.android.exchange;
 
+import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.utility.ExchangeTestCase;
 
 import android.test.suitebuilder.annotation.MediumTest;
