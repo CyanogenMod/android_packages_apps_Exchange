@@ -77,11 +77,13 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     // there's no original event when finding an item by _SYNC_ID
     private static final String SERVER_ID_AND_CALENDAR_ID = Events._SYNC_ID + "=? AND " +
         Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
+    private static final String EVENT_ID_AND_CALENDAR_ID = Events._ID + "=? AND " +
+        Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
     private static final String DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR =
         "(" + Events.DIRTY + "=1 OR " + Events._SYNC_MARK + "= 1) AND " +
-        Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
+        Events.ORIGINAL_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
     private static final String DIRTY_EXCEPTION_IN_CALENDAR =
-        Events.DIRTY + "=1 AND " + Events.ORIGINAL_SYNC_ID + " NOTNULL AND " +
+        Events.DIRTY + "=1 AND " + Events.ORIGINAL_ID + " NOTNULL AND " +
         Events.CALENDAR_ID + "=?";
     private static final String CLIENT_ID_SELECTION = Events._SYNC_DATA + "=?";
     private static final String ORIGINAL_EVENT_AND_CALENDAR =
@@ -90,7 +92,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         Attendees.ATTENDEE_RELATIONSHIP + "!=" + Attendees.RELATIONSHIP_ORGANIZER;
     private static final String[] ID_PROJECTION = new String[] {Events._ID};
     private static final String[] ORIGINAL_EVENT_PROJECTION =
-        new String[] {Events.ORIGINAL_SYNC_ID, Events._ID};
+        new String[] {Events.ORIGINAL_ID, Events._ID};
     private static final String EVENT_ID_AND_NAME =
         ExtendedProperties.EVENT_ID + "=? AND " + ExtendedProperties.NAME + "=?";
 
@@ -1779,12 +1781,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 cv.put(Events._SYNC_MARK, 1);
                 while (c.moveToNext()) {
                     // Mark the parents of dirty exceptions
-                    String serverId = c.getString(0);
+                    long parentId = c.getLong(0);
                     int cnt = cr.update(
                             asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv,
-                            SERVER_ID_AND_CALENDAR_ID, new String[] {
-                                    serverId, mCalendarIdString
+                            EVENT_ID_AND_CALENDAR_ID, new String[] {
+                                    Long.toString(parentId), mCalendarIdString
                             });
                     // Keep track of any orphaned exceptions
                     if (cnt == 0) {
