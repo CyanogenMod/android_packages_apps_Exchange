@@ -556,11 +556,11 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         // Box 1 should be a child, even though it is defined as the parent of box2, because it
         // has no serverId (presumably, this case can't happen, because a child stores the parent's
         // serverId, but it's nice to know it's handled properly). Box 1 should have no parent.
-        assertEquals(Mailbox.PARENT_KEY_NONE, box1.mParentKey);
+        assertEquals(Mailbox.NO_MAILBOX, box1.mParentKey);
         assertEquals(CHILD_FLAGS, box1.mFlags);
         // Box 2 should be a child with no parent (see above).  Since it's an outbox, the flags are
         // only "holds mail".
-        assertEquals(Mailbox.PARENT_KEY_NONE, box2.mParentKey);
+        assertEquals(Mailbox.NO_MAILBOX, box2.mParentKey);
         assertEquals(Mailbox.FLAG_HOLDS_MAIL, box2.mFlags);
     }
 

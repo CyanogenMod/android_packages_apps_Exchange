@@ -82,7 +82,7 @@ public class MailboxUtilities {
             }
         } else {
             // Mark this is having no parent, so that we don't examine this mailbox again
-            parentValues.put(Mailbox.PARENT_KEY, Mailbox.PARENT_KEY_NONE);
+            parentValues.put(Mailbox.PARENT_KEY, Mailbox.NO_MAILBOX);
             Log.w(Logging.LOG_TAG, "Mailbox with null serverId: " +
                     parentCursor.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN) + ", type: " +
                     parentType);
@@ -141,7 +141,7 @@ public class MailboxUtilities {
         // Any mailboxes without a parent key should have parentKey set to -1 (no parent)
         ContentValues values = new ContentValues();
         values.clear();
-        values.put(Mailbox.PARENT_KEY, Mailbox.PARENT_KEY_NONE);
+        values.put(Mailbox.PARENT_KEY, Mailbox.NO_MAILBOX);
         resolver.update(Mailbox.CONTENT_URI, values, noParentKeySelection, null);
      }
 
