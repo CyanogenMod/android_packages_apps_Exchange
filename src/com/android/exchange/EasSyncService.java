@@ -2387,7 +2387,8 @@ public class EasSyncService extends AbstractSyncService {
                             // TODO 14.1
                             int status = e.mStatus;
                             if (CommandStatus.isNeedsProvisioning(status)) {
-                                mExitStatus = EXIT_SECURITY_FAILURE;
+                                // Simply report "ok" here; account mailbox handles security errors
+                                mExitStatus = EXIT_DONE;
                             } else if (CommandStatus.isDeniedAccess(status)) {
                                 mExitStatus = EXIT_ACCESS_DENIED;
                             } else if (CommandStatus.isTransientError(status)) {
@@ -2423,7 +2424,8 @@ public class EasSyncService extends AbstractSyncService {
                 } else {
                     userLog("Sync response error: ", code);
                     if (isProvisionError(code)) {
-                        mExitStatus = EXIT_SECURITY_FAILURE;
+                        // Simply report "ok" here; account mailbox handles security errors
+                        mExitStatus = EXIT_DONE;
                     } else if (isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                     } else {
