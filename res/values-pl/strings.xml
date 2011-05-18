@@ -54,12 +54,11 @@
     <string name="policy_html_truncation" msgid="629030762178870832">"ogranicz rozmiar e-maili w formacie HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"ogranicz rozmiar załączników"</string>
     <string name="policy_require_encryption" msgid="9370390981258441">"wymagaj szyfrowania urządzenia lub karty SD"</string>
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatycznie"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Jeden dzień"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Trzy dni"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Jeden tydzień"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Dwa tygodnie"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Jeden miesiąc"</string>
-    <!-- outdated translation 5383858972681926166 -->     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Cała poczta"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Wszystkie"</string>
 </resources>

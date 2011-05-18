@@ -54,13 +54,11 @@
     <string name="policy_html_truncation" msgid="629030762178870832">"limitaţi dimensiunea e-mailului HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"limitaţi dimensiunea ataşamentului"</string>
     <string name="policy_require_encryption" msgid="9370390981258441">"solicit. criptarea dispoz./cardului SD"</string>
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automat"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"O zi"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Trei zile"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"O săptămână"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Două săptămâni"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"O lună"</string>
-    <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
-    <skip />
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Toate"</string>
 </resources>

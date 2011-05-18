@@ -54,12 +54,11 @@
     <string name="policy_html_truncation" msgid="629030762178870832">"限制 HTML 电子邮件的大小"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"限制附件的大小"</string>
     <string name="policy_require_encryption" msgid="9370390981258441">"要求设备或 SD 卡加密"</string>
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"自动"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"一天"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"三天"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"一周"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"两周"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"一个月"</string>
-    <!-- outdated translation 5383858972681926166 -->     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"所有邮件"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"全部"</string>
 </resources>
