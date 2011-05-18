@@ -54,13 +54,11 @@
     <string name="policy_html_truncation" msgid="629030762178870832">"restringeix mida del correu electr. HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"restringeix la mida del fitxer adjunt"</string>
     <string name="policy_require_encryption" msgid="9370390981258441">"requereix encript. de dispos. o targ. sd"</string>
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automàtic"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Un dia"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tres dies"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Una setmana"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Dues setmanes"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Un mes"</string>
-    <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
-    <skip />
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tots"</string>
 </resources>

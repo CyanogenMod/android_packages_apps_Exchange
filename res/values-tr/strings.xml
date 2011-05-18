@@ -44,7 +44,7 @@
     <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"internet paylaşımına izin verme"</string>
     <string name="policy_enable_password_recovery" msgid="3082147682445934504">"ikincil şifreyi destekle"</string>
     <string name="policy_require_smime" msgid="8044392674810605617">"iletilerin SMIME olmasını gerektir"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"dolşmda yalnzc el ile senk yapmy izn ver"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"Dolaşımda sadece elle senkronzsyn"</string>
     <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"bluetooth kullanımını kısıtla"</string>
     <string name="policy_app_blacklist" msgid="5997243461425995435">"belirtilen uygulamalara izin verme"</string>
     <string name="policy_app_whitelist" msgid="8401297908870017913">"yalnızca belirtilen uyglmalara izin ver"</string>
@@ -54,12 +54,11 @@
     <string name="policy_html_truncation" msgid="629030762178870832">"HTML e-posta boyutunu kısıtla"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"ek boyutunu kısıtla"</string>
     <string name="policy_require_encryption" msgid="9370390981258441">"cihaz veya sd kart şifrelemesi gerektir"</string>
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Otomatik"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Bir gün"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Üç gün"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Bir hafta"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"İki hafta"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Bir ay"</string>
-    <!-- outdated translation 5383858972681926166 -->     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tüm postalar"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tümü"</string>
 </resources>
