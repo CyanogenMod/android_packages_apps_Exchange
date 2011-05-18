@@ -17,8 +17,6 @@
 
 package com.android.exchange.adapter;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import com.android.emailcommon.internet.MimeMessage;
 import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.mail.Address;
@@ -46,6 +44,7 @@ import com.android.exchange.EasSyncService.EasResponse;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.entity.ByteArrayEntity;
@@ -368,22 +367,35 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
      */
     private int getEstimate(String filter) throws IOException {
         Serializer s = new Serializer();
+        boolean ex10 = mService.mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE;
+        boolean ex03 = mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE;
+        boolean ex07 = !ex10 && !ex03;
 
         String className = getCollectionName();
         String syncKey = getSyncKey();
         userLog("gie, sending ", className, " syncKey: ", syncKey);
+
         s.start(Tags.GIE_GET_ITEM_ESTIMATE).start(Tags.GIE_COLLECTIONS);
         s.start(Tags.GIE_COLLECTION);
-        // The "Class" element is removed in EAS 12.1 and later versions
-        if (mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE) {
+        if (ex07) {
+            // Exchange 2007 likes collection id first
+            s.data(Tags.GIE_COLLECTION_ID, mMailbox.mServerId);
+            s.data(Tags.SYNC_FILTER_TYPE, filter);
+            s.data(Tags.SYNC_SYNC_KEY, syncKey);
+        } else if (ex03) {
+            // Exchange 2003 needs the "class" element
             s.data(Tags.GIE_CLASS, className);
+            s.data(Tags.SYNC_SYNC_KEY, syncKey);
+            s.data(Tags.GIE_COLLECTION_ID, mMailbox.mServerId);
+            s.data(Tags.SYNC_FILTER_TYPE, filter);
+        } else {
+            // Exchange 2010 requires the filter inside an OPTIONS container and sync key first
+            s.data(Tags.SYNC_SYNC_KEY, syncKey);
+            s.data(Tags.GIE_COLLECTION_ID, mMailbox.mServerId);
+            s.start(Tags.SYNC_OPTIONS).data(Tags.SYNC_FILTER_TYPE, filter).end();
         }
-        s.data(Tags.GIE_COLLECTION_ID, mMailbox.mServerId);
-        s.data(Tags.SYNC_FILTER_TYPE, filter);
-        s.data(Tags.SYNC_SYNC_KEY, syncKey);
-        s.end(); // GIE_COLLECTION
-        s.end(); // GIE_COLLECTIONS
-        s.end().done(); // GIE_GET_ITEM_ESTIMATE
+        s.end().end().end().done(); // GIE_COLLECTION, GIE_COLLECTIONS, GIE_GET_ITEM_ESTIMATE
+
         EasResponse resp = mService.sendHttpClientPost("GetItemEstimate",
                 new ByteArrayEntity(s.toByteArray()), EasSyncService.COMMAND_TIMEOUT);
         int code = resp.getStatus();

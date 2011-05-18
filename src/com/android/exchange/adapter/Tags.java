@@ -663,7 +663,7 @@ public class Tags {
         },
         {
             // 0x06 ItemEstimate
-            "GetItemEstimate", "Version", "Collection", "Collection", "Class", "CollectionId",
+            "GetItemEstimate", "Version", "Collections", "Collection", "Class", "CollectionId",
             "DateTime", "Estimate", "Response", "Status"
         },
         {
