@@ -23,11 +23,11 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.provider.EmailContent.HostAuth;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceConstants;
@@ -211,7 +211,7 @@ public class EasSyncService extends AbstractSyncService {
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     public ContentResolver mContentResolver;
-    private String[] mBindArguments = new String[2];
+    private final String[] mBindArguments = new String[2];
     private ArrayList<String> mPingChangeList;
     // The HttpPost in progress
     private volatile HttpPost mPendingPost = null;

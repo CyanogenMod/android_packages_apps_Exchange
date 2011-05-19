@@ -22,11 +22,11 @@ import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
-import com.android.emailcommon.provider.EmailContent.HostAuth;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
+import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.AccountServiceProxy;
@@ -190,22 +190,22 @@ public class ExchangeService extends Service implements Runnable {
     public static boolean sConnectivityHold = false;
 
     // Keeps track of running services (by mailbox id)
-    private HashMap<Long, AbstractSyncService> mServiceMap =
+    private final HashMap<Long, AbstractSyncService> mServiceMap =
         new HashMap<Long, AbstractSyncService>();
     // Keeps track of services whose last sync ended with an error (by mailbox id)
     /*package*/ ConcurrentHashMap<Long, SyncError> mSyncErrorMap =
         new ConcurrentHashMap<Long, SyncError>();
     // Keeps track of which services require a wake lock (by mailbox id)
-    private HashMap<Long, Boolean> mWakeLocks = new HashMap<Long, Boolean>();
+    private final HashMap<Long, Boolean> mWakeLocks = new HashMap<Long, Boolean>();
     // Keeps track of PendingIntents for mailbox alarms (by mailbox id)
-    private HashMap<Long, PendingIntent> mPendingIntents = new HashMap<Long, PendingIntent>();
+    private final HashMap<Long, PendingIntent> mPendingIntents = new HashMap<Long, PendingIntent>();
     // The actual WakeLock obtained by ExchangeService
     private WakeLock mWakeLock = null;
     // Keep our cached list of active Accounts here
     public final AccountList mAccountList = new AccountList();
 
     // Observers that we use to look for changed mail-related data
-    private Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler();
     private AccountObserver mAccountObserver;
     private MailboxObserver mMailboxObserver;
     private SyncedMessageObserver mSyncedMessageObserver;
@@ -213,7 +213,7 @@ public class ExchangeService extends Service implements Runnable {
     private Object mStatusChangeListener;
 
     // Concurrent because CalendarSyncAdapter can modify the map during a wipe
-    private ConcurrentHashMap<Long, CalendarObserver> mCalendarObservers =
+    private final ConcurrentHashMap<Long, CalendarObserver> mCalendarObservers =
         new ConcurrentHashMap<Long, CalendarObserver>();
 
     private ContentResolver mResolver;
@@ -244,7 +244,7 @@ public class ExchangeService extends Service implements Runnable {
     private NetworkInfo mNetworkInfo;
 
     // Callbacks as set up via setCallback
-    private RemoteCallbackList<IEmailServiceCallback> mCallbackList =
+    private final RemoteCallbackList<IEmailServiceCallback> mCallbackList =
         new RemoteCallbackList<IEmailServiceCallback>();
 
     private interface ServiceCallbackWrapper {
@@ -1593,8 +1593,8 @@ public class ExchangeService extends Service implements Runnable {
                 }
             } else if (intent.getAction().equals(
                     ConnectivityManager.ACTION_BACKGROUND_DATA_SETTING_CHANGED)) {
-                ConnectivityManager cm = (ConnectivityManager)ExchangeService.this
-                    .getSystemService(Context.CONNECTIVITY_SERVICE);
+                ConnectivityManager cm =
+                        (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
                 mBackgroundData = cm.getBackgroundDataSetting();
                 // If background data is now on, we want to kick ExchangeService
                 if (mBackgroundData) {
@@ -1708,7 +1708,7 @@ public class ExchangeService extends Service implements Runnable {
     private void waitForConnectivity() {
         boolean waiting = false;
         ConnectivityManager cm =
-            (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);
+            (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
         while (!sStop) {
             NetworkInfo info = cm.getActiveNetworkInfo();
             if (info != null) {
