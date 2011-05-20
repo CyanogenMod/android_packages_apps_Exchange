@@ -29,7 +29,6 @@ import com.android.exchange.ExchangeService;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.exchange.utility.Duration;
 
-import android.accounts.Account;
 import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
@@ -132,7 +131,8 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     private final TimeZone mLocalTimeZone = TimeZone.getDefault();
 
     // Change this to use the constant in Calendar, when that constant is defined
-    private static final String EVENT_TIMEZONE2_COLUMN = "eventTimezone2";
+    // STOPSHIP Change this to SYNC1 after Calendar migration is done...
+    private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.EVENT_END_TIMEZONE;
 
     // Maximum number of allowed attendees; above this number, we mark the Event with the
     // attendeesRedacted extended property and don't allow the event to be upsynced to the server
@@ -352,7 +352,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 startTime = CalendarUtilities.getUtcAllDayCalendarTime(startTime, mLocalTimeZone);
                 endTime = CalendarUtilities.getUtcAllDayCalendarTime(endTime, mLocalTimeZone);
                 String originalTimeZone = cv.getAsString(Events.EVENT_TIMEZONE);
-                cv.put(EVENT_TIMEZONE2_COLUMN, originalTimeZone);
+                cv.put(EVENT_SAVED_TIMEZONE_COLUMN, originalTimeZone);
                 cv.put(Events.EVENT_TIMEZONE, UTC_TIMEZONE.getID());
             }
 
@@ -1523,7 +1523,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
         // Get the event's time zone
         String timeZoneName =
-            entityValues.getAsString(allDay ? EVENT_TIMEZONE2_COLUMN : Events.EVENT_TIMEZONE);
+            entityValues.getAsString(allDay ? EVENT_SAVED_TIMEZONE_COLUMN : Events.EVENT_TIMEZONE);
         if (timeZoneName == null) {
             timeZoneName = mLocalTimeZone.getID();
         }
