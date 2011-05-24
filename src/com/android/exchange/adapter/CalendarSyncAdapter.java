@@ -132,9 +132,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
     private final TimeZone mLocalTimeZone = TimeZone.getDefault();
 
-    // Change this to use the constant in Calendar, when that constant is defined
-    // STOPSHIP Change this to SYNC1 after Calendar migration is done...
-    private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.EVENT_END_TIMEZONE;
+    private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.SYNC_DATA1;
 
     // Maximum number of allowed attendees; above this number, we mark the Event with the
     // attendeesRedacted extended property and don't allow the event to be upsynced to the server
