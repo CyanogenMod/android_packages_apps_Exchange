@@ -1471,7 +1471,7 @@ public class EasSyncService extends AbstractSyncService {
             }
             // Update the account with a null policyKey (the key we've gotten is
             // temporary and cannot be used for syncing)
-            Policy.clearAccountPolicy(mContext, mAccount);
+            Policy.setAccountPolicy(mContext, mAccount, policy, null);
             // Make sure that SecurityPolicy is up-to-date
             SecurityPolicyDelegate.policiesUpdated(mContext, mAccount.mId);
             if (pp.getRemoteWipe()) {
@@ -1515,14 +1515,12 @@ public class EasSyncService extends AbstractSyncService {
                         }
                     }
                     // Write the final policy key to the Account and say we've been successful
-                    policy.setAccountPolicy(mContext, mAccount, securitySyncKey);
+                    Policy.setAccountPolicy(mContext, mAccount, policy, securitySyncKey);
                     // Release any mailboxes that might be in a security hold
                     ExchangeService.releaseSecurityHold(mAccount);
                     return true;
                 }
             } else {
-                // Write the policy out so that SecurityPolicy can use it...
-                policy.setAccountPolicy(mContext, mAccount, "0");
                 // Notify that we are blocked because of policies
                 SecurityPolicyDelegate.policiesRequired(mContext, mAccount.mId);
             }
