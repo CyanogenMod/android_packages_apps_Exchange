@@ -207,7 +207,7 @@ public class EasSyncService extends AbstractSyncService {
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     public ContentResolver mContentResolver;
-    private String[] mBindArguments = new String[2];
+    private final String[] mBindArguments = new String[2];
     private ArrayList<String> mPingChangeList;
     // The HttpPost in progress
     private volatile HttpPost mPendingPost = null;
@@ -1789,17 +1789,10 @@ public class EasSyncService extends AbstractSyncService {
                 // Before each run of the pingLoop, if this Account has a PolicySet, make sure it's
                 // active; otherwise, clear out the key/flag.  This should cause a provisioning
                 // error on the next POST, and start the security sequence over again
-                String key = mAccount.mSecuritySyncKey;
-                if (!TextUtils.isEmpty(key)) {
+                if (!TextUtils.isEmpty(mAccount.mSecuritySyncKey)) {
                     PolicySet ps = new PolicySet(mAccount);
                     if (!SecurityPolicyDelegate.isActive(mContext, ps)) {
-                        cv.clear();
-                        cv.put(AccountColumns.SECURITY_FLAGS, 0);
-                        cv.putNull(AccountColumns.SECURITY_SYNC_KEY);
-                        long accountId = mAccount.mId;
-                        mContentResolver.update(ContentUris.withAppendedId(
-                                Account.CONTENT_URI, accountId), cv, null, null);
-                        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
+                        resetSecurityPolicies();
                     }
                 }
 
@@ -2401,7 +2394,32 @@ public class EasSyncService extends AbstractSyncService {
             mProtocolVersion = Eas.DEFAULT_PROTOCOL_VERSION;
         }
         mProtocolVersionDouble = Eas.getProtocolVersionDouble(mProtocolVersion);
+
+        // Do checks to address historical policy sets.
+        PolicySet policies = new PolicySet(mAccount);
+        if (policies.mRequireEncryptionExternal) {
+            // External storage encryption is not supported at this time. In a previous release,
+            // prior to the system supporting true removable storage on Honeycomb, we accepted
+            // this since we emulated external storage on partitions that could be encrypted.
+            // If that was set before, we must clear it out now that the system supports true
+            // removable storage (which can't be encrypted).
+            resetSecurityPolicies();
+        }
         return true;
+    }
+
+    /**
+     * Clears out the security policies associated with the account, forcing a provision error
+     * and a re-sync of the policy information for the account.
+     */
+    private void resetSecurityPolicies() {
+        ContentValues cv = new ContentValues();
+        cv.put(AccountColumns.SECURITY_FLAGS, 0);
+        cv.putNull(AccountColumns.SECURITY_SYNC_KEY);
+        long accountId = mAccount.mId;
+        mContentResolver.update(ContentUris.withAppendedId(
+                Account.CONTENT_URI, accountId), cv, null, null);
+        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
     }
 
     /* (non-Javadoc)
