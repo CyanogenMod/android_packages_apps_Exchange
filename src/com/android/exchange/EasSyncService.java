@@ -1419,9 +1419,10 @@ public class EasSyncService extends AbstractSyncService {
 
         String us = makeUriString(cmd, extra);
         HttpPost method = new HttpPost(URI.create(us));
-        // Send the proper Content-Type header
+        // Send the proper Content-Type header; it's always wbxml except for messages when
+        // the EAS protocol version is < 14.0
         // If entity is null (e.g. for attachments), don't set this header
-        if (msg) {
+        if (msg && (mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE)) {
             method.setHeader("Content-Type", "message/rfc822");
         } else if (entity != null) {
             method.setHeader("Content-Type", "application/vnd.ms-sync.wbxml");

@@ -19,7 +19,7 @@
  * IN THE SOFTWARE. */
 
 //Contributors: Jonathan Cox, Bogdan Onoiu, Jerry Tian
-//Simplified for Google, Inc. by Marc Blank
+// Greatly simplified for Google, Inc. by Marc Blank
 
 package com.android.exchange.adapter;
 
@@ -31,49 +31,47 @@ import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Hashtable;
 
 public class Serializer {
-
     private static final String TAG = "Serializer";
-    private boolean logging = Log.isLoggable(TAG, Log.VERBOSE);
-
+    private static final int BUFFER_SIZE = 16*1024;
     private static final int NOT_PENDING = -1;
 
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    ByteArrayOutputStream buf = new ByteArrayOutputStream();
+    private final OutputStream mOutput;
+    private int mPendingTag = NOT_PENDING;
+    private int mDepth;
+    private String[] mNameStack = new String[20];
+    private int mTagPage = 0;
+    private boolean mLogging = Log.isLoggable(TAG, Log.VERBOSE);
 
-    String pending;
-    int pendingTag = NOT_PENDING;
-    int depth;
-    String name;
-    String[] nameStack = new String[20];
-
-    Hashtable<String, Object> tagTable = new Hashtable<String, Object>();
-
-    private int tagPage;
-
-    public Serializer() {
-        this(true);
+    public Serializer() throws IOException {
+        this(new ByteArrayOutputStream(), true);
     }
 
-    public Serializer(boolean startDocument, boolean _logging) {
-        this(true);
-        logging = _logging;
+    public Serializer(OutputStream os) throws IOException {
+        this(os, true);
     }
 
-    public Serializer(boolean startDocument) {
+    public Serializer(boolean startDocument) throws IOException {
+        this(new ByteArrayOutputStream(), startDocument);
+    }
+
+    /**
+     * Base constructor
+     * @param outputStream the stream we're serializing to
+     * @param startDocument whether or not to start a document
+     * @param _logging whether or not to log our output
+     * @throws IOException
+     */
+    public Serializer(OutputStream outputStream, boolean startDocument) throws IOException {
         super();
+        mOutput = outputStream;
         if (startDocument) {
-            try {
-                startDocument();
-                //logging = Eas.PARSER_LOG;
-            } catch (IOException e) {
-                // Nothing to be done
-            }
+            startDocument();
         } else {
-            out.write(0);
+            mOutput.write(0);
         }
     }
 
@@ -89,58 +87,57 @@ public class Serializer {
     }
 
     public void done() throws IOException {
-        if (depth != 0) {
+        if (mDepth != 0) {
             throw new IOException("Done received with unclosed tags");
         }
-        writeInteger(out, 0);
-        out.write(buf.toByteArray());
-        out.flush();
+        mOutput.flush();
     }
 
     public void startDocument() throws IOException{
-        out.write(0x03); // version 1.3
-        out.write(0x01); // unknown or missing public identifier
-        out.write(106);
+        mOutput.write(0x03); // version 1.3
+        mOutput.write(0x01); // unknown or missing public identifier
+        mOutput.write(106);  // UTF-8
+        mOutput.write(0);    // 0 length string array
     }
 
     public void checkPendingTag(boolean degenerated) throws IOException {
-        if (pendingTag == NOT_PENDING)
+        if (mPendingTag == NOT_PENDING)
             return;
 
-        int page = pendingTag >> Tags.PAGE_SHIFT;
-        int tag = pendingTag & Tags.PAGE_MASK;
-        if (page != tagPage) {
-            tagPage = page;
-            buf.write(Wbxml.SWITCH_PAGE);
-            buf.write(page);
+        int page = mPendingTag >> Tags.PAGE_SHIFT;
+        int tag = mPendingTag & Tags.PAGE_MASK;
+        if (page != mTagPage) {
+            mTagPage = page;
+            mOutput.write(Wbxml.SWITCH_PAGE);
+            mOutput.write(page);
         }
 
-        buf.write(degenerated ? tag : tag | 64);
-        if (logging) {
+        mOutput.write(degenerated ? tag : tag | 64);
+        if (mLogging) {
             String name = Tags.pages[page][tag - 5];
-            nameStack[depth] = name;
+            mNameStack[mDepth] = name;
             log("<" + name + '>');
         }
-        pendingTag = NOT_PENDING;
+        mPendingTag = NOT_PENDING;
     }
 
     public Serializer start(int tag) throws IOException {
         checkPendingTag(false);
-        pendingTag = tag;
-        depth++;
+        mPendingTag = tag;
+        mDepth++;
         return this;
     }
 
     public Serializer end() throws IOException {
-        if (pendingTag >= 0) {
+        if (mPendingTag >= 0) {
             checkPendingTag(true);
         } else {
-            buf.write(Wbxml.END);
-            if (logging) {
-                log("</" + nameStack[depth] + '>');
+            mOutput.write(Wbxml.END);
+            if (mLogging) {
+                log("</" + mNameStack[mDepth] + '>');
             }
         }
-        depth--;
+        mDepth--;
         return this;
     }
 
@@ -160,24 +157,35 @@ public class Serializer {
         return this;
     }
 
-    @Override
-    public String toString() {
-        return out.toString();
-    }
-
-    public byte[] toByteArray() {
-        return out.toByteArray();
-    }
-
     public Serializer text(String text) throws IOException {
         if (text == null) {
-            Log.e(TAG, "Writing null text for pending tag: " + pendingTag);
+            Log.e(TAG, "Writing null text for pending tag: " + mPendingTag);
         }
         checkPendingTag(false);
-        buf.write(Wbxml.STR_I);
-        writeLiteralString(buf, text);
-        if (logging) {
+        mOutput.write(Wbxml.STR_I);
+        writeLiteralString(mOutput, text);
+        if (mLogging) {
             log(text);
+        }
+        return this;
+    }
+
+    public Serializer opaque(InputStream is, int length) throws IOException {
+        checkPendingTag(false);
+        mOutput.write(Wbxml.OPAQUE);
+        writeInteger(mOutput, length);
+        if (mLogging) {
+            log("Opaque, length: " + length);
+        }
+        // Now write out the opaque data in batches
+        byte[] buffer = new byte[BUFFER_SIZE];
+        while (length > 0) {
+            int bytesRead = is.read(buffer, 0, (int)Math.min(BUFFER_SIZE, length));
+            if (bytesRead == -1) {
+                break;
+            }
+            mOutput.write(buffer, 0, bytesRead);
+            length -= bytesRead;
         }
         return this;
     }
@@ -195,7 +203,7 @@ public class Serializer {
             out.write(buf[--idx] | 0x80);
         }
         out.write(buf[0]);
-        if (logging) {
+        if (mLogging) {
             log(Integer.toString(i));
         }
     }
@@ -212,4 +220,20 @@ public class Serializer {
             data(tag, value);
         }
     }
+
+    @Override
+    public String toString() {
+        if (mOutput instanceof ByteArrayOutputStream) {
+            return ((ByteArrayOutputStream)mOutput).toString();
+        }
+        throw new IllegalStateException();
+    }
+
+    public byte[] toByteArray() {
+        if (mOutput instanceof ByteArrayOutputStream) {
+            return ((ByteArrayOutputStream)mOutput).toByteArray();
+        }
+        throw new IllegalStateException();
+    }
+
 }

@@ -484,6 +484,10 @@ public abstract class Parser {
                 for (int i = 0; i < length; i++) {
                     bytes[i] = (byte)readByte();
                 }
+                if (logging) {
+                    name = tagTable[startTag - TAG_BASE];
+                    log(name + ": (opaque:" + length + ") ");
+                }
                 break;
 
             default:

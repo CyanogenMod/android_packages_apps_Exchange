@@ -557,6 +557,23 @@ public class Tags {
     public static final int ITEMS_CONVERSATION_ID = ITEMS_PAGE + 0x18;
     public static final int ITEMS_MOVE_ALWAYS = ITEMS_PAGE + 0x19;
 
+    public static final int COMPOSE_PAGE = COMPOSE << PAGE_SHIFT;
+    public static final int COMPOSE_SEND_MAIL = COMPOSE_PAGE + 5;
+    public static final int COMPOSE_SMART_FORWARD = COMPOSE_PAGE + 6;
+    public static final int COMPOSE_SMART_REPLY = COMPOSE_PAGE + 7;
+    public static final int COMPOSE_SAVE_IN_SENT_ITEMS = COMPOSE_PAGE + 8;
+    public static final int COMPOSE_REPLACE_MIME = COMPOSE_PAGE + 9;
+    // There no tag for COMPOSE_PAGE + 0xA
+    public static final int COMPOSE_SOURCE = COMPOSE_PAGE + 0xB;
+    public static final int COMPOSE_FOLDER_ID = COMPOSE_PAGE + 0xC;
+    public static final int COMPOSE_ITEM_ID = COMPOSE_PAGE + 0xD;
+    public static final int COMPOSE_LONG_ID = COMPOSE_PAGE + 0xE;
+    public static final int COMPOSE_INSTANCE_ID = COMPOSE_PAGE + 0xF;
+    public static final int COMPOSE_MIME = COMPOSE_PAGE + 0x10;
+    public static final int COMPOSE_CLIENT_ID = COMPOSE_PAGE + 0x11;
+    public static final int COMPOSE_STATUS = COMPOSE_PAGE + 0x12;
+    public static final int COMPOSE_ACCOUNT_ID = COMPOSE_PAGE + 0x13;
+
     public static final int EMAIL2_PAGE = EMAIL2 << PAGE_SHIFT;
     public static final int EMAIL2_UM_CALLER_ID = EMAIL2_PAGE + 5;
     public static final int EMAIL2_UM_USER_NOTES = EMAIL2_PAGE + 6;
@@ -769,6 +786,10 @@ public class Tags {
         },
         {
             // 0x15 ComposeMail
+            "SendMail", "SmartForward", "SmartReply", "SaveInSentItems", "ReplaceMime",
+            "--unused--", "ComposeSource", "ComposeFolderId", "ComposeItemId", "ComposeLongId",
+            "ComposeInstanceId", "ComposeMime", "ComposeClientId", "ComposeStatus",
+            "ComposeAccountId"
         },
         {
             // 0x16 Email2
