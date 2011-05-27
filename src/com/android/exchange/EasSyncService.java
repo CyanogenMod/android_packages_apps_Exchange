@@ -648,6 +648,8 @@ public class EasSyncService extends AbstractSyncService {
                     } else if (code == HttpStatus.SC_NOT_FOUND) {
                         // We get a 404 from OWA addresses (which are NOT EAS addresses)
                         resultCode = MessagingException.PROTOCOL_VERSION_UNSUPPORTED;
+                    } else if (code == HttpStatus.SC_UNAUTHORIZED) {
+                        resultCode = MessagingException.AUTHENTICATION_FAILED;
                     } else if (code != HttpStatus.SC_OK) {
                         // Fail generically with anything other than success
                         userLog("Unexpected response for FolderSync: ", code);
