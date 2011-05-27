@@ -647,12 +647,18 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         assertEquals("FREQ=WEEKLY;BYDAY=TU,FR", rrule);
         // The last Saturday of the month
         rrule = CalendarUtilities.rruleFromRecurrence(
-                3 /*Monthly/DayofWeek*/, 0, 0, 64 /*Sat*/, 0, 5 /*Last*/, 0, null);
-        assertEquals("FREQ=MONTHLY;BYDAY=-1SA", rrule);
+                1 /*Weekly*/, 0, 0, 64 /*Sat*/, 0, 5 /*Last*/, 0, null);
+        assertEquals("FREQ=WEEKLY;BYDAY=-1SA", rrule);
         // The third Wednesday and Thursday of the month
         rrule = CalendarUtilities.rruleFromRecurrence(
-                3 /*Monthly/DayofWeek*/, 0, 0, 24 /*Wed&Thu*/, 0, 3 /*3rd*/, 0, null);
-        assertEquals("FREQ=MONTHLY;BYDAY=3WE,3TH", rrule);
+                1 /*Weekly*/, 0, 0, 24 /*Wed&Thu*/, 0, 3 /*3rd*/, 0, null);
+        assertEquals("FREQ=WEEKLY;BYDAY=3WE,3TH", rrule);
+        rrule = CalendarUtilities.rruleFromRecurrence(
+                3 /*Monthly/Day*/, 0, 0, 127 /*LastDay*/, 0, 0, 0, null);
+        assertEquals("FREQ=MONTHLY;BYMONTHDAY=-1", rrule);
+        rrule = CalendarUtilities.rruleFromRecurrence(
+                3 /*Monthly/Day*/, 0, 0, 62 /*M-F*/, 0, 5 /*Last week*/, 0, null);
+        assertEquals("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1", rrule);
         // The 14th of the every month
         rrule = CalendarUtilities.rruleFromRecurrence(
                 2 /*Monthly/Date*/, 0, 0, 0, 14 /*14th*/, 0, 0, null);
@@ -696,8 +702,10 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
 
         testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;COUNT=2;INTERVAL=1;BYDAY=MO");
         testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;BYDAY=TU,FR");
-        testSingleRecurrenceFromRrule(adapter, "FREQ=MONTHLY;BYDAY=-1SA");
-        testSingleRecurrenceFromRrule(adapter, "FREQ=MONTHLY;BYDAY=3WE,3TH");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;BYDAY=-1SA");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;BYDAY=3WE,3TH");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=MONTHLY;BYMONTHDAY=17");
         testSingleRecurrenceFromRrule(adapter, "FREQ=YEARLY;BYMONTHDAY=31;BYMONTH=10");
         testSingleRecurrenceFromRrule(adapter, "FREQ=YEARLY;BYDAY=1TU;BYMONTH=6");
     }

@@ -35,6 +35,7 @@ import android.text.format.Time;
 import android.util.Base64;
 import android.util.Log;
 
+import com.android.emailcommon.Logging;
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
@@ -129,6 +130,18 @@ public class CalendarUtilities {
 
     static final String[] sTwoCharacterNumbers =
         new String[] {"00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
+
+    // Bits used in EAS recurrences for days of the week
+    protected static final int EAS_SUNDAY = 1<<0;
+    protected static final int EAS_MONDAY = 1<<1;
+    protected static final int EAS_TUESDAY = 1<<2;
+    protected static final int EAS_WEDNESDAY = 1<<3;
+    protected static final int EAS_THURSDAY = 1<<4;
+    protected static final int EAS_FRIDAY = 1<<5;
+    protected static final int EAS_SATURDAY = 1<<6;
+    protected static final int EAS_WEEKDAYS =
+        EAS_MONDAY | EAS_TUESDAY | EAS_WEDNESDAY | EAS_THURSDAY | EAS_FRIDAY;
+    protected static final int EAS_WEEKENDS = EAS_SATURDAY | EAS_SUNDAY;
 
     static final int sCurrentYear = new GregorianCalendar().get(Calendar.YEAR);
     static final TimeZone sGmtTimeZone = TimeZone.getTimeZone("GMT");
@@ -981,6 +994,13 @@ public class CalendarUtilities {
         }
     }
 
+    static void addBySetpos(StringBuilder rrule, int dow, int wom) {
+        // Indicate the days, but don't use wom in this case (it's used in the BYSETPOS);
+        addByDay(rrule, dow, 0);
+        rrule.append(";BYSETPOS=");
+        rrule.append(wom == 5 ? "-1" : wom);
+    }
+
     static void addByMonthDay(StringBuilder rrule, int dom) {
         // 127 means last day of the month
         if (dom == 127) {
@@ -1086,6 +1106,19 @@ public class CalendarUtilities {
         s.data(Tags.CALENDAR_RECURRENCE_DAYOFWEEK, generateEasDayOfWeek(bareByDay));
     }
 
+    static private void addByDaySetpos(String byDay, String bySetpos, Serializer s)
+            throws IOException {
+        int weekOfMonth = bySetpos.charAt(0);
+        if (weekOfMonth == '-') {
+            // -1 is the only legal case (last week) Use "5" for EAS
+            weekOfMonth = 5;
+        } else {
+            weekOfMonth = weekOfMonth - '0';
+        }
+        s.data(Tags.CALENDAR_RECURRENCE_WEEKOFMONTH, Integer.toString(weekOfMonth));
+        s.data(Tags.CALENDAR_RECURRENCE_DAYOFWEEK, generateEasDayOfWeek(byDay));
+    }
+
     /**
      * Write recurrence information to EAS based on the RRULE in CalendarProvider
      * @param rrule the RRULE, from CalendarProvider
@@ -1119,24 +1152,45 @@ public class CalendarUtilities {
                 String byDay = tokenFromRrule(rrule, "BYDAY=");
                 if (byDay != null) {
                     s.data(Tags.CALENDAR_RECURRENCE_DAYOFWEEK, generateEasDayOfWeek(byDay));
+                    // Find week number (1-4 and 5 for last)
+                    if (byDay.startsWith("-1")) {
+                        s.data(Tags.CALENDAR_RECURRENCE_WEEKOFMONTH, "5");
+                    } else {
+                        char c = byDay.charAt(0);
+                        if (c >= '1' && c <= '4') {
+                            s.data(Tags.CALENDAR_RECURRENCE_WEEKOFMONTH, byDay.substring(0, 1));
+                        }
+                    }
                 }
                 s.end();
             } else if (freq.equals("MONTHLY")) {
                 String byMonthDay = tokenFromRrule(rrule, "BYMONTHDAY=");
                 if (byMonthDay != null) {
-                    // The nth day of the month
                     s.start(Tags.CALENDAR_RECURRENCE);
-                    s.data(Tags.CALENDAR_RECURRENCE_TYPE, "2");
-                    addCountIntervalAndUntil(rrule, s);
-                    s.data(Tags.CALENDAR_RECURRENCE_DAYOFMONTH, byMonthDay);
+                    // Special case for last day of month
+                    if (byMonthDay == "-1") {
+                        s.data(Tags.CALENDAR_RECURRENCE_TYPE, "3");
+                        addCountIntervalAndUntil(rrule, s);
+                        s.data(Tags.CALENDAR_RECURRENCE_DAYOFWEEK, "127");
+                    } else {
+                        // The nth day of the month
+                        s.data(Tags.CALENDAR_RECURRENCE_TYPE, "2");
+                        addCountIntervalAndUntil(rrule, s);
+                        s.data(Tags.CALENDAR_RECURRENCE_DAYOFMONTH, byMonthDay);
+                    }
                     s.end();
                 } else {
                     String byDay = tokenFromRrule(rrule, "BYDAY=");
+                    String bySetpos = tokenFromRrule(rrule, "BYSETPOS=");
                     if (byDay != null) {
                         s.start(Tags.CALENDAR_RECURRENCE);
                         s.data(Tags.CALENDAR_RECURRENCE_TYPE, "3");
                         addCountIntervalAndUntil(rrule, s);
-                        addByDay(byDay, s);
+                        if (bySetpos != null) {
+                            addByDaySetpos(byDay, bySetpos, s);
+                        } else {
+                            addByDay(byDay, s);
+                        }
                         s.end();
                     }
                 }
@@ -1184,7 +1238,6 @@ public class CalendarUtilities {
     static public String rruleFromRecurrence(int type, int occurrences, int interval, int dow,
             int dom, int wom, int moy, String until) {
         StringBuilder rrule = new StringBuilder("FREQ=" + sTypeToFreq[type]);
-
         // INTERVAL and COUNT
         if (occurrences > 0) {
             rrule.append(";COUNT=" + occurrences);
@@ -1197,13 +1250,19 @@ public class CalendarUtilities {
         switch(type) {
             case 0: // DAILY
             case 1: // WEEKLY
-                if (dow > 0) addByDay(rrule, dow, -1);
+                if (dow > 0) addByDay(rrule, dow, wom);
                 break;
             case 2: // MONTHLY
                 if (dom > 0) addByMonthDay(rrule, dom);
                 break;
             case 3: // MONTHLY (on the nth day)
-                if (dow > 0) addByDay(rrule, dow, wom);
+                // 127 is a special case meaning "last day of the month"
+                if (dow == 127) {
+                    rrule.append(";BYMONTHDAY=-1");
+                // week 5 and dow = weekdays -> last weekday (need BYSETPOS)
+                } else if (wom == 5 && (dow == EAS_WEEKDAYS || dow == EAS_WEEKENDS)) {
+                    addBySetpos(rrule, dow, wom);
+                } else if (dow > 0) addByDay(rrule, dow, wom);
                 break;
             case 5: // YEARLY (specific day)
                 if (dom > 0) addByMonthDay(rrule, dom);
@@ -1227,6 +1286,9 @@ public class CalendarUtilities {
             rrule.append(";UNTIL=" + until);
         }
 
+        if (Eas.USER_LOG) {
+            Log.d(Logging.LOG_TAG, "Created rrule: " + rrule);
+        }
         return rrule.toString();
     }
 
