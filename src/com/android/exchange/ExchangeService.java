@@ -524,6 +524,15 @@ public class ExchangeService extends Service implements Runnable {
     static class AccountList extends ArrayList<Account> {
         private static final long serialVersionUID = 1L;
 
+        @Override
+        public boolean add(Account account) {
+            // Cache the account manager account
+            account.mAmAccount = new android.accounts.Account(account.mEmailAddress,
+                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+            super.add(account);
+            return true;
+        }
+
         public boolean contains(long id) {
             for (Account account : this) {
                 if (account.mId == id) {
@@ -2119,6 +2128,67 @@ public class ExchangeService extends Service implements Runnable {
         return true;
     }
 
+    /**
+     * Convenience method to determine whether Email sync is enabled for a given account
+     * @param account the Account in question
+     * @return whether Email sync is enabled
+     */
+    private boolean canSyncEmail(android.accounts.Account account) {
+        return ContentResolver.getSyncAutomatically(account, EmailContent.AUTHORITY);
+    }
+
+    /**
+     * Determine whether a mailbox of a given type in a given account can be synced automatically
+     * by ExchangeService.  This is an increasingly complex determination, taking into account
+     * security policies and user settings (both within the Email application and in the Settings
+     * application)
+     *
+     * @param account the Account that the mailbox is in
+     * @param type the type of the Mailbox
+     * @return whether or not to start a sync
+     */
+    private boolean isMailboxSyncable(Account account, int type) {
+        // This 'if' statement performs checks to see whether or not a mailbox is a
+        // candidate for syncing based on policies, user settings, & other restrictions
+        if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
+            // Contacts/Calendar obey this setting from ContentResolver
+            if (!ContentResolver.getMasterSyncAutomatically()) {
+                return false;
+            }
+            // Get the right authority for the mailbox
+            String authority;
+            if (type == Mailbox.TYPE_CONTACTS) {
+                authority = ContactsContract.AUTHORITY;
+            } else {
+                authority = Calendar.AUTHORITY;
+                if (!mCalendarObservers.containsKey(account.mId)){
+                    // Make sure we have an observer for this Calendar, as
+                    // we need to be able to detect sync state changes, sigh
+                    registerCalendarObserver(account);
+                }
+            }
+            // See if "sync automatically" is set; if not, punt
+            if (!ContentResolver.getSyncAutomatically(account.mAmAccount, authority)) {
+                return false;
+            // See if the calendar is enabled from the Calendar app UI; if not, punt
+            } else if ((type == Mailbox.TYPE_CALENDAR) && !isCalendarEnabled(account.mId)) {
+                return false;
+            }
+        // Never automatically sync trash
+        } else if (type == Mailbox.TYPE_TRASH) {
+            return false;
+        // For non-outbox mail, we do three checks:
+        // 1) are we restricted by policy (i.e. manual sync only),
+        // 2) has the user checked the "Sync Email" box in Account Settings, and
+        // 3) does the user have the master "background data" box checked in Settings
+        } else if (type != Mailbox.TYPE_OUTBOX &&
+                (!canAutoSync(account) || !canSyncEmail(account.mAmAccount) ||
+                        !mBackgroundData)) {
+            return false;
+        }
+        return true;
+    }
+
     private long checkMailboxes () {
         // First, see if any running mailboxes have been deleted
         ArrayList<Long> deletedMailboxes = new ArrayList<Long>();
@@ -2157,80 +2227,30 @@ public class ExchangeService extends Service implements Runnable {
             log("mAccountObserver null; service died??");
             return nextWait;
         }
+
         Cursor c = getContentResolver().query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
                 mAccountObserver.getSyncableEasMailboxWhere(), null, null);
 
-        // Contacts/Calendar obey this setting from ContentResolver
-        // Mail is on its own schedule
-        boolean masterAutoSync = ContentResolver.getMasterSyncAutomatically();
         try {
             while (c.moveToNext()) {
-                long mid = c.getLong(Mailbox.CONTENT_ID_COLUMN);
+                long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
                 AbstractSyncService service = null;
                 synchronized (sSyncLock) {
-                    service = mServiceMap.get(mid);
+                    service = mServiceMap.get(mailboxId);
                 }
                 if (service == null) {
-                    // We handle a few types of mailboxes specially
-                    int type = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
-
-                    // If background data is off, we only sync Outbox
-                    // Manual syncs are initiated elsewhere, so they will continue to be respected
-                    if (!mBackgroundData && type != Mailbox.TYPE_OUTBOX) {
-                        continue;
-                    }
-
-                    Account account =
-                        getAccountById(c.getInt(Mailbox.CONTENT_ACCOUNT_KEY_COLUMN));
+                    // Get the cached account
+                    Account account = getAccountById(c.getInt(Mailbox.CONTENT_ACCOUNT_KEY_COLUMN));
                     if (account == null) continue;
 
-                    // TODO: Don't rebuild this account manager account each time through
-                    android.accounts.Account accountManagerAccount =
-                        new android.accounts.Account(account.mEmailAddress,
-                                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-
-                    if (!canAutoSync(account)) {
-                        continue;
-                    }
-
-                    if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
-                        // We don't sync these automatically if master auto sync is off
-                        if (!masterAutoSync) {
-                            continue;
-                        }
-                        // Get the right authority for the mailbox
-                        String authority;
-                        if (type == Mailbox.TYPE_CONTACTS) {
-                            authority = ContactsContract.AUTHORITY;
-                        } else {
-                            authority = Calendar.AUTHORITY;
-                            if (!mCalendarObservers.containsKey(account.mId)){
-                                // Make sure we have an observer for this Calendar, as
-                                // we need to be able to detect sync state changes, sigh
-                                registerCalendarObserver(account);
-                            }
-                        }
-                        // See if "sync automatically" is set; if not, punt
-                        if (!ContentResolver.getSyncAutomatically(accountManagerAccount,
-                                authority)) {
-                            continue;
-                            // See if the calendar is enabled; if not, punt
-                        } else if ((type == Mailbox.TYPE_CALENDAR) &&
-                                !isCalendarEnabled(account.mId)) {
-                            continue;
-                        }
-                    } else if (type == Mailbox.TYPE_TRASH) {
-                        // Never automatically sync trash
-                        continue;
-                    } else if (type < Mailbox.TYPE_NOT_EMAIL &&
-                            !ContentResolver.getSyncAutomatically(accountManagerAccount,
-                                    EmailContent.AUTHORITY)) {
-                        // Don't sync mail if user hasn't chosen to sync it automatically
+                    // We handle a few types of mailboxes specially
+                    int mailboxType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
+                    if (!isMailboxSyncable(account, mailboxType)) {
                         continue;
                     }
 
                     // Check whether we're in a hold (temporary or permanent)
-                    SyncError syncError = mSyncErrorMap.get(mid);
+                    SyncError syncError = mSyncErrorMap.get(mailboxId);
                     if (syncError != null) {
                         // Nothing we can do about fatal errors
                         if (syncError.fatal) continue;
@@ -2249,23 +2269,19 @@ public class ExchangeService extends Service implements Runnable {
                     }
 
                     // Otherwise, we use the sync interval
-                    long interval = c.getInt(Mailbox.CONTENT_SYNC_INTERVAL_COLUMN);
-                    if (interval == Mailbox.CHECK_INTERVAL_PUSH) {
+                    long syncInterval = c.getInt(Mailbox.CONTENT_SYNC_INTERVAL_COLUMN);
+                    if (syncInterval == Mailbox.CHECK_INTERVAL_PUSH) {
                         Mailbox m = EmailContent.getContent(c, Mailbox.class);
                         requestSync(m, SYNC_PUSH, null);
-                    } else if (type == Mailbox.TYPE_OUTBOX) {
+                    } else if (mailboxType == Mailbox.TYPE_OUTBOX) {
                         if (hasSendableMessages(c)) {
                             Mailbox m = EmailContent.getContent(c, Mailbox.class);
                             startServiceThread(new EasOutboxService(this, m), m);
                         }
-                    } else if (interval > 0 && interval <= ONE_DAY_MINUTES) {
+                    } else if (syncInterval > 0 && syncInterval <= ONE_DAY_MINUTES) {
                         long lastSync = c.getLong(Mailbox.CONTENT_SYNC_TIME_COLUMN);
                         long sinceLastSync = now - lastSync;
-                        if (sinceLastSync < 0) {
-                            log("WHOA! lastSync in the future for mailbox: " + mid);
-                            sinceLastSync = interval*MINUTES;
-                        }
-                        long toNextSync = interval*MINUTES - sinceLastSync;
+                        long toNextSync = syncInterval*MINUTES - sinceLastSync;
                         String name = c.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN);
                         if (toNextSync <= 0) {
                             Mailbox m = EmailContent.getContent(c, Mailbox.class);
@@ -2288,7 +2304,7 @@ public class ExchangeService extends Service implements Runnable {
                             log("Dead thread, mailbox released: " +
                                     c.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN));
                         }
-                        releaseMailbox(mid);
+                        releaseMailbox(mailboxId);
                         // Restart this if necessary
                         if (nextWait > 3*SECONDS) {
                             nextWait = 3*SECONDS;
