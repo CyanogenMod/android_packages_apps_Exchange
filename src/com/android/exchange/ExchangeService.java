@@ -38,8 +38,7 @@ import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.AccountReconciler;
 import com.android.emailcommon.utility.EmailAsyncTask;
-import com.android.emailcommon.utility.SSLSocketFactory;
-import com.android.emailcommon.utility.SSLUtils;
+import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
@@ -50,10 +49,6 @@ import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.conn.params.ConnManagerPNames;
 import org.apache.http.conn.params.ConnPerRoute;
 import org.apache.http.conn.routing.HttpRoute;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 
@@ -226,7 +221,7 @@ public class ExchangeService extends Service implements Runnable {
     // Cached unique device id
     private static String sDeviceId = null;
     // ConnectionManager that all EAS threads can use
-    private static ClientConnectionManager sClientConnectionManager = null;
+    private static EmailClientConnectionManager sClientConnectionManager = null;
     // Count of ClientConnectionManager shutdowns
     private static volatile int sClientConnectionManagerShutdownCount = 0;
 
@@ -1185,7 +1180,7 @@ public class ExchangeService extends Service implements Runnable {
         }
     };
 
-    static public synchronized ClientConnectionManager getClientConnectionManager() {
+    static public synchronized EmailClientConnectionManager getClientConnectionManager() {
         if (sClientConnectionManager == null) {
             // After two tries, kill the process.  Most likely, this will happen in the background
             // The service will restart itself after about 5 seconds
@@ -1193,22 +1188,10 @@ public class ExchangeService extends Service implements Runnable {
                 alwaysLog("Shutting down process to unblock threads");
                 Process.killProcess(Process.myPid());
             }
-            // Create a registry for our three schemes; http and https will use built-in factories
-            SchemeRegistry registry = new SchemeRegistry();
-            registry.register(new Scheme("http",
-                    PlainSocketFactory.getSocketFactory(), 80));
-            registry.register(new Scheme("https", SSLSocketFactory.getSocketFactory(), 443));
-
-            // Use "insecure" socket factory.
-            SSLSocketFactory sf = new SSLSocketFactory(SSLUtils.getSSLSocketFactory(true));
-            sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-            // Register the httpts scheme with our factory
-            registry.register(new Scheme("httpts", sf, 443));
-            // And create a ccm with our registry
             HttpParams params = new BasicHttpParams();
             params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
             params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
-            sClientConnectionManager = new ThreadSafeClientConnManager(params, registry);
+            sClientConnectionManager = EmailClientConnectionManager.newInstance(params);
         }
         // Null is a valid return result if we get an exception
         return sClientConnectionManager;

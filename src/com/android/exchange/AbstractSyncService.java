@@ -17,7 +17,6 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.utility.FileLogger;
@@ -108,7 +107,6 @@ public abstract class AbstractSyncService implements Runnable {
      * @param context
      * @return a Bundle containing a result code and, depending on the result, a PolicySet or an
      * error message
-     * @throws MessagingException
      */
     public abstract Bundle validateAccount(String host, String userName, String password, int port,
             boolean ssl, boolean trustCertificates, Context context);
@@ -138,7 +136,6 @@ public abstract class AbstractSyncService implements Runnable {
      * @param context
      * @return a Bundle containing a result code and, depending on the result, a PolicySet or an
      * error message
-     * @throws MessagingException
      */
     static public Bundle validate(Class<? extends AbstractSyncService> klass, String host,
             String userName, String password, int port, boolean ssl, boolean trustCertificates,

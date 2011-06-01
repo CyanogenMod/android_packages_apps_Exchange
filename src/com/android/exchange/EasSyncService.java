@@ -34,6 +34,7 @@ import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.SearchParams;
+import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
@@ -56,6 +57,7 @@ import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.CalendarUtilities;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -65,7 +67,6 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -208,8 +209,12 @@ public class EasSyncService extends AbstractSyncService {
     public String mHostAddress;
     public String mUserName;
     public String mPassword;
+
+    // The parameters for the connection must be modified through setConnectionParameters
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
+    private String mClientCertAlias = null;
+
     public ContentResolver mContentResolver;
     private final String[] mBindArguments = new String[2];
     private ArrayList<String> mPingChangeList;
@@ -258,7 +263,6 @@ public class EasSyncService extends AbstractSyncService {
         this("EAS Validation");
     }
 
-    @Override
     /**
      * Try to wake up a sync thread that is waiting on an HttpClient POST and has waited past its
      * socket timeout without having thrown an Exception
@@ -266,6 +270,7 @@ public class EasSyncService extends AbstractSyncService {
      * @return true if the POST was successfully stopped; false if we've failed and interrupted
      * the thread
      */
+    @Override
     public boolean alarm() {
         HttpPost post;
         if (mThread == null) return true;
@@ -350,6 +355,10 @@ public class EasSyncService extends AbstractSyncService {
                 mPendingPost.abort();
             }
         }
+
+        // TODO: some kind of unregistering of special client cert aliases.
+        // We can't blindly do this as multiple services could be using the same alias,
+        // so there needs to be some kind of registry to track the interests in an alias.
     }
 
     @Override
@@ -435,8 +444,10 @@ public class EasSyncService extends AbstractSyncService {
         svc.mHostAddress = ha.mAddress;
         svc.mUserName = ha.mLogin;
         svc.mPassword = ha.mPassword;
-        svc.mSsl = (ha.mFlags & HostAuth.FLAG_SSL) != 0;
-        svc.mTrustSsl = (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0;
+        svc.setConnectionParameters(
+                (ha.mFlags & HostAuth.FLAG_SSL) != 0,
+                (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
+                ha.mClientCertAlias);
         try {
             svc.mDeviceId = ExchangeService.getDeviceId(context);
         } catch (IOException e) {
@@ -523,8 +534,9 @@ public class EasSyncService extends AbstractSyncService {
             svc.mHostAddress = hostAddress;
             svc.mUserName = userName;
             svc.mPassword = password;
-            svc.mSsl = ssl;
-            svc.mTrustSsl = trustCertificates;
+
+            // TODO: wire through client certificate alias.
+            svc.setConnectionParameters(ssl, trustCertificates, null);
             // We mustn't use the "real" device id or we'll screw up current accounts
             // Any string will do, but we'll go for "validate"
             svc.mDeviceId = "validate";
@@ -806,6 +818,8 @@ public class EasSyncService extends AbstractSyncService {
                                 // the autodiscover process
                                 hostAuth.mLogin = mUserName;
                                 hostAuth.mPassword = mPassword;
+                                // Note: there is no way we can auto-discover the proper client
+                                // SSL certificate to use, if one is needed.
                                 hostAuth.mPort = 443;
                                 hostAuth.mProtocol = "eas";
                                 hostAuth.mFlags =
@@ -1211,20 +1225,21 @@ public class EasSyncService extends AbstractSyncService {
             "&DeviceType=" + DEVICE_TYPE;
     }
 
-    /*package*/ String makeUriString(String cmd, String extra) throws IOException {
+    @VisibleForTesting
+    String makeUriString(String cmd, String extra) {
         // Cache the authentication string and the command string
         if (mAuthString == null || mCmdString == null) {
             cacheAuthAndCmdString();
         }
-        String us = (mSsl ? (mTrustSsl ? "httpts" : "https") : "http") + "://" + mHostAddress +
-            "/Microsoft-Server-ActiveSync";
+        String scheme = EmailClientConnectionManager.makeScheme(mSsl, mTrustSsl, mClientCertAlias);
+        String uriString = scheme + "://" + mHostAddress + "/Microsoft-Server-ActiveSync";
         if (cmd != null) {
-            us += "?Cmd=" + cmd + mCmdString;
+            uriString += "?Cmd=" + cmd + mCmdString;
         }
         if (extra != null) {
-            us += extra;
+            uriString += extra;
         }
-        return us;
+        return uriString;
     }
 
     /**
@@ -1253,7 +1268,27 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
-    private ClientConnectionManager getClientConnectionManager() {
+    protected void setConnectionParameters(
+            boolean useSsl, boolean trustAllServerCerts, String clientCertAlias) {
+
+        EmailClientConnectionManager connManager = getClientConnectionManager();
+
+        // TODO: unregister the old client cert connection, if there is one. Multiple sync
+        // services may be using the alias though so we need some kind of registry.
+
+        mSsl = useSsl;
+        mTrustSsl = trustAllServerCerts;
+        mClientCertAlias = clientCertAlias;
+
+        // Register the new alias, if needed.
+        if (mClientCertAlias != null) {
+            // Ensure that the connection manager knows to use the proper client certificate
+            // when establishing connections for this service.
+            connManager.registerClientCert(mContext, mClientCertAlias, mTrustSsl);
+        }
+    }
+
+    private EmailClientConnectionManager getClientConnectionManager() {
         return ExchangeService.getClientConnectionManager();
     }
 
@@ -1364,7 +1399,7 @@ public class EasSyncService extends AbstractSyncService {
         return new EasResponse(client.execute(method));
     }
 
-    String getTargetCollectionClassFromCursor(Cursor c) {
+    private String getTargetCollectionClassFromCursor(Cursor c) {
         int type = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
         if (type == Mailbox.TYPE_CONTACTS) {
             return "Contacts";
@@ -2373,6 +2408,10 @@ public class EasSyncService extends AbstractSyncService {
         mHostAddress = ha.mAddress;
         mUserName = ha.mLogin;
         mPassword = ha.mPassword;
+        setConnectionParameters(
+                (ha.mFlags & HostAuth.FLAG_SSL) != 0,
+                (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
+                ha.mClientCertAlias);
 
         // Set up our protocol version from the Account
         mProtocolVersion = mAccount.mProtocolVersion;
@@ -2384,9 +2423,7 @@ public class EasSyncService extends AbstractSyncService {
         return true;
     }
 
-    /* (non-Javadoc)
-     * @see java.lang.Runnable#run()
-     */
+    @Override
     public void run() {
         // Make sure account and mailbox are still valid
         if (!setupService()) return;
