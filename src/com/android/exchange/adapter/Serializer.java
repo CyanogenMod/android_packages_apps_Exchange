@@ -112,7 +112,7 @@ public class Serializer {
             mOutput.write(page);
         }
 
-        mOutput.write(degenerated ? tag : tag | 64);
+        mOutput.write(degenerated ? tag : tag | Wbxml.WITH_CONTENT);
         if (mLogging) {
             String name = Tags.pages[page][tag - 5];
             mNameStack[mDepth] = name;
