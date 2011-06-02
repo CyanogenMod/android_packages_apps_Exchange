@@ -37,6 +37,7 @@ import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.utility.AccountReconciler;
 import com.android.emailcommon.utility.EmailAsyncTask;
+import com.android.emailcommon.utility.SSLSocketFactory;
 import com.android.emailcommon.utility.SSLUtils;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.CalendarSyncAdapter;
