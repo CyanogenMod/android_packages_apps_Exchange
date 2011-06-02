@@ -35,6 +35,7 @@ import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.PolicyServiceProxy;
+import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.AccountReconciler;
 import com.android.emailcommon.utility.EmailAsyncTask;
 import com.android.emailcommon.utility.SSLSocketFactory;
@@ -489,12 +490,11 @@ public class ExchangeService extends Service implements Runnable {
             ExchangeService.deleteAccountPIMData(accountId);
         }
 
-        public int searchMessages(long accountId, long mailboxId, boolean includeSubfolders,
-                String query, int numResults, int firstResult, long destMailboxId) {
+        public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
-            return EasSyncService.searchMessages(exchangeService, accountId, mailboxId,
-                    includeSubfolders, query, numResults, firstResult, destMailboxId);
+            return EasSyncService.searchMessages(exchangeService, accountId, searchParams,
+                    destMailboxId);
         }
     };
 

@@ -33,6 +33,7 @@ import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
@@ -524,13 +525,15 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
-    public static int searchMessages(Context context, long accountId, long mailboxId,
-            boolean includeSubfolders, String query, int numResults, int firstResult,
+    public static int searchMessages(Context context, long accountId, SearchParams searchParams,
             long destMailboxId) {
         // Sanity check for arguments
-        if (numResults < 0 || numResults > MAX_SEARCH_RESULTS || firstResult < 0) return 0;
+        int offset = searchParams.mOffset;
+        int limit = searchParams.mLimit;
+        String filter = searchParams.mFilter;
+        if (limit < 0 || limit > MAX_SEARCH_RESULTS || offset < 0) return 0;
         // TODO Should this be checked in UI?  Are there guidelines for minimums?
-        if (query == null || query.length() < MIN_QUERY_LENGTH) return 0;
+        if (filter == null || filter.length() < MIN_QUERY_LENGTH) return 0;
 
         int res = 0;
         Account account = Account.restoreAccountWithId(context, accountId);
@@ -548,17 +551,17 @@ public class EasSyncService extends AbstractSyncService {
             s.data(Tags.SEARCH_NAME, "Mailbox");
             s.start(Tags.SEARCH_QUERY).start(Tags.SEARCH_AND);
             s.data(Tags.SYNC_CLASS, "Email");
-            s.data(Tags.SEARCH_FREE_TEXT, query);
+            s.data(Tags.SEARCH_FREE_TEXT, filter);
             s.end().end();              // SEARCH_AND, SEARCH_QUERY
             s.start(Tags.SEARCH_OPTIONS);
-            if (firstResult == 0) {
+            if (offset == 0) {
                 s.tag(Tags.SEARCH_REBUILD_RESULTS);
             }
-            if (includeSubfolders) {
+            if (searchParams.mIncludeChildren) {
                 s.tag(Tags.SEARCH_DEEP_TRAVERSAL);
             }
             // Range is sent in the form first-last (e.g. 0-9)
-            s.data(Tags.SEARCH_RANGE, firstResult + "-" + (firstResult + numResults - 1));
+            s.data(Tags.SEARCH_RANGE, offset + "-" + (offset + limit - 1));
             s.start(Tags.BASE_BODY_PREFERENCE);
             s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
             s.data(Tags.BASE_TRUNCATION_SIZE, "20000");
@@ -570,7 +573,7 @@ public class EasSyncService extends AbstractSyncService {
                 if (code == HttpStatus.SC_OK) {
                     InputStream is = resp.getInputStream();
                     try {
-                        new SearchParser(is, svc, query).parse();
+                        new SearchParser(is, svc, filter).parse();
                     } finally {
                         is.close();
                     }
