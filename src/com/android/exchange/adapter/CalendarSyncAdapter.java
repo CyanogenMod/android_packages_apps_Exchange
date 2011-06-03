@@ -1408,7 +1408,12 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             add(ContentProviderOperation.newDelete(
                     asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, id),
                             mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)).build());
-            // The provider handles removing all exceptions to this event.
+            // Delete the exceptions for this Event (CalendarProvider doesn't do
+            // this)
+            add(ContentProviderOperation
+                    .newDelete(asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE))
+                    .withSelection(Events.ORIGINAL_SYNC_ID + "=?", new String[] {syncId}).build());
         }
 
         public void execute() {
