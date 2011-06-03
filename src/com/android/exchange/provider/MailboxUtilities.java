@@ -184,6 +184,7 @@ public class MailboxUtilities {
         // If our temporary flag is set, we were interrupted during an update
         // First, make sure we're current (really fast w/ caching)
         Account account = Account.restoreAccountWithId(context, accountId);
+        if (account == null) return;
         if ((account.mFlags & ACCOUNT_MAILBOX_CHANGE_FLAG) != 0) {
             Log.w(Logging.LOG_TAG, "Account " + account.mDisplayName +
                     " has inconsistent mailbox data; fixing up...");
