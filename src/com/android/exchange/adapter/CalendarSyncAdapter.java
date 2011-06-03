@@ -1482,7 +1482,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         // status 6 error during sync
         if (isException) {
            // Send exception deleted flag if necessary
-            Integer deleted = entityValues.getAsInteger(Calendar.EventsColumns.DELETED);
+            Integer deleted = entityValues.getAsInteger(Calendar.Events.DELETED);
             boolean isDeleted = deleted != null && deleted == 1;
             Integer eventStatus = entityValues.getAsInteger(Events.STATUS);
             boolean isCanceled = eventStatus != null && eventStatus.equals(Events.STATUS_CANCELED);
@@ -1875,7 +1875,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                         mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
                                 cidValues, null, null);
                     } else {
-                        if (entityValues.getAsInteger(Calendar.EventsColumns.DELETED) == 1) {
+                        if (entityValues.getAsInteger(Calendar.Events.DELETED) == 1) {
                             userLog("Deleting event with serverId: ", serverId);
                             s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
                             mDeletedIdList.add(eventId);
@@ -1947,7 +1947,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                     exEntity.addSubValue(ncv.uri, ncv.values);
                                 }
 
-                                if ((getInt(exValues, Calendar.EventsColumns.DELETED) == 1) ||
+                                if ((getInt(exValues, Calendar.Events.DELETED) == 1) ||
                                         (getInt(exValues, Events.STATUS) ==
                                             Events.STATUS_CANCELED)) {
                                     flag = Message.FLAG_OUTGOING_MEETING_CANCEL;
