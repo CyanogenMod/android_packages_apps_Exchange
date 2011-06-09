@@ -73,19 +73,26 @@ import java.util.UUID;
 public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
     private static final String TAG = "EasCalendarSyncAdapter";
+
+    private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.SYNC_DATA1;
+    /**
+     * Used to keep track of exception vs parent event dirtiness.
+     */
+    private static final String EVENT_SYNC_MARK = Events.SYNC_DATA8;
+    private static final String EVENT_SYNC_VERSION = Events.SYNC_DATA4;
     // Since exceptions will have the same _SYNC_ID as the original event we have to check that
     // there's no original event when finding an item by _SYNC_ID
     private static final String SERVER_ID_AND_CALENDAR_ID = Events._SYNC_ID + "=? AND " +
         Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
     private static final String EVENT_ID_AND_CALENDAR_ID = Events._ID + "=? AND " +
         Events.ORIGINAL_SYNC_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
-    private static final String DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR =
-        "(" + Events.DIRTY + "=1 OR " + Events._SYNC_MARK + "= 1) AND " +
+    private static final String DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR = "(" + Events.DIRTY
+            + "=1 OR " + EVENT_SYNC_MARK + "= 1) AND " +
         Events.ORIGINAL_ID + " ISNULL AND " + Events.CALENDAR_ID + "=?";
     private static final String DIRTY_EXCEPTION_IN_CALENDAR =
         Events.DIRTY + "=1 AND " + Events.ORIGINAL_ID + " NOTNULL AND " +
         Events.CALENDAR_ID + "=?";
-    private static final String CLIENT_ID_SELECTION = Events._SYNC_DATA + "=?";
+    private static final String CLIENT_ID_SELECTION = Events.SYNC_DATA2 + "=?";
     private static final String ORIGINAL_EVENT_AND_CALENDAR =
         Events.ORIGINAL_SYNC_ID + "=? AND " + Events.CALENDAR_ID + "=?";
     private static final String ATTENDEES_EXCEPT_ORGANIZER = Attendees.EVENT_ID + "=? AND " +
@@ -132,7 +139,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
     private final TimeZone mLocalTimeZone = TimeZone.getDefault();
 
-    private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.SYNC_DATA1;
 
     // Maximum number of allowed attendees; above this number, we mark the Event with the
     // attendeesRedacted extended property and don't allow the event to be upsynced to the server
@@ -395,7 +401,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             cv.put(Events.CALENDAR_ID, mCalendarId);
             cv.put(Events._SYNC_ID, serverId);
             cv.put(Events.HAS_ATTENDEE_DATA, 1);
-            cv.put(Events._SYNC_DATA, "0");
+            cv.put(Events.SYNC_DATA2, "0");
 
             int allDayEvent = 0;
             String organizerName = null;
@@ -544,7 +550,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     // The following are fields we should save (for changes), though they don't
                     // relate to data used by CalendarProvider at this point
                     case Tags.CALENDAR_UID:
-                        cv.put(Events._SYNC_DATA, getValue());
+                        cv.put(Events.SYNC_DATA2, getValue());
                         break;
                     case Tags.CALENDAR_DTSTAMP:
                         dtStamp = getValue();
@@ -712,7 +718,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 logEventColumns(cv, "DTSTART missing");
                 return false;
             // If we're a top-level event, we must have _SYNC_DATA (uid)
-            } else if (!isException && !cv.containsKey(Events._SYNC_DATA)) {
+            } else if (!isException && !cv.containsKey(Events.SYNC_DATA2)) {
                 logEventColumns(cv, "_SYNC_DATA missing");
                 return false;
             // We must also have DTEND or DURATION if we're not an exception
@@ -1192,7 +1198,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 if (!mUploadedIdList.isEmpty())  {
                     ContentValues cv = new ContentValues();
                     cv.put(Events.DIRTY, 0);
-                    cv.put(Events._SYNC_MARK, 0);
+                    cv.put(EVENT_SYNC_MARK, "0");
                     for (long eventId : mUploadedIdList) {
                         mContentResolver.update(
                                 asSyncAdapter(
@@ -1252,7 +1258,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             try {
                 if (c.moveToFirst()) {
                     cv.put(Events._SYNC_ID, serverId);
-                    cv.put(Events._SYNC_DATA, clientId);
+                    cv.put(Events.SYNC_DATA2, clientId);
                     long id = c.getLong(0);
                     // Write the serverId into the Event
                     mOps.add(ContentProviderOperation
@@ -1776,7 +1782,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 ContentValues cv = new ContentValues();
                 // We use _sync_mark here to distinguish dirty parents from parents with dirty
                 // exceptions
-                cv.put(Events._SYNC_MARK, 1);
+                cv.put(EVENT_SYNC_MARK, "1");
                 while (c.moveToNext()) {
                     // Mark the parents of dirty exceptions
                     long parentId = c.getLong(0);
@@ -1839,7 +1845,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     }
 
                     // Find our uid in the entity; otherwise create one
-                    String clientId = entityValues.getAsString(Events._SYNC_DATA);
+                    String clientId = entityValues.getAsString(Events.SYNC_DATA2);
                     if (clientId == null) {
                         clientId = UUID.randomUUID().toString();
                     }
@@ -1867,8 +1873,8 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         userLog("Creating new event with clientId: ", clientId);
                         s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
                         // And save it in the Event as the local id
-                        cidValues.put(Events._SYNC_DATA, clientId);
-                        cidValues.put(Events._SYNC_VERSION, "0");
+                        cidValues.put(Events.SYNC_DATA2, clientId);
+                        cidValues.put(EVENT_SYNC_VERSION, "0");
                         cr.update(
                                 asSyncAdapter(
                                         ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
@@ -1888,7 +1894,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         }
                         userLog("Upsync change to event with serverId: " + serverId);
                         // Get the current version
-                        String version = entityValues.getAsString(Events._SYNC_VERSION);
+                        String version = entityValues.getAsString(EVENT_SYNC_VERSION);
                         // This should never be null, but catch this error anyway
                         // Version should be "0" when we create the event, so use that
                         if (version == null) {
@@ -1903,9 +1909,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                 version = "0";
                             }
                         }
-                        cidValues.put(Events._SYNC_VERSION, version);
+                        cidValues.put(EVENT_SYNC_VERSION, version);
                         // Also save in entityValues so that we send it this time around
-                        entityValues.put(Events._SYNC_VERSION, version);
+                        entityValues.put(EVENT_SYNC_VERSION, version);
                         cr.update(
                                 asSyncAdapter(
                                         ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
@@ -1968,8 +1974,8 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                 mUploadedIdList.add(exEventId);
 
                                 // Copy version so the ics attachment shows the proper sequence #
-                                exValues.put(Events._SYNC_VERSION,
-                                        entityValues.getAsString(Events._SYNC_VERSION));
+                                exValues.put(EVENT_SYNC_VERSION,
+                                        entityValues.getAsString(EVENT_SYNC_VERSION));
                                 // Copy location so that it's included in the outgoing email
                                 if (entityValues.containsKey(Events.EVENT_LOCATION)) {
                                     exValues.put(Events.EVENT_LOCATION,

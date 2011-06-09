@@ -240,7 +240,7 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         entityValues.put(Events.EVENT_LOCATION, location);
         entityValues.put(Events.TITLE, title);
         entityValues.put(Events.ORGANIZER, organizer);
-        entityValues.put(Events._SYNC_DATA, "31415926535");
+        entityValues.put(Events.SYNC_DATA2, "31415926535");
 
         // Add the attendee
         ContentValues attendeeValues = new ContentValues();

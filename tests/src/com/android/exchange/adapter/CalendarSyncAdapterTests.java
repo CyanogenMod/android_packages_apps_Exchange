@@ -211,7 +211,7 @@ public class CalendarSyncAdapterTests extends SyncAdapterTestCase<CalendarSyncAd
         cv.put(Events.DTSTART, validTime);
         // Needs _SYNC_DATA and DTEND/DURATION
         assertFalse(p.isValidEventValues(cv));
-        cv.put(Events._SYNC_DATA, validData);
+        cv.put(Events.SYNC_DATA2, validData);
         // Needs DTEND/DURATION since not an exception
         assertFalse(p.isValidEventValues(cv));
         cv.put(Events.DURATION, validDuration);

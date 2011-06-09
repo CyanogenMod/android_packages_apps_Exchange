@@ -63,6 +63,7 @@ import java.util.HashMap;
 import java.util.TimeZone;
 
 public class CalendarUtilities {
+
     // NOTE: Most definitions in this class are have package visibility for testing purposes
     private static final String TAG = "CalendarUtility";
 
@@ -72,6 +73,7 @@ public class CalendarUtilities {
     static final int HOURS = MINUTES*60;
     static final long DAYS = HOURS*24;
 
+    private static final String SYNC_VERSION = Events.SYNC_DATA4;
     // NOTE All Microsoft data structures are little endian
 
     // The following constants relate to standard Microsoft data sizes
@@ -1229,7 +1231,7 @@ public class CalendarUtilities {
         // Create a Calendar object
         ContentValues cv = new ContentValues();
         // TODO How will this change if the user changes his account display name?
-        cv.put(Calendars.DISPLAY_NAME, account.mDisplayName);
+        cv.put(Calendars.CALENDAR_DISPLAY_NAME, account.mDisplayName);
         cv.put(Calendars.ACCOUNT_NAME, account.mEmailAddress);
         cv.put(Calendars.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         cv.put(Calendars.SYNC_EVENTS, 1);
@@ -1242,8 +1244,8 @@ public class CalendarUtilities {
         // TODO Coordinate account colors w/ Calendar, if possible
         int color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
         cv.put(Calendars.CALENDAR_COLOR, color);
-        cv.put(Calendars.CALENDAR_TIMEZONE, Time.getCurrentTimezone());
-        cv.put(Calendars.ACCESS_LEVEL, Calendars.OWNER_ACCESS);
+        cv.put(Calendars.CALENDAR_TIME_ZONE, Time.getCurrentTimezone());
+        cv.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER);
         cv.put(Calendars.OWNER_ACCOUNT, account.mEmailAddress);
 
         Uri uri = service.mContentResolver.insert(
@@ -1505,7 +1507,7 @@ public class CalendarUtilities {
 
             ics.writeTag("BEGIN", "VEVENT");
             if (uid == null) {
-                uid = entityValues.getAsString(Events._SYNC_DATA);
+                uid = entityValues.getAsString(Events.SYNC_DATA2);
             }
             if (uid != null) {
                 ics.writeTag("UID", uid);
@@ -1559,7 +1561,7 @@ public class CalendarUtilities {
                 ics.writeTag("LOCATION", location);
             }
 
-            String sequence = entityValues.getAsString(Events._SYNC_VERSION);
+            String sequence = entityValues.getAsString(SYNC_VERSION);
             if (sequence == null) {
                 sequence = "0";
             }
