@@ -103,7 +103,6 @@ import java.net.URI;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.zip.GZIPInputStream;
 
 public class EasSyncService extends AbstractSyncService {
     // DO NOT CHECK IN SET TO TRUE
@@ -445,84 +444,6 @@ public class EasSyncService extends AbstractSyncService {
         }
         svc.mAccount = account;
         return svc;
-    }
-
-    /**
-     * Encapsulate a response to an HTTP POST
-     */
-    public static class EasResponse {
-        private final HttpResponse mResponse;
-        private final HttpEntity mEntity;
-        private final int mLength;
-        private InputStream mInputStream;
-        private boolean mClosed;
-
-        public EasResponse(HttpResponse response) {
-            mResponse = response;
-            mEntity = mResponse.getEntity();
-            if (mEntity !=  null) {
-                mLength = (int)mEntity.getContentLength();
-            } else {
-                mLength = 0;
-            }
-        }
-
-        /**
-         * Return an appropriate input stream for the response, either a GZIPInputStream, for
-         * compressed data, or a generic InputStream otherwise
-         * @return the input stream for the response
-         */
-        public InputStream getInputStream() {
-            if (mInputStream != null || mClosed) {
-                throw new IllegalStateException("Can't reuse stream or get closed stream");
-            } else if (mEntity == null) {
-                throw new IllegalStateException("Can't get input stream without entity");
-            }
-            InputStream is = null;
-            try {
-                // Get the default input stream for the entity
-                is = mEntity.getContent();
-                Header ceHeader = mResponse.getFirstHeader("Content-Encoding");
-                if (ceHeader != null) {
-                    String encoding = ceHeader.getValue();
-                    // If we're gzip encoded, wrap appropriately
-                    if (encoding.toLowerCase().equals("gzip")) {
-                        is = new GZIPInputStream(is);
-                    }
-                }
-            } catch (IllegalStateException e1) {
-            } catch (IOException e1) {
-            }
-            mInputStream = is;
-            return is;
-        }
-
-        public boolean isEmpty() {
-            return mLength == 0;
-        }
-
-        public int getStatus() {
-            return mResponse.getStatusLine().getStatusCode();
-        }
-
-        public Header getHeader(String name) {
-            return mResponse.getFirstHeader(name);
-        }
-
-        public int getLength() {
-            return mLength;
-        }
-
-        public void close() {
-            if (mEntity != null && !mClosed) {
-                try {
-                    mEntity.consumeContent();
-                } catch (IOException e) {
-                    // No harm, no foul
-                }
-            }
-            mClosed = true;
-        }
     }
 
     public static int searchMessages(Context context, long accountId, SearchParams searchParams,

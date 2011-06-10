@@ -21,8 +21,8 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.exchange.Eas;
+import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
-import com.android.exchange.EasSyncService.EasResponse;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.PartRequest;
 

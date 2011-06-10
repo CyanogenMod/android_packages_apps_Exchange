@@ -39,8 +39,8 @@ import com.android.emailcommon.utility.ConversionUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
+import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
-import com.android.exchange.EasSyncService.EasResponse;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
@@ -101,14 +101,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int LAST_VERB_REPLY_ALL = 2;
     private static final int LAST_VERB_FORWARD = 3;
 
-    private String[] mBindArguments = new String[2];
-    private String[] mBindArgument = new String[1];
+    private final String[] mBindArguments = new String[2];
+    private final String[] mBindArgument = new String[1];
 
     @VisibleForTesting
     ArrayList<Long> mDeletedIdList = new ArrayList<Long>();
     @VisibleForTesting
     ArrayList<Long> mUpdatedIdList = new ArrayList<Long>();
-    private ArrayList<FetchRequest> mFetchRequestList = new ArrayList<FetchRequest>();
+    private final ArrayList<FetchRequest> mFetchRequestList = new ArrayList<FetchRequest>();
     private boolean mFetchNeeded = false;
 
     // Holds the parser's value for isLooping()
@@ -430,12 +430,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         private static final String WHERE_SERVER_ID_AND_MAILBOX_KEY =
             SyncColumns.SERVER_ID + "=? and " + MessageColumns.MAILBOX_KEY + "=?";
 
-        private String mMailboxIdAsString;
+        private final String mMailboxIdAsString;
 
-        private ArrayList<Message> newEmails = new ArrayList<Message>();
-        private ArrayList<Message> fetchedEmails = new ArrayList<Message>();
-        private ArrayList<Long> deletedEmails = new ArrayList<Long>();
-        private ArrayList<ServerChange> changedEmails = new ArrayList<ServerChange>();
+        private final ArrayList<Message> newEmails = new ArrayList<Message>();
+        private final ArrayList<Message> fetchedEmails = new ArrayList<Message>();
+        private final ArrayList<Long> deletedEmails = new ArrayList<Long>();
+        private final ArrayList<ServerChange> changedEmails = new ArrayList<ServerChange>();
 
         public EasEmailSyncParser(InputStream in, EmailSyncAdapter adapter) throws IOException {
             super(in, adapter);
