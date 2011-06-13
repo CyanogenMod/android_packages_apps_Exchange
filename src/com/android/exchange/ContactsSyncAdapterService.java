@@ -128,7 +128,7 @@ public class ContactsSyncAdapterService extends Service {
 
         // Find the (EmailProvider) account associated with this email address
         Cursor accountCursor =
-            cr.query(com.android.emailcommon.provider.EmailContent.Account.CONTENT_URI, ID_PROJECTION,
+            cr.query(com.android.emailcommon.provider.Account.CONTENT_URI, ID_PROJECTION,
                 AccountColumns.EMAIL_ADDRESS + "=?", new String[] {account.name}, null);
         try {
             if (accountCursor.moveToFirst()) {

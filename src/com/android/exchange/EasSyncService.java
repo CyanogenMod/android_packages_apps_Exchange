@@ -21,7 +21,7 @@ import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.mail.MeetingInfo;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;

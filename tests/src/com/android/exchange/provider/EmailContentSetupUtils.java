@@ -16,8 +16,7 @@
 
 package com.android.exchange.provider;
 
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.Mailbox;
 
@@ -70,7 +69,7 @@ public class EmailContentSetupUtils {
         box.mAccountKey = accountId;
         box.mSyncKey = "sync-key-" + name;
         box.mSyncLookback = 2;
-        box.mSyncInterval = EmailContent.Account.CHECK_INTERVAL_NEVER;
+        box.mSyncInterval = Account.CHECK_INTERVAL_NEVER;
         box.mType = type;
         box.mServerId = "serverid-" + name;
         box.mParentServerId = parentBox != null ? parentBox.mServerId : "parent-serverid-" + name;

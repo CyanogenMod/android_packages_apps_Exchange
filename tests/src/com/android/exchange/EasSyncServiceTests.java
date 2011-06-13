@@ -17,7 +17,7 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 
 import org.apache.http.Header;
 import org.apache.http.client.methods.HttpPost;

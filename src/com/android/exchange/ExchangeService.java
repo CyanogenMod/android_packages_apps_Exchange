@@ -19,8 +19,8 @@ package com.android.exchange;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;

@@ -16,7 +16,7 @@
 
 package com.android.exchange.utility;
 
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 import com.android.exchange.provider.EmailContentSetupUtils;
 
 import android.content.ContentResolver;

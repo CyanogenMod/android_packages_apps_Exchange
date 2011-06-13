@@ -16,7 +16,7 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
 

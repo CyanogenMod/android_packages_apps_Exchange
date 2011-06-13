@@ -16,11 +16,6 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.Mailbox;
-
 import android.accounts.Account;
 import android.accounts.OperationCanceledException;
 import android.app.Service;
@@ -35,6 +30,11 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.Calendar.Events;
 import android.util.Log;
+
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.Mailbox;
 
 public class CalendarSyncAdapterService extends Service {
     private static final String TAG = "EAS CalendarSyncAdapterService";
@@ -116,7 +116,7 @@ public class CalendarSyncAdapterService extends Service {
 
         // Find the (EmailProvider) account associated with this email address
         Cursor accountCursor =
-            cr.query(EmailContent.Account.CONTENT_URI,
+            cr.query(com.android.emailcommon.provider.Account.CONTENT_URI,
                     EmailContent.ID_PROJECTION, AccountColumns.EMAIL_ADDRESS + "=?",
                     new String[] {account.name}, null);
         try {

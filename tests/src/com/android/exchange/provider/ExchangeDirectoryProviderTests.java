@@ -17,7 +17,7 @@
 package com.android.exchange.provider;
 
 import com.android.emailcommon.mail.PackedString;
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 import com.android.exchange.provider.GalResult.GalData;
 import com.android.exchange.utility.ExchangeTestCase;
 

@@ -16,11 +16,6 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.AccountManagerTypes;
-import com.android.emailcommon.Logging;
-import com.android.emailcommon.provider.EmailContent;
-import com.android.exchange.utility.ExchangeTestCase;
-
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AccountManagerFuture;
@@ -35,6 +30,10 @@ import android.test.MoreAsserts;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.android.emailcommon.AccountManagerTypes;
+import com.android.emailcommon.Logging;
+import com.android.exchange.utility.ExchangeTestCase;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -220,20 +219,24 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
         AccountManager.get(getContext()).addAccountExplicitly(account, "password", null);
     }
 
-    protected EmailContent.Account setupProviderAndAccountManagerAccount(String username) {
+    protected com.android.emailcommon.provider.Account
+        setupProviderAndAccountManagerAccount(String username) {
         // Note that setupAccount creates the email address username@android.com, so that's what
         // we need to use for the account manager
         createAccountManagerAccount(username + TEST_ACCOUNT_SUFFIX);
         return setupTestAccount(username, true);
     }
 
-    protected ArrayList<EmailContent.Account> makeExchangeServiceAccountList() {
-        ArrayList<EmailContent.Account> accountList = new ArrayList<EmailContent.Account>();
-        Cursor c = mProviderContext.getContentResolver().query(EmailContent.Account.CONTENT_URI,
-                EmailContent.Account.CONTENT_PROJECTION, null, null, null);
+    protected ArrayList<com.android.emailcommon.provider.Account> makeExchangeServiceAccountList() {
+        ArrayList<com.android.emailcommon.provider.Account> accountList =
+            new ArrayList<com.android.emailcommon.provider.Account>();
+        Cursor c = mProviderContext.getContentResolver().query(
+                com.android.emailcommon.provider.Account.CONTENT_URI,
+                com.android.emailcommon.provider.Account.CONTENT_PROJECTION, null, null, null);
         try {
             while (c.moveToNext()) {
-                EmailContent.Account account = new EmailContent.Account();
+                com.android.emailcommon.provider.Account account =
+                    new com.android.emailcommon.provider.Account();
                 account.restore(c);
                 accountList.add(account);
             }

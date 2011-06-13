@@ -17,7 +17,7 @@
 package com.android.exchange.utility;
 
 import com.android.emailcommon.mail.Address;
-import com.android.emailcommon.provider.EmailContent.Account;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.Utility;

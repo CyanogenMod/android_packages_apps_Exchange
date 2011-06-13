@@ -16,15 +16,17 @@
 
 package com.android.exchange.adapter;
 
-import com.android.emailcommon.provider.EmailContent.Account;
-import com.android.emailcommon.provider.Mailbox;
-import com.android.exchange.EasSyncService;
-import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
-
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.test.AndroidTestCase;
+
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.exchange.EasSyncService;
+import com.android.exchange.adapter.AbstractSyncAdapter;
+import com.android.exchange.adapter.EmailSyncAdapter;
+import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
