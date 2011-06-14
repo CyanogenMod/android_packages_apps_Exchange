@@ -18,6 +18,7 @@
 package com.android.exchange;
 
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.utility.FileLogger;
 
@@ -99,17 +100,11 @@ public abstract class AbstractSyncService implements Runnable {
      * functionality, success is indicated by a failure to throw an Exception
      * (ugh). Parameters are self-explanatory
      *
-     * @param host
-     * @param userName
-     * @param password
-     * @param port
-     * @param ssl
-     * @param context
+     * @param hostAuth
      * @return a Bundle containing a result code and, depending on the result, a PolicySet or an
      * error message
      */
-    public abstract Bundle validateAccount(String host, String userName, String password, int port,
-            boolean ssl, boolean trustCertificates, Context context);
+    public abstract Bundle validateAccount(HostAuth hostAuth, Context context);
 
     public AbstractSyncService(Context _context, Mailbox _mailbox) {
         mContext = _context;
@@ -128,23 +123,17 @@ public abstract class AbstractSyncService implements Runnable {
      * protocol's validateAccount method.   Arguments are self-explanatory, except where noted.
      *
      * @param klass the protocol class (EasSyncService.class for example)
-     * @param host
-     * @param userName
-     * @param password
-     * @param port
-     * @param ssl
+     * @param hostAuth
      * @param context
      * @return a Bundle containing a result code and, depending on the result, a PolicySet or an
      * error message
      */
-    static public Bundle validate(Class<? extends AbstractSyncService> klass, String host,
-            String userName, String password, int port, boolean ssl, boolean trustCertificates,
-            Context context) {
+    public static Bundle validate(Class<? extends AbstractSyncService> klass,
+            HostAuth hostAuth, Context context) {
         AbstractSyncService svc;
         try {
             svc = klass.newInstance();
-            return svc.validateAccount(host, userName, password, port, ssl, trustCertificates,
-                    context);
+            return svc.validateAccount(hostAuth, context);
         } catch (IllegalAccessException e) {
         } catch (InstantiationException e) {
         }

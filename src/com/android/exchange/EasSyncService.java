@@ -523,25 +523,25 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     @Override
-    public Bundle validateAccount(String hostAddress, String userName, String password, int port,
-            boolean ssl, boolean trustCertificates, Context context) {
+    public Bundle validateAccount(HostAuth hostAuth,  Context context) {
         Bundle bundle = new Bundle();
         int resultCode = MessagingException.NO_ERROR;
         try {
-            userLog("Testing EAS: ", hostAddress, ", ", userName, ", ssl = ", ssl ? "1" : "0");
+            userLog("Testing EAS: ", hostAuth.mAddress, ", ", hostAuth.mLogin,
+                    ", ssl = ", hostAuth.useSsl() ? "1" : "0");
             EasSyncService svc = new EasSyncService("%TestAccount%");
             svc.mContext = context;
-            svc.mHostAddress = hostAddress;
-            svc.mUserName = userName;
-            svc.mPassword = password;
+            svc.mHostAddress = hostAuth.mAddress;
+            svc.mUserName = hostAuth.mLogin;
+            svc.mPassword = hostAuth.mPassword;
 
-            // TODO: wire through client certificate alias.
-            svc.setConnectionParameters(ssl, trustCertificates, null);
+            svc.setConnectionParameters(
+                    hostAuth.useSsl(), hostAuth.trustAllServerCerts(), hostAuth.mClientCertAlias);
             // We mustn't use the "real" device id or we'll screw up current accounts
             // Any string will do, but we'll go for "validate"
             svc.mDeviceId = "validate";
             svc.mAccount = new Account();
-            svc.mAccount.mEmailAddress = userName;
+            svc.mAccount.mEmailAddress = hostAuth.mLogin;
             EasResponse resp = svc.sendHttpClientOptions();
             try {
                 int code = resp.getStatus();
@@ -568,8 +568,8 @@ public class EasSyncService extends AbstractSyncService {
                     userLog("Try folder sync");
                     // Send "0" as the sync key for new accounts; otherwise, use the current key
                     String syncKey = "0";
-                    Account existingAccount =
-                        Utility.findExistingAccount(context, -1L, hostAddress, userName);
+                    Account existingAccount = Utility.findExistingAccount(
+                            context, -1L, hostAuth.mAddress, hostAuth.mLogin);
                     if (existingAccount != null && existingAccount.mSyncKey != null) {
                         syncKey = existingAccount.mSyncKey;
                     }

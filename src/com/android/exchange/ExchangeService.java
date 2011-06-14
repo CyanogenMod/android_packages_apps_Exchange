@@ -337,10 +337,9 @@ public class ExchangeService extends Service implements Runnable {
             return Api.LEVEL;
         }
 
-        public Bundle validate(String protocol, String host, String userName, String password,
-                int port, boolean ssl, boolean trustCertificates) throws RemoteException {
-            return AbstractSyncService.validate(EasSyncService.class, host, userName, password,
-                    port, ssl, trustCertificates, ExchangeService.this);
+        public Bundle validate(HostAuth hostAuth) throws RemoteException {
+            return AbstractSyncService.validate(EasSyncService.class,
+                    hostAuth, ExchangeService.this);
         }
 
         public Bundle autoDiscover(String userName, String password) throws RemoteException {
