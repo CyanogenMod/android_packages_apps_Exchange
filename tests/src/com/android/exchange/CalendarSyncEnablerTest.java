@@ -25,7 +25,7 @@ import android.app.NotificationManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
-import android.provider.Calendar;
+import android.provider.CalendarContract;
 import android.test.MoreAsserts;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.text.TextUtils;
@@ -60,7 +60,7 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
         // Save the original calendar sync states.
         for (Account account : AccountManager.get(getContext()).getAccounts()) {
             origCalendarSyncStates.put(account,
-                    ContentResolver.getSyncAutomatically(account, Calendar.AUTHORITY));
+                    ContentResolver.getSyncAutomatically(account, CalendarContract.AUTHORITY));
         }
     }
 
@@ -78,7 +78,7 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
             Boolean state = origCalendarSyncStates.get(account);
             if (state == null) continue; // Shouldn't happen, but just in case.
 
-            ContentResolver.setSyncAutomatically(account, Calendar.AUTHORITY, state);
+            ContentResolver.setSyncAutomatically(account, CalendarContract.AUTHORITY, state);
         }
     }
 
@@ -159,8 +159,9 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
         // It's very unfortunate that setSyncAutomatically doesn't take effect immediately.
         for (Account account : AccountManager.get(getContext()).getAccounts()) {
             String message = "account=" + account.name + "(" + account.type + ")";
-            boolean enabled = ContentResolver.getSyncAutomatically(account, Calendar.AUTHORITY);
-            int syncable = ContentResolver.getIsSyncable(account, Calendar.AUTHORITY);
+            boolean enabled = ContentResolver.getSyncAutomatically(account,
+                    CalendarContract.AUTHORITY);
+            int syncable = ContentResolver.getIsSyncable(account, CalendarContract.AUTHORITY);
 
             if (EAT.equals(account.type)) {
                 // Should be enabled.

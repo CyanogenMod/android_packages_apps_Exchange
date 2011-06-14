@@ -79,9 +79,9 @@ import android.os.PowerManager.WakeLock;
 import android.os.Process;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
-import android.provider.Calendar;
-import android.provider.Calendar.Calendars;
-import android.provider.Calendar.Events;
+import android.provider.CalendarContract;
+import android.provider.CalendarContract.Calendars;
+import android.provider.CalendarContract.Events;
 import android.provider.ContactsContract;
 import android.util.Log;
 
@@ -906,7 +906,7 @@ public class ExchangeService extends Service implements Runnable {
                                         Uri eventsAsSyncAdapter =
                                             Events.CONTENT_URI.buildUpon()
                                             .appendQueryParameter(
-                                                    Calendar.CALLER_IS_SYNCADAPTER, "true")
+                                                    CalendarContract.CALLER_IS_SYNCADAPTER, "true")
                                                     .build();
                                         mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
                                                 new String[] {Long.toString(mCalendarId)});
@@ -1556,7 +1556,7 @@ public class ExchangeService extends Service implements Runnable {
         synchronized (mAccountList) {
             for (Account account : mAccountList) {
                 updatePIMSyncSettings(account, Mailbox.TYPE_CONTACTS, ContactsContract.AUTHORITY);
-                updatePIMSyncSettings(account, Mailbox.TYPE_CALENDAR, Calendar.AUTHORITY);
+                updatePIMSyncSettings(account, Mailbox.TYPE_CALENDAR, CalendarContract.AUTHORITY);
                 updatePIMSyncSettings(account, Mailbox.TYPE_INBOX, EmailContent.AUTHORITY);
             }
         }
@@ -2143,7 +2143,7 @@ public class ExchangeService extends Service implements Runnable {
             if (type == Mailbox.TYPE_CONTACTS) {
                 authority = ContactsContract.AUTHORITY;
             } else {
-                authority = Calendar.AUTHORITY;
+                authority = CalendarContract.AUTHORITY;
                 if (!mCalendarObservers.containsKey(account.mId)){
                     // Make sure we have an observer for this Calendar, as
                     // we need to be able to detect sync state changes, sigh

@@ -32,8 +32,8 @@ import com.android.exchange.adapter.Tags;
 import android.content.ContentValues;
 import android.content.Entity;
 import android.content.res.Resources;
-import android.provider.Calendar.Attendees;
-import android.provider.Calendar.Events;
+import android.provider.CalendarContract.Attendees;
+import android.provider.CalendarContract.Events;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.util.Log;
 

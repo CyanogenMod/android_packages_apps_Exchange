@@ -28,7 +28,7 @@ import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.provider.Calendar.Events;
+import android.provider.CalendarContract.Events;
 import android.util.Log;
 
 import com.android.emailcommon.provider.EmailContent;

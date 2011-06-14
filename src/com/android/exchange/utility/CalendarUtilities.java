@@ -43,10 +43,10 @@ import android.content.EntityIterator;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.RemoteException;
-import android.provider.Calendar.Attendees;
-import android.provider.Calendar.Calendars;
-import android.provider.Calendar.Events;
-import android.provider.Calendar.EventsEntity;
+import android.provider.CalendarContract.Attendees;
+import android.provider.CalendarContract.Calendars;
+import android.provider.CalendarContract.Events;
+import android.provider.CalendarContract.EventsEntity;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Base64;
@@ -1262,7 +1262,8 @@ public class CalendarUtilities {
 
     static Uri asSyncAdapter(Uri uri, String account, String accountType) {
         return uri.buildUpon()
-                .appendQueryParameter(android.provider.Calendar.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(android.provider.CalendarContract.CALLER_IS_SYNCADAPTER,
+                        "true")
                 .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
                 .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
     }

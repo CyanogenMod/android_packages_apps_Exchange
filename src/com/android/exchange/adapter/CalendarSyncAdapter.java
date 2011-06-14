@@ -43,14 +43,14 @@ import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.RemoteException;
-import android.provider.Calendar;
-import android.provider.Calendar.Attendees;
-import android.provider.Calendar.Calendars;
-import android.provider.Calendar.Events;
-import android.provider.Calendar.EventsEntity;
-import android.provider.Calendar.ExtendedProperties;
-import android.provider.Calendar.Reminders;
-import android.provider.Calendar.SyncState;
+import android.provider.CalendarContract;
+import android.provider.CalendarContract.Attendees;
+import android.provider.CalendarContract.Calendars;
+import android.provider.CalendarContract.Events;
+import android.provider.CalendarContract.EventsEntity;
+import android.provider.CalendarContract.ExtendedProperties;
+import android.provider.CalendarContract.Reminders;
+import android.provider.CalendarContract.SyncState;
 import android.provider.ContactsContract.RawContacts;
 import android.provider.SyncStateContract;
 import android.text.TextUtils;
@@ -214,7 +214,8 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
     @Override
     public boolean isSyncable() {
-        return ContentResolver.getSyncAutomatically(mAccountManagerAccount, Calendar.AUTHORITY);
+        return ContentResolver.getSyncAutomatically(mAccountManagerAccount,
+                CalendarContract.AUTHORITY);
     }
 
     @Override
@@ -224,7 +225,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     }
 
     static Uri asSyncAdapter(Uri uri, String account, String accountType) {
-        return uri.buildUpon().appendQueryParameter(Calendar.CALLER_IS_SYNCADAPTER, "true")
+        return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
                 .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
                 .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
     }
@@ -248,11 +249,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     public String getSyncKey() throws IOException {
         synchronized (sSyncKeyLock) {
             ContentProviderClient client = mService.mContentResolver
-                    .acquireContentProviderClient(Calendar.CONTENT_URI);
+                    .acquireContentProviderClient(CalendarContract.CONTENT_URI);
             try {
                 byte[] data = SyncStateContract.Helpers.get(
                         client,
-                        asSyncAdapter(Calendar.SyncState.CONTENT_URI, mEmailAddress,
+                        asSyncAdapter(CalendarContract.SyncState.CONTENT_URI, mEmailAddress,
                                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount);
                 if (data == null || data.length == 0) {
                     // Initialize the SyncKey
@@ -278,11 +279,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         synchronized (sSyncKeyLock) {
             if ("0".equals(syncKey) || !inCommands) {
                 ContentProviderClient client = mService.mContentResolver
-                        .acquireContentProviderClient(Calendar.CONTENT_URI);
+                        .acquireContentProviderClient(CalendarContract.CONTENT_URI);
                 try {
                     SyncStateContract.Helpers.set(
                             client,
-                            asSyncAdapter(Calendar.SyncState.CONTENT_URI, mEmailAddress,
+                            asSyncAdapter(CalendarContract.SyncState.CONTENT_URI, mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount,
                             syncKey.getBytes());
                     userLog("SyncKey set to ", syncKey, " in CalendarProvider");
@@ -1429,7 +1430,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         if (!isEmpty()) {
                             mService.userLog("Executing ", size(), " CPO's");
                             mResults = mContext.getContentResolver().applyBatch(
-                                    Calendar.AUTHORITY, this);
+                                    CalendarContract.AUTHORITY, this);
                         }
                     } catch (RemoteException e) {
                         // There is nothing sensible to be done here
@@ -1488,7 +1489,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         // status 6 error during sync
         if (isException) {
            // Send exception deleted flag if necessary
-            Integer deleted = entityValues.getAsInteger(Calendar.Events.DELETED);
+            Integer deleted = entityValues.getAsInteger(CalendarContract.Events.DELETED);
             boolean isDeleted = deleted != null && deleted == 1;
             Integer eventStatus = entityValues.getAsInteger(Events.STATUS);
             boolean isCanceled = eventStatus != null && eventStatus.equals(Events.STATUS_CANCELED);
@@ -1881,7 +1882,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                         mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
                                 cidValues, null, null);
                     } else {
-                        if (entityValues.getAsInteger(Calendar.Events.DELETED) == 1) {
+                        if (entityValues.getAsInteger(CalendarContract.Events.DELETED) == 1) {
                             userLog("Deleting event with serverId: ", serverId);
                             s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
                             mDeletedIdList.add(eventId);
@@ -1953,7 +1954,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                     exEntity.addSubValue(ncv.uri, ncv.values);
                                 }
 
-                                if ((getInt(exValues, Calendar.Events.DELETED) == 1) ||
+                                if ((getInt(exValues, CalendarContract.Events.DELETED) == 1) ||
                                         (getInt(exValues, Events.STATUS) ==
                                             Events.STATUS_CANCELED)) {
                                     flag = Message.FLAG_OUTGOING_MEETING_CANCEL;

@@ -27,7 +27,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.provider.Calendar;
+import android.provider.CalendarContract;
 import android.util.Log;
 
 /**
@@ -72,8 +72,8 @@ public class CalendarSyncEnabler {
             final String emailAddress = account.name;
             Log.i(Logging.LOG_TAG, "Enabling Exchange calendar sync for " + emailAddress);
 
-            ContentResolver.setIsSyncable(account, Calendar.AUTHORITY, 1);
-            ContentResolver.setSyncAutomatically(account, Calendar.AUTHORITY, true);
+            ContentResolver.setIsSyncable(account, CalendarContract.AUTHORITY, 1);
+            ContentResolver.setSyncAutomatically(account, CalendarContract.AUTHORITY, true);
 
             // Accumulate addresses for notification.
             if (emailAddresses.length() > 0) {
