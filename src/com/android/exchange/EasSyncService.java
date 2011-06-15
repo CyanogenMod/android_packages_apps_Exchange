@@ -528,7 +528,7 @@ public class EasSyncService extends AbstractSyncService {
         int resultCode = MessagingException.NO_ERROR;
         try {
             userLog("Testing EAS: ", hostAuth.mAddress, ", ", hostAuth.mLogin,
-                    ", ssl = ", hostAuth.useSsl() ? "1" : "0");
+                    ", ssl = ", hostAuth.shouldUseSsl() ? "1" : "0");
             EasSyncService svc = new EasSyncService("%TestAccount%");
             svc.mContext = context;
             svc.mHostAddress = hostAuth.mAddress;
@@ -536,7 +536,9 @@ public class EasSyncService extends AbstractSyncService {
             svc.mPassword = hostAuth.mPassword;
 
             svc.setConnectionParameters(
-                    hostAuth.useSsl(), hostAuth.trustAllServerCerts(), hostAuth.mClientCertAlias);
+                    hostAuth.shouldUseSsl(),
+                    hostAuth.shouldTrustAllServerCerts(),
+                    hostAuth.mClientCertAlias);
             // We mustn't use the "real" device id or we'll screw up current accounts
             // Any string will do, but we'll go for "validate"
             svc.mDeviceId = "validate";
