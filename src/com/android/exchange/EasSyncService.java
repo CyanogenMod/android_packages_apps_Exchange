@@ -355,10 +355,6 @@ public class EasSyncService extends AbstractSyncService {
                 mPendingPost.abort();
             }
         }
-
-        // TODO: some kind of unregistering of special client cert aliases.
-        // We can't blindly do this as multiple services could be using the same alias,
-        // so there needs to be some kind of registry to track the interests in an alias.
     }
 
     @Override
@@ -587,7 +583,9 @@ public class EasSyncService extends AbstractSyncService {
                         // We get a 404 from OWA addresses (which are NOT EAS addresses)
                         resultCode = MessagingException.PROTOCOL_VERSION_UNSUPPORTED;
                     } else if (code == HttpStatus.SC_UNAUTHORIZED) {
-                        resultCode = MessagingException.AUTHENTICATION_FAILED;
+                        resultCode = resp.isMissingCertificate()
+                                ? MessagingException.CLIENT_CERTIFICATE_ERROR
+                                : MessagingException.AUTHENTICATION_FAILED;
                     } else if (code != HttpStatus.SC_OK) {
                         // Fail generically with anything other than success
                         userLog("Unexpected response for FolderSync: ", code);
@@ -606,7 +604,9 @@ public class EasSyncService extends AbstractSyncService {
                     }
                 } else if (isAuthError(code)) {
                     userLog("Authentication failed");
-                    resultCode = MessagingException.AUTHENTICATION_FAILED;
+                    resultCode = resp.isMissingCertificate()
+                            ? MessagingException.CLIENT_CERTIFICATE_ERROR
+                            : MessagingException.AUTHENTICATION_FAILED;
                 } else if (code == INTERNAL_SERVER_ERROR_CODE) {
                     // For Exchange 2003, this could mean an authentication failure OR server error
                     userLog("Internal server error");
@@ -1275,9 +1275,6 @@ public class EasSyncService extends AbstractSyncService {
 
         EmailClientConnectionManager connManager = getClientConnectionManager();
 
-        // TODO: unregister the old client cert connection, if there is one. Multiple sync
-        // services may be using the alias though so we need some kind of registry.
-
         mSsl = useSsl;
         mTrustSsl = trustAllServerCerts;
         mClientCertAlias = clientCertAlias;
@@ -1348,7 +1345,7 @@ public class EasSyncService extends AbstractSyncService {
             }
         }
         try {
-            return new EasResponse(client.execute(method));
+            return EasResponse.fromHttpRequest(client, method);
         } finally {
             synchronized(getSynchronizer()) {
                 if (isPingCommand) {
@@ -1398,7 +1395,7 @@ public class EasSyncService extends AbstractSyncService {
         String us = makeUriString("OPTIONS", null);
         HttpOptions method = new HttpOptions(URI.create(us));
         setHeaders(method, false);
-        return new EasResponse(client.execute(method));
+        return EasResponse.fromHttpRequest(client, method);
     }
 
     private String getTargetCollectionClassFromCursor(Cursor c) {
@@ -2535,6 +2532,6 @@ public class EasSyncService extends AbstractSyncService {
 
             // Make sure ExchangeService knows about this
             ExchangeService.kick("sync finished");
-       }
+        }
     }
 }

@@ -45,7 +45,6 @@ import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.FileLogger;
 
-import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.conn.params.ConnManagerPNames;
 import org.apache.http.conn.params.ConnPerRoute;
 import org.apache.http.conn.routing.HttpRoute;

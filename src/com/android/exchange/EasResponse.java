@@ -17,9 +17,16 @@
 
 package com.android.exchange;
 
+import com.android.emailcommon.utility.SSLUtils.CertificateRequestedException;
+
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpUriRequest;
+
+import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,13 +42,31 @@ public class EasResponse {
     private InputStream mInputStream;
     private boolean mClosed;
 
-    public EasResponse(HttpResponse response) {
+    /**
+     * Whether or not a certificate was requested by the server and missing.
+     * If this is set, it is essentially a 403 whereby the failure was due
+     */
+    private boolean mClientCertRequested = false;
+
+    private EasResponse(HttpResponse response) {
         mResponse = response;
-        mEntity = mResponse.getEntity();
+        mEntity = (response == null) ? null : mResponse.getEntity();
         if (mEntity !=  null) {
             mLength = (int)mEntity.getContentLength();
         } else {
             mLength = 0;
+        }
+    }
+
+    public static EasResponse fromHttpRequest(HttpClient client, HttpUriRequest request)
+            throws IOException {
+        try {
+            return new EasResponse(client.execute(request));
+        } catch (CertificateRequestedException ex) {
+            EasResponse result = new EasResponse(null);
+            result.mClientCertRequested = true;
+            result.mClosed = true;
+            return result;
         }
     }
 
@@ -80,11 +105,17 @@ public class EasResponse {
     }
 
     public int getStatus() {
-        return mResponse.getStatusLine().getStatusCode();
+        return mClientCertRequested
+                ? HttpStatus.SC_UNAUTHORIZED
+                : mResponse.getStatusLine().getStatusCode();
+    }
+
+    public boolean isMissingCertificate() {
+        return mClientCertRequested;
     }
 
     public Header getHeader(String name) {
-        return mResponse.getFirstHeader(name);
+        return (mResponse == null) ? null : mResponse.getFirstHeader(name);
     }
 
     public int getLength() {
