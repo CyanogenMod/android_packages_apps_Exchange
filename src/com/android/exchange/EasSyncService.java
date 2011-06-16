@@ -440,13 +440,15 @@ public class EasSyncService extends AbstractSyncService {
         svc.mHostAddress = ha.mAddress;
         svc.mUserName = ha.mLogin;
         svc.mPassword = ha.mPassword;
-        svc.setConnectionParameters(
-                (ha.mFlags & HostAuth.FLAG_SSL) != 0,
-                (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
-                ha.mClientCertAlias);
         try {
+            svc.setConnectionParameters(
+                    (ha.mFlags & HostAuth.FLAG_SSL) != 0,
+                    (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
+                    ha.mClientCertAlias);
             svc.mDeviceId = ExchangeService.getDeviceId(context);
         } catch (IOException e) {
+            return null;
+        } catch (CertificateException e) {
             return null;
         }
         svc.mAccount = account;
@@ -584,7 +586,7 @@ public class EasSyncService extends AbstractSyncService {
                         resultCode = MessagingException.PROTOCOL_VERSION_UNSUPPORTED;
                     } else if (code == HttpStatus.SC_UNAUTHORIZED) {
                         resultCode = resp.isMissingCertificate()
-                                ? MessagingException.CLIENT_CERTIFICATE_ERROR
+                                ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
                                 : MessagingException.AUTHENTICATION_FAILED;
                     } else if (code != HttpStatus.SC_OK) {
                         // Fail generically with anything other than success
@@ -605,7 +607,7 @@ public class EasSyncService extends AbstractSyncService {
                 } else if (isAuthError(code)) {
                     userLog("Authentication failed");
                     resultCode = resp.isMissingCertificate()
-                            ? MessagingException.CLIENT_CERTIFICATE_ERROR
+                            ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
                             : MessagingException.AUTHENTICATION_FAILED;
                 } else if (code == INTERNAL_SERVER_ERROR_CODE) {
                     // For Exchange 2003, this could mean an authentication failure OR server error
@@ -645,11 +647,16 @@ public class EasSyncService extends AbstractSyncService {
         } catch (IOException e) {
             Throwable cause = e.getCause();
             if (cause != null && cause instanceof CertificateException) {
+                // This could be because the server's certificate failed to validate.
                 userLog("CertificateException caught: ", e.getMessage());
                 resultCode = MessagingException.GENERAL_SECURITY;
             }
             userLog("IOException caught: ", e.getMessage());
             resultCode = MessagingException.IOERROR;
+        } catch (CertificateException e) {
+            // This occurs if the client certificate the user specified is invalid/inaccessible.
+            userLog("CertificateException caught: ", e.getMessage());
+            resultCode = MessagingException.CLIENT_CERTIFICATE_ERROR;
         }
         bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, resultCode);
         return bundle;
@@ -1271,7 +1278,8 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     protected void setConnectionParameters(
-            boolean useSsl, boolean trustAllServerCerts, String clientCertAlias) {
+            boolean useSsl, boolean trustAllServerCerts, String clientCertAlias)
+            throws CertificateException {
 
         EmailClientConnectionManager connManager = getClientConnectionManager();
 
@@ -2407,10 +2415,22 @@ public class EasSyncService extends AbstractSyncService {
         mHostAddress = ha.mAddress;
         mUserName = ha.mLogin;
         mPassword = ha.mPassword;
-        setConnectionParameters(
-                (ha.mFlags & HostAuth.FLAG_SSL) != 0,
-                (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
-                ha.mClientCertAlias);
+
+        try {
+            setConnectionParameters(
+                    (ha.mFlags & HostAuth.FLAG_SSL) != 0,
+                    (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
+                    ha.mClientCertAlias);
+        } catch (CertificateException e) {
+            userLog("Couldn't retrieve certificate for connection");
+            try {
+                ExchangeService.callback().syncMailboxStatus(mMailboxId,
+                        EmailServiceStatus.CLIENT_CERTIFICATE_ERROR, 0);
+            } catch (RemoteException e1) {
+                // Don't care if this fails.
+            }
+            return false;
+        }
 
         // Set up our protocol version from the Account
         mProtocolVersion = mAccount.mProtocolVersion;
