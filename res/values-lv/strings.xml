@@ -31,7 +31,6 @@
     <string name="exception_updated" msgid="3397583105901142050">"Šī pasākuma dati šādā datumā ir mainīti: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"neatļaut pielikumus"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"neatļaut atmiņas kartes"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"neatļaut kameras lietošanu"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"neatļaut neparakstītas lietojumprogr."</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"neļaut neparakst. lietojumpr. instal. p."</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"neatļaut Wi-Fi sakarus"</string>

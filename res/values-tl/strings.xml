@@ -31,7 +31,6 @@
     <string name="exception_updated" msgid="3397583105901142050">"Ang mga detalye ng kaganapang ito ay binago para sa: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"huwag payagan ang mga attachment"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"huwag payagan ang mga storage card"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"huwag payagan ang isang camera"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"huwag payagan di-pirmadong application"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"huwag payagan di-pirmadong app installer"</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"huwag payagan ang wifi"</string>

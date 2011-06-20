@@ -31,7 +31,6 @@
     <string name="exception_updated" msgid="3397583105901142050">"Los detalles de este evento se han cambiado al día: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"no permitir archivos adjuntos"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"no permitir tarjetas de almacenamiento"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"no permitir cámaras"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"no permitir aplicaciones sin firmar"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"no permitir instaladores sin firmar"</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"no permitir Wi-Fi"</string>

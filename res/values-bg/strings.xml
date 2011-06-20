@@ -31,7 +31,6 @@
     <string name="exception_updated" msgid="3397583105901142050">"Подробностите за това събитие са променени за: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"забраняване на прикачени файлове"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"забраняване на карти за съхранение"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"забраняване на камера"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"забраняване на неподписани приложения"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"без неподписани инсталатори на приложения"</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"забраняване на WiFi"</string>

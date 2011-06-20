@@ -31,7 +31,6 @@
     <string name="exception_updated" msgid="3397583105901142050">"جزئیات این رویداد تغییر کرده اند به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"پیوست ها مجاز نباشد"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"کارت های حافظه مجاز نباشد"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"دوربین مجاز نباشد"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"برنامه های امضا نشده مجاز نباشد"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"نصب کننده های برنامه امضا نشده مجاز نباشد"</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"wifi مجاز نباشد"</string>

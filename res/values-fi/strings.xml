@@ -31,7 +31,6 @@
     <string name="exception_updated" msgid="3397583105901142050">"Poikkeus toistuvassa tapahtumassa, muutettu <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"älä salli liitetiedostoja"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"älä salli muistikortteja"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"älä salli kameraa"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"älä salli allekirjoittamatt. sovelluksia"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"älä salli allekirjoittamatt. sov. asent."</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"älä salli wifi-yhteyttä"</string>

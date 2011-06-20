@@ -31,8 +31,7 @@
     <string name="exception_updated" msgid="3397583105901142050">"Oplysningerne om denne begivenhed er ændret for: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"tillad ikke vedhæftede filer"</string>
     <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"tillad ikke hukommelseskort"</string>
-    <string name="policy_dont_allow_camera" msgid="3117378379458167529">"tillad ikke et kamera"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"tillad ikke programmer uden signatur"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"tillad ikke applikationer uden signatur"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"tillad ikke instal.progr. for progr. u. sign."</string>
     <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"tillad ikke wi-fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"tillad ikke sms-beskeder"</string>
@@ -46,8 +45,8 @@
     <string name="policy_require_smime" msgid="8044392674810605617">"kræv SMIME-beskeder"</string>
     <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"tillad kun manuel synkron. under roaming"</string>
     <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"begræns brug af bluetooth"</string>
-    <string name="policy_app_blacklist" msgid="5997243461425995435">"forbyd angivne programmer"</string>
-    <string name="policy_app_whitelist" msgid="8401297908870017913">"tillad kun angivne programmer"</string>
+    <string name="policy_app_blacklist" msgid="5997243461425995435">"forbyd angivne applikationer"</string>
+    <string name="policy_app_whitelist" msgid="8401297908870017913">"tillad kun angivne applikationer"</string>
     <string name="policy_max_calendar_age" msgid="6394557044887221078">"begræns kalenderbegivenheder efter dato"</string>
     <string name="policy_max_email_age" msgid="3303242808829681352">"begræns e-mail efter dato"</string>
     <string name="policy_text_truncation" msgid="5800480928209379255">"begræns tekststørrelsen for e-mail"</string>
