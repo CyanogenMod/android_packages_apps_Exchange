@@ -17,6 +17,24 @@
 
 package com.android.exchange;
 
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Entity;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.RemoteException;
+import android.os.SystemClock;
+import android.provider.CalendarContract.Attendees;
+import android.provider.CalendarContract.Events;
+import android.text.TextUtils;
+import android.util.Base64;
+import android.util.Log;
+import android.util.Xml;
+
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.mail.MeetingInfo;
 import com.android.emailcommon.mail.MessagingException;
@@ -77,24 +95,6 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmlpull.v1.XmlSerializer;
-
-import android.content.ContentResolver;
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Entity;
-import android.database.Cursor;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.RemoteException;
-import android.os.SystemClock;
-import android.provider.CalendarContract.Attendees;
-import android.provider.CalendarContract.Events;
-import android.text.TextUtils;
-import android.util.Base64;
-import android.util.Log;
-import android.util.Xml;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -1693,7 +1693,10 @@ public class EasSyncService extends AbstractSyncService {
                         cv.put(Account.PROTOCOL_VERSION, mProtocolVersion);
                         if (mProtocolVersionDouble >= 12.0) {
                             cv.put(Account.FLAGS,
-                                    mAccount.mFlags | Account.FLAGS_SUPPORTS_SMART_FORWARD);
+                                    mAccount.mFlags |
+                                    Account.FLAGS_SUPPORTS_SMART_FORWARD |
+                                    Account.FLAGS_SUPPORTS_SEARCH |
+                                    Account.FLAGS_SUPPORTS_GLOBAL_SEARCH);
                         }
                         mAccount.update(mContext, cv);
                         cv.clear();
