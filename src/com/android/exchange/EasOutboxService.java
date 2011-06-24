@@ -17,6 +17,14 @@
 
 package com.android.exchange;
 
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.RemoteException;
+import android.text.TextUtils;
+
 import com.android.emailcommon.internet.Rfc822Output;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
@@ -38,13 +46,6 @@ import com.android.exchange.adapter.Tags;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
 import org.apache.http.entity.InputStreamEntity;
-
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.Context;
-import android.database.Cursor;
-import android.net.Uri;
-import android.os.RemoteException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -135,8 +136,14 @@ public class EasOutboxService extends EasSyncService {
                 OriginalMessageInfo info = getOriginalMessageInfo(mContext, mMessage.mId);
                 if (info != null) {
                     s.start(Tags.COMPOSE_SOURCE);
-                    s.data(Tags.COMPOSE_ITEM_ID, info.mItemId);
-                    s.data(Tags.COMPOSE_FOLDER_ID, info.mCollectionId);
+                    // For search results, use the long id (stored in mProtocolSearchInfo); else,
+                    // use folder id/item id combo
+                    if (mMessage.mProtocolSearchInfo != null) {
+                        s.data(Tags.COMPOSE_LONG_ID, mMessage.mProtocolSearchInfo);
+                    } else {
+                        s.data(Tags.COMPOSE_ITEM_ID, info.mItemId);
+                        s.data(Tags.COMPOSE_FOLDER_ID, info.mCollectionId);
+                    }
                     s.end();  // Tags.COMPOSE_SOURCE
                 }
             }
@@ -189,10 +196,12 @@ public class EasOutboxService extends EasSyncService {
     protected static class OriginalMessageInfo {
         final String mItemId;
         final String mCollectionId;
+        final String mLongId;
 
-        OriginalMessageInfo(String itemId, String collectionId) {
+        OriginalMessageInfo(String itemId, String collectionId, String longId) {
             mItemId = itemId;
             mCollectionId = collectionId;
+            mLongId = longId;
         }
     }
 
@@ -204,9 +213,19 @@ public class EasOutboxService extends EasSyncService {
         }
     }
 
-    /*package*/ String generateSmartSendCmd(boolean reply, String itemId, String collectionId) {
-        return (reply ? "SmartReply" : "SmartForward") + "&ItemId=" + Uri.encode(itemId, ":") +
-            "&CollectionId=" + Uri.encode(collectionId, ":");
+    /*package*/ String generateSmartSendCmd(boolean reply, OriginalMessageInfo info) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(reply ? "SmartReply" : "SmartForward");
+        if (!TextUtils.isEmpty(info.mLongId)) {
+            sb.append("&LongId=");
+            sb.append(Uri.encode(info.mLongId, ":"));
+        } else {
+            sb.append("&ItemId=");
+            sb.append(Uri.encode(info.mItemId, ":"));
+            sb.append("&CollectionId=");
+            sb.append(Uri.encode(info.mCollectionId, ":"));
+        }
+        return sb.toString();
     }
 
     /**
@@ -223,6 +242,7 @@ public class EasOutboxService extends EasSyncService {
         // mailboxId of a Message
         String itemId = null;
         String collectionId = null;
+        String longId = null;
 
         // First, we need to get the id of the reply/forward message
         String[] cols = Utility.getRowColumns(context, Body.CONTENT_URI,
@@ -232,7 +252,8 @@ public class EasOutboxService extends EasSyncService {
             long refId = Long.parseLong(cols[0]);
             // Then, we need the serverId and mailboxKey of the message
             cols = Utility.getRowColumns(context, Message.CONTENT_URI, refId,
-                    SyncColumns.SERVER_ID, MessageColumns.MAILBOX_KEY);
+                    SyncColumns.SERVER_ID, MessageColumns.MAILBOX_KEY,
+                    MessageColumns.PROTOCOL_SEARCH_INFO);
             if (cols != null) {
                 itemId = cols[0];
                 long boxId = Long.parseLong(cols[1]);
@@ -244,10 +265,10 @@ public class EasOutboxService extends EasSyncService {
                 }
             }
         }
-        // We need both itemId (serverId) and collectionId (mailboxId) to process a smart reply or
-        // a smart forward
-        if (itemId != null && collectionId != null) {
-            return new OriginalMessageInfo(itemId, collectionId);
+        // We need either a longId or both itemId (serverId) and collectionId (mailboxId) to process
+        // a smart reply or a smart forward
+        if (longId != null || (itemId != null && collectionId != null)){
+            return new OriginalMessageInfo(itemId, collectionId, longId);
         }
         return null;
     }
@@ -328,8 +349,7 @@ public class EasOutboxService extends EasSyncService {
                 if (isEas14) {
                     cmd = reply ? "SmartReply" : "SmartForward";
                 } else {
-                    cmd = generateSmartSendCmd(reply, referenceInfo.mItemId,
-                            referenceInfo.mCollectionId);
+                    cmd = generateSmartSendCmd(reply, referenceInfo);
                 }
             }
 

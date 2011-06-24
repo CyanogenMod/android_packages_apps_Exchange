@@ -16,17 +16,17 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentProviderOperation;
+import android.content.OperationApplicationException;
+import android.os.RemoteException;
+import android.util.Log;
+
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.TextUtilities;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
-
-import android.content.ContentProviderOperation;
-import android.content.OperationApplicationException;
-import android.os.RemoteException;
-import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -113,7 +113,7 @@ public class SearchParser extends Parser {
             } else if (tag == Tags.SYNC_COLLECTION_ID) {
                 Log.d(Logging.LOG_TAG, "Result collectionId: " + getValue());
             } else if (tag == Tags.SEARCH_LONG_ID) {
-                msg.mServerId = getValue();
+                msg.mProtocolSearchInfo = getValue();
             } else if (tag == Tags.SEARCH_PROPERTIES) {
                 msg.mAccountKey = mService.mAccount.mId;
                 msg.mMailboxKey = mService.mMailbox.mId;
