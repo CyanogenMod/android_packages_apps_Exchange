@@ -409,8 +409,18 @@ public class EasSyncService extends AbstractSyncService {
         } else {
             service.mProtocolVersion = ourVersion;
             service.mProtocolVersionDouble = Eas.getProtocolVersionDouble(ourVersion);
-            if (service.mAccount != null) {
-                service.mAccount.mProtocolVersion = ourVersion;
+            Account account = service.mAccount;
+            if (account != null) {
+                account.mProtocolVersion = ourVersion;
+                // Fixup search flags, if they're not set
+                if (service.mProtocolVersionDouble >= 12.0 &&
+                        (account.mFlags & Account.FLAGS_SUPPORTS_SEARCH) == 0) {
+                    ContentValues cv = new ContentValues();
+                    account.mFlags |=
+                        Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
+                    cv.put(AccountColumns.FLAGS, account.mFlags);
+                    account.update(service.mContext, cv);
+                }
             }
         }
     }
