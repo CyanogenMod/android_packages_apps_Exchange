@@ -527,6 +527,13 @@ public class EasSyncService extends AbstractSyncService {
             }
         } catch (IOException e) {
             svc.userLog("Search exception " + e);
+        } finally {
+            try {
+                ExchangeService.callback().syncMailboxStatus(destMailboxId,
+                        EmailServiceStatus.SUCCESS, 100);
+            } catch (RemoteException e) {
+            }
+
         }
         // TODO Capture and return the correct value
         return res;
