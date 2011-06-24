@@ -415,11 +415,13 @@ public class EasSyncService extends AbstractSyncService {
                 // Fixup search flags, if they're not set
                 if (service.mProtocolVersionDouble >= 12.0 &&
                         (account.mFlags & Account.FLAGS_SUPPORTS_SEARCH) == 0) {
-                    ContentValues cv = new ContentValues();
-                    account.mFlags |=
-                        Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
-                    cv.put(AccountColumns.FLAGS, account.mFlags);
-                    account.update(service.mContext, cv);
+                    if (account.isSaved()) {
+                        ContentValues cv = new ContentValues();
+                        account.mFlags |=
+                            Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
+                        cv.put(AccountColumns.FLAGS, account.mFlags);
+                        account.update(service.mContext, cv);
+                    }
                 }
             }
         }
