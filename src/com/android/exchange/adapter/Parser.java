@@ -17,12 +17,13 @@
 
 package com.android.exchange.adapter;
 
+import android.content.Context;
+import android.util.Log;
+
 import com.android.exchange.Eas;
 import com.android.exchange.EasException;
 import com.android.exchange.utility.FileLogger;
-
-import android.content.Context;
-import android.util.Log;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -372,8 +373,14 @@ public abstract class Parser {
         tagTable = tagTables[0];
     }
 
-    /*package*/ void resetInput(InputStream in) {
+    @VisibleForTesting
+    void resetInput(InputStream in) {
         this.in = in;
+        try {
+            // Read leading zero
+            read();
+        } catch (IOException e) {
+        }
     }
 
     void log(String str) {
