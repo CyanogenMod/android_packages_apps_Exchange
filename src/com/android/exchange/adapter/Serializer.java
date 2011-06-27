@@ -23,11 +23,12 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.Eas;
-import com.android.exchange.utility.FileLogger;
-
 import android.content.ContentValues;
 import android.util.Log;
+
+import com.android.exchange.Eas;
+import com.android.exchange.utility.FileLogger;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -54,6 +55,7 @@ public class Serializer {
         this(os, true);
     }
 
+    @VisibleForTesting
     public Serializer(boolean startDocument) throws IOException {
         this(new ByteArrayOutputStream(), startDocument);
     }
