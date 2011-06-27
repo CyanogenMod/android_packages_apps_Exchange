@@ -42,6 +42,7 @@ import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
+import com.android.exchange.adapter.Search;
 import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.FileLogger;
 
@@ -486,7 +487,7 @@ public class ExchangeService extends Service implements Runnable {
         public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
-            return EasSyncService.searchMessages(exchangeService, accountId, searchParams,
+            return Search.searchMessages(exchangeService, accountId, searchParams,
                     destMailboxId);
         }
     };

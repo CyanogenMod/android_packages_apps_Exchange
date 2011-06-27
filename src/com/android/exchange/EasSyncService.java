@@ -51,7 +51,6 @@ import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -69,7 +68,6 @@ import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.Parser.EmptyStreamException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.ProvisionParser;
-import com.android.exchange.adapter.SearchParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
@@ -193,12 +191,6 @@ public class EasSyncService extends AbstractSyncService {
     static /*package*/ final String DEVICE_TYPE = "Android";
     static private final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
-
-    // The shortest search query we'll accept
-    // TODO Check with UX whether this is correct
-    static private final int MIN_QUERY_LENGTH = 3;
-    // The largest number of results we'll ask for per server request
-    static private final int MAX_SEARCH_RESULTS = 100;
 
     // Reasonable default
     public String mProtocolVersion = Eas.DEFAULT_PROTOCOL_VERSION;
@@ -434,7 +426,7 @@ public class EasSyncService extends AbstractSyncService {
      * @param account the account
      * @return the service, or null if the account is on hold or hasn't been initialized
      */
-    private static EasSyncService setupServiceForAccount(Context context, Account account) {
+    public static EasSyncService setupServiceForAccount(Context context, Account account) {
         // Just return null if we're on security hold
         if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
             return null;
@@ -465,78 +457,6 @@ public class EasSyncService extends AbstractSyncService {
         }
         svc.mAccount = account;
         return svc;
-    }
-
-    public static int searchMessages(Context context, long accountId, SearchParams searchParams,
-            long destMailboxId) {
-        // Sanity check for arguments
-        int offset = searchParams.mOffset;
-        int limit = searchParams.mLimit;
-        String filter = searchParams.mFilter;
-        if (limit < 0 || limit > MAX_SEARCH_RESULTS || offset < 0) return 0;
-        // TODO Should this be checked in UI?  Are there guidelines for minimums?
-        if (filter == null || filter.length() < MIN_QUERY_LENGTH) return 0;
-
-        int res = 0;
-        Account account = Account.restoreAccountWithId(context, accountId);
-        if (account == null) return res;
-        EasSyncService svc = setupServiceForAccount(context, account);
-        if (svc == null) return res;
-        try {
-            Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
-            // Sanity check; account might have been deleted?
-            if (searchMailbox == null) return res;
-            svc.mMailbox = searchMailbox;
-            svc.mAccount = account;
-            Serializer s = new Serializer();
-            s.start(Tags.SEARCH_SEARCH).start(Tags.SEARCH_STORE);
-            s.data(Tags.SEARCH_NAME, "Mailbox");
-            s.start(Tags.SEARCH_QUERY).start(Tags.SEARCH_AND);
-            s.data(Tags.SYNC_CLASS, "Email");
-            s.data(Tags.SEARCH_FREE_TEXT, filter);
-            s.end().end();              // SEARCH_AND, SEARCH_QUERY
-            s.start(Tags.SEARCH_OPTIONS);
-            if (offset == 0) {
-                s.tag(Tags.SEARCH_REBUILD_RESULTS);
-            }
-            if (searchParams.mIncludeChildren) {
-                s.tag(Tags.SEARCH_DEEP_TRAVERSAL);
-            }
-            // Range is sent in the form first-last (e.g. 0-9)
-            s.data(Tags.SEARCH_RANGE, offset + "-" + (offset + limit - 1));
-            s.start(Tags.BASE_BODY_PREFERENCE);
-            s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
-            s.data(Tags.BASE_TRUNCATION_SIZE, "20000");
-            s.end();                    // BASE_BODY_PREFERENCE
-            s.end().end().end().done(); // SEARCH_OPTIONS, SEARCH_STORE, SEARCH_SEARCH
-            EasResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
-            try {
-                int code = resp.getStatus();
-                if (code == HttpStatus.SC_OK) {
-                    InputStream is = resp.getInputStream();
-                    try {
-                        new SearchParser(is, svc, filter).parse();
-                    } finally {
-                        is.close();
-                    }
-                } else {
-                    svc.userLog("Search returned " + code);
-                }
-            } finally {
-                resp.close();
-            }
-        } catch (IOException e) {
-            svc.userLog("Search exception " + e);
-        } finally {
-            try {
-                ExchangeService.callback().syncMailboxStatus(destMailboxId,
-                        EmailServiceStatus.SUCCESS, 100);
-            } catch (RemoteException e) {
-            }
-
-        }
-        // TODO Capture and return the correct value
-        return res;
     }
 
     @Override
