@@ -402,7 +402,7 @@ public class EasOutboxService extends EasSyncService {
                     sendCallback(-1, msg.mSubject, EmailServiceStatus.SUCCESS);
                 } else {
                     userLog("Message sending failed, code: " + code);
-                    if (isAuthError(code)) {
+                    if (EasResponse.isAuthError(code)) {
                         result = EmailServiceStatus.LOGIN_FAILED;
                     } else {
                         // We mark the result as SUCCESS on a non-auth failure since the message

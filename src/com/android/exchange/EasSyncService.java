@@ -358,15 +358,6 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
-     * Determine whether an HTTP code represents an authentication error
-     * @param code the HTTP code returned by the server
-     * @return whether or not the code represents an authentication error
-     */
-    protected boolean isAuthError(int code) {
-        return (code == HttpStatus.SC_UNAUTHORIZED) || (code == HttpStatus.SC_FORBIDDEN);
-    }
-
-    /**
      * Determine whether an HTTP code represents a provisioning error
      * @param code the HTTP code returned by the server
      * @return whether or not the code represents an provisioning error
@@ -543,7 +534,7 @@ public class EasSyncService extends AbstractSyncService {
                         }
                         userLog("Validation successful");
                     }
-                } else if (isAuthError(code)) {
+                } else if (EasResponse.isAuthError(code)) {
                     userLog("Authentication failed");
                     resultCode = resp.isMissingCertificate()
                             ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
@@ -1105,7 +1096,7 @@ public class EasSyncService extends AbstractSyncService {
                         // handled next sync
                     }
                 }
-            } else if (isAuthError(status)) {
+            } else if (EasResponse.isAuthError(status)) {
                 throw new EasAuthenticationException();
             } else {
                 userLog("Move items request failed, code: " + status);
@@ -1152,7 +1143,7 @@ public class EasSyncService extends AbstractSyncService {
                     }
                     sendMeetingResponseMail(msg, req.mResponse);
                 }
-            } else if (isAuthError(status)) {
+            } else if (EasResponse.isAuthError(status)) {
                 throw new EasAuthenticationException();
             } else {
                 userLog("Meeting response request failed, code: " + status);
@@ -1295,7 +1286,7 @@ public class EasSyncService extends AbstractSyncService {
             }
         }
         try {
-            return EasResponse.fromHttpRequest(client, method);
+            return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
         } finally {
             synchronized(getSynchronizer()) {
                 if (isPingCommand) {
@@ -1345,7 +1336,7 @@ public class EasSyncService extends AbstractSyncService {
         String us = makeUriString("OPTIONS", null);
         HttpOptions method = new HttpOptions(URI.create(us));
         setHeaders(method, false);
-        return EasResponse.fromHttpRequest(client, method);
+        return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
     }
 
     private String getTargetCollectionClassFromCursor(Cursor c) {
@@ -1686,7 +1677,7 @@ public class EasSyncService extends AbstractSyncService {
                         }
                     } else if (isProvisionError(code)) {
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
-                    } else if (isAuthError(code)) {
+                    } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                         return;
                     } else {
@@ -1999,7 +1990,7 @@ public class EasSyncService extends AbstractSyncService {
                                 userLog("Ping returned empty result; throwing IOException");
                                 throw new IOException();
                             }
-                        } else if (isAuthError(code)) {
+                        } else if (EasResponse.isAuthError(code)) {
                             mExitStatus = EXIT_LOGIN_FAILURE;
                             userLog("Authorization error during Ping: ", code);
                             throw new IOException();
@@ -2324,7 +2315,7 @@ public class EasSyncService extends AbstractSyncService {
                     userLog("Sync response error: ", code);
                     if (isProvisionError(code)) {
                         mExitStatus = EXIT_SECURITY_FAILURE;
-                    } else if (isAuthError(code)) {
+                    } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                     } else {
                         mExitStatus = EXIT_IO_ERROR;

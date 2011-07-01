@@ -17,7 +17,7 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.utility.SSLUtils.CertificateRequestedException;
+import com.android.emailcommon.utility.EmailClientConnectionManager;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -25,8 +25,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
-
-import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,22 +50,35 @@ public class EasResponse {
         mResponse = response;
         mEntity = (response == null) ? null : mResponse.getEntity();
         if (mEntity !=  null) {
-            mLength = (int)mEntity.getContentLength();
+            mLength = (int) mEntity.getContentLength();
         } else {
             mLength = 0;
         }
     }
 
-    public static EasResponse fromHttpRequest(HttpClient client, HttpUriRequest request)
+    public static EasResponse fromHttpRequest(
+            EmailClientConnectionManager connManager, HttpClient client, HttpUriRequest request)
             throws IOException {
-        try {
-            return new EasResponse(client.execute(request));
-        } catch (CertificateRequestedException ex) {
-            EasResponse result = new EasResponse(null);
+
+        long reqTime = System.currentTimeMillis();
+        HttpResponse response = client.execute(request);
+        EasResponse result = new EasResponse(response);
+        if (isAuthError(response.getStatusLine().getStatusCode())
+                && connManager.hasDetectedUnsatisfiedCertReq(reqTime)) {
             result.mClientCertRequested = true;
             result.mClosed = true;
-            return result;
         }
+
+        return result;
+    }
+
+    /**
+     * Determine whether an HTTP code represents an authentication error
+     * @param code the HTTP code returned by the server
+     * @return whether or not the code represents an authentication error
+     */
+    public static boolean isAuthError(int code) {
+        return (code == HttpStatus.SC_UNAUTHORIZED) || (code == HttpStatus.SC_FORBIDDEN);
     }
 
     /**
