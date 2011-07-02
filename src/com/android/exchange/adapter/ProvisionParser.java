@@ -15,6 +15,9 @@
 
 package com.android.exchange.adapter;
 
+import android.content.Context;
+import android.content.res.Resources;
+
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
@@ -24,9 +27,6 @@ import com.android.exchange.SecurityPolicyDelegate;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
-
-import android.content.Context;
-import android.content.res.Resources;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -210,7 +210,7 @@ public class ProvisionParser extends Parser {
                     break;
                 // Note this policy; we enforce it in ExchangeService
                 case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
-                    policy.mRequireManualSyncWhenRoaming = true;
+                    policy.mRequireManualSyncWhenRoaming = getValueInt() == 1;
                     break;
                 // We are allowed to accept policies, regardless of value of this tag
                 // TODO: When we DO support a recovery password, we need to store the value in
