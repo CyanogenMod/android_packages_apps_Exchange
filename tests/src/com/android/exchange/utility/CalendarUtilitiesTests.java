@@ -16,6 +16,14 @@
 
 package com.android.exchange.utility;
 
+import android.content.ContentValues;
+import android.content.Entity;
+import android.content.res.Resources;
+import android.provider.CalendarContract.Attendees;
+import android.provider.CalendarContract.Events;
+import android.test.suitebuilder.annotation.MediumTest;
+import android.util.Log;
+
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
@@ -28,14 +36,6 @@ import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SyncAdapterTestCase;
 import com.android.exchange.adapter.Tags;
-
-import android.content.ContentValues;
-import android.content.Entity;
-import android.content.res.Resources;
-import android.provider.CalendarContract.Attendees;
-import android.provider.CalendarContract.Events;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -85,12 +85,6 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         "AAAAAAAAAAQAAAABAAMAAAAAAAAAAAAAAEEAVQBTACAARQBhAHMAdABlAHIAbgAgAEQAYQB5AGwAaQBnAGgA" +
         "dAAgAFQAaQBtAGUAAAAAAAAAAAAAAAAAAAAAAAoAAAABAAIAAAAAAAAAxP///w==";
 
-    // Test a european time zone w/ DST
-    private static final String EUROPE_MOSCOW_TIME =
-        "TP///1IAdQBzAHMAaQBhAG4AIABTAHQAYQBuAGQAYQByAGQAIABUAGkAbQBlAAAAAAAAAAAAAAAAAAAAAAAA" +
-        "AAAAAAAAAAoAAAAFAAMAAAAAAAAAAAAAAFIAdQBzAHMAaQBhAG4AIABEAGEAeQBsAGkAZwBoAHQAIABUAGkA" +
-        "bQBlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAFAAIAAAAAAAAAxP///w==";
-
     // Test a timezone with GMT bias but bogus DST parameters (there is no equivalent time zone
     // in the database)
     private static final String GMT_UNKNOWN_DAYLIGHT_TIME =
@@ -138,8 +132,6 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         assertEquals("Asia/Calcutta", tz.getID());
         tz = CalendarUtilities.tziStringToTimeZone(AUSTRALIA_ACT_TIME);
         assertEquals("Australia/ACT", tz.getID());
-        tz = CalendarUtilities.tziStringToTimeZone(EUROPE_MOSCOW_TIME);
-        assertEquals("Europe/Moscow", tz.getID());
         tz = CalendarUtilities.tziStringToTimeZone(GMT_UNKNOWN_DAYLIGHT_TIME);
         int bias = tz.getOffset(System.currentTimeMillis());
         assertEquals(0, bias);
