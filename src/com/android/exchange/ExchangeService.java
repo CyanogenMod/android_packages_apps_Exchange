@@ -17,6 +17,39 @@
 
 package com.android.exchange;
 
+import android.accounts.AccountManager;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SyncStatusObserver;
+import android.database.ContentObserver;
+import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.NetworkInfo.State;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Debug;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
+import android.os.Process;
+import android.os.RemoteCallbackList;
+import android.os.RemoteException;
+import android.provider.CalendarContract;
+import android.provider.CalendarContract.Calendars;
+import android.provider.CalendarContract.Events;
+import android.provider.ContactsContract;
+import android.util.Log;
+
 import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
@@ -51,39 +84,6 @@ import org.apache.http.conn.params.ConnPerRoute;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
-
-import android.accounts.AccountManager;
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SyncStatusObserver;
-import android.database.ContentObserver;
-import android.database.Cursor;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.NetworkInfo.State;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Debug;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.PowerManager;
-import android.os.PowerManager.WakeLock;
-import android.os.Process;
-import android.os.RemoteCallbackList;
-import android.os.RemoteException;
-import android.provider.CalendarContract;
-import android.provider.CalendarContract.Calendars;
-import android.provider.CalendarContract.Events;
-import android.provider.ContactsContract;
-import android.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -493,9 +493,11 @@ public class ExchangeService extends Service implements Runnable {
     };
 
     private static AccountList collectEasAccounts(Context context, AccountList accounts) {
-        Cursor c = context.getContentResolver().query(Account.CONTENT_URI,
-                Account.CONTENT_PROJECTION, null, null, null);
+        ContentResolver resolver = context.getContentResolver();
+        Cursor c = resolver.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION, null, null,
+                null);
         try {
+            ContentValues cv = new ContentValues();
             while (c.moveToNext()) {
                 long hostAuthId = c.getLong(Account.CONTENT_HOST_AUTH_KEY_RECV_COLUMN);
                 if (hostAuthId > 0) {
@@ -506,6 +508,17 @@ public class ExchangeService extends Service implements Runnable {
                         // Cache the HostAuth
                         account.mHostAuthRecv = ha;
                         accounts.add(account);
+                        // Fixup flags for inbox (should accept moved mail)
+                        Mailbox inbox = Mailbox.restoreMailboxOfType(context, account.mId,
+                                Mailbox.TYPE_INBOX);
+                        if (inbox != null &&
+                                ((inbox.mFlags & Mailbox.FLAG_ACCEPTS_MOVED_MAIL) == 0)) {
+                           cv.put(MailboxColumns.FLAGS,
+                                   inbox.mFlags | Mailbox.FLAG_ACCEPTS_MOVED_MAIL);
+                           resolver.update(
+                                   ContentUris.withAppendedId(Account.CONTENT_URI, account.mId), cv,
+                                   null, null);
+                        }
                     }
                 }
             }
