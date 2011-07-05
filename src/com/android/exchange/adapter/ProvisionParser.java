@@ -200,14 +200,6 @@ public class ProvisionParser extends Parser {
                         policy.mRequireEncryption = true;
                     }
                     break;
-                // We may now support SD card (external) encryption; we'll check this capability
-                // below with the call to SecurityPolicy.isSupported().  Note, despite the name,
-                // PROVISION_DEVICE_ENCRYPTION_ENABLED really does refer to external storage.
-                case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
-                    if (getValueInt() == 1) {
-                        policy.mRequireEncryptionExternal = true;
-                    }
-                    break;
                 // Note this policy; we enforce it in ExchangeService
                 case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
                     policy.mRequireManualSyncWhenRoaming = getValueInt() == 1;
@@ -220,6 +212,9 @@ public class ProvisionParser extends Parser {
                     policy.mPasswordRecoveryEnabled = getValueInt() == 1;
                     break;
                 // The following policies, if true, can't be supported at the moment
+                // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which we do
+                // not yet support.
+                case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
@@ -569,4 +564,3 @@ public class ProvisionParser extends Parser {
         return res;
     }
 }
-

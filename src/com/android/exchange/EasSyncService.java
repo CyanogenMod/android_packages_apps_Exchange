@@ -1720,13 +1720,7 @@ public class EasSyncService extends AbstractSyncService {
                 if (!TextUtils.isEmpty(key)) {
                     Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
                     if (!SecurityPolicyDelegate.isActive(mContext, policy)) {
-                        cv.clear();
-                        cv.put(AccountColumns.SECURITY_FLAGS, 0);
-                        cv.putNull(AccountColumns.SECURITY_SYNC_KEY);
-                        long accountId = mAccount.mId;
-                        mContentResolver.update(ContentUris.withAppendedId(
-                                Account.CONTENT_URI, accountId), cv, null, null);
-                        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
+                        resetSecurityPolicies();
                     }
                 }
 
@@ -2384,7 +2378,32 @@ public class EasSyncService extends AbstractSyncService {
             mProtocolVersion = Eas.DEFAULT_PROTOCOL_VERSION;
         }
         mProtocolVersionDouble = Eas.getProtocolVersionDouble(mProtocolVersion);
+
+        // Do checks to address historical policy sets.
+        Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+        if (policy.mRequireEncryptionExternal) {
+            // External storage encryption is not supported at this time. In a previous release,
+            // prior to the system supporting true removable storage on Honeycomb, we accepted
+            // this since we emulated external storage on partitions that could be encrypted.
+            // If that was set before, we must clear it out now that the system supports true
+            // removable storage (which can't be encrypted).
+            resetSecurityPolicies();
+        }
         return true;
+    }
+
+    /**
+     * Clears out the security policies associated with the account, forcing a provision error
+     * and a re-sync of the policy information for the account.
+     */
+    private void resetSecurityPolicies() {
+        ContentValues cv = new ContentValues();
+        cv.put(AccountColumns.SECURITY_FLAGS, 0);
+        cv.putNull(AccountColumns.SECURITY_SYNC_KEY);
+        long accountId = mAccount.mId;
+        mContentResolver.update(ContentUris.withAppendedId(
+                Account.CONTENT_URI, accountId), cv, null, null);
+        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
     }
 
     @Override
