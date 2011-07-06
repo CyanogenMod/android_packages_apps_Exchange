@@ -1719,7 +1719,7 @@ public class EasSyncService extends AbstractSyncService {
                 String key = mAccount.mSecuritySyncKey;
                 if (!TextUtils.isEmpty(key)) {
                     Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
-                    if (!SecurityPolicyDelegate.isActive(mContext, policy)) {
+                    if ((policy != null) && !SecurityPolicyDelegate.isActive(mContext, policy)) {
                         resetSecurityPolicies();
                     }
                 }
@@ -2381,7 +2381,7 @@ public class EasSyncService extends AbstractSyncService {
 
         // Do checks to address historical policy sets.
         Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
-        if (policy.mRequireEncryptionExternal) {
+        if ((policy != null) && policy.mRequireEncryptionExternal) {
             // External storage encryption is not supported at this time. In a previous release,
             // prior to the system supporting true removable storage on Honeycomb, we accepted
             // this since we emulated external storage on partitions that could be encrypted.
