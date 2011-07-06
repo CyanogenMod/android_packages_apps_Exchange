@@ -17,6 +17,16 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentProviderOperation;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.OperationApplicationException;
+import android.database.Cursor;
+import android.os.RemoteException;
+import android.util.Log;
+import android.webkit.MimeTypeMap;
+
 import com.android.emailcommon.internet.MimeMessage;
 import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.mail.Address;
@@ -48,16 +58,6 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.entity.ByteArrayEntity;
-
-import android.content.ContentProviderOperation;
-import android.content.ContentResolver;
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.OperationApplicationException;
-import android.database.Cursor;
-import android.os.RemoteException;
-import android.util.Log;
-import android.webkit.MimeTypeMap;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -97,9 +97,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
     private static final String EMAIL_WINDOW_SIZE = "5";
 
-    private static final int LAST_VERB_REPLY = 1;
-    private static final int LAST_VERB_REPLY_ALL = 2;
-    private static final int LAST_VERB_FORWARD = 3;
+    @VisibleForTesting
+    static final int LAST_VERB_REPLY = 1;
+    @VisibleForTesting
+    static final int LAST_VERB_REPLY_ALL = 2;
+    @VisibleForTesting
+    static final int LAST_VERB_FORWARD = 3;
 
     private final String[] mBindArguments = new String[2];
     private final String[] mBindArgument = new String[1];
@@ -834,14 +837,16 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         @VisibleForTesting
         class ServerChange {
-            long id;
-            Boolean read;
-            Boolean flag;
+            final long id;
+            final Boolean read;
+            final Boolean flag;
+            final Integer flags;
 
-            ServerChange(long _id, Boolean _read, Boolean _flag) {
+            ServerChange(long _id, Boolean _read, Boolean _flag, Integer _flags) {
                 id = _id;
                 read = _read;
                 flag = _flag;
+                flags = _flags;
             }
         }
 
@@ -850,6 +855,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             String serverId = null;
             Boolean oldRead = false;
             Boolean oldFlag = false;
+            int flags = 0;
             long id = 0;
             while (nextTag(Tags.SYNC_CHANGE) != END) {
                 switch (tag) {
@@ -861,6 +867,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                                 userLog("Changing ", serverId);
                                 oldRead = c.getInt(Message.LIST_READ_COLUMN) == Message.READ;
                                 oldFlag = c.getInt(Message.LIST_FAVORITE_COLUMN) == 1;
+                                flags = c.getInt(Message.LIST_FLAGS_COLUMN);
                                 id = c.getLong(Message.LIST_ID_COLUMN);
                             }
                         } finally {
@@ -868,7 +875,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         }
                         break;
                     case Tags.SYNC_APPLICATION_DATA:
-                        changeApplicationDataParser(changes, oldRead, oldFlag, id);
+                        changeApplicationDataParser(changes, oldRead, oldFlag, flags, id);
                         break;
                     default:
                         skipTag();
@@ -877,9 +884,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         }
 
         private void changeApplicationDataParser(ArrayList<ServerChange> changes, Boolean oldRead,
-                Boolean oldFlag, long id) throws IOException {
+                Boolean oldFlag, int oldFlags, long id) throws IOException {
             Boolean read = null;
             Boolean flag = null;
+            Integer flags = null;
             while (nextTag(Tags.SYNC_APPLICATION_DATA) != END) {
                 switch (tag) {
                     case Tags.EMAIL_READ:
@@ -888,13 +896,25 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     case Tags.EMAIL_FLAG:
                         flag = flagParser();
                         break;
+                    case Tags.EMAIL2_LAST_VERB_EXECUTED:
+                        int val = getValueInt();
+                        // Clear out the old replied/forward flags and add in the new flag
+                        flags = oldFlags & ~(Message.FLAG_REPLIED_TO | Message.FLAG_FORWARDED);
+                        if (val == LAST_VERB_REPLY || val == LAST_VERB_REPLY_ALL) {
+                            // We aren't required to distinguish between reply and reply all here
+                            flags |= Message.FLAG_REPLIED_TO;
+                        } else if (val == LAST_VERB_FORWARD) {
+                            flags |= Message.FLAG_FORWARDED;
+                        }
+                        break;
                     default:
                         skipTag();
                 }
             }
+            // See if there are flag changes re: read, flag (favorite) or replied/forwarded
             if (((read != null) && !oldRead.equals(read)) ||
-                    ((flag != null) && !oldFlag.equals(flag))) {
-                changes.add(new ServerChange(id, read, flag));
+                    ((flag != null) && !oldFlag.equals(flag)) || (flags != null)) {
+                changes.add(new ServerChange(id, read, flag, flags));
             }
         }
 
@@ -994,6 +1014,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     }
                     if (change.flag != null) {
                         cv.put(MessageColumns.FLAG_FAVORITE, change.flag);
+                    }
+                    if (change.flags != null) {
+                        cv.put(MessageColumns.FLAGS, change.flags);
                     }
                     ops.add(ContentProviderOperation.newUpdate(
                             ContentUris.withAppendedId(Message.CONTENT_URI, change.id))
