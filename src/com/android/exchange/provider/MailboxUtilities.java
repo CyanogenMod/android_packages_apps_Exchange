@@ -16,17 +16,17 @@
 
 package com.android.exchange.provider;
 
-import com.android.emailcommon.Logging;
-import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.Mailbox;
-
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
+
+import com.android.emailcommon.Logging;
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.Mailbox;
 
 public class MailboxUtilities {
     public static final String WHERE_PARENT_KEY_UNINITIALIZED =
@@ -56,7 +56,7 @@ public class MailboxUtilities {
         }
         // Outbox, Drafts, and Sent don't allow mail to be moved to them
         if (parentType == Mailbox.TYPE_MAIL || parentType == Mailbox.TYPE_TRASH ||
-                parentType == Mailbox.TYPE_JUNK) {
+                parentType == Mailbox.TYPE_JUNK || parentType == Mailbox.TYPE_INBOX) {
             parentFlags |= Mailbox.FLAG_ACCEPTS_MOVED_MAIL;
         }
         // There's no concept of "append" in EAS so FLAG_ACCEPTS_APPENDED_MAIL is never used
