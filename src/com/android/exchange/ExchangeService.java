@@ -516,7 +516,7 @@ public class ExchangeService extends Service implements Runnable {
                            cv.put(MailboxColumns.FLAGS,
                                    inbox.mFlags | Mailbox.FLAG_ACCEPTS_MOVED_MAIL);
                            resolver.update(
-                                   ContentUris.withAppendedId(Account.CONTENT_URI, account.mId), cv,
+                                   ContentUris.withAppendedId(Mailbox.CONTENT_URI, inbox.mId), cv,
                                    null, null);
                         }
                     }
