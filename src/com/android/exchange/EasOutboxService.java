@@ -21,10 +21,12 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.text.TextUtils;
 
+import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.internet.Rfc822Output;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
@@ -430,6 +432,8 @@ public class EasOutboxService extends EasSyncService {
     @Override
     public void run() {
         setupService();
+        // Use SMTP flags for sending mail
+        TrafficStats.setThreadStatsTag(TrafficFlags.getSmtpFlags(mContext, mAccount));
         File cacheDir = mContext.getCacheDir();
         try {
             mDeviceId = ExchangeService.getDeviceId(mContext);

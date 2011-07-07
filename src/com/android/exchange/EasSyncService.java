@@ -23,6 +23,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
 import android.database.Cursor;
+import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -35,6 +36,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.Xml;
 
+import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.mail.MeetingInfo;
 import com.android.emailcommon.mail.MessagingException;
@@ -1602,7 +1604,7 @@ public class EasSyncService extends AbstractSyncService {
             // Determine our protocol version, if we haven't already and save it in the Account
             // Also re-check protocol version at least once a day (in case of upgrade)
             if (mAccount.mProtocolVersion == null || firstSync ||
-                    ((System.currentTimeMillis() - mMailbox.mSyncTime) > DAYS)) {
+                   ((System.currentTimeMillis() - mMailbox.mSyncTime) > DAYS)) {
                 userLog("Determine EAS protocol version");
                 EasResponse resp = sendHttpClientOptions();
                 try {
@@ -2194,7 +2196,10 @@ public class EasSyncService extends AbstractSyncService {
                 // Our two request types are PartRequest (loading attachment) and
                 // MeetingResponseRequest (respond to a meeting request)
                 if (req instanceof PartRequest) {
+                    TrafficStats.setThreadStatsTag(
+                            TrafficFlags.getAttachmentFlags(mContext, mAccount));
                     new AttachmentLoader(this, (PartRequest)req).loadAttachment();
+                    TrafficStats.setThreadStatsTag(TrafficFlags.getSyncFlags(mContext, mAccount));
                 } else if (req instanceof MeetingResponseRequest) {
                     sendMeetingResponse((MeetingResponseRequest)req);
                 } else if (req instanceof MessageMoveRequest) {
@@ -2415,17 +2420,22 @@ public class EasSyncService extends AbstractSyncService {
         // Whether or not we're the account mailbox
         try {
             mDeviceId = ExchangeService.getDeviceId(mContext);
+            int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
             if ((mMailbox == null) || (mAccount == null)) {
                 return;
             } else if (mMailbox.mType == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+                TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
                 runAccountMailbox();
             } else {
                 AbstractSyncAdapter target;
                 if (mMailbox.mType == Mailbox.TYPE_CONTACTS) {
+                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
                     target = new ContactsSyncAdapter( this);
                 } else if (mMailbox.mType == Mailbox.TYPE_CALENDAR) {
+                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
                     target = new CalendarSyncAdapter(this);
                 } else {
+                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
                     target = new EmailSyncAdapter(this);
                 }
                 // We loop here because someone might have put a request in while we were syncing
