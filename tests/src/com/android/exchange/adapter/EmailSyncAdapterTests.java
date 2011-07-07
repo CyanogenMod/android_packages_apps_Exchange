@@ -16,20 +16,21 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.test.suitebuilder.annotation.SmallTest;
+
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser.ServerChange;
 import com.android.exchange.provider.EmailContentSetupUtils;
-
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -222,7 +223,9 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         // Setup some messages
         ArrayList<Long> messageIds = setupAccountMailboxAndMessages(3);
         ContentValues cv = new ContentValues();
+        int randomFlags = Message.FLAG_INCOMING_MEETING_CANCEL | Message.FLAG_TYPE_FORWARD;
         cv.put(SyncColumns.SERVER_ID, TEST_SERVER_ID);
+        cv.put(MessageColumns.FLAGS, randomFlags);
         long changeMessageId = messageIds.get(1);
         mResolver.update(ContentUris.withAppendedId(Message.CONTENT_URI, changeMessageId), cv,
                 null, null);
@@ -234,8 +237,11 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         // Note that the test message creation code sets read to "true"
         Serializer s = new Serializer(false);
         s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, TEST_SERVER_ID);
-        s.start(Tags.SYNC_APPLICATION_DATA).data(Tags.EMAIL_READ, "0").end();
-        s.end().done();
+        s.start(Tags.SYNC_APPLICATION_DATA);
+        s.data(Tags.EMAIL_READ, "0");
+        s.data(Tags.EMAIL2_LAST_VERB_EXECUTED,
+                Integer.toString(EmailSyncAdapter.LAST_VERB_FORWARD));
+        s.end().end().done();
         byte[] bytes = s.toByteArray();
         mSyncParser.resetInput(new ByteArrayInputStream(bytes));
         mSyncParser.nextTag(0);
@@ -250,6 +256,8 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         assertEquals(changeMessageId, change.id);
         assertNotNull(change.read);
         assertFalse(change.read);
+        // Make sure we see the forwarded flag AND that the original flags are preserved
+        assertEquals((Integer)(randomFlags | Message.FLAG_FORWARDED), change.flags);
     }
 
     public void testCleanup() throws IOException {
