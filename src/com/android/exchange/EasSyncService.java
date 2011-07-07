@@ -1610,7 +1610,7 @@ public class EasSyncService extends AbstractSyncService {
 
             // Determine our protocol version, if we haven't already and save it in the Account
             // Also re-check protocol version at least once a day (in case of upgrade)
-            if (mAccount.mProtocolVersion == null ||
+            if (mAccount.mProtocolVersion == null || firstSync ||
                     ((System.currentTimeMillis() - mMailbox.mSyncTime) > DAYS)) {
                 userLog("Determine EAS protocol version");
                 EasResponse resp = sendHttpClientOptions();
