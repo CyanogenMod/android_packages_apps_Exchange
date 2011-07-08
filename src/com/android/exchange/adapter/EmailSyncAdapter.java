@@ -220,7 +220,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             if (filter.equals(Eas.FILTER_AUTO)) {
                 filter = Eas.FILTER_3_DAYS;
             }
-            s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
+            s.data(Tags.SYNC_FILTER_TYPE, filter);
             // Set the truncation amount for all classes
             if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
                 s.start(Tags.BASE_BODY_PREFERENCE);
