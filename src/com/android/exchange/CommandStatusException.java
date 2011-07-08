@@ -43,6 +43,7 @@ public class CommandStatusException extends EasException {
         public static final int USER_ACCOUNT_DISABLED = 131;
         public static final int NOT_PROVISIONABLE_PARTIAL = 139;
         public static final int NOT_PROVISIONABLE_LEGACY_DEVICE = 141;
+        public static final int TOO_MANY_PARTNERSHIPS = 177;
 
         // Sync state problems (bad key, multiple client conflict, etc.)
         public static final int SYNC_STATE_LOCKED = 133;
@@ -102,7 +103,8 @@ public class CommandStatusException extends EasException {
                     status == CommandStatus.ACCESS_DENIED ||
                     status == CommandStatus.USER_ACCOUNT_DISABLED ||
                     status == CommandStatus.NOT_PROVISIONABLE_LEGACY_DEVICE ||
-                    status == CommandStatus.NOT_PROVISIONABLE_PARTIAL);
+                    status == CommandStatus.NOT_PROVISIONABLE_PARTIAL ||
+                    status == CommandStatus.TOO_MANY_PARTNERSHIPS);
         }
 
         public static boolean isTransientError(int status) {
