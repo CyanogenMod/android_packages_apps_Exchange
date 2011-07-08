@@ -215,6 +215,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             s.data(Tags.SYNC_WINDOW_SIZE, EMAIL_WINDOW_SIZE);
             s.start(Tags.SYNC_OPTIONS);
             // Set the lookback appropriately (EAS calls this a "filter")
+            String filter = getEmailFilter();
+            // We shouldn't get FILTER_AUTO here, but if we do, make it something legal...
+            if (filter.equals(Eas.FILTER_AUTO)) {
+                filter = Eas.FILTER_3_DAYS;
+            }
             s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
             // Set the truncation amount for all classes
             if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
