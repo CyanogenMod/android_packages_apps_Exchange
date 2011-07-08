@@ -2089,7 +2089,9 @@ public class ExchangeService extends Service implements Runnable {
                 }
             }
         } finally {
-            c.close();
+            if (c != null) {
+                c.close();
+            }
         }
         return false;
     }
