@@ -496,6 +496,7 @@ public class ExchangeService extends Service implements Runnable {
         ContentResolver resolver = context.getContentResolver();
         Cursor c = resolver.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION, null, null,
                 null);
+        if (c == null) return null;
         try {
             ContentValues cv = new ContentValues();
             while (c.moveToNext()) {
@@ -513,11 +514,11 @@ public class ExchangeService extends Service implements Runnable {
                                 Mailbox.TYPE_INBOX);
                         if (inbox != null &&
                                 ((inbox.mFlags & Mailbox.FLAG_ACCEPTS_MOVED_MAIL) == 0)) {
-                           cv.put(MailboxColumns.FLAGS,
-                                   inbox.mFlags | Mailbox.FLAG_ACCEPTS_MOVED_MAIL);
-                           resolver.update(
-                                   ContentUris.withAppendedId(Mailbox.CONTENT_URI, inbox.mId), cv,
-                                   null, null);
+                            cv.put(MailboxColumns.FLAGS,
+                                    inbox.mFlags | Mailbox.FLAG_ACCEPTS_MOVED_MAIL);
+                            resolver.update(
+                                    ContentUris.withAppendedId(Mailbox.CONTENT_URI, inbox.mId), cv,
+                                    null, null);
                         }
                     }
                 }
