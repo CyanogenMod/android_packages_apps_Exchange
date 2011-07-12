@@ -23,6 +23,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.RemoteException;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
@@ -34,7 +35,9 @@ import com.android.emailcommon.mail.MeetingInfo;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.mail.Part;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
@@ -296,12 +299,22 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         } else {
             lookback = SyncWindow.SYNC_WINDOW_1_MONTH;
         }
+
         // Store the new lookback and persist it
-        mMailbox.mSyncLookback = lookback;
+        // TODO Code similar to this is used elsewhere (e.g. MailboxSettings); try to clean this up
         ContentValues cv = new ContentValues();
-        cv.put(MailboxColumns.SYNC_LOOKBACK, lookback);
-        mContentResolver.update(ContentUris.withAppendedId(
-                Mailbox.CONTENT_URI, mMailbox.mId), cv, null, null);
+        Uri uri;
+        if (mMailbox.mType == Mailbox.TYPE_INBOX) {
+            mAccount.mSyncLookback = lookback;
+            cv.put(AccountColumns.SYNC_LOOKBACK, lookback);
+            uri = ContentUris.withAppendedId(Account.CONTENT_URI, mAccount.mId);
+        } else {
+            mMailbox.mSyncLookback = lookback;
+            cv.put(MailboxColumns.SYNC_LOOKBACK, lookback);
+            uri = ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailbox.mId);
+        }
+        mContentResolver.update(uri, cv, null, null);
+
         // STOPSHIP Temporary UI - Let the user know
         CharSequence[] windowEntries = mContext.getResources().getTextArray(
                 R.array.account_settings_mail_window_entries);
