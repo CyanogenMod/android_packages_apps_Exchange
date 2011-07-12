@@ -17,18 +17,6 @@
 
 package com.android.exchange.adapter;
 
-import com.android.emailcommon.AccountManagerTypes;
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.Message;
-import com.android.emailcommon.utility.Utility;
-import com.android.exchange.CommandStatusException;
-import com.android.exchange.Eas;
-import com.android.exchange.EasOutboxService;
-import com.android.exchange.EasSyncService;
-import com.android.exchange.ExchangeService;
-import com.android.exchange.utility.CalendarUtilities;
-import com.android.exchange.utility.Duration;
-
 import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
@@ -55,6 +43,18 @@ import android.provider.ContactsContract.RawContacts;
 import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.android.emailcommon.AccountManagerTypes;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException;
+import com.android.exchange.Eas;
+import com.android.exchange.EasOutboxService;
+import com.android.exchange.EasSyncService;
+import com.android.exchange.ExchangeService;
+import com.android.exchange.utility.CalendarUtilities;
+import com.android.exchange.utility.Duration;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -1025,20 +1025,16 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     case Tags.CALENDAR_ATTENDEE_NAME:
                         cv.put(Attendees.ATTENDEE_NAME, getValue());
                         break;
-                    // We'll ignore attendee status for now; it's not obvious how to do this
-                    // consistently even with Exchange 2007 (with Exchange 2003, attendee status
-                    // isn't handled at all).
-                    // TODO: Investigate a consistent and accurate method of tracking attendee
-                    // status, though it might turn out not to be possible
-//                    case Tags.CALENDAR_ATTENDEE_STATUS:
-//                        int status = getValueInt();
-//                        cv.put(Attendees.ATTENDEE_STATUS,
-//                                (status == 2) ? Attendees.ATTENDEE_STATUS_TENTATIVE :
-//                                (status == 3) ? Attendees.ATTENDEE_STATUS_ACCEPTED :
-//                                (status == 4) ? Attendees.ATTENDEE_STATUS_DECLINED :
-//                                (status == 5) ? Attendees.ATTENDEE_STATUS_INVITED :
-//                                    Attendees.ATTENDEE_STATUS_NONE);
-//                        break;
+                    case Tags.CALENDAR_ATTENDEE_STATUS:
+                        // STOPSHIP Ensure that this is well-tested
+                        int status = getValueInt();
+                        cv.put(Attendees.ATTENDEE_STATUS,
+                                (status == 2) ? Attendees.ATTENDEE_STATUS_TENTATIVE :
+                                (status == 3) ? Attendees.ATTENDEE_STATUS_ACCEPTED :
+                                (status == 4) ? Attendees.ATTENDEE_STATUS_DECLINED :
+                                (status == 5) ? Attendees.ATTENDEE_STATUS_INVITED :
+                                    Attendees.ATTENDEE_STATUS_NONE);
+                        break;
                     case Tags.CALENDAR_ATTENDEE_TYPE:
                         int type = Attendees.TYPE_NONE;
                         // EAS types: 1 = req'd, 2 = opt, 3 = resource
