@@ -17,6 +17,10 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
+
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
@@ -24,10 +28,6 @@ import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
-
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.content.Context;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -142,10 +142,14 @@ public abstract class AbstractSyncParser extends Parser {
                         mAdapter.wipe();
                         // Indicate there's more so that we'll start syncing again
                         moreAvailable = true;
-                    } else if (status == 8) {
-                        // This is Bad; it means the server doesn't recognize the serverId it
-                        // sent us.  What's needed is a refresh of the folder list.
+                    } else if (status == 8 || status == 12) {
+                        // Status 8 is Bad; it means the server doesn't recognize the serverId it
+                        // sent us.  12 means that we're being asked to refresh the folder list.
+                        // We'll do that with 8 also...
                         ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
+                        // We don't have any provision for telling the user "wait a minute while
+                        // we sync folders"...
+                        throw new IOException();
                     } else {
                         // Access, provisioning, transient, etc.
                         throw new CommandStatusException(status);
