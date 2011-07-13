@@ -64,7 +64,8 @@ public class CommandStatusException extends EasException {
         public static final int WTF_UNKNOWN_ITEM_TYPE = 147;
         public static final int WTF_REQUIRES_PROXY_WITHOUT_SSL = 148;
 
-        // Possibly transient errors
+        // Transient or possibly transient errors
+        public static final int SERVER_ERROR_RETRY = 111;
         public static final int SYNC_STATE_NOT_FOUND = 132;
 
         // String version of error status codes (for logging only)
@@ -108,7 +109,8 @@ public class CommandStatusException extends EasException {
         }
 
         public static boolean isTransientError(int status) {
-            return status == CommandStatus.SYNC_STATE_NOT_FOUND;
+            return status == CommandStatus.SYNC_STATE_NOT_FOUND ||
+                status == CommandStatus.SERVER_ERROR_RETRY;
         }
 
         public static String toString(int status) {

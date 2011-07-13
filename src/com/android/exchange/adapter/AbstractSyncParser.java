@@ -142,6 +142,9 @@ public abstract class AbstractSyncParser extends Parser {
                         mAdapter.wipe();
                         // Indicate there's more so that we'll start syncing again
                         moreAvailable = true;
+                    } else if (status == 16) {
+                        // Status 16 indicates a transient server error
+                        throw new IOException();
                     } else if (status == 8 || status == 12) {
                         // Status 8 is Bad; it means the server doesn't recognize the serverId it
                         // sent us.  12 means that we're being asked to refresh the folder list.
