@@ -1747,6 +1747,12 @@ public class EasSyncService extends AbstractSyncService {
                 }
             } else if (CommandStatus.isDeniedAccess(status)) {
                 mExitStatus = EXIT_ACCESS_DENIED;
+                try {
+                    ExchangeService.callback().syncMailboxListStatus(mAccount.mId,
+                            EmailServiceStatus.ACCESS_DENIED, 0);
+                } catch (RemoteException e1) {
+                    // Don't care if this fails
+                }
                 return;
             } else {
                 userLog("Unexpected status: " + CommandStatus.toString(status));
@@ -1761,8 +1767,7 @@ public class EasSyncService extends AbstractSyncService {
                     // it's not really appropriate for EAS as this is not unexpected for a ping and
                     // connection errors are retried in any case
                     ExchangeService.callback()
-                        .syncMailboxListStatus(mAccount.mId,
-                                EmailServiceStatus.SUCCESS, 0);
+                        .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.SUCCESS, 0);
                 }
             } catch (RemoteException e1) {
                 // Don't care if this fails
