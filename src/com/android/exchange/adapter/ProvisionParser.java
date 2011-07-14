@@ -87,6 +87,7 @@ public class ProvisionParser extends Parser {
     private void parseProvisionDocWbxml() throws IOException {
         Policy policy = new Policy();
         ArrayList<Integer> unsupportedList = new ArrayList<Integer>();
+        boolean passwordEnabled = false;
 
         while (nextTag(Tags.PROVISION_EAS_PROVISION_DOC) != END) {
             boolean tagIsSupported = true;
@@ -94,6 +95,7 @@ public class ProvisionParser extends Parser {
             switch (tag) {
                 case Tags.PROVISION_DEVICE_PASSWORD_ENABLED:
                     if (getValueInt() == 1) {
+                        passwordEnabled = true;
                         if (policy.mPasswordMode == Policy.PASSWORD_MODE_NONE) {
                             policy.mPasswordMode = Policy.PASSWORD_MODE_SIMPLE;
                         }
@@ -300,7 +302,10 @@ public class ProvisionParser extends Parser {
             }
         }
 
-        // Make sure policy settings are valid
+        // Make sure policy settings are valid; password not enabled trumps other password settings
+        if (!passwordEnabled) {
+            policy.mPasswordMode = Policy.PASSWORD_MODE_NONE;
+        }
         setPolicy(policy);
 
         // We can only determine whether encryption is supported on device by using isSupported here
