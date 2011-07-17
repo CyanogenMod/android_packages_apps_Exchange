@@ -68,6 +68,7 @@ public class MailboxUtilities {
             Cursor childCursor = resolver.query(Mailbox.CONTENT_URI,
                     Mailbox.ID_PROJECTION, MailboxColumns.PARENT_SERVER_ID + "=? AND " +
                     accountSelector, selectionArgs, null);
+            if (childCursor == null) return;
             try {
                 while (childCursor.moveToNext()) {
                     parentFlags |= Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE;
@@ -104,6 +105,7 @@ public class MailboxUtilities {
         Cursor cursor = context.getContentResolver().query(Mailbox.CONTENT_URI,
                 Mailbox.CONTENT_PROJECTION, MailboxColumns.SERVER_ID + "=? AND " + accountSelector,
                 new String[] {serverId}, null);
+        if (cursor == null) return;
         try {
             if (cursor.moveToFirst()) {
                 setFlagsAndChildrensParentKey(context, cursor, accountSelector);
@@ -130,6 +132,7 @@ public class MailboxUtilities {
         ContentResolver resolver = context.getContentResolver();
         Cursor parentCursor = resolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
                 noParentKeySelection, null, null);
+        if (parentCursor == null) return;
         try {
             while (parentCursor.moveToNext()) {
                 setFlagsAndChildrensParentKey(context, parentCursor, accountSelector);

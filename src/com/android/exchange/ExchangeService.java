@@ -496,7 +496,7 @@ public class ExchangeService extends Service implements Runnable {
         ContentResolver resolver = context.getContentResolver();
         Cursor c = resolver.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION, null, null,
                 null);
-        if (c == null) return null;
+        if (c == null) return accounts;
         try {
             ContentValues cv = new ContentValues();
             while (c.moveToNext()) {
