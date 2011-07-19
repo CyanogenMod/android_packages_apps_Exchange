@@ -306,10 +306,12 @@ public class EasOutboxService extends EasSyncService {
             int flags = msg.mFlags;
             boolean reply = (flags & Message.FLAG_TYPE_REPLY) != 0;
             boolean forward = (flags & Message.FLAG_TYPE_FORWARD) != 0;
+            boolean includeQuotedText = (flags & Message.FLAG_NOT_INCLUDE_QUOTED_TEXT) == 0;
 
             // The reference message and mailbox are called item and collection in EAS
             OriginalMessageInfo referenceInfo = null;
-            if (reply || forward) {
+            // Respect the sense of the include quoted text flag
+            if (includeQuotedText && (reply || forward)) {
                 referenceInfo = getOriginalMessageInfo(mContext, msgId);
             }
             // Generally, we use SmartReply/SmartForward if we've got a good reference
