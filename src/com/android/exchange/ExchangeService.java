@@ -69,7 +69,6 @@ import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.service.SearchParams;
-import com.android.emailcommon.utility.AccountReconciler;
 import com.android.emailcommon.utility.EmailAsyncTask;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
@@ -1131,19 +1130,9 @@ public class ExchangeService extends Service implements Runnable {
      * Blocking call to the account reconciler
      */
     private void runAccountReconcilerSync(Context context) {
-        android.accounts.Account[] accountMgrList = AccountManager.get(context)
-                .getAccountsByType(Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-        // Make sure we have an up-to-date sAccountList.  If not (for example, if the
-        // service has been destroyed), we would be reconciling against an empty account
-        // list, which would cause the deletion of all of our accounts
-        AccountList accountList = collectEasAccounts(context, new AccountList());
         alwaysLog("Reconciling accounts...");
-        boolean accountsDeleted =
-            AccountReconciler.reconcileAccounts(context, accountList, accountMgrList,
-                context.getContentResolver());
-        if (accountsDeleted) {
-            new AccountServiceProxy(context).accountDeleted();
-        }
+        new AccountServiceProxy(context).reconcileAccounts(
+                HostAuth.SCHEME_EAS, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
     }
 
     public static void log(String str) {
@@ -1835,8 +1824,6 @@ public class ExchangeService extends Service implements Runnable {
                                     return;
                                 }
                             }
-                            // Restore accounts, if it has not happened already
-                            new AccountServiceProxy(ExchangeService.this).restoreAccountsIfNeeded();
                             // Run the reconciler and clean up mismatched accounts - if we weren't
                             // running when accounts were deleted, it won't have been called.
                             runAccountReconcilerSync(ExchangeService.this);
