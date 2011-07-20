@@ -26,6 +26,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
@@ -59,6 +60,7 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
@@ -553,8 +555,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         skipParser(tag);
                         break;
                     case Tags.EMAIL2_CONVERSATION_ID:
+                        msg.mServerConversationId =
+                                Base64.encodeToString(getValueBytes(), Base64.URL_SAFE);
+                        break;
                     case Tags.EMAIL2_CONVERSATION_INDEX:
-                        // Note that the value of these two tags is a byte array
+                        // Ignore this byte array since we're not constructing a tree.
                         getValueBytes();
                         break;
                     case Tags.EMAIL2_LAST_VERB_EXECUTED:
@@ -1300,7 +1305,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 try {
                     // If this item no longer exists (shouldn't be possible), just move along
                     if (!currentCursor.moveToFirst()) {
-                         continue;
+                        continue;
                     }
                     // Keep going if there's no serverId
                     String serverId = currentCursor.getString(UPDATES_SERVER_ID_COLUMN);
