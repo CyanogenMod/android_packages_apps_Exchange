@@ -62,6 +62,7 @@ import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
+import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
@@ -1988,7 +1989,17 @@ public class ExchangeService extends Service implements Runnable {
                 }
             }
             log("Shutdown requested");
+        } catch (ProviderUnavailableException pue) {
+            // Shutdown cleanly in this case
+            // NOTE: Sync adapters will also crash with this error, but that is already handled
+            // in the adapters themselves, i.e. they return cleanly via done().  When the Email
+            // process starts running again, the Exchange process will be started again in due
+            // course, assuming there is at least one existing EAS account.
+            Log.e(TAG, "EmailProvider unavailable; shutting down");
+            // Ask for our service to be restarted; this should kick-start the Email process as well
+            startService(new Intent(this, ExchangeService.class));
         } catch (RuntimeException e) {
+            // Crash; this is a completely unexpected runtime error
             Log.e(TAG, "RuntimeException in ExchangeService", e);
             throw e;
         } finally {
