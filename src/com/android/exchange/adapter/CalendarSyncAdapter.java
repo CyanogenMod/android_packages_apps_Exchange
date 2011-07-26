@@ -224,7 +224,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         return p.parse();
     }
 
-    static Uri asSyncAdapter(Uri uri, String account, String accountType) {
+    public static Uri asSyncAdapter(Uri uri, String account, String accountType) {
         return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
                 .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
                 .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
