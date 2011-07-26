@@ -916,10 +916,10 @@ public class ExchangeService extends Service implements Runnable {
                                         // Delete all events in this calendar using the sync adapter
                                         // parameter so that the deletion is only local
                                         Uri eventsAsSyncAdapter =
-                                            Events.CONTENT_URI.buildUpon()
-                                            .appendQueryParameter(
-                                                    CalendarContract.CALLER_IS_SYNCADAPTER, "true")
-                                                    .build();
+                                            CalendarSyncAdapter.asSyncAdapter(
+                                                Events.CONTENT_URI,
+                                                mAccountName,
+                                                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
                                         mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
                                                 new String[] {Long.toString(mCalendarId)});
                                     } else {
