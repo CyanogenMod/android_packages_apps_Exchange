@@ -176,12 +176,13 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
     }
 
     public void testRecurrenceUntilToEasUntil() {
-        // Test full format
-        assertEquals("YYYYMMDDT000000Z",
-                CalendarUtilities.recurrenceUntilToEasUntil("YYYYMMDDTHHMMSSZ"));
-        // Test date only format
-        assertEquals("YYYYMMDDT000000Z",
-                CalendarUtilities.recurrenceUntilToEasUntil("YYYYMMDD"));
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"));
+        // Case where local time crosses into next day in GMT
+        assertEquals("20110730T000000Z",
+                CalendarUtilities.recurrenceUntilToEasUntil("20110731T025959Z"));
+        // Case where local time does not cross into next day in GMT
+        assertEquals("20110730T000000Z",
+                CalendarUtilities.recurrenceUntilToEasUntil("20110730T235959Z"));
     }
 
     public void testParseEmailDateTimeToMillis(String date) {

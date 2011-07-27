@@ -16,23 +16,6 @@
 
 package com.android.exchange.utility;
 
-import com.android.emailcommon.mail.Address;
-import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.Attachment;
-import com.android.emailcommon.provider.EmailContent.Message;
-import com.android.emailcommon.provider.Mailbox;
-import com.android.emailcommon.service.AccountServiceProxy;
-import com.android.emailcommon.utility.Utility;
-import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
-import com.android.exchange.ExchangeService;
-import com.android.exchange.R;
-import com.android.exchange.adapter.Serializer;
-import com.android.exchange.adapter.Tags;
-import com.android.internal.util.ArrayUtils;
-import com.google.common.annotations.VisibleForTesting;
-
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -51,6 +34,23 @@ import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Base64;
 import android.util.Log;
+
+import com.android.emailcommon.mail.Address;
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.AccountServiceProxy;
+import com.android.emailcommon.utility.Utility;
+import com.android.exchange.Eas;
+import com.android.exchange.EasSyncService;
+import com.android.exchange.ExchangeService;
+import com.android.exchange.R;
+import com.android.exchange.adapter.Serializer;
+import com.android.exchange.adapter.Tags;
+import com.android.internal.util.ArrayUtils;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.text.DateFormat;
@@ -1032,12 +1032,22 @@ public class CalendarUtilities {
     /**
      * Reformat an RRULE style UNTIL to an EAS style until
      */
+    @VisibleForTesting
     static String recurrenceUntilToEasUntil(String until) {
+        // Get a calendar in our local time zone
+        GregorianCalendar localCalendar = new GregorianCalendar(TimeZone.getDefault());
+        // Set the time per GMT time in the 'until'
+        localCalendar.setTimeInMillis(Utility.parseDateTimeToMillis(until));
         StringBuilder sb = new StringBuilder();
-        sb.append(until.substring(0, 4));
-        sb.append(until.substring(4, 6));
-        sb.append(until.substring(6, 8));
+        // Build a string with local year/month/date
+        sb.append(localCalendar.get(Calendar.YEAR));
+        sb.append(formatTwo(localCalendar.get(Calendar.MONTH) + 1));
+        sb.append(formatTwo(localCalendar.get(Calendar.DAY_OF_MONTH)));
+        // EAS ignores the time in 'until'; go figure
         sb.append("T000000Z");
+        if (Eas.DEBUG) {
+            Log.d(TAG, "Recurrence converted from " + until + " to " + sb.toString());
+        }
         return sb.toString();
     }
 
