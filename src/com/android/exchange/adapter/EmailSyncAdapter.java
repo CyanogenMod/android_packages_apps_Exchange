@@ -25,6 +25,7 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
@@ -751,6 +752,8 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             String fileName = null;
             String length = null;
             String location = null;
+            boolean isInline = false;
+            String contentId = null;
 
             while (nextTag(Tags.EMAIL_ATTACHMENT) != END) {
                 switch (tag) {
@@ -767,6 +770,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     case Tags.BASE_ESTIMATED_DATA_SIZE:
                         length = getValue();
                         break;
+                    case Tags.BASE_IS_INLINE:
+                        isInline = getValueInt() == 1;
+                        break;
+                    case Tags.BASE_CONTENT_ID:
+                        contentId = getValue();
+                        break;
                     default:
                         skipTag();
                 }
@@ -780,6 +789,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 att.mLocation = location;
                 att.mMimeType = getMimeTypeFromFileName(fileName);
                 att.mAccountKey = mService.mAccount.mId;
+                // Save away the contentId, if we've got one (for inline images); note that the
+                // EAS docs appear to be wrong about the tags used; inline images come with
+                // contentId rather than contentLocation, when sent from Ex03, Ex07, and Ex10
+                if (isInline && !TextUtils.isEmpty(contentId)) {
+                    att.mContentId = contentId;
+                }
                 // Check if this attachment can't be downloaded due to an account policy
                 if (mPolicy != null) {
                     if (mPolicy.mDontAllowAttachments ||
