@@ -17,6 +17,14 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentProviderOperation;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.OperationApplicationException;
+import android.database.Cursor;
+import android.os.RemoteException;
+import android.text.TextUtils;
+
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
@@ -30,14 +38,6 @@ import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.provider.MailboxUtilities;
-
-import android.content.ContentProviderOperation;
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.OperationApplicationException;
-import android.database.Cursor;
-import android.os.RemoteException;
-import android.text.TextUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -146,8 +146,11 @@ public class FolderSyncParser extends AbstractSyncParser {
                 status = getValueInt();
                 if (status != Eas.FOLDER_STATUS_OK) {
                     mService.errorLog("FolderSync failed: " + CommandStatus.toString(status));
+                    // If the account hasn't been saved, this is a validation attempt, so we don't
+                    // try reloading the folder list...
                     if (CommandStatus.isDeniedAccess(status) ||
-                            CommandStatus.isNeedsProvisioning(status)) {
+                            CommandStatus.isNeedsProvisioning(status) ||
+                            (mAccount.mId == Account.NOT_SAVED)) {
                         throw new CommandStatusException(status);
                     // Note that we need to catch both old-style (Eas.FOLDER_STATUS_INVALID_KEY)
                     // and EAS 14 style command status
