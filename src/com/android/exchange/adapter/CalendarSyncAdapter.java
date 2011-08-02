@@ -410,6 +410,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             int eventOffset = -1;
             int deleteOffset = -1;
             int busyStatus = CalendarUtilities.BUSY_STATUS_TENTATIVE;
+            int responseType = CalendarUtilities.RESPONSE_TYPE_NONE;
 
             boolean firstTag = true;
             long eventId = -1;
@@ -565,6 +566,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         // attendee!
                         busyStatus = getValueInt();
                         break;
+                    case Tags.CALENDAR_RESPONSE_TYPE:
+                        // EAS 14+ uses this for the user's response status; we'll use this instead
+                        // of busy status, if it appears
+                        responseType = getValueInt();
+                        break;
                     case Tags.CALENDAR_CATEGORIES:
                         String categories = categoriesParser(ops);
                         if (categories.length() > 0) {
@@ -624,8 +630,16 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     sb.append(attendeeEmail);
                     sb.append(ATTENDEE_TOKENIZER_DELIMITER);
                     if (mEmailAddress.equalsIgnoreCase(attendeeEmail)) {
-                        int attendeeStatus =
-                            CalendarUtilities.attendeeStatusFromBusyStatus(busyStatus);
+                        int attendeeStatus;
+                        // We'll use the response type (EAS 14), if we've got one; otherwise, we'll
+                        // try to infer it from busy status
+                        if (responseType != CalendarUtilities.RESPONSE_TYPE_NONE) {
+                            attendeeStatus =
+                                CalendarUtilities.attendeeStatusFromResponseType(responseType);
+                        } else {
+                            attendeeStatus =
+                                CalendarUtilities.attendeeStatusFromBusyStatus(busyStatus);
+                        }
                         attendee.put(Attendees.ATTENDEE_STATUS, attendeeStatus);
                         // If we're an attendee, save away our initial attendee status in the
                         // event's ExtendedProperties (we look for differences between this and

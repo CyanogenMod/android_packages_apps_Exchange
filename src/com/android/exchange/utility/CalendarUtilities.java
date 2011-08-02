@@ -167,6 +167,15 @@ public class CalendarUtilities {
     public static final int BUSY_STATUS_BUSY = 2;
     public static final int BUSY_STATUS_OUT_OF_OFFICE = 3;
 
+    // Note that these constants apply to Calendar items, and are used in EAS 14+
+    // See [MS-ASCAL] 2.2.2.22 for Calendar ResponseType
+    public static final int RESPONSE_TYPE_NONE = 0;
+    public static final int RESPONSE_TYPE_ORGANIZER = 1;
+    public static final int RESPONSE_TYPE_TENTATIVE = 2;
+    public static final int RESPONSE_TYPE_ACCEPTED = 3;
+    public static final int RESPONSE_TYPE_DECLINED = 4;
+    public static final int RESPONSE_TYPE_NOT_RESPONDED = 5;
+
     // Return a 4-byte long from a byte array (little endian)
     static int getLong(byte[] bytes, int offset) {
         return (bytes[offset++] & 0xFF) | ((bytes[offset++] & 0xFF) << 8) |
@@ -1393,6 +1402,35 @@ public class CalendarUtilities {
                 break;
             case BUSY_STATUS_FREE:
             case BUSY_STATUS_OUT_OF_OFFICE:
+            default:
+                attendeeStatus = Attendees.ATTENDEE_STATUS_NONE;
+        }
+        return attendeeStatus;
+    }
+
+    /**
+     * Get a selfAttendeeStatus from a busy status
+     * The default here is NONE (i.e. we don't know the status)
+     * Note that a busy status of FREE must mean NONE as well, since it can't mean declined
+     * (there would be no event)
+     * @param busyStatus the busy status, from EAS
+     * @return the corresponding value for selfAttendeeStatus
+     */
+    static public int attendeeStatusFromResponseType(int responseType) {
+        int attendeeStatus;
+        switch (responseType) {
+            case RESPONSE_TYPE_NOT_RESPONDED:
+                attendeeStatus = Attendees.ATTENDEE_STATUS_NONE;
+                break;
+            case RESPONSE_TYPE_ACCEPTED:
+                attendeeStatus = Attendees.ATTENDEE_STATUS_ACCEPTED;
+                break;
+            case RESPONSE_TYPE_TENTATIVE:
+                attendeeStatus = Attendees.ATTENDEE_STATUS_TENTATIVE;
+                break;
+            case RESPONSE_TYPE_DECLINED:
+                attendeeStatus = Attendees.ATTENDEE_STATUS_DECLINED;
+                break;
             default:
                 attendeeStatus = Attendees.ATTENDEE_STATUS_NONE;
         }
