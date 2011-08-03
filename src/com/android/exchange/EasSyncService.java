@@ -233,6 +233,9 @@ public class EasSyncService extends AbstractSyncService {
     // Whether or not the sync service is valid (usable)
     public boolean mIsValid = true;
 
+    // Whether the most recent upsync failed (status 7)
+    public boolean mUpsyncFailed = false;
+
     public EasSyncService(Context _context, Mailbox _mailbox) {
         super(_context, _mailbox);
         mContentResolver = _context.getContentResolver();
@@ -2250,7 +2253,13 @@ public class EasSyncService extends AbstractSyncService {
                 timeout = 120*SECONDS;
             }
             // Send our changes up to the server
-            target.sendLocalChanges(s);
+            if (mUpsyncFailed) {
+                if (Eas.USER_LOG) {
+                    Log.d(TAG, "Inhibiting upsync this cycle");
+                }
+            } else {
+                target.sendLocalChanges(s);
+            }
 
             s.end().end().end().done();
             EasResponse resp = sendHttpClientPost("Sync", new ByteArrayEntity(s.toByteArray()),
@@ -2268,6 +2277,11 @@ public class EasSyncService extends AbstractSyncService {
                         InputStream is = resp.getInputStream();
                         try {
                             moreAvailable = target.parse(is);
+                            // If we inhibited upsync, we need yet another sync
+                            if (mUpsyncFailed) {
+                                moreAvailable = true;
+                            }
+
                             if (target.isLooping()) {
                                 loopingCount++;
                                 userLog("** Looping: " + loopingCount);
@@ -2280,7 +2294,14 @@ public class EasSyncService extends AbstractSyncService {
                             } else {
                                 loopingCount = 0;
                             }
-                            target.cleanup();
+
+                            // Cleanup clears out the updated/deleted tables, and we don't want to
+                            // do that if our upsync failed; clear the flag otherwise
+                            if (!mUpsyncFailed) {
+                                target.cleanup();
+                            } else {
+                                mUpsyncFailed = false;
+                            }
                         } catch (EmptyStreamException e) {
                             userLog("Empty stream detected in GZIP response");
                             emptyStream = true;

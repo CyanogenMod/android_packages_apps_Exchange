@@ -998,7 +998,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         @Override
         public void commit() {
             // Use a batch operation to handle the changes
-            // TODO New mail notifications?  Who looks for these?
             ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
 
             for (Message msg: fetchedEmails) {
@@ -1065,8 +1064,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             ops.add(ContentProviderOperation.newUpdate(
                     ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailbox.mId))
                         .withValues(mailboxValues).build());
-
-            addCleanupOps(ops);
 
             // No commits if we're stopped
             synchronized (mService.getSynchronizer()) {
