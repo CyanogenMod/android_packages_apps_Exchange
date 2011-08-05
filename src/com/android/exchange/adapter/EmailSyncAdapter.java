@@ -47,6 +47,7 @@ import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
+import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.ConversionUtilities;
@@ -841,8 +842,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         private Cursor getServerIdCursor(String serverId, String[] projection) {
             mBindArguments[0] = serverId;
             mBindArguments[1] = mMailboxIdAsString;
-            return mContentResolver.query(Message.CONTENT_URI, projection,
+            Cursor c = mContentResolver.query(Message.CONTENT_URI, projection,
                     WHERE_SERVER_ID_AND_MAILBOX_KEY, mBindArguments, null);
+            if (c == null) throw new ProviderUnavailableException();
+            return c;
         }
 
         @VisibleForTesting
@@ -974,11 +977,43 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
+        /**
+         * Removed any messages with status 7 (mismatch) from the updatedIdList
+         * @param endTag the tag we end with
+         * @throws IOException
+         */
+        public void failedUpdateParser(int endTag) throws IOException {
+            // We get serverId and status in the responses
+            String serverId = null;
+            while (nextTag(endTag) != END) {
+                if (tag == Tags.SYNC_STATUS) {
+                    int status = getValueInt();
+                    if (status == 7 && serverId != null) {
+                        Cursor c = getServerIdCursor(serverId, Message.ID_COLUMN_PROJECTION);
+                        try {
+                            if (c.moveToFirst()) {
+                                Long id = c.getLong(Message.ID_PROJECTION_COLUMN);
+                                mService.userLog("Update of " + serverId + " failed; will retry");
+                                mUpdatedIdList.remove(id);
+                                mService.mUpsyncFailed = true;
+                            }
+                        } finally {
+                            c.close();
+                        }
+                    }
+                } else if (tag == Tags.SYNC_SERVER_ID) {
+                    serverId = getValue();
+                } else {
+                    skipTag();
+                }
+            }
+        }
+
         @Override
         public void responsesParser() throws IOException {
             while (nextTag(Tags.SYNC_RESPONSES) != END) {
                 if (tag == Tags.SYNC_ADD || tag == Tags.SYNC_CHANGE || tag == Tags.SYNC_DELETE) {
-                    // We can ignore all of these
+                    failedUpdateParser(tag);
                 } else if (tag == Tags.SYNC_FETCH) {
                     try {
                         fetchedEmails.add(addParser());

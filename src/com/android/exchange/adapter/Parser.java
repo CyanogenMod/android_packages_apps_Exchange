@@ -38,6 +38,8 @@ import java.util.ArrayList;
  *
  */
 public abstract class Parser {
+    private static final boolean LOG_VERBOSE = false;
+
     // The following constants are Wbxml standard
     public static final int START_DOCUMENT = 0;
     public static final int DONE = 1;
@@ -403,6 +405,7 @@ public abstract class Parser {
     private void pop() {
         if (logging) {
             name = nameArray[depth];
+            log("</" + name + '>');
         }
         // Retrieve the now-current startTag from our stack
         startTag = endTag = startTagArray[depth];
@@ -418,9 +421,7 @@ public abstract class Parser {
         if (logging) {
             name = tagTable[startTag - TAG_BASE];
             nameArray[depth] = name;
-            if (noContent) {
-                log("<" + name + "/>");
-            }
+            log("<" + name + (noContent ? '/' : "") + '>');
         }
         // Save the startTag to our stack
         startTagArray[depth] = startTag;
@@ -453,6 +454,9 @@ public abstract class Parser {
             int pg = readByte();
             // Save the shifted page to add into the startTag in nextTag
             page = pg << Tags.PAGE_SHIFT;
+            if (LOG_VERBOSE) {
+                log("Page: " + page);
+            }
             // Retrieve the current tag table
             tagTable = tagTables[pg];
             id = nextId();
@@ -518,6 +522,9 @@ public abstract class Parser {
         i = in.read();
         if (capture) {
             captureArray.add(i);
+        }
+        if (LOG_VERBOSE) {
+            log("Byte: " + i);
         }
         return i;
     }
