@@ -155,5 +155,13 @@
               android:name="android.content.ContactDirectory"
               android:value="true"/>
         </provider>
+
+        <activity android:name=".EasCertificateRequestor">
+            <intent-filter>
+                <action android:name="com.android.emailcommon.REQUEST_CERT" />
+                <data android:scheme="eas" android:path="/certrequest" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>
