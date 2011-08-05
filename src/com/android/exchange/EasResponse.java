@@ -34,6 +34,9 @@ import java.util.zip.GZIPInputStream;
  * Encapsulate a response to an HTTP POST
  */
 public class EasResponse {
+    // MSFT's custom HTTP result code indicating the need to provision
+    static private final int HTTP_NEED_PROVISIONING = 449;
+
     final HttpResponse mResponse;
     private final HttpEntity mEntity;
     private final int mLength;
@@ -79,6 +82,15 @@ public class EasResponse {
      */
     public static boolean isAuthError(int code) {
         return (code == HttpStatus.SC_UNAUTHORIZED) || (code == HttpStatus.SC_FORBIDDEN);
+    }
+
+    /**
+     * Determine whether an HTTP code represents a provisioning error
+     * @param code the HTTP code returned by the server
+     * @return whether or not the code represents an provisioning error
+     */
+    public static boolean isProvisionError(int code) {
+        return (code == HTTP_NEED_PROVISIONING) || (code == HttpStatus.SC_FORBIDDEN);
     }
 
     /**

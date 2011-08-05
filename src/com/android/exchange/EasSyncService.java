@@ -144,7 +144,7 @@ public class EasSyncService extends AbstractSyncService {
     static private final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
     static private final int AUTO_DISCOVER_REDIRECT_CODE = 451;
 
-    static private final int INTERNAL_SERVER_ERROR_CODE = 500;
+    static public final int INTERNAL_SERVER_ERROR_CODE = 500;
 
     static public final String EAS_12_POLICY_TYPE = "MS-EAS-Provisioning-WBXML";
     static public final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";
@@ -181,9 +181,6 @@ public class EasSyncService extends AbstractSyncService {
     static private final int MAX_PING_FAILURES = 1;
     static private final int PING_FALLBACK_INBOX = 5;
     static private final int PING_FALLBACK_PIM = 25;
-
-    // MSFT's custom HTTP result code indicating the need to provision
-    static private final int HTTP_NEED_PROVISIONING = 449;
 
     // The EAS protocol Provision status for "we implement all of the policies"
     static private final String PROVISION_STATUS_OK = "1";
@@ -362,15 +359,6 @@ public class EasSyncService extends AbstractSyncService {
         super.addRequest(request);
     }
 
-    /**
-     * Determine whether an HTTP code represents a provisioning error
-     * @param code the HTTP code returned by the server
-     * @return whether or not the code represents an provisioning error
-     */
-    protected boolean isProvisionError(int code) {
-        return (code == HTTP_NEED_PROVISIONING) || (code == HttpStatus.SC_FORBIDDEN);
-    }
-
     private void setupProtocolVersion(EasSyncService service, Header versionHeader)
             throws MessagingException {
         // The string is a comma separated list of EAS versions in ascending order
@@ -514,7 +502,7 @@ public class EasSyncService extends AbstractSyncService {
                     resp = svc.sendHttpClientPost("FolderSync", s.toByteArray());
                     code = resp.getStatus();
                     // We'll get one of the following responses if policies are required
-                    if (code == HttpStatus.SC_FORBIDDEN || code == HTTP_NEED_PROVISIONING) {
+                    if (EasResponse.isProvisionError(code)) {
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (code == HttpStatus.SC_NOT_FOUND) {
                         // We get a 404 from OWA addresses (which are NOT EAS addresses)
@@ -1680,7 +1668,7 @@ public class EasSyncService extends AbstractSyncService {
                                 continue;
                             }
                         }
-                    } else if (isProvisionError(code)) {
+                    } else if (EasResponse.isProvisionError(code)) {
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
@@ -2344,7 +2332,7 @@ public class EasSyncService extends AbstractSyncService {
                     }
                 } else {
                     userLog("Sync response error: ", code);
-                    if (isProvisionError(code)) {
+                    if (EasResponse.isProvisionError(code)) {
                         mExitStatus = EXIT_SECURITY_FAILURE;
                     } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
