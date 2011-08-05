@@ -2349,12 +2349,8 @@ public class ExchangeService extends Service implements Runnable {
      * @param m the mailbox
      * @return whether or not the mailbox can be synced
      */
-    static /*package*/ boolean isSyncable(Mailbox m) {
-        if (m == null || m.mType == Mailbox.TYPE_DRAFTS || m.mType == Mailbox.TYPE_OUTBOX ||
-                m.mType == Mailbox.TYPE_SEARCH || m.mType >= Mailbox.TYPE_NOT_SYNCABLE) {
-            return false;
-        }
-        return true;
+    public static boolean isSyncable(Mailbox m) {
+        return m.loadsFromServer(HostAuth.SCHEME_EAS);
     }
 
     static public void serviceRequest(long mailboxId, long ms, int reason) {
