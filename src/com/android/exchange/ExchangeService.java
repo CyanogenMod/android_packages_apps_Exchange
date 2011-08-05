@@ -1479,7 +1479,7 @@ public class ExchangeService extends Service implements Runnable {
                        if (m != null) {
                            // We ignore drafts completely (doesn't sync).  Changes in Outbox are
                            // handled in the checkMailboxes loop, so we can ignore these pings.
-                           if (Eas.DEBUG) {
+                           if (Eas.USER_LOG) {
                                Log.d(TAG, "Alert for mailbox " + id + " (" + m.mDisplayName + ")");
                            }
                            if (m.mType == Mailbox.TYPE_DRAFTS || m.mType == Mailbox.TYPE_OUTBOX) {

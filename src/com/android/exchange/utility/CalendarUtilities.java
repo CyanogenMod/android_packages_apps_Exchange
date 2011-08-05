@@ -1075,9 +1075,6 @@ public class CalendarUtilities {
         sb.append(formatTwo(localCalendar.get(Calendar.DAY_OF_MONTH)));
         // EAS ignores the time in 'until'; go figure
         sb.append("T000000Z");
-        if (Eas.DEBUG) {
-            Log.d(TAG, "Recurrence converted from " + until + " to " + sb.toString());
-        }
         return sb.toString();
     }
 

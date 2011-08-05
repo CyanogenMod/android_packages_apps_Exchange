@@ -161,7 +161,7 @@ public class Search {
             while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
                 if (tag == Tags.SEARCH_STATUS) {
                     String status = getValue();
-                    if (Eas.DEBUG) {
+                    if (Eas.USER_LOG) {
                         Log.d(Logging.LOG_TAG, "Search status: " + status);
                     }
                 } else if (tag == Tags.SEARCH_RESPONSE) {
@@ -194,9 +194,6 @@ public class Search {
             while (nextTag(Tags.SEARCH_STORE) != END) {
                 if (tag == Tags.SEARCH_STATUS) {
                     String status = getValue();
-                    if (Eas.DEBUG) {
-                        Log.d(Logging.LOG_TAG, "Store status: " + status);
-                    }
                 } else if (tag == Tags.SEARCH_TOTAL) {
                     mTotalResults = getValueInt();
                 } else if (tag == Tags.SEARCH_RESULT) {
@@ -208,7 +205,7 @@ public class Search {
 
             try {
                 adapter.mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
-                if (Eas.DEBUG) {
+                if (Eas.USER_LOG) {
                     mService.userLog("Saved " + ops.size() + " search results");
                 }
             } catch (RemoteException e) {
