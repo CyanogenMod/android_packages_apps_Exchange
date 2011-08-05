@@ -77,6 +77,8 @@ import java.util.TimeZone;
  */
 public class EmailSyncAdapter extends AbstractSyncAdapter {
 
+    private static final String TAG = "EmailSyncAdapter";
+
     private static final int UPDATES_READ_COLUMN = 0;
     private static final int UPDATES_MAILBOX_KEY_COLUMN = 1;
     private static final int UPDATES_SERVER_ID_COLUMN = 2;
@@ -316,13 +318,13 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         }
         mContentResolver.update(uri, cv, null, null);
 
-        // STOPSHIP Temporary UI - Let the user know
         CharSequence[] windowEntries = mContext.getResources().getTextArray(
                 R.array.account_settings_mail_window_entries);
-        Utility.showToast(mContext, "Auto lookback: " + windowEntries[lookback]);
+        Log.d(TAG, "Auto lookback: " + windowEntries[lookback]);
     }
 
     private static class GetItemEstimateParser extends Parser {
+        @SuppressWarnings("hiding")
         private static final String TAG = "GetItemEstimateParser";
         private int mEstimate = -1;
 
