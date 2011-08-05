@@ -693,83 +693,87 @@ public class ExchangeService extends Service implements Runnable {
         }
 
         private void onAccountChanged() {
-            maybeStartExchangeServiceThread();
-            Context context = getContext();
+            try {
+                maybeStartExchangeServiceThread();
+                Context context = getContext();
 
-            // A change to the list requires us to scan for deletions (stop running syncs)
-            // At startup, we want to see what accounts exist and cache them
-            AccountList currentAccounts = collectEasAccounts(context, new AccountList());
-            synchronized (mAccountList) {
-                for (Account account : mAccountList) {
-                    boolean accountIncomplete =
-                        (account.mFlags & Account.FLAGS_INCOMPLETE) != 0;
-                    // If the current list doesn't include this account and the account wasn't
-                    // incomplete, then this is a deletion
-                    if (!currentAccounts.contains(account.mId) && !accountIncomplete) {
-                        // Shut down any account-related syncs
-                        stopAccountSyncs(account.mId, true);
-                        // Delete this from AccountManager...
-                        android.accounts.Account acct = new android.accounts.Account(
-                                account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                        AccountManager.get(ExchangeService.this)
-                        .removeAccount(acct, null, null);
-                        mSyncableEasMailboxSelector = null;
-                        mEasAccountSelector = null;
-                    } else {
-                        // Get the newest version of this account
-                        Account updatedAccount =
-                            Account.restoreAccountWithId(context, account.mId);
-                        if (updatedAccount == null) continue;
-                        if (account.mSyncInterval != updatedAccount.mSyncInterval
-                                || account.mSyncLookback != updatedAccount.mSyncLookback) {
-                            // Set the inbox interval to the interval of the Account
-                            // This setting should NOT affect other boxes
-                            ContentValues cv = new ContentValues();
-                            cv.put(MailboxColumns.SYNC_INTERVAL, updatedAccount.mSyncInterval);
-                            getContentResolver().update(Mailbox.CONTENT_URI, cv,
-                                    WHERE_IN_ACCOUNT_AND_TYPE_INBOX, new String[] {
-                                    Long.toString(account.mId)
-                            });
-                            // Stop all current syncs; the appropriate ones will restart
-                            log("Account " + account.mDisplayName + " changed; stop syncs");
+                // A change to the list requires us to scan for deletions (stop running syncs)
+                // At startup, we want to see what accounts exist and cache them
+                AccountList currentAccounts = collectEasAccounts(context, new AccountList());
+                synchronized (mAccountList) {
+                    for (Account account : mAccountList) {
+                        boolean accountIncomplete =
+                            (account.mFlags & Account.FLAGS_INCOMPLETE) != 0;
+                        // If the current list doesn't include this account and the account wasn't
+                        // incomplete, then this is a deletion
+                        if (!currentAccounts.contains(account.mId) && !accountIncomplete) {
+                            // Shut down any account-related syncs
                             stopAccountSyncs(account.mId, true);
-                        }
+                            // Delete this from AccountManager...
+                            android.accounts.Account acct = new android.accounts.Account(
+                                    account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                            AccountManager.get(ExchangeService.this)
+                            .removeAccount(acct, null, null);
+                            mSyncableEasMailboxSelector = null;
+                            mEasAccountSelector = null;
+                        } else {
+                            // Get the newest version of this account
+                            Account updatedAccount =
+                                Account.restoreAccountWithId(context, account.mId);
+                            if (updatedAccount == null) continue;
+                            if (account.mSyncInterval != updatedAccount.mSyncInterval
+                                    || account.mSyncLookback != updatedAccount.mSyncLookback) {
+                                // Set the inbox interval to the interval of the Account
+                                // This setting should NOT affect other boxes
+                                ContentValues cv = new ContentValues();
+                                cv.put(MailboxColumns.SYNC_INTERVAL, updatedAccount.mSyncInterval);
+                                getContentResolver().update(Mailbox.CONTENT_URI, cv,
+                                        WHERE_IN_ACCOUNT_AND_TYPE_INBOX, new String[] {
+                                        Long.toString(account.mId)
+                                });
+                                // Stop all current syncs; the appropriate ones will restart
+                                log("Account " + account.mDisplayName + " changed; stop syncs");
+                                stopAccountSyncs(account.mId, true);
+                            }
 
-                        // See if this account is no longer on security hold
-                        if (onSecurityHold(account) && !onSecurityHold(updatedAccount)) {
-                            releaseSyncHolds(ExchangeService.this,
-                                    AbstractSyncService.EXIT_SECURITY_FAILURE, account);
-                        }
+                            // See if this account is no longer on security hold
+                            if (onSecurityHold(account) && !onSecurityHold(updatedAccount)) {
+                                releaseSyncHolds(ExchangeService.this,
+                                        AbstractSyncService.EXIT_SECURITY_FAILURE, account);
+                            }
 
-                        // Put current values into our cached account
-                        account.mSyncInterval = updatedAccount.mSyncInterval;
-                        account.mSyncLookback = updatedAccount.mSyncLookback;
-                        account.mFlags = updatedAccount.mFlags;
+                            // Put current values into our cached account
+                            account.mSyncInterval = updatedAccount.mSyncInterval;
+                            account.mSyncLookback = updatedAccount.mSyncLookback;
+                            account.mFlags = updatedAccount.mFlags;
+                        }
                     }
-                }
-                // Look for new accounts
-                for (Account account : currentAccounts) {
-                    if (!mAccountList.contains(account.mId)) {
-                        // Don't forget to cache the HostAuth
-                        HostAuth ha = HostAuth.restoreHostAuthWithId(getContext(),
-                                account.mHostAuthKeyRecv);
-                        if (ha == null) continue;
-                        account.mHostAuthRecv = ha;
-                        // This is an addition; create our magic hidden mailbox...
-                        log("Account observer found new account: " + account.mDisplayName);
-                        addAccountMailbox(account.mId);
-                        mAccountList.add(account);
-                        mSyncableEasMailboxSelector = null;
-                        mEasAccountSelector = null;
+                    // Look for new accounts
+                    for (Account account : currentAccounts) {
+                        if (!mAccountList.contains(account.mId)) {
+                            // Don't forget to cache the HostAuth
+                            HostAuth ha = HostAuth.restoreHostAuthWithId(getContext(),
+                                    account.mHostAuthKeyRecv);
+                            if (ha == null) continue;
+                            account.mHostAuthRecv = ha;
+                            // This is an addition; create our magic hidden mailbox...
+                            log("Account observer found new account: " + account.mDisplayName);
+                            addAccountMailbox(account.mId);
+                            mAccountList.add(account);
+                            mSyncableEasMailboxSelector = null;
+                            mEasAccountSelector = null;
+                        }
                     }
+                    // Finally, make sure our account list is up to date
+                    mAccountList.clear();
+                    mAccountList.addAll(currentAccounts);
                 }
-                // Finally, make sure our account list is up to date
-                mAccountList.clear();
-                mAccountList.addAll(currentAccounts);
+
+                // See if there's anything to do...
+                kick("account changed");
+            } catch (ProviderUnavailableException e) {
+                Log.w(TAG, "Observer failed; provider unavailable");
             }
-
-            // See if there's anything to do...
-            kick("account changed");
         }
 
         @Override
@@ -878,64 +882,69 @@ public class ExchangeService extends Service implements Runnable {
             if (!selfChange) {
                 new Thread(new Runnable() {
                     public void run() {
-                        Cursor c = mResolver.query(Calendars.CONTENT_URI,
-                                new String[] {Calendars.SYNC_EVENTS}, Calendars._ID + "=?",
-                                new String[] {Long.toString(mCalendarId)}, null);
-                        if (c == null) return;
-                        // Get its sync events; if it's changed, we've got work to do
                         try {
-                            if (c.moveToFirst()) {
-                                long newSyncEvents = c.getLong(0);
-                                if (newSyncEvents != mSyncEvents) {
-                                    log("_sync_events changed for calendar in " + mAccountName);
-                                    Mailbox mailbox = Mailbox.restoreMailboxOfType(INSTANCE,
-                                            mAccountId, Mailbox.TYPE_CALENDAR);
-                                    // Sanity check for mailbox deletion
-                                    if (mailbox == null) return;
-                                    if (newSyncEvents == 0) {
-                                        // When sync is disabled, we're supposed to delete
-                                        // all events in the calendar
-                                        log("Deleting events and setting syncKey to 0 for " +
-                                                mAccountName);
-                                        // First, stop any sync that's ongoing
-                                        stopManualSync(mailbox.mId);
-                                        // Set the syncKey to 0 (reset)
-                                        EasSyncService service =
-                                            new EasSyncService(INSTANCE, mailbox);
-                                        CalendarSyncAdapter adapter =
-                                            new CalendarSyncAdapter(service);
-                                        try {
-                                            adapter.setSyncKey("0", false);
-                                        } catch (IOException e) {
-                                            // The provider can't be reached; nothing to be done
+                            Cursor c = mResolver.query(Calendars.CONTENT_URI,
+                                    new String[] {Calendars.SYNC_EVENTS}, Calendars._ID + "=?",
+                                    new String[] {Long.toString(mCalendarId)}, null);
+                            if (c == null) return;
+                            // Get its sync events; if it's changed, we've got work to do
+                            try {
+                                if (c.moveToFirst()) {
+                                    long newSyncEvents = c.getLong(0);
+                                    if (newSyncEvents != mSyncEvents) {
+                                        log("_sync_events changed for calendar in " + mAccountName);
+                                        Mailbox mailbox = Mailbox.restoreMailboxOfType(INSTANCE,
+                                                mAccountId, Mailbox.TYPE_CALENDAR);
+                                        // Sanity check for mailbox deletion
+                                        if (mailbox == null) return;
+                                        if (newSyncEvents == 0) {
+                                            // When sync is disabled, we're supposed to delete
+                                            // all events in the calendar
+                                            log("Deleting events and setting syncKey to 0 for " +
+                                                    mAccountName);
+                                            // First, stop any sync that's ongoing
+                                            stopManualSync(mailbox.mId);
+                                            // Set the syncKey to 0 (reset)
+                                            EasSyncService service =
+                                                new EasSyncService(INSTANCE, mailbox);
+                                            CalendarSyncAdapter adapter =
+                                                new CalendarSyncAdapter(service);
+                                            try {
+                                                adapter.setSyncKey("0", false);
+                                            } catch (IOException e) {
+                                                // The provider can't be reached; nothing to be done
+                                            }
+                                            // Reset the sync key locally
+                                            ContentValues cv = new ContentValues();
+                                            cv.put(Mailbox.SYNC_KEY, "0");
+                                            mResolver.update(ContentUris.withAppendedId(
+                                                    Mailbox.CONTENT_URI, mailbox.mId), cv, null,
+                                                    null);
+                                            // Delete all events using the sync adapter
+                                            // parameter so that the deletion is only local
+                                            Uri eventsAsSyncAdapter =
+                                                CalendarSyncAdapter.asSyncAdapter(
+                                                    Events.CONTENT_URI,
+                                                    mAccountName,
+                                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                                            mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
+                                                    new String[] {Long.toString(mCalendarId)});
+                                        } else {
+                                            // If we're in a ping, stop it so that calendar sync can
+                                            // start right away
+                                            stopPing(mAccountId);
+                                            kick("calendar sync changed");
                                         }
-                                        // Reset the sync key locally
-                                        ContentValues cv = new ContentValues();
-                                        cv.put(Mailbox.SYNC_KEY, "0");
-                                        mResolver.update(ContentUris.withAppendedId(
-                                                Mailbox.CONTENT_URI, mailbox.mId), cv, null, null);
-                                        // Delete all events in this calendar using the sync adapter
-                                        // parameter so that the deletion is only local
-                                        Uri eventsAsSyncAdapter =
-                                            CalendarSyncAdapter.asSyncAdapter(
-                                                Events.CONTENT_URI,
-                                                mAccountName,
-                                                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                                        mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
-                                                new String[] {Long.toString(mCalendarId)});
-                                    } else {
-                                        // If we're in a ping, stop it so that calendar sync can
-                                        // start right away
-                                        stopPing(mAccountId);
-                                        kick("calendar sync changed");
-                                    }
 
-                                    // Save away the new value
-                                    mSyncEvents = newSyncEvents;
+                                        // Save away the new value
+                                        mSyncEvents = newSyncEvents;
+                                    }
                                 }
+                            } finally {
+                                c.close();
                             }
-                        } finally {
-                            c.close();
+                        } catch (ProviderUnavailableException e) {
+                            Log.w(TAG, "Observer failed; provider unavailable");
                         }
                     }}, "Calendar Observer").start();
             }
