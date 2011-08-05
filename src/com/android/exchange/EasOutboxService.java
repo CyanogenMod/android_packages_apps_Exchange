@@ -292,7 +292,10 @@ public class EasOutboxService extends EasSyncService {
      * @throws IOException
      */
     int sendMessage(File cacheDir, long msgId) throws IOException, MessagingException {
-        int result;
+        // We always return SUCCESS unless the sending error is account-specific (security or
+        // authentication) rather than message-specific; returning anything else will terminate
+        // the Outbox sync! Message-specific errors are marked in the messages themselves.
+        int result = EmailServiceStatus.SUCCESS;
         // Say we're starting to send this message
         sendCallback(msgId, null, EmailServiceStatus.IN_PROGRESS);
         // Create a temporary file (this will hold the outgoing message in RFC822 (MIME) format)
@@ -335,88 +338,97 @@ public class EasOutboxService extends EasSyncService {
             // Get an input stream to our temporary file and create an entity with it
             FileInputStream fileStream = new FileInputStream(tmpFile);
             long fileLength = tmpFile.length();
-            // The type of entity depends on whether we're using EAS 14
-            HttpEntity inputEntity;
-            // For EAS 14, we need to save the wbxml tag we're using
-            int modeTag = 0;
-            if (isEas14) {
-                int mode = !smartSend ? MODE_NORMAL : reply ? MODE_SMART_REPLY : MODE_SMART_FORWARD;
-                modeTag = SendMailEntity.MODE_TAGS[mode];
-                inputEntity = new SendMailEntity(mContext, fileStream, fileLength, modeTag, msg);
-            } else {
-                inputEntity = new InputStreamEntity(fileStream, fileLength);
-            }
-            // Create the appropriate command and POST it to the server
-            String cmd = "SendMail";
-            if (smartSend) {
-                // In EAS 14, we don't send itemId and collectionId in the command
+
+            while (true) {
+                // The type of entity depends on whether we're using EAS 14
+                HttpEntity inputEntity;
+                // For EAS 14, we need to save the wbxml tag we're using
+                int modeTag = 0;
                 if (isEas14) {
-                    cmd = reply ? "SmartReply" : "SmartForward";
+                    int mode =
+                        !smartSend ? MODE_NORMAL : reply ? MODE_SMART_REPLY : MODE_SMART_FORWARD;
+                    modeTag = SendMailEntity.MODE_TAGS[mode];
+                    inputEntity =
+                        new SendMailEntity(mContext, fileStream, fileLength, modeTag, msg);
                 } else {
-                    cmd = generateSmartSendCmd(reply, referenceInfo);
+                    inputEntity = new InputStreamEntity(fileStream, fileLength);
                 }
-            }
-
-            // If we're not EAS 14, add our save-in-sent setting here
-            if (!isEas14) {
-                cmd += "&SaveInSent=T";
-            }
-            userLog("Send cmd: " + cmd);
-
-            // Finally, post SendMail to the server
-            EasResponse resp = sendHttpClientPost(cmd, inputEntity, SEND_MAIL_TIMEOUT);
-            try {
-                fileStream.close();
-                int code = resp.getStatus();
-                if (code == HttpStatus.SC_OK) {
-                    // HTTP OK before EAS 14 is a thumbs up; in EAS 14, we've actually got to parse
-                    // the reply
+                // Create the appropriate command and POST it to the server
+                String cmd = "SendMail";
+                if (smartSend) {
+                    // In EAS 14, we don't send itemId and collectionId in the command
                     if (isEas14) {
-                        try {
-                            // Try to parse the result
-                            SendMailParser p = new SendMailParser(resp.getInputStream(), modeTag);
-                            // If we get here, the SendMail failed; go figure
-                            p.parse();
-                            // The parser holds the status
-                            int status = p.getStatus();
-                            userLog("SendMail error, status: " + status);
-                            // The only "interesting" failure is a security error.  Note that an
-                            // auth error would have manifest with an HTTP error code
-                            if (CommandStatus.isNeedsProvisioning(status)) {
-                                result = EmailServiceStatus.SECURITY_FAILURE;
-                            } else {
-                                // We mark the result as SUCCESS on a non-security failure since the
-                                // message itself will be marked failed and we don't want to block
-                                // other messages
-                                result = EmailServiceStatus.SUCCESS;
-                            }
-                            sendFailed(msgId, result);
-                            return result;
-                        } catch (EmptyStreamException e) {
-                            // This is actually fine; an empty stream means SendMail succeeded
-                        }
-                    }
-
-                    // If we're here, the SendMail command succeeded
-                    userLog("Deleting message...");
-                    // Delete the message from the Outbox and send callback
-                    mContentResolver.delete(ContentUris.withAppendedId(Message.CONTENT_URI, msgId),
-                            null, null);
-                    result = EmailServiceStatus.SUCCESS;
-                    sendCallback(-1, msg.mSubject, EmailServiceStatus.SUCCESS);
-                } else {
-                    userLog("Message sending failed, code: " + code);
-                    if (EasResponse.isAuthError(code)) {
-                        result = EmailServiceStatus.LOGIN_FAILED;
+                        cmd = reply ? "SmartReply" : "SmartForward";
                     } else {
-                        // We mark the result as SUCCESS on a non-auth failure since the message
-                        // itself will be marked failed and we don't want to block other messages
-                        result = EmailServiceStatus.SUCCESS;
+                        cmd = generateSmartSendCmd(reply, referenceInfo);
                     }
-                    sendFailed(msgId, result);
                 }
-            } finally {
-                resp.close();
+
+                // If we're not EAS 14, add our save-in-sent setting here
+                if (!isEas14) {
+                    cmd += "&SaveInSent=T";
+                }
+                userLog("Send cmd: " + cmd);
+
+                // Finally, post SendMail to the server
+                EasResponse resp = sendHttpClientPost(cmd, inputEntity, SEND_MAIL_TIMEOUT);
+                try {
+                    fileStream.close();
+                    int code = resp.getStatus();
+                    if (code == HttpStatus.SC_OK) {
+                        // HTTP OK before EAS 14 is a thumbs up; in EAS 14, we've got to parse
+                        // the reply
+                        if (isEas14) {
+                            try {
+                                // Try to parse the result
+                                SendMailParser p =
+                                    new SendMailParser(resp.getInputStream(), modeTag);
+                                // If we get here, the SendMail failed; go figure
+                                p.parse();
+                                // The parser holds the status
+                                int status = p.getStatus();
+                                userLog("SendMail error, status: " + status);
+                                if (CommandStatus.isNeedsProvisioning(status)) {
+                                    result = EmailServiceStatus.SECURITY_FAILURE;
+                                } else if (status == CommandStatus.ITEM_NOT_FOUND && smartSend) {
+                                    // This is the retry case for EAS 14; we'll send without "smart"
+                                    // commands next time
+                                    resp.close();
+                                    smartSend = false;
+                                    continue;
+                                }
+                                sendFailed(msgId, result);
+                                return result;
+                            } catch (EmptyStreamException e) {
+                                // This is actually fine; an empty stream means SendMail succeeded
+                            }
+                        }
+
+                        // If we're here, the SendMail command succeeded
+                        userLog("Deleting message...");
+                        // Delete the message from the Outbox and send callback
+                        mContentResolver.delete(
+                                ContentUris.withAppendedId(Message.CONTENT_URI, msgId), null, null);
+                        sendCallback(-1, msg.mSubject, EmailServiceStatus.SUCCESS);
+                        break;
+                    } else if (code == EasSyncService.INTERNAL_SERVER_ERROR_CODE && smartSend) {
+                        // This is the retry case for EAS 12.1 and below; we'll send without "smart"
+                        // commands next time
+                        resp.close();
+                        smartSend = false;
+                    } else {
+                        userLog("Message sending failed, code: " + code);
+                        if (EasResponse.isAuthError(code)) {
+                            result = EmailServiceStatus.LOGIN_FAILED;
+                        } else if (EasResponse.isProvisionError(code)) {
+                            result = EmailServiceStatus.SECURITY_FAILURE;
+                        }
+                        sendFailed(msgId, result);
+                        break;
+                    }
+                } finally {
+                    resp.close();
+                }
             }
         } catch (IOException e) {
             // We catch this just to send the callback

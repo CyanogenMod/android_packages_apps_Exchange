@@ -64,6 +64,9 @@ public class CommandStatusException extends EasException {
         public static final int WTF_UNKNOWN_ITEM_TYPE = 147;
         public static final int WTF_REQUIRES_PROXY_WITHOUT_SSL = 148;
 
+        // For SmartReply/SmartForward
+        public static final int ITEM_NOT_FOUND = 150;
+
         // Transient or possibly transient errors
         public static final int SERVER_ERROR_RETRY = 111;
         public static final int SYNC_STATE_NOT_FOUND = 132;
