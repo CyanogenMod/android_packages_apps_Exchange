@@ -1044,7 +1044,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         cv.put(Attendees.ATTENDEE_NAME, getValue());
                         break;
                     case Tags.CALENDAR_ATTENDEE_STATUS:
-                        // STOPSHIP Ensure that this is well-tested
                         int status = getValueInt();
                         cv.put(Attendees.ATTENDEE_STATUS,
                                 (status == 2) ? Attendees.ATTENDEE_STATUS_TENTATIVE :
