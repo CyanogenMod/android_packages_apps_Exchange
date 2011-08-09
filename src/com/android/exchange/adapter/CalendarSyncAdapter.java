@@ -636,6 +636,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         if (responseType != CalendarUtilities.RESPONSE_TYPE_NONE) {
                             attendeeStatus =
                                 CalendarUtilities.attendeeStatusFromResponseType(responseType);
+                        } else if (!update && busyStatus == CalendarUtilities.BUSY_STATUS_BUSY) {
+                            // For new events in EAS < 14, we really can't tell what BUSY means, so
+                            // we'll show "none", allowing the user to select any of the options.
+                            attendeeStatus = Attendees.ATTENDEE_STATUS_NONE;
                         } else {
                             attendeeStatus =
                                 CalendarUtilities.attendeeStatusFromBusyStatus(busyStatus);
