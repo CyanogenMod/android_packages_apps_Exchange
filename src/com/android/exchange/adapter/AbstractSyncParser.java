@@ -155,7 +155,7 @@ public abstract class AbstractSyncParser extends Parser {
                         // We don't have any provision for telling the user "wait a minute while
                         // we sync folders"...
                         throw new IOException();
-                    } if (status == 7) {
+                    } else if (status == 7) {
                         mService.mUpsyncFailed = true;
                         moreAvailable = true;
                     } else {
