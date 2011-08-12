@@ -1138,26 +1138,27 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             ops.add(ContentProviderOperation.newDelete(
                     ContentUris.withAppendedId(Message.UPDATED_CONTENT_URI, id)).build());
         }
+    }
+
+    @Override
+    public void cleanup() {
+        ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
         // Delete any moved messages (since we've just synced the mailbox, and no longer need the
         // placeholder message); this prevents duplicates from appearing in the mailbox.
         mBindArgument[0] = Long.toString(mMailbox.mId);
         ops.add(ContentProviderOperation.newDelete(Message.CONTENT_URI)
                 .withSelection(WHERE_MAILBOX_KEY_AND_MOVED, mBindArgument).build());
-    }
-
-    @Override
-    public void cleanup() {
+        // If we've done deletions/updates, clean up the deleted/updated tables
         if (!mDeletedIdList.isEmpty() || !mUpdatedIdList.isEmpty()) {
-            ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
             addCleanupOps(ops);
-            try {
-                mContext.getContentResolver()
-                    .applyBatch(EmailContent.AUTHORITY, ops);
-            } catch (RemoteException e) {
-                // There is nothing to be done here; fail by returning null
-            } catch (OperationApplicationException e) {
-                // There is nothing to be done here; fail by returning null
-            }
+        }
+        try {
+            mContext.getContentResolver()
+                .applyBatch(EmailContent.AUTHORITY, ops);
+        } catch (RemoteException e) {
+            // There is nothing to be done here; fail by returning null
+        } catch (OperationApplicationException e) {
+            // There is nothing to be done here; fail by returning null
         }
     }
 
@@ -1294,6 +1295,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         // We keep track of the list of updated item id's as we did above with deleted items
         mUpdatedIdList.clear();
         try {
+            ContentValues cv = new ContentValues();
             while (c.moveToNext()) {
                 long id = c.getLong(Message.LIST_ID_COLUMN);
                 // Say we've handled this update
@@ -1310,16 +1312,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     // Keep going if there's no serverId
                     String serverId = currentCursor.getString(UPDATES_SERVER_ID_COLUMN);
                     if (serverId == null) {
-                        continue;
-                    }
-                    // If the message is now in the trash folder, it has been deleted by the user
-                    if (currentCursor.getLong(UPDATES_MAILBOX_KEY_COLUMN) == trashMailboxId) {
-                         if (firstCommand) {
-                            s.start(Tags.SYNC_COMMANDS);
-                            firstCommand = false;
-                        }
-                        // Send the command to delete this message
-                        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
                         continue;
                     }
 
@@ -1400,6 +1392,24 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         }
                     }
                     s.end().end(); // SYNC_APPLICATION_DATA, SYNC_CHANGE
+
+                    // If the message is now in the trash folder, it has been deleted by the user
+                    if (currentCursor.getLong(UPDATES_MAILBOX_KEY_COLUMN) == trashMailboxId) {
+                         if (firstCommand) {
+                            s.start(Tags.SYNC_COMMANDS);
+                            firstCommand = false;
+                        }
+                        // Send the command to delete this message
+                        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
+                        // Mark the message as moved (so the copy will be deleted if/when the server
+                        // version is synced)
+                        int flags = c.getInt(Message.LIST_FLAGS_COLUMN);
+                        cv.put(MessageColumns.FLAGS,
+                                flags | EasSyncService.MESSAGE_FLAG_MOVED_MESSAGE);
+                        cr.update(ContentUris.withAppendedId(Message.CONTENT_URI, id), cv,
+                                null, null);
+                        continue;
+                    }
                 } finally {
                     currentCursor.close();
                 }
