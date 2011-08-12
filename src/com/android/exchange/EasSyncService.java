@@ -50,6 +50,7 @@ import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
+import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
@@ -2418,119 +2419,123 @@ public class EasSyncService extends AbstractSyncService {
 
     @Override
     public void run() {
-        // Make sure account and mailbox are still valid
-        if (!setupService()) return;
-        // If we've been stopped, we're done
-        if (mStop) return;
-        if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START) {
-            try {
-                ExchangeService.callback().syncMailboxStatus(mMailboxId,
-                        EmailServiceStatus.IN_PROGRESS, 0);
-            } catch (RemoteException e1) {
-                // Don't care if this fails
-            }
-        }
-
-        // Whether or not we're the account mailbox
         try {
-            mDeviceId = ExchangeService.getDeviceId(mContext);
-            int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
-            if ((mMailbox == null) || (mAccount == null)) {
-                return;
-            } else if (mMailbox.mType == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
-                TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
-                runAccountMailbox();
-            } else {
-                AbstractSyncAdapter target;
-                if (mMailbox.mType == Mailbox.TYPE_CONTACTS) {
-                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
-                    target = new ContactsSyncAdapter( this);
-                } else if (mMailbox.mType == Mailbox.TYPE_CALENDAR) {
-                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
-                    target = new CalendarSyncAdapter(this);
-                } else {
-                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
-                    target = new EmailSyncAdapter(this);
-                }
-                // We loop here because someone might have put a request in while we were syncing
-                // and we've missed that opportunity...
-                do {
-                    if (mRequestTime != 0) {
-                        userLog("Looping for user request...");
-                        mRequestTime = 0;
-                    }
-                    sync(target);
-                } while (mRequestTime != 0);
-            }
-        } catch (EasAuthenticationException e) {
-            userLog("Caught authentication error");
-            mExitStatus = EXIT_LOGIN_FAILURE;
-        } catch (IOException e) {
-            String message = e.getMessage();
-            userLog("Caught IOException: ", (message == null) ? "No message" : message);
-            mExitStatus = EXIT_IO_ERROR;
-        } catch (Exception e) {
-            userLog("Uncaught exception in EasSyncService", e);
-        } finally {
-            int status;
-
-            if (!mStop) {
-                userLog("Sync finished");
-                ExchangeService.done(this);
-                switch (mExitStatus) {
-                    case EXIT_IO_ERROR:
-                        status = EmailServiceStatus.CONNECTION_ERROR;
-                        break;
-                    case EXIT_DONE:
-                        status = EmailServiceStatus.SUCCESS;
-                        ContentValues cv = new ContentValues();
-                        cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
-                        String s = "S" + mSyncReason + ':' + status + ':' + mChangeCount;
-                        cv.put(Mailbox.SYNC_STATUS, s);
-                        mContentResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI,
-                                mMailboxId), cv, null, null);
-                        break;
-                    case EXIT_LOGIN_FAILURE:
-                        status = EmailServiceStatus.LOGIN_FAILED;
-                        break;
-                    case EXIT_SECURITY_FAILURE:
-                        status = EmailServiceStatus.SECURITY_FAILURE;
-                        // Ask for a new folder list.  This should wake up the account mailbox; a
-                        // security error in account mailbox should start the provisioning process
-                        ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
-                        break;
-                    case EXIT_ACCESS_DENIED:
-                        status = EmailServiceStatus.ACCESS_DENIED;
-                        break;
-                    default:
-                        status = EmailServiceStatus.REMOTE_EXCEPTION;
-                        errorLog("Sync ended due to an exception.");
-                        break;
-                }
-            } else {
-                userLog("Stopped sync finished.");
-                status = EmailServiceStatus.SUCCESS;
-            }
-
-            // Send a callback if this run was initiated by a service call
+            // Make sure account and mailbox are still valid
+            if (!setupService()) return;
+            // If we've been stopped, we're done
+            if (mStop) return;
             if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START) {
                 try {
-                    // Unless the user specifically asked for a sync, we really don't want to report
-                    // connection issues, as they are likely to be transient.  In this case, we
-                    // simply report success, so that the progress indicator terminates without
-                    // putting up an error banner
-                    if (mSyncReason != ExchangeService.SYNC_UI_REQUEST &&
-                            status == EmailServiceStatus.CONNECTION_ERROR) {
-                        status = EmailServiceStatus.SUCCESS;
-                    }
-                    ExchangeService.callback().syncMailboxStatus(mMailboxId, status, 0);
+                    ExchangeService.callback().syncMailboxStatus(mMailboxId,
+                            EmailServiceStatus.IN_PROGRESS, 0);
                 } catch (RemoteException e1) {
                     // Don't care if this fails
                 }
             }
 
-            // Make sure ExchangeService knows about this
-            ExchangeService.kick("sync finished");
+            // Whether or not we're the account mailbox
+            try {
+                mDeviceId = ExchangeService.getDeviceId(mContext);
+                int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
+                if ((mMailbox == null) || (mAccount == null)) {
+                    return;
+                } else if (mMailbox.mType == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
+                    runAccountMailbox();
+                } else {
+                    AbstractSyncAdapter target;
+                    if (mMailbox.mType == Mailbox.TYPE_CONTACTS) {
+                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
+                        target = new ContactsSyncAdapter( this);
+                    } else if (mMailbox.mType == Mailbox.TYPE_CALENDAR) {
+                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
+                        target = new CalendarSyncAdapter(this);
+                    } else {
+                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
+                        target = new EmailSyncAdapter(this);
+                    }
+                    // We loop because someone might have put a request in while we were syncing
+                    // and we've missed that opportunity...
+                    do {
+                        if (mRequestTime != 0) {
+                            userLog("Looping for user request...");
+                            mRequestTime = 0;
+                        }
+                        sync(target);
+                    } while (mRequestTime != 0);
+                }
+            } catch (EasAuthenticationException e) {
+                userLog("Caught authentication error");
+                mExitStatus = EXIT_LOGIN_FAILURE;
+            } catch (IOException e) {
+                String message = e.getMessage();
+                userLog("Caught IOException: ", (message == null) ? "No message" : message);
+                mExitStatus = EXIT_IO_ERROR;
+            } catch (Exception e) {
+                userLog("Uncaught exception in EasSyncService", e);
+            } finally {
+                int status;
+
+                if (!mStop) {
+                    userLog("Sync finished");
+                    ExchangeService.done(this);
+                    switch (mExitStatus) {
+                        case EXIT_IO_ERROR:
+                            status = EmailServiceStatus.CONNECTION_ERROR;
+                            break;
+                        case EXIT_DONE:
+                            status = EmailServiceStatus.SUCCESS;
+                            ContentValues cv = new ContentValues();
+                            cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
+                            String s = "S" + mSyncReason + ':' + status + ':' + mChangeCount;
+                            cv.put(Mailbox.SYNC_STATUS, s);
+                            mContentResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI,
+                                    mMailboxId), cv, null, null);
+                            break;
+                        case EXIT_LOGIN_FAILURE:
+                            status = EmailServiceStatus.LOGIN_FAILED;
+                            break;
+                        case EXIT_SECURITY_FAILURE:
+                            status = EmailServiceStatus.SECURITY_FAILURE;
+                            // Ask for a new folder list. This should wake up the account mailbox; a
+                            // security error in account mailbox should start provisioning
+                            ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
+                            break;
+                        case EXIT_ACCESS_DENIED:
+                            status = EmailServiceStatus.ACCESS_DENIED;
+                            break;
+                        default:
+                            status = EmailServiceStatus.REMOTE_EXCEPTION;
+                            errorLog("Sync ended due to an exception.");
+                            break;
+                    }
+                } else {
+                    userLog("Stopped sync finished.");
+                    status = EmailServiceStatus.SUCCESS;
+                }
+
+                // Send a callback if this run was initiated by a service call
+                if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START) {
+                    try {
+                        // Unless the user specifically asked for a sync, we don't want to report
+                        // connection issues, as they are likely to be transient.  In this case, we
+                        // simply report success, so that the progress indicator terminates without
+                        // putting up an error banner
+                        if (mSyncReason != ExchangeService.SYNC_UI_REQUEST &&
+                                status == EmailServiceStatus.CONNECTION_ERROR) {
+                            status = EmailServiceStatus.SUCCESS;
+                        }
+                        ExchangeService.callback().syncMailboxStatus(mMailboxId, status, 0);
+                    } catch (RemoteException e1) {
+                        // Don't care if this fails
+                    }
+                }
+
+                // Make sure ExchangeService knows about this
+                ExchangeService.kick("sync finished");
+            }
+        } catch (ProviderUnavailableException e) {
+            Log.e(TAG, "EmailProvider unavailable; sync ended prematurely");
         }
     }
 }

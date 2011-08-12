@@ -17,14 +17,16 @@
 
 package com.android.exchange;
 
-import com.android.emailcommon.provider.EmailContent.Message;
-import com.android.emailcommon.provider.EmailContent.MessageColumns;
-
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.util.Log;
+
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
+import com.android.emailcommon.provider.ProviderUnavailableException;
 
 import java.util.ArrayList;
 
@@ -64,41 +66,45 @@ public class EmailSyncAlarmReceiver extends BroadcastReceiver {
         // Get a selector for EAS accounts (we don't want to sync on changes to POP/IMAP messages)
         String selector = ExchangeService.getEasAccountSelector();
         
-        // Find all of the deletions
-        Cursor c = cr.query(Message.DELETED_CONTENT_URI, MAILBOX_DATA_PROJECTION, selector,
-               null, null);
         try {
-            // Keep track of which mailboxes to notify; we'll only notify each one once
-            while (c.moveToNext()) {
-                messageCount++;
-                long mailboxId = c.getLong(0);
-                if (!mailboxesToNotify.contains(mailboxId)) {
-                    mailboxesToNotify.add(mailboxId);
+            // Find all of the deletions
+            Cursor c = cr.query(Message.DELETED_CONTENT_URI, MAILBOX_DATA_PROJECTION, selector,
+                   null, null);
+            try {
+                // Keep track of which mailboxes to notify; we'll only notify each one once
+                while (c.moveToNext()) {
+                    messageCount++;
+                    long mailboxId = c.getLong(0);
+                    if (!mailboxesToNotify.contains(mailboxId)) {
+                        mailboxesToNotify.add(mailboxId);
+                    }
                 }
+            } finally {
+                c.close();
             }
-        } finally {
-            c.close();
-        }
 
-        // Now, find changed messages
-        c = cr.query(Message.UPDATED_CONTENT_URI, MAILBOX_DATA_PROJECTION, selector,
-                null, null);
-        try {
-            // Keep track of which mailboxes to notify; we'll only notify each one once
-            while (c.moveToNext()) {
-                messageCount++;
-                long mailboxId = c.getLong(0);
-                if (!mailboxesToNotify.contains(mailboxId)) {
-                    mailboxesToNotify.add(mailboxId);
+            // Now, find changed messages
+            c = cr.query(Message.UPDATED_CONTENT_URI, MAILBOX_DATA_PROJECTION, selector,
+                    null, null);
+            try {
+                // Keep track of which mailboxes to notify; we'll only notify each one once
+                while (c.moveToNext()) {
+                    messageCount++;
+                    long mailboxId = c.getLong(0);
+                    if (!mailboxesToNotify.contains(mailboxId)) {
+                        mailboxesToNotify.add(mailboxId);
+                    }
                 }
+            } finally {
+                c.close();
             }
-        } finally {
-            c.close();
-        }
 
-        // Request service from the mailbox
-        for (Long mailboxId: mailboxesToNotify) {
-            ExchangeService.serviceRequest(mailboxId, ExchangeService.SYNC_UPSYNC);
+            // Request service from the mailbox
+            for (Long mailboxId: mailboxesToNotify) {
+                ExchangeService.serviceRequest(mailboxId, ExchangeService.SYNC_UPSYNC);
+            }
+        } catch (ProviderUnavailableException e) {
+            Log.e("EmailSyncAlarmReceiver", "EmailProvider unavailable; aborting alarm receiver");
         }
     }
 }
