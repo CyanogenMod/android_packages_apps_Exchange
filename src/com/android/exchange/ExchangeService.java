@@ -1139,7 +1139,7 @@ public class ExchangeService extends Service implements Runnable {
     /**
      * Blocking call to the account reconciler
      */
-    private void runAccountReconcilerSync(Context context) {
+    public static void runAccountReconcilerSync(Context context) {
         alwaysLog("Reconciling accounts...");
         new AccountServiceProxy(context).reconcileAccounts(
                 HostAuth.SCHEME_EAS, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);

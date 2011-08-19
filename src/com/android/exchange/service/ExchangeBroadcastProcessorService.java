@@ -71,7 +71,7 @@ public class ExchangeBroadcastProcessorService extends IntentService {
                 if (Eas.USER_LOG) {
                     Log.d(Logging.LOG_TAG, "Login accounts changed; reconciling...");
                 }
-                ExchangeService.reconcileAccounts(this);
+                ExchangeService.runAccountReconcilerSync(this);
             }
        }
     }
