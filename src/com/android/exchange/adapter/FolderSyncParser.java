@@ -30,6 +30,7 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.EmailAsyncTask;
 import com.android.emailcommon.utility.Utility;
@@ -38,6 +39,7 @@ import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.provider.MailboxUtilities;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -96,8 +98,10 @@ public class FolderSyncParser extends AbstractSyncParser {
     private static final int MAILBOX_ID_COLUMNS_SERVER_ID = 1;
     private static final int MAILBOX_ID_COLUMNS_PARENT_SERVER_ID = 2;
 
-    private long mAccountId;
-    private String mAccountIdAsString;
+    @VisibleForTesting
+    long mAccountId;
+    @VisibleForTesting
+    String mAccountIdAsString;
     private String[] mBindArguments = new String[2];
     private ArrayList<ContentProviderOperation> mOperations =
         new ArrayList<ContentProviderOperation>();
@@ -165,6 +169,8 @@ public class FolderSyncParser extends AbstractSyncParser {
                                 mAccount.mId), cv, null, null);
                         // Delete PIM data
                         ExchangeService.deleteAccountPIMData(mAccountId);
+                        // Save away any mailbox sync information that is NOT default
+                        saveMailboxSyncOptions();
                         // And only then, delete mailboxes
                         mContentResolver.delete(Mailbox.CONTENT_URI, ALL_BUT_ACCOUNT_MAILBOX,
                                 new String[] {Long.toString(mAccountId)});
@@ -234,6 +240,74 @@ public class FolderSyncParser extends AbstractSyncParser {
                 default:
                     skipTag();
             }
+        }
+    }
+
+    private static class SyncOptions {
+        private final int mInterval;
+        private final int mLookback;
+
+        private SyncOptions(int interval, int lookback) {
+            mInterval = interval;
+            mLookback = lookback;
+        }
+    }
+
+    private static final String MAILBOX_STATE_SELECTION =
+        MailboxColumns.ACCOUNT_KEY + "=? AND (" + MailboxColumns.SYNC_INTERVAL + "!=" +
+            Account.CHECK_INTERVAL_NEVER + " OR " + Mailbox.SYNC_LOOKBACK + "!=" +
+            SyncWindow.SYNC_WINDOW_UNKNOWN + ")";
+
+    private static final String[] MAILBOX_STATE_PROJECTION = new String[] {
+        MailboxColumns.SERVER_ID, MailboxColumns.SYNC_INTERVAL, MailboxColumns.SYNC_LOOKBACK};
+    private static final int MAILBOX_STATE_SERVER_ID = 0;
+    private static final int MAILBOX_STATE_INTERVAL = 1;
+    private static final int MAILBOX_STATE_LOOKBACK = 2;
+    @VisibleForTesting
+    final HashMap<String, SyncOptions> mSyncOptionsMap = new HashMap<String, SyncOptions>();
+
+    /**
+     * For every mailbox in this account that has a non-default interval or lookback, save those
+     * values.
+     */
+    @VisibleForTesting
+    void saveMailboxSyncOptions() {
+        // Shouldn't be necessary, but...
+        mSyncOptionsMap.clear();
+        Cursor c = mContentResolver.query(Mailbox.CONTENT_URI, MAILBOX_STATE_PROJECTION,
+                MAILBOX_STATE_SELECTION, new String[] {mAccountIdAsString}, null);
+        if (c != null) {
+            try {
+                while (c.moveToNext()) {
+                    mSyncOptionsMap.put(c.getString(MAILBOX_STATE_SERVER_ID),
+                            new SyncOptions(c.getInt(MAILBOX_STATE_INTERVAL),
+                                    c.getInt(MAILBOX_STATE_LOOKBACK)));
+                }
+            } finally {
+                c.close();
+            }
+        }
+    }
+
+    /**
+     * For every set of saved mailbox sync options, try to find and restore those values
+     */
+    @VisibleForTesting
+    void restoreMailboxSyncOptions() {
+        try {
+            ContentValues cv = new ContentValues();
+            mBindArguments[1] = mAccountIdAsString;
+            for (String serverId: mSyncOptionsMap.keySet()) {
+                SyncOptions options = mSyncOptionsMap.get(serverId);
+                cv.put(MailboxColumns.SYNC_INTERVAL, options.mInterval);
+                cv.put(MailboxColumns.SYNC_LOOKBACK, options.mLookback);
+                mBindArguments[0] = serverId;
+                // If we match account and server id, set the sync options
+                mContentResolver.update(Mailbox.CONTENT_URI, cv, WHERE_SERVER_ID_AND_ACCOUNT,
+                        mBindArguments);
+            }
+        } finally {
+            mSyncOptionsMap.clear();
         }
     }
 
@@ -590,6 +664,11 @@ public class FolderSyncParser extends AbstractSyncParser {
             mBindArguments[0] = parentServerId;
             mContentResolver.delete(Mailbox.CONTENT_URI, WHERE_PARENT_SERVER_ID_AND_ACCOUNT,
                     mBindArguments);
+        }
+
+        // If we have saved options, restore them now
+        if (mInitialSync) {
+            restoreMailboxSyncOptions();
         }
     }
 
