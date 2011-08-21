@@ -2357,7 +2357,7 @@ public class ExchangeService extends Service implements Runnable {
         ExchangeService exchangeService = INSTANCE;
         if (exchangeService == null) return;
         Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
-        if (!isSyncable(m)) return;
+        if (m == null || !isSyncable(m)) return;
         try {
             AbstractSyncService service = exchangeService.mServiceMap.get(mailboxId);
             if (service != null) {
