@@ -17,13 +17,13 @@
 
 package com.android.exchange;
 
+import android.test.suitebuilder.annotation.MediumTest;
+
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.ExchangeService.SyncError;
 import com.android.exchange.provider.EmailContentSetupUtils;
 import com.android.exchange.utility.ExchangeTestCase;
-
-import android.test.suitebuilder.annotation.MediumTest;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -113,7 +113,6 @@ public class ExchangeServiceAccountTests extends ExchangeTestCase {
                 mProviderContext, Mailbox.TYPE_NOT_SYNCABLE + 64);
         Mailbox box5 = EmailContentSetupUtils.setupMailbox("box2", acct1.mId, true,
                 mProviderContext, Mailbox.TYPE_MAIL);
-        assertFalse(ExchangeService.isSyncable(null));
         assertFalse(ExchangeService.isSyncable(box1));
         assertFalse(ExchangeService.isSyncable(box2));
         assertFalse(ExchangeService.isSyncable(box3));
