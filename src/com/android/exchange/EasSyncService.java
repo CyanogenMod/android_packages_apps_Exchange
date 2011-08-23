@@ -1039,6 +1039,7 @@ public class EasSyncService extends AbstractSyncService {
         if (msg == null) return;
         Cursor c = mContentResolver.query(ContentUris.withAppendedId(Message.UPDATED_CONTENT_URI,
                 msg.mId), new String[] {MessageColumns.MAILBOX_KEY}, null, null, null);
+        if (c == null) throw new ProviderUnavailableException();
         Mailbox srcMailbox = null;
         try {
             if (!c.moveToNext()) return;
@@ -1862,6 +1863,7 @@ public class EasSyncService extends AbstractSyncService {
             Cursor c = mContentResolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
                     MailboxColumns.ACCOUNT_KEY + '=' + mAccount.mId +
                     AND_FREQUENCY_PING_PUSH_AND_NOT_ACCOUNT_MAILBOX, null, null);
+            if (c == null) throw new ProviderUnavailableException();
             notReadyMailboxes.clear();
             readyMailboxes.clear();
             // Look for an inbox, and remember its id
@@ -2099,6 +2101,7 @@ public class EasSyncService extends AbstractSyncService {
                 mBindArguments[1] = serverId;
                 Cursor c = cr.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
                         WHERE_ACCOUNT_KEY_AND_SERVER_ID, mBindArguments, null);
+                if (c == null) throw new ProviderUnavailableException();
                 try {
                     if (c.moveToFirst()) {
 
