@@ -1467,19 +1467,32 @@ public class CalendarUtilities {
         }
         Resources resources = context.getResources();
         Date date = new Date(entityValues.getAsLong(Events.DTSTART));
-        String dateTimeString = DateFormat.getDateTimeInstance().format(date);
         // TODO: Add more detail to message text
         // Right now, we're using.. When: Tuesday, March 5th at 2:00pm
         // What we're missing is the duration and any recurrence information.  So this should be
         // more like... When: Tuesdays, starting March 5th from 2:00pm - 3:00pm
         // This would require code to build complex strings, and it will have to wait
         // For now, we'll just use the meeting_recurring string
-        if (!entityValues.containsKey(Events.ORIGINAL_SYNC_ID) &&
-                entityValues.containsKey(Events.RRULE)) {
-            sb.append(resources.getString(R.string.meeting_recurring, dateTimeString));
-        } else {
-            sb.append(resources.getString(R.string.meeting_when, dateTimeString));
+
+        boolean allDayEvent = false;
+        if (entityValues.containsKey(Events.ALL_DAY)) {
+            Integer ade = entityValues.getAsInteger(Events.ALL_DAY);
+            allDayEvent = (ade != null) && (ade == 1);
         }
+        boolean recurringEvent = !entityValues.containsKey(Events.ORIGINAL_SYNC_ID) &&
+            entityValues.containsKey(Events.RRULE);
+
+        String dateTimeString;
+        int res;
+        if (allDayEvent) {
+            dateTimeString = DateFormat.getDateInstance().format(date);
+            res = recurringEvent ? R.string.meeting_allday_recurring : R.string.meeting_allday;
+        } else {
+            dateTimeString = DateFormat.getDateTimeInstance().format(date);
+            res = recurringEvent ? R.string.meeting_recurring : R.string.meeting_when;
+        }
+        sb.append(resources.getString(res, dateTimeString));
+
         String location = null;
         if (entityValues.containsKey(Events.EVENT_LOCATION)) {
             location = entityValues.getAsString(Events.EVENT_LOCATION);

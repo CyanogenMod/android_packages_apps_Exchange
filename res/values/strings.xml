@@ -81,6 +81,20 @@
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 at 2:30 pm">%s</xliff:g>
         (recurring)
     </string>
+    <!-- Indicate that a meeting lasts all day. This would normally be presented
+        after "When: xxx", e.g. "When: Tue, Mar 10, 2010 (all day)" -->
+    <string name="meeting_allday">
+        When:
+        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
+        (all day)
+    </string>
+    <!-- Indicate that a meeting lasts all day and is recurring. This would normally be presented
+        after "When: xxx", e.g. "When: Tue, Mar 10, 2010 (all day, recurring)" -->
+    <string name="meeting_allday_recurring">
+        When:
+        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
+        (all day, recurring)
+    </string>
 
     <!-- Notification message in notifications window when calendar sync is
         automatically enabled for pre-existing Exchange accounts on upgrade -->
