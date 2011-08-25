@@ -305,7 +305,10 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         // Set up the "event"
         String title = "Discuss Unit Tests";
         Entity entity = setupTestEventEntity(ORGANIZER, ATTENDEE, title);
-        entity.getEntityValues().put(Events.ALL_DAY, 1);
+        ContentValues entityValues = entity.getEntityValues();
+        entityValues.put(Events.ALL_DAY, 1);
+        entityValues.put(Events.DURATION, "P1D");
+        entityValues.remove(Events.DTEND);
 
         // Create a dummy account for the attendee
         Account account = new Account();
@@ -359,7 +362,7 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
 
         // These next two fields should have a date only
         assertEquals("20100412", vevent.get("DTSTART;VALUE=DATE"));
-        assertEquals("20100412", vevent.get("DTEND;VALUE=DATE"));
+        assertEquals("20100413", vevent.get("DTEND;VALUE=DATE"));
         // This should be set to TRUE for all-day events
         assertEquals("TRUE", vevent.get("X-MICROSOFT-CDO-ALLDAYEVENT"));
     }

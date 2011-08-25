@@ -1657,6 +1657,7 @@ public class CalendarUtilities {
                 Duration duration = new Duration();
                 try {
                     duration.parse(entityValues.getAsString(Events.DURATION));
+                    durationMillis = duration.getMillis();
                 } catch (ParseException e) {
                     // We'll use the default in this case
                 }
