@@ -83,7 +83,7 @@ public class CommandStatusException extends EasException {
             "UserDisabled", "NewMailbox", "LegacyMailbox", "DeviceBlocked", "AccessDenied",
             "AcctDisabled", "SyncStateNF", "SyncStateLocked", "SyncStateCorrupt", "SyncStateExists",
             "SyncStateInvalid", "BadCommand", "BadVersion", "NotFullyProvisionable", "RemoteWipe",
-            "LegacyDevice", "NotProvisioned", "PolicyRefresh", "InvalidKey", "ExternallyManaged",
+            "LegacyDevice", "NotProvisioned", "PolicyRefresh", "BadPolicyKey", "ExternallyManaged",
             "NoRecurrence", "UnexpectedClass", "RemoteHasNoSSL", "InvalidRequest", "ItemNotFound"
         };
 
