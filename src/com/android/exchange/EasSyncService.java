@@ -451,22 +451,19 @@ public class EasSyncService extends AbstractSyncService {
         try {
             userLog("Testing EAS: ", hostAuth.mAddress, ", ", hostAuth.mLogin,
                     ", ssl = ", hostAuth.shouldUseSsl() ? "1" : "0");
-            EasSyncService svc = new EasSyncService("%TestAccount%");
-            svc.mContext = context;
-            svc.mHostAddress = hostAuth.mAddress;
-            svc.mUserName = hostAuth.mLogin;
-            svc.mPassword = hostAuth.mPassword;
+            mContext = context;
+            mHostAddress = hostAuth.mAddress;
+            mUserName = hostAuth.mLogin;
+            mPassword = hostAuth.mPassword;
 
-            svc.setConnectionParameters(
+            setConnectionParameters(
                     hostAuth.shouldUseSsl(),
                     hostAuth.shouldTrustAllServerCerts(),
                     hostAuth.mClientCertAlias);
-            // We mustn't use the "real" device id or we'll screw up current accounts
-            // Any string will do, but we'll go for "validate"
-            svc.mDeviceId = "validate";
-            svc.mAccount = new Account();
-            svc.mAccount.mEmailAddress = hostAuth.mLogin;
-            EasResponse resp = svc.sendHttpClientOptions();
+            mDeviceId = ExchangeService.getDeviceId(context);
+            mAccount = new Account();
+            mAccount.mEmailAddress = hostAuth.mLogin;
+            EasResponse resp = sendHttpClientOptions();
             try {
                 int code = resp.getStatus();
                 userLog("Validation (OPTIONS) response: " + code);
@@ -481,7 +478,7 @@ public class EasSyncService extends AbstractSyncService {
                             // We'll treat this as a protocol exception
                             throw new MessagingException(0);
                         }
-                        setupProtocolVersion(svc, versions);
+                        setupProtocolVersion(this, versions);
                     } catch (MessagingException e) {
                         bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
                                 MessagingException.PROTOCOL_VERSION_UNSUPPORTED);
@@ -500,7 +497,7 @@ public class EasSyncService extends AbstractSyncService {
                     Serializer s = new Serializer();
                     s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY).text(syncKey)
                         .end().end().done();
-                    resp = svc.sendHttpClientPost("FolderSync", s.toByteArray());
+                    resp = sendHttpClientPost("FolderSync", s.toByteArray());
                     code = resp.getStatus();
                     // We'll get one of the following responses if policies are required
                     if (EasResponse.isProvisionError(code)) {
@@ -524,7 +521,7 @@ public class EasSyncService extends AbstractSyncService {
                             // Create the parser with statusOnly set to true; we only care about
                             // seeing if a CommandStatusException is thrown (indicating a
                             // provisioning failure)
-                            new FolderSyncParser(is, new AccountSyncAdapter(svc), true).parse();
+                            new FolderSyncParser(is, new AccountSyncAdapter(this), true).parse();
                         }
                         userLog("Validation successful");
                     }
@@ -546,7 +543,7 @@ public class EasSyncService extends AbstractSyncService {
                 int status = e.mStatus;
                 if (CommandStatus.isNeedsProvisioning(status)) {
                     // Get the policies and see if we are able to support them
-                    ProvisionParser pp = svc.canProvision();
+                    ProvisionParser pp = canProvision();
                     if (pp != null && pp.hasSupportablePolicySet()) {
                         // Set the proper result code and save the PolicySet in our Bundle
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
