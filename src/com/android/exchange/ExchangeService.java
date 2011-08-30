@@ -2111,20 +2111,33 @@ public class ExchangeService extends Service implements Runnable {
      * @return whether or not the account can sync automatically
      */
     /*package*/ static boolean canAutoSync(Account account) {
+        // STOPSHIP Remove logging!!
         ExchangeService exchangeService = INSTANCE;
-        if (exchangeService == null) return false;
+        if (exchangeService == null) {
+            log("***** canAutoSync " + account.mDisplayName + ", no exchangeservice!");
+            return false;
+        }
         NetworkInfo networkInfo = exchangeService.mNetworkInfo;
 
         // Enforce manual sync only while roaming here
         long policyKey = account.mPolicyKey;
+        log("***** canAutoSync " + account.mDisplayName + ", policyKey = " + policyKey + " " +
+                ((networkInfo == null) ? "?no network info?" : networkInfo.getType()));
         // Quick exit from this check
         if ((policyKey != 0) && (networkInfo != null) &&
-                (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE)) {
+                (ConnectivityManager.isNetworkTypeMobile(networkInfo.getType()))) {
             // We'll cache the Policy data here
             Policy policy = account.mPolicy;
             if (policy == null) {
                 policy = Policy.restorePolicyWithId(INSTANCE, policyKey);
                 account.mPolicy = policy;
+            }
+            if (policy == null) {
+                log("***** canAuthSync policy is null");
+            } else {
+                log("***** canAutoSync " +
+                        (networkInfo.isRoaming() ? "roaming" : "not roaming") + ", required: " +
+                        policy.mRequireManualSyncWhenRoaming);
             }
             if (policy != null && policy.mRequireManualSyncWhenRoaming && networkInfo.isRoaming()) {
                 return false;
