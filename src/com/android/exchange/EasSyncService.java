@@ -196,12 +196,8 @@ public class EasSyncService extends AbstractSyncService {
     public String mProtocolVersion = Eas.DEFAULT_PROTOCOL_VERSION;
     public Double mProtocolVersionDouble;
     protected String mDeviceId = null;
-    @VisibleForTesting
-    String mAuthString = null;
-    @VisibleForTesting
-    String mUserString = null;
-    @VisibleForTesting
-    String mBaseUriString = null;
+    /*package*/ String mAuthString = null;
+    /*package*/ String mCmdString = null;
     public String mHostAddress;
     public String mUserName;
     public String mPassword;
@@ -642,7 +638,7 @@ public class EasSyncService extends AbstractSyncService {
                 // Try again using the bare user name
                 int atSignIndex = mUserName.indexOf('@');
                 mUserName = mUserName.substring(0, atSignIndex);
-                cacheAuthUserAndBaseUriStrings();
+                cacheAuthAndCmdString();
                 userLog("401 received; trying username: ", mUserName);
                 // Recreate the basic authentication string and reset the header
                 post.removeHeaders("Authorization");
@@ -694,7 +690,7 @@ public class EasSyncService extends AbstractSyncService {
             mUserName = userName;
             mPassword = password;
             // Make sure the authentication string is recreated and cached
-            cacheAuthUserAndBaseUriStrings();
+            cacheAuthAndCmdString();
 
             // Split out the domain name
             int amp = userName.indexOf('@');
@@ -1151,29 +1147,28 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
-     * Using mUserName and mPassword, lazily create the strings that are commonly used in our HTTP
-     * POSTs, including the authentication header string, the base URI we use to communicate with
-     * EAS, and the user information string (user, deviceId, and deviceType)
+     * Using mUserName and mPassword, create and cache mAuthString and mCacheString, which are used
+     * in all HttpPost commands.  This should be called if these strings are null, or if mUserName
+     * and/or mPassword are changed
      */
-    private void cacheAuthUserAndBaseUriStrings() {
-        if (mAuthString == null || mUserString == null || mBaseUriString == null) {
-            String safeUserName = Uri.encode(mUserName);
-            String cs = mUserName + ':' + mPassword;
-            mAuthString = "Basic " + Base64.encodeToString(cs.getBytes(), Base64.NO_WRAP);
-            mUserString = "&User=" + safeUserName + "&DeviceId=" + mDeviceId +
-                "&DeviceType=" + DEVICE_TYPE;
-            String scheme =
-                EmailClientConnectionManager.makeScheme(mSsl, mTrustSsl, mClientCertAlias);
-            mBaseUriString = scheme + "://" + mHostAddress + "/Microsoft-Server-ActiveSync";
-        }
+    private void cacheAuthAndCmdString() {
+        String safeUserName = Uri.encode(mUserName);
+        String cs = mUserName + ':' + mPassword;
+        mAuthString = "Basic " + Base64.encodeToString(cs.getBytes(), Base64.NO_WRAP);
+        mCmdString = "&User=" + safeUserName + "&DeviceId=" + mDeviceId +
+            "&DeviceType=" + DEVICE_TYPE;
     }
 
     @VisibleForTesting
     String makeUriString(String cmd, String extra) {
-        cacheAuthUserAndBaseUriStrings();
-        String uriString = mBaseUriString;
+        // Cache the authentication string and the command string
+        if (mAuthString == null || mCmdString == null) {
+            cacheAuthAndCmdString();
+        }
+        String scheme = EmailClientConnectionManager.makeScheme(mSsl, mTrustSsl, mClientCertAlias);
+        String uriString = scheme + "://" + mHostAddress + "/Microsoft-Server-ActiveSync";
         if (cmd != null) {
-            uriString += "?Cmd=" + cmd + mUserString;
+            uriString += "?Cmd=" + cmd + mCmdString;
         }
         if (extra != null) {
             uriString += extra;
@@ -1329,12 +1324,10 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     protected EasResponse sendHttpClientOptions() throws IOException {
-        cacheAuthUserAndBaseUriStrings();
-        // We only send user name with the OPTIONS command
-        String uriString = mBaseUriString + "&Cmd=OPTIONS&User=" + Uri.encode(mUserName);
-        HttpOptions method = new HttpOptions(URI.create(uriString));
-        setHeaders(method, false);
         HttpClient client = getHttpClient(COMMAND_TIMEOUT);
+        String us = makeUriString("OPTIONS", null);
+        HttpOptions method = new HttpOptions(URI.create(us));
+        setHeaders(method, false);
         return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
     }
 
