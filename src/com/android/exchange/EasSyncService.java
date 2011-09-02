@@ -1366,6 +1366,8 @@ public class EasSyncService extends AbstractSyncService {
             // Update the account with a null policyKey (the key we've gotten is
             // temporary and cannot be used for syncing)
             Policy.setAccountPolicy(mContext, mAccount, policy, null);
+            // Make sure mAccount is current (with latest policy key)
+            mAccount.refresh(mContext);
             // Make sure that SecurityPolicy is up-to-date
             SecurityPolicyDelegate.policiesUpdated(mContext, mAccount.mId);
             if (pp.getRemoteWipe()) {
