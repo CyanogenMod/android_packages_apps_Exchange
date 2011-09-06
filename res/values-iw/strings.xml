@@ -25,10 +25,8 @@
     <string name="meeting_when" msgid="2765696159697448656">"מתי: <xliff:g id="WHEN">%s</xliff:g>"</string>
     <string name="meeting_where" msgid="5992367535856553079">"היכן: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"מתי: <xliff:g id="EVENTDATE">%s</xliff:g> (אירוע חוזר)"</string>
-    <!-- no translation found for meeting_allday (6696389765484663513) -->
-    <skip />
-    <!-- no translation found for meeting_allday_recurring (2320264182781062684) -->
-    <skip />
+    <string name="meeting_allday" msgid="6696389765484663513">"מתי: <xliff:g id="EVENTDATE">%s</xliff:g> (כל יום)"</string>
+    <string name="meeting_allday_recurring" msgid="2320264182781062684">"מתי: <xliff:g id="EVENTDATE">%s</xliff:g> (כל היום, חוזר)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"נוסף לוח שנה של Exchange"</string>
     <string name="app_name" msgid="5316597712787122829">"שירותי Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"אירוע זה בוטל לתאריך: <xliff:g id="DATE">%s</xliff:g>"</string>
@@ -47,7 +45,7 @@
     <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"אל תאפשר שיתוף באינטרנט"</string>
     <string name="policy_enable_password_recovery" msgid="3082147682445934504">"תמיכה בסיסמת שחזור"</string>
     <string name="policy_require_smime" msgid="8044392674810605617">"דרישה להעברת הודעות SMIME"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"אפשר רק סנכרון ידני בעת נדידה"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"אפשר סינכרון ידני רק בעת נדידה"</string>
     <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"הגבל את השימוש ב-Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="5997243461425995435">"אל תאפשר יישומים שצוינו"</string>
     <string name="policy_app_whitelist" msgid="8401297908870017913">"אפשר רק יישומים שצוינו"</string>
@@ -56,7 +54,7 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"הגבל את גודל הטקסט שבדוא\"ל"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"הגבל את גודל הדוא\"ל שבפורמט HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"הגבל את גודל הקובץ המצורף"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"דרישה להצפנה של התקן או כרטיס SD"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"דרישה להצפנה של מכשיר או כרטיס SD"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"אוטומטי"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"יום אחד"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"שלושה ימים"</string>
