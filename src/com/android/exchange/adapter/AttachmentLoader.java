@@ -15,6 +15,12 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
+import android.net.Uri;
+import android.os.RemoteException;
+
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.AttachmentColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -27,12 +33,6 @@ import com.android.exchange.ExchangeService;
 import com.android.exchange.PartRequest;
 
 import org.apache.http.HttpStatus;
-
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.content.Context;
-import android.net.Uri;
-import android.os.RemoteException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -126,14 +126,13 @@ public class AttachmentLoader {
 
             // We can't report percentage if data is chunked; the length of incoming data is unknown
             if (length > 0) {
-                // Belt and suspenders check to prevent runaway reading
-                if (totalRead > length) {
-                    mService.errorLog("totalRead is greater than attachment length?");
-                    break;
-                }
                 // Report progress back to the UI
                 doProgressCallback((totalRead * 100) / length);
             }
+        }
+        if (totalRead > length) {
+            // Apparently, the length, as reported by EAS, isn't always accurate; let's log it
+            mService.userLog("Read more than expected: ", totalRead);
         }
     }
 
