@@ -2075,6 +2075,12 @@ public class ExchangeService extends Service implements Runnable {
         }
     }
 
+    /**
+     * Release a mailbox from the service map and release its wake lock.
+     * NOTE: This method MUST be called while holding sSyncLock!
+     *
+     * @param mailboxId the id of the mailbox to be released
+     */
     private void releaseMailbox(long mailboxId) {
         mServiceMap.remove(mailboxId);
         releaseWakeLock(mailboxId);
@@ -2521,6 +2527,13 @@ public class ExchangeService extends Service implements Runnable {
         }
     }
 
+    private boolean isRunningInServiceThread(long mailboxId) {
+        AbstractSyncService syncService = mServiceMap.get(mailboxId);
+        Thread thisThread = Thread.currentThread();
+        return syncService != null && syncService.mThread != null &&
+            thisThread == syncService.mThread;
+    }
+
     /**
      * Sent by services indicating that their thread is finished; action depends on the exitStatus
      * of the service.
@@ -2532,9 +2545,15 @@ public class ExchangeService extends Service implements Runnable {
         if (exchangeService == null) return;
         synchronized(sSyncLock) {
             long mailboxId = svc.mMailboxId;
+            // If we're no longer the syncing thread for the mailbox, just return
+            if (!exchangeService.isRunningInServiceThread(mailboxId)) {
+                return;
+            }
+            exchangeService.releaseMailbox(mailboxId);
+
             ConcurrentHashMap<Long, SyncError> errorMap = exchangeService.mSyncErrorMap;
             SyncError syncError = errorMap.get(mailboxId);
-            exchangeService.releaseMailbox(mailboxId);
+
             int exitStatus = svc.mExitStatus;
             Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
             if (m == null) return;
