@@ -17,16 +17,16 @@
 
 package com.android.exchange;
 
+import android.content.Context;
+import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
+import android.util.Base64;
+
 import com.android.emailcommon.provider.Account;
 
 import org.apache.http.Header;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
-
-import android.content.Context;
-import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Base64;
 
 import java.io.IOException;
 
@@ -106,27 +106,27 @@ public class EasSyncServiceTests extends AndroidTestCase {
     public void testMakeUriString() throws IOException {
         // Simple user name and command
         EasSyncService svc = setupService(USER);
-        String uriString = svc.makeUriString("OPTIONS", null);
+        String uriString = svc.makeUriString("Sync", null);
         // These next two should now be cached
         assertNotNull(svc.mAuthString);
-        assertNotNull(svc.mCmdString);
+        assertNotNull(svc.mUserString);
         assertEquals("Basic " + Base64.encodeToString((USER+":"+PASSWORD).getBytes(),
                 Base64.NO_WRAP), svc.mAuthString);
         assertEquals("&User=" + USER + "&DeviceId=" + ID + "&DeviceType=" +
-                EasSyncService.DEVICE_TYPE, svc.mCmdString);
-        assertEquals("https://" + HOST + "/Microsoft-Server-ActiveSync?Cmd=OPTIONS" +
-                svc.mCmdString, uriString);
+                EasSyncService.DEVICE_TYPE, svc.mUserString);
+        assertEquals("https://" + HOST + "/Microsoft-Server-ActiveSync?Cmd=Sync" +
+                svc.mUserString, uriString);
         // User name that requires encoding
         String user = "name_with_underscore@foo%bar.com";
         svc = setupService(user);
-        uriString = svc.makeUriString("OPTIONS", null);
+        uriString = svc.makeUriString("Sync", null);
         assertEquals("Basic " + Base64.encodeToString((user+":"+PASSWORD).getBytes(),
                 Base64.NO_WRAP), svc.mAuthString);
         String safeUserName = "name_with_underscore%40foo%25bar.com";
         assertEquals("&User=" + safeUserName + "&DeviceId=" + ID + "&DeviceType=" +
-                EasSyncService.DEVICE_TYPE, svc.mCmdString);
-        assertEquals("https://" + HOST + "/Microsoft-Server-ActiveSync?Cmd=OPTIONS" +
-                svc.mCmdString, uriString);
+                EasSyncService.DEVICE_TYPE, svc.mUserString);
+        assertEquals("https://" + HOST + "/Microsoft-Server-ActiveSync?Cmd=Sync" +
+                svc.mUserString, uriString);
     }
 
     public void testResetHeartbeats() {
