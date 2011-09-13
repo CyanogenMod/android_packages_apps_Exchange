@@ -2477,10 +2477,9 @@ public class EasSyncService extends AbstractSyncService {
                 userLog("Uncaught exception in EasSyncService", e);
             } finally {
                 int status;
-
+                ExchangeService.done(this);
                 if (!mStop) {
                     userLog("Sync finished");
-                    ExchangeService.done(this);
                     switch (mExitStatus) {
                         case EXIT_IO_ERROR:
                             status = EmailServiceStatus.CONNECTION_ERROR;
