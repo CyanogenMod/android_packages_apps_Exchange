@@ -1408,11 +1408,9 @@ public class CalendarUtilities {
     }
 
     /**
-     * Get a selfAttendeeStatus from a busy status
-     * The default here is NONE (i.e. we don't know the status)
-     * Note that a busy status of FREE must mean NONE as well, since it can't mean declined
-     * (there would be no event)
-     * @param busyStatus the busy status, from EAS
+     * Get a selfAttendeeStatus from a response type (EAS 14+)
+     * The default here is NONE (i.e. we don't know the status), though in theory this can't happen
+     * @param busyStatus the response status, from EAS
      * @return the corresponding value for selfAttendeeStatus
      */
     static public int attendeeStatusFromResponseType(int responseType) {
