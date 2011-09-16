@@ -1601,17 +1601,14 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         }
         s.writeStringValue(entityValues, Events.TITLE, Tags.CALENDAR_SUBJECT);
 
-        String desc = entityValues.getAsString(Events.DESCRIPTION);
-        if (desc != null && desc.length() > 0) {
-            if (version >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
-                s.start(Tags.BASE_BODY);
-                s.data(Tags.BASE_TYPE, "1");
-                s.data(Tags.BASE_DATA, desc);
-                s.end();
-            } else {
-                // EAS 2.5 doesn't like bare line feeds
-                s.data(Tags.CALENDAR_BODY, Utility.replaceBareLfWithCrlf(desc));
-            }
+        if (version >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            s.start(Tags.BASE_BODY);
+            s.data(Tags.BASE_TYPE, "1");
+            s.writeStringValue(entityValues, Events.DESCRIPTION, Tags.BASE_DATA);
+            s.end();
+        } else {
+            // EAS 2.5 doesn't like bare line feeds
+            s.writeStringValue(entityValues, Events.DESCRIPTION, Tags.CALENDAR_BODY);
         }
 
         if (!isException) {
