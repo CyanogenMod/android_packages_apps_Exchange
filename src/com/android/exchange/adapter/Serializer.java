@@ -220,6 +220,8 @@ public class Serializer {
         String value = cv.getAsString(key);
         if (value != null && value.length() > 0) {
             data(tag, value);
+        } else {
+            tag(tag);
         }
     }
 

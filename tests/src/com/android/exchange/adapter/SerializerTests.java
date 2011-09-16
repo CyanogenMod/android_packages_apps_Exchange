@@ -16,6 +16,7 @@
 
 package com.android.exchange.adapter;
 
+import android.content.ContentValues;
 import android.test.AndroidTestCase;
 import android.test.MoreAsserts;
 
@@ -29,14 +30,22 @@ public class SerializerTests extends AndroidTestCase {
 
     private static final byte[] BYTE_ARRAY = new byte[] {1, 2, 3, 4, 5};
     private static final int BYTE_ARRAY_LENGTH = 5;
-    private static final String CLIENT_ID = "ID";
+    private static final String ID = "ID";
+    private static final String KEY = "Key";
 
     // Basic test for use of start, end, tag, data, opaque, and done
     public void testSerializer() throws IOException {
+        ContentValues values = new ContentValues();
         // Create a test stream
         Serializer s = new Serializer();
         s.start(Tags.COMPOSE_SEND_MAIL);
-        s.data(Tags.COMPOSE_CLIENT_ID, "ID");
+
+        // Test writeStringValue without and with data
+        s.writeStringValue(values, KEY, Tags.COMPOSE_ACCOUNT_ID);
+        values.put(KEY, ID);
+        s.writeStringValue(values, KEY, Tags.COMPOSE_ACCOUNT_ID);
+
+        s.data(Tags.COMPOSE_CLIENT_ID, ID);
         s.tag(Tags.COMPOSE_SAVE_IN_SENT_ITEMS);
         s.start(Tags.COMPOSE_MIME);
         s.opaque(new ByteArrayInputStream(BYTE_ARRAY), BYTE_ARRAY_LENGTH);
@@ -54,10 +63,17 @@ public class SerializerTests extends AndroidTestCase {
                 Wbxml.SWITCH_PAGE,
                 Tags.COMPOSE,
                 Tags.COMPOSE_SEND_MAIL - Tags.COMPOSE_PAGE + Wbxml.WITH_CONTENT,
+                Tags.COMPOSE_ACCOUNT_ID - Tags.COMPOSE_PAGE,
+                Tags.COMPOSE_ACCOUNT_ID - Tags.COMPOSE_PAGE + Wbxml.WITH_CONTENT,
+                Wbxml.STR_I,    // 0-terminated string
+                (byte)ID.charAt(0),
+                (byte)ID.charAt(1),
+                0,
+                Wbxml.END,  // COMPOSE_ACCOUNT_ID
                 Tags.COMPOSE_CLIENT_ID - Tags.COMPOSE_PAGE + Wbxml.WITH_CONTENT,
                 Wbxml.STR_I,    // 0-terminated string
-                (byte)CLIENT_ID.charAt(0),
-                (byte)CLIENT_ID.charAt(1),
+                (byte)ID.charAt(0),
+                (byte)ID.charAt(1),
                 0,
                 Wbxml.END,  // COMPOSE_CLIENT_ID
                 Tags.COMPOSE_SAVE_IN_SENT_ITEMS - Tags.COMPOSE_PAGE,
