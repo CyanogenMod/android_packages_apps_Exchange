@@ -28,64 +28,38 @@
     <string name="meeting_allday" msgid="6696389765484663513">"የሚከተለው ሲሆን፤ <xliff:g id="EVENTDATE">%s</xliff:g> (ሁሉም ቀን)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"የሚከተለው ሲሆን፤ <xliff:g id="EVENTDATE">%s</xliff:g> (ሁሉም ቀን፣ ተደጋጋሚ)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"የቀን መቁጠሪያ ልውውጥ ታክሏል"</string>
-    <!-- no translation found for app_name (5316597712787122829) -->
-    <skip />
+    <string name="app_name" msgid="5316597712787122829">"አገልግሎቶች ለዋውጥ"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"ይህ ከስተት ለ<xliff:g id="DATE">%s</xliff:g> ተሰርዟል።"</string>
     <string name="exception_updated" msgid="3397583105901142050">"የዚህ ክስተት ዝርዝሮች ለ፡<xliff:g id="DATE">%s</xliff:g> ተለውጠዋል"</string>
-    <!-- no translation found for policy_dont_allow_attachments (7924303012593832731) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_storage_cards (5600453721690619515) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_unsigned_apps (7391405270957498716) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_unsigned_installers (8124763529572916905) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_wifi (8972952227139360866) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_text_messaging (2705534889421216691) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_pop_imap (1563948038306495433) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_irda (2864744455266260846) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_html (5004059292137838041) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_browser (1898383003253987916) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_consumer_email (4208507021679199773) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_internet_sharing (8866772202653485379) -->
-    <skip />
-    <!-- no translation found for policy_enable_password_recovery (3082147682445934504) -->
-    <skip />
-    <!-- no translation found for policy_require_smime (8044392674810605617) -->
-    <skip />
-    <!-- no translation found for policy_require_manual_sync_roaming (7140792029820703854) -->
-    <skip />
-    <!-- no translation found for policy_bluetooth_restricted (8992284721368381918) -->
-    <skip />
-    <!-- no translation found for policy_app_blacklist (5997243461425995435) -->
-    <skip />
-    <!-- no translation found for policy_app_whitelist (8401297908870017913) -->
-    <skip />
-    <!-- no translation found for policy_max_calendar_age (6394557044887221078) -->
-    <skip />
-    <!-- no translation found for policy_max_email_age (3303242808829681352) -->
-    <skip />
-    <!-- no translation found for policy_text_truncation (5800480928209379255) -->
-    <skip />
-    <!-- no translation found for policy_html_truncation (629030762178870832) -->
-    <skip />
-    <!-- no translation found for policy_max_attachment_size (6191034264088052742) -->
-    <skip />
-    <!-- no translation found for policy_require_encryption (9370390981258441) -->
-    <skip />
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"አባሪዎች አትፍቀድ"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"የማከማቻ ካርዶችን አትፍቀድ"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"ያልተረጋገጡ ትግበራዎችን አትፍቀድ"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"ያልተረጋገጡ  የትግበራ ጫኞችን አትፍቀድ"</string>
+    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"wifi አትፍቀድ"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"የፅሁፍ መልዕክት አትፍቀድ"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"POP3 ወይም IMAP መለያዎች አትፍቀድ"</string>
+    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"የታህተቀይ ግኑኙነት አትፍቀድ"</string>
+    <string name="policy_dont_allow_html" msgid="5004059292137838041">"የHTML ኢሜይል አትፍቀድ"</string>
+    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"አሳሾች አትፍቀድ"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"የሸማች ኢሜይል አትፍቀድ"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"የበይነ መረብ መጋሪያ አትፍቀድ"</string>
+    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"የጠፋ የይለፍ ቃል ለማግኘት ደግፍ"</string>
+    <string name="policy_require_smime" msgid="8044392674810605617">"የSMIME መልዕክቶች ጠይቅ"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"በእንቅስቃሴ ላይ የማኑዋል አሳምር ብቻ ፍቀድ"</string>
+    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"የብሉቱዝ አገልግሎትን ገድብ"</string>
+    <string name="policy_app_blacklist" msgid="5997243461425995435">"የተወሰኑ ትግበራዎችን አይፈቅድም"</string>
+    <string name="policy_app_whitelist" msgid="8401297908870017913">"የተወሰኑ ትግበራዎችን ብቻ ፍቀድ"</string>
+    <string name="policy_max_calendar_age" msgid="6394557044887221078">"የቀን መቁጠሪያ ክስተት ቀኖችን ገድብ"</string>
+    <string name="policy_max_email_age" msgid="3303242808829681352">"የኢሜይል ቀኖችን ገድብ"</string>
+    <string name="policy_text_truncation" msgid="5800480928209379255">"የፅሁፍ ኢሜይል መጠንን ገድብ"</string>
+    <string name="policy_html_truncation" msgid="629030762178870832">"የHTML  ኢሜይል መጠን ገድብ"</string>
+    <string name="policy_max_attachment_size" msgid="6191034264088052742">"የአባሪ መጠንን ገድብ"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"የመሣሪያ ወይም የsd ካርድ ምስጠራ ጠይቅ"</string>
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"ራስ ሰር"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"አንድ ቀን"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"ሦስት ቀን"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"አንድ ሳምንት"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"ሁለት ሳምንቶች"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"አንድ ወር"</string>
-    <!-- outdated translation 5383858972681926166 -->     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"ሁሉም ኢሜይል"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"ሁሉም"</string>
 </resources>

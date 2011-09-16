@@ -28,64 +28,38 @@
     <string name="meeting_allday" msgid="6696389765484663513">"Nini: <xliff:g id="EVENTDATE">%s</xliff:g> (usuku lonke)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"Nini: <xliff:g id="EVENTDATE">%s</xliff:g> (usuku lonke, okuqhubekayo)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Ukushintsha ikhalenda kufakiwe"</string>
-    <!-- no translation found for app_name (5316597712787122829) -->
-    <skip />
+    <string name="app_name" msgid="5316597712787122829">"Ukushintshelana Izinsizakalo"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Lesi senzakalo sikhanselwe i-<xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Imininingwane yalesenzakalo ishintshelwe:<xliff:g id="DATE">%s</xliff:g>"</string>
-    <!-- no translation found for policy_dont_allow_attachments (7924303012593832731) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_storage_cards (5600453721690619515) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_unsigned_apps (7391405270957498716) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_unsigned_installers (8124763529572916905) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_wifi (8972952227139360866) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_text_messaging (2705534889421216691) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_pop_imap (1563948038306495433) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_irda (2864744455266260846) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_html (5004059292137838041) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_browser (1898383003253987916) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_consumer_email (4208507021679199773) -->
-    <skip />
-    <!-- no translation found for policy_dont_allow_internet_sharing (8866772202653485379) -->
-    <skip />
-    <!-- no translation found for policy_enable_password_recovery (3082147682445934504) -->
-    <skip />
-    <!-- no translation found for policy_require_smime (8044392674810605617) -->
-    <skip />
-    <!-- no translation found for policy_require_manual_sync_roaming (7140792029820703854) -->
-    <skip />
-    <!-- no translation found for policy_bluetooth_restricted (8992284721368381918) -->
-    <skip />
-    <!-- no translation found for policy_app_blacklist (5997243461425995435) -->
-    <skip />
-    <!-- no translation found for policy_app_whitelist (8401297908870017913) -->
-    <skip />
-    <!-- no translation found for policy_max_calendar_age (6394557044887221078) -->
-    <skip />
-    <!-- no translation found for policy_max_email_age (3303242808829681352) -->
-    <skip />
-    <!-- no translation found for policy_text_truncation (5800480928209379255) -->
-    <skip />
-    <!-- no translation found for policy_html_truncation (629030762178870832) -->
-    <skip />
-    <!-- no translation found for policy_max_attachment_size (6191034264088052742) -->
-    <skip />
-    <!-- no translation found for policy_require_encryption (9370390981258441) -->
-    <skip />
-    <!-- no translation found for account_setup_options_mail_window_auto (4188895354366183790) -->
-    <skip />
+    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"ungavumeli okunamathiselwa ku-imeyli"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"ungavumeli amakhadi okulonda"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"ungavumeli izinhlelo zokusebenza ezingasayiniwe"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"ungavumeli izifaki ezingasayiniwe zezinhlelo zokusebenza"</string>
+    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"ungavumeli i-wifi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"ungavumeli imilayezo yombhalo"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"ungavumeli i-POP3 noma ama-akhawunti e-IMAP"</string>
+    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"ungavumeli ukukhulumisana kwe-infrared"</string>
+    <string name="policy_dont_allow_html" msgid="5004059292137838041">"ungavumeli i-imeyli ye-HTML"</string>
+    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"ungavumeli isiphequluli"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"ungavumeli i-imeyli yomthengi"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"ungavumeli ukwabelana nge-inthanethi"</string>
+    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"ubambiswano lokuthola i-password"</string>
+    <string name="policy_require_smime" msgid="8044392674810605617">"idinga imiyalezo ye-SMME"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"vumela ukuvumelanisa ngokwenziwa ngezandla kuphela uma uzulazula"</string>
+    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"Nciphisa ukusetshenziswa kwe-Bluetooth"</string>
+    <string name="policy_app_blacklist" msgid="5997243461425995435">"Ungavumeli izinhlelo ezibonisiwe"</string>
+    <string name="policy_app_whitelist" msgid="8401297908870017913">"vumela kuphela izinhlelo zokusebenza ezibonisiwe"</string>
+    <string name="policy_max_calendar_age" msgid="6394557044887221078">"Linganisela amadethi ezenzakalo kukhalenda"</string>
+    <string name="policy_max_email_age" msgid="3303242808829681352">"nciphisa amadethi e-imeyli"</string>
+    <string name="policy_text_truncation" msgid="5800480928209379255">"nciphisa usayizi wombhalo we-imeyli"</string>
+    <string name="policy_html_truncation" msgid="629030762178870832">"Nciphisa usayizi wama-imeyli e-HTML"</string>
+    <string name="policy_max_attachment_size" msgid="6191034264088052742">"nciphisa usayizi wokunamathiselwa ku-imeyli"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"Idinga ukubethela kwedivayisi noma kwekhadi le-sd"</string>
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Okuzenzakalelayo"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Usuku olulodwa"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Izinsuku ezintathu"</string>
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Iviki elilodwa"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Amaviki amabili"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Inyanga eyodwa"</string>
-    <!-- outdated translation 5383858972681926166 -->     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Yonke Imeyili"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Konke"</string>
 </resources>
