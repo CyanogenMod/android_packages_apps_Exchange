@@ -31,6 +31,8 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.PartRequest;
+import com.android.exchange.utility.UriCodec;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
 
@@ -136,6 +138,26 @@ public class AttachmentLoader {
         }
     }
 
+    @VisibleForTesting
+    static String encodeForExchange2003(String str) {
+        AttachmentNameEncoder enc = new AttachmentNameEncoder();
+        StringBuilder sb = new StringBuilder(str.length() + 16);
+        enc.appendPartiallyEncoded(sb, str);
+        return sb.toString();
+    }
+
+    /**
+     * Encoder for Exchange 2003 attachment names.  They come from the server partially encoded,
+     * but there are still possible characters that need to be encoded (Why, MSFT, why?)
+     */
+    private static class AttachmentNameEncoder extends UriCodec {
+        @Override protected boolean isRetained(char c) {
+            // These four characters are commonly received in EAS 2.5 attachment names and are
+            // valid (verified by testing); we won't encode them
+            return c == '_' || c == ':' || c == '/' || c == '.';
+        }
+    }
+
     /**
      * Loads an attachment, based on the PartRequest passed in the constructor
      * @throws IOException
@@ -159,7 +181,13 @@ public class AttachmentLoader {
             s.end().end().done(); // ITEMS_FETCH, ITEMS_ITEMS
             resp = mService.sendHttpClientPost("ItemOperations", s.toByteArray());
         } else {
-            String cmd = "GetAttachment&AttachmentName=" + mAttachment.mLocation;
+            String location = mAttachment.mLocation;
+            // For Exchange 2003 (EAS 2.5), we have to look for illegal characters in the file name
+            // that EAS sent to us!
+            if (mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+                location = encodeForExchange2003(location);
+            }
+            String cmd = "GetAttachment&AttachmentName=" + location;
             resp = mService.sendHttpClientPost(cmd, null, EasSyncService.COMMAND_TIMEOUT);
         }
 
