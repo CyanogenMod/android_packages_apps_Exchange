@@ -2243,7 +2243,7 @@ public class ExchangeService extends Service implements Runnable {
 
         Cursor c = getContentResolver().query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
                 mAccountObserver.getSyncableEasMailboxWhere(), null, null);
-
+        if (c == null) throw new ProviderUnavailableException();
         try {
             while (c.moveToNext()) {
                 long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
