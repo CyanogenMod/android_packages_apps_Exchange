@@ -1667,7 +1667,16 @@ public class ExchangeService extends Service implements Runnable {
 
     private void requestSync(Mailbox m, int reason, Request req) {
         // Don't sync if there's no connectivity
-        if (sConnectivityHold || (m == null) || sStop) return;
+        if (sConnectivityHold || (m == null) || sStop) {
+            if (reason >= SYNC_CALLBACK_START) {
+                try {
+                    sCallbackProxy.syncMailboxStatus(m.mId, EmailServiceStatus.CONNECTION_ERROR, 0);
+                } catch (RemoteException e) {
+                    // We tried...
+                }
+            }
+            return;
+        }
         synchronized (sSyncLock) {
             Account acct = Account.restoreAccountWithId(this, m.mAccountKey);
             if (acct != null) {

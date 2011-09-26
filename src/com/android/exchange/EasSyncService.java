@@ -2434,14 +2434,6 @@ public class EasSyncService extends AbstractSyncService {
             if (!setupService()) return;
             // If we've been stopped, we're done
             if (mStop) return;
-            if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START) {
-                try {
-                    ExchangeService.callback().syncMailboxStatus(mMailboxId,
-                            EmailServiceStatus.IN_PROGRESS, 0);
-                } catch (RemoteException e1) {
-                    // Don't care if this fails
-                }
-            }
 
             // Whether or not we're the account mailbox
             try {
@@ -2470,6 +2462,16 @@ public class EasSyncService extends AbstractSyncService {
                         if (mRequestTime != 0) {
                             userLog("Looping for user request...");
                             mRequestTime = 0;
+                        }
+                        String syncKey = target.getSyncKey();
+                        if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START ||
+                                "0".equals(syncKey)) {
+                            try {
+                                ExchangeService.callback().syncMailboxStatus(mMailboxId,
+                                        EmailServiceStatus.IN_PROGRESS, 0);
+                            } catch (RemoteException e1) {
+                                // Don't care if this fails
+                            }
                         }
                         sync(target);
                     } while (mRequestTime != 0);
@@ -2523,21 +2525,19 @@ public class EasSyncService extends AbstractSyncService {
                     status = EmailServiceStatus.SUCCESS;
                 }
 
-                // Send a callback if this run was initiated by a service call
-                if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START) {
-                    try {
-                        // Unless the user specifically asked for a sync, we don't want to report
-                        // connection issues, as they are likely to be transient.  In this case, we
-                        // simply report success, so that the progress indicator terminates without
-                        // putting up an error banner
-                        if (mSyncReason != ExchangeService.SYNC_UI_REQUEST &&
-                                status == EmailServiceStatus.CONNECTION_ERROR) {
-                            status = EmailServiceStatus.SUCCESS;
-                        }
-                        ExchangeService.callback().syncMailboxStatus(mMailboxId, status, 0);
-                    } catch (RemoteException e1) {
-                        // Don't care if this fails
+                // Send a callback (doesn't matter how the sync was started)
+                try {
+                    // Unless the user specifically asked for a sync, we don't want to report
+                    // connection issues, as they are likely to be transient.  In this case, we
+                    // simply report success, so that the progress indicator terminates without
+                    // putting up an error banner
+                    if (mSyncReason != ExchangeService.SYNC_UI_REQUEST &&
+                            status == EmailServiceStatus.CONNECTION_ERROR) {
+                        status = EmailServiceStatus.SUCCESS;
                     }
+                    ExchangeService.callback().syncMailboxStatus(mMailboxId, status, 0);
+                } catch (RemoteException e1) {
+                    // Don't care if this fails
                 }
 
                 // Make sure ExchangeService knows about this
