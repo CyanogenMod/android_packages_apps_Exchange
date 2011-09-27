@@ -1363,7 +1363,7 @@ public class EasSyncService extends AbstractSyncService {
         // First, see if provisioning is even possible, i.e. do we support the policies required
         // by the server
         ProvisionParser pp = canProvision();
-        if (pp != null) {
+        if (pp != null && pp.hasSupportablePolicySet()) {
             // Get the policies from ProvisionParser
             Policy policy = pp.getPolicy();
             Policy oldPolicy = null;
@@ -1426,6 +1426,7 @@ public class EasSyncService extends AbstractSyncService {
                 }
             } else {
                 // Notify that we are blocked because of policies
+                // TODO: Indicate unsupported policies here?
                 SecurityPolicyDelegate.policiesRequired(mContext, mAccount.mId);
             }
         }
@@ -1476,6 +1477,7 @@ public class EasSyncService extends AbstractSyncService {
                         // Try to acknowledge using the "partial" status (i.e. we can partially
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
+                        ExchangeService.log("PolicySet is NOT fully supportable");
                         String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
                                 PROVISION_STATUS_PARTIAL);
                         // Return either the parser (success) or null (failure)
@@ -1534,13 +1536,17 @@ public class EasSyncService extends AbstractSyncService {
                 ProvisionParser pp = new ProvisionParser(is, this);
                 if (pp.parse()) {
                     // Return the final policy key from the ProvisionParser
+                    ExchangeService.log("Provision confirmation received for " +
+                            (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
                     return pp.getSecuritySyncKey();
                 }
             }
         } finally {
             resp.close();
         }
-        // On failures, return null
+        // On failures, log issue and return null
+        ExchangeService.log("Provision confirmation failed for" +
+                (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
         return null;
     }
 
