@@ -66,8 +66,6 @@ import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailcommon.service.IEmailService;
-import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.EmailAsyncTask;
@@ -492,11 +490,20 @@ public class ExchangeService extends Service implements Runnable {
         }
     };
 
+    /**
+     * Return a list of all Accounts in EmailProvider.  Because the result of this call may be used
+     * in account reconciliation, an exception is thrown if the result cannot be guaranteed accurate
+     * @param context the caller's context
+     * @param accounts a list that Accounts will be added into
+     * @return the list of Accounts
+     * @throws ProviderUnavailableException if the list of Accounts cannot be guaranteed valid
+     */
     private static AccountList collectEasAccounts(Context context, AccountList accounts) {
         ContentResolver resolver = context.getContentResolver();
         Cursor c = resolver.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION, null, null,
                 null);
-        if (c == null) return accounts;
+        // We must throw here; callers might use the information we provide for reconciliation, etc.
+        if (c == null) throw new ProviderUnavailableException();
         try {
             ContentValues cv = new ContentValues();
             while (c.moveToNext()) {
@@ -607,7 +614,12 @@ public class ExchangeService extends Service implements Runnable {
             // TODO: Move database work out of UI thread
             Context context = getContext();
             synchronized (mAccountList) {
-                collectEasAccounts(context, mAccountList);
+                try {
+                    collectEasAccounts(context, mAccountList);
+                } catch (ProviderUnavailableException e) {
+                    // Just leave if EmailProvider is unavailable
+                    return;
+                }
                 // Create an account mailbox for any account without one
                 for (Account account : mAccountList) {
                     int cnt = Mailbox.count(context, Mailbox.CONTENT_URI, "accountKey="
@@ -699,7 +711,13 @@ public class ExchangeService extends Service implements Runnable {
 
                 // A change to the list requires us to scan for deletions (stop running syncs)
                 // At startup, we want to see what accounts exist and cache them
-                AccountList currentAccounts = collectEasAccounts(context, new AccountList());
+                AccountList currentAccounts = new AccountList();
+                try {
+                    collectEasAccounts(context, currentAccounts);
+                } catch (ProviderUnavailableException e) {
+                    // Just leave if EmailProvider is unavailable
+                    return;
+                }
                 synchronized (mAccountList) {
                     for (Account account : mAccountList) {
                         boolean accountIncomplete =
