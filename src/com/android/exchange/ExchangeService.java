@@ -66,6 +66,8 @@ import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailcommon.service.IEmailService;
+import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.EmailAsyncTask;
