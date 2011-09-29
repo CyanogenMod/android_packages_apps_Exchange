@@ -28,7 +28,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SyncStatusObserver;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
@@ -206,8 +205,6 @@ public class ExchangeService extends Service implements Runnable {
     private AccountObserver mAccountObserver;
     private MailboxObserver mMailboxObserver;
     private SyncedMessageObserver mSyncedMessageObserver;
-    private EasSyncStatusObserver mSyncStatusObserver;
-    private Object mStatusChangeListener;
 
     // Concurrent because CalendarSyncAdapter can modify the map during a wipe
     private final ConcurrentHashMap<Long, CalendarObserver> mCalendarObservers =
@@ -1132,15 +1129,6 @@ public class ExchangeService extends Service implements Runnable {
         return holdWasReleased;
     }
 
-    public class EasSyncStatusObserver implements SyncStatusObserver {
-        public void onStatusChanged(int which) {
-            // We ignore the argument (we can only get called in one case - when settings change)
-            if (INSTANCE != null) {
-                checkPIMSyncSettings();
-            }
-        }
-    }
-
     /**
      * Reconcile Exchange accounts with AccountManager (asynchronous)
      * @param context the caller's Context
@@ -1532,68 +1520,6 @@ public class ExchangeService extends Service implements Runnable {
         }
     }
 
-    /**
-     * See if we need to change the syncInterval for any of our PIM mailboxes based on changes
-     * to settings in the AccountManager (sync settings).
-     * This code is called 1) when ExchangeService starts, and 2) when ExchangeService is running
-     * and there are changes made (this is detected via a SyncStatusObserver)
-     */
-    private void updatePIMSyncSettings(Account providerAccount, int mailboxType, String authority) {
-        ContentValues cv = new ContentValues();
-        long mailboxId =
-            Mailbox.findMailboxOfType(this, providerAccount.mId, mailboxType);
-        // Presumably there is one, but if not, it's ok.  Just move on...
-        if (mailboxId != Mailbox.NO_MAILBOX) {
-            // Create an AccountManager style Account
-            android.accounts.Account acct =
-                new android.accounts.Account(providerAccount.mEmailAddress,
-                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-            // Get the mailbox; this happens rarely so it's ok to get it all
-            Mailbox mailbox = Mailbox.restoreMailboxWithId(this, mailboxId);
-            if (mailbox == null) return;
-            int syncInterval = mailbox.mSyncInterval;
-            // If we're syncable, look further...
-            if (ContentResolver.getIsSyncable(acct, authority) > 0) {
-                // If we're supposed to sync automatically (push), set to push if it's not
-                if (ContentResolver.getSyncAutomatically(acct, authority)) {
-                    if (syncInterval == Mailbox.CHECK_INTERVAL_NEVER || syncInterval > 0) {
-                        log("Sync for " + mailbox.mDisplayName + " in " + acct.name + ": push");
-                        cv.put(MailboxColumns.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_PUSH);
-                    }
-                    // If we're NOT supposed to push, and we're not set up that way, change it
-                } else if (syncInterval != Mailbox.CHECK_INTERVAL_NEVER) {
-                    log("Sync for " + mailbox.mDisplayName + " in " + acct.name + ": manual");
-                    cv.put(MailboxColumns.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_NEVER);
-                }
-                // If not, set it to never check
-            } else if (syncInterval != Mailbox.CHECK_INTERVAL_NEVER) {
-                log("Sync for " + mailbox.mDisplayName + " in " + acct.name + ": manual");
-                cv.put(MailboxColumns.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_NEVER);
-            }
-
-            // If we've made a change, update the Mailbox, and kick
-            if (cv.containsKey(MailboxColumns.SYNC_INTERVAL)) {
-                mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, mailboxId),
-                        cv,null, null);
-                stopPing(providerAccount.mId);
-                kick("sync settings change");
-            }
-        }
-    }
-
-    /**
-     * Make our sync settings match those of AccountManager
-     */
-    private void checkPIMSyncSettings() {
-        synchronized (mAccountList) {
-            for (Account account : mAccountList) {
-                updatePIMSyncSettings(account, Mailbox.TYPE_CONTACTS, ContactsContract.AUTHORITY);
-                updatePIMSyncSettings(account, Mailbox.TYPE_CALENDAR, CalendarContract.AUTHORITY);
-                updatePIMSyncSettings(account, Mailbox.TYPE_INBOX, EmailContent.AUTHORITY);
-            }
-        }
-    }
-
     public class ConnectivityReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1963,10 +1889,6 @@ public class ExchangeService extends Service implements Runnable {
                 mSyncedMessageObserver = new SyncedMessageObserver(mHandler);
                 mResolver.registerContentObserver(Message.SYNCED_CONTENT_URI, true,
                         mSyncedMessageObserver);
-                mSyncStatusObserver = new EasSyncStatusObserver();
-                mStatusChangeListener =
-                    ContentResolver.addStatusChangeListener(
-                            ContentResolver.SYNC_OBSERVER_TYPE_SETTINGS, mSyncStatusObserver);
 
                 // Set up receivers for connectivity and background data setting
                 mConnectivityReceiver = new ConnectivityReceiver();
@@ -1981,9 +1903,6 @@ public class ExchangeService extends Service implements Runnable {
                 ConnectivityManager cm = (ConnectivityManager)getSystemService(
                         Context.CONNECTIVITY_SERVICE);
                 mBackgroundData = cm.getBackgroundDataSetting();
-
-                // See if any settings have changed while we weren't running...
-                checkPIMSyncSettings();
 
                 // Do any required work to clean up our Mailboxes (this serves to upgrade
                 // mailboxes that existed prior to EmailProvider database version 17)
@@ -2077,13 +1996,6 @@ public class ExchangeService extends Service implements Runnable {
                     mMailboxObserver = null;
                 }
                 unregisterCalendarObservers();
-
-                // Remove the sync status change listener (and null out the observer)
-                if (mStatusChangeListener != null) {
-                    ContentResolver.removeStatusChangeListener(mStatusChangeListener);
-                    mStatusChangeListener = null;
-                    mSyncStatusObserver = null;
-                }
 
                 // Clear pending alarms and associated Intents
                 clearAlarms();
