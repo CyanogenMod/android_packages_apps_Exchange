@@ -253,7 +253,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             try {
                 byte[] data = SyncStateContract.Helpers.get(
                         client,
-                        asSyncAdapter(CalendarContract.SyncState.CONTENT_URI, mEmailAddress,
+                        asSyncAdapter(SyncState.CONTENT_URI, mEmailAddress,
                                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount);
                 if (data == null || data.length == 0) {
                     // Initialize the SyncKey
@@ -283,7 +283,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 try {
                     SyncStateContract.Helpers.set(
                             client,
-                            asSyncAdapter(CalendarContract.SyncState.CONTENT_URI, mEmailAddress,
+                            asSyncAdapter(SyncState.CONTENT_URI, mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount,
                             syncKey.getBytes());
                     userLog("SyncKey set to ", syncKey, " in CalendarProvider");
@@ -1187,8 +1187,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         public void commit() throws IOException {
             userLog("Calendar SyncKey saved as: ", mMailbox.mSyncKey);
             // Save the syncKey here, using the Helper provider by Calendar provider
-            mOps.add(SyncStateContract.Helpers.newSetOperation(SyncState.CONTENT_URI,
-                    mAccountManagerAccount, mMailbox.mSyncKey.getBytes()));
+            mOps.add(SyncStateContract.Helpers.newSetOperation(
+                    asSyncAdapter(SyncState.CONTENT_URI, mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                    mAccountManagerAccount,
+                    mMailbox.mSyncKey.getBytes()));
 
             // We need to send cancellations now, because the Event won't exist after the commit
             for (long eventId: mSendCancelIdList) {
@@ -1504,7 +1507,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         // status 6 error during sync
         if (isException) {
            // Send exception deleted flag if necessary
-            Integer deleted = entityValues.getAsInteger(CalendarContract.Events.DELETED);
+            Integer deleted = entityValues.getAsInteger(Events.DELETED);
             boolean isDeleted = deleted != null && deleted == 1;
             Integer eventStatus = entityValues.getAsInteger(Events.STATUS);
             boolean isCanceled = eventStatus != null && eventStatus.equals(Events.STATUS_CANCELED);
@@ -1894,7 +1897,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                         mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
                                 cidValues, null, null);
                     } else {
-                        if (entityValues.getAsInteger(CalendarContract.Events.DELETED) == 1) {
+                        if (entityValues.getAsInteger(Events.DELETED) == 1) {
                             userLog("Deleting event with serverId: ", serverId);
                             s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
                             mDeletedIdList.add(eventId);
@@ -1966,7 +1969,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                     exEntity.addSubValue(ncv.uri, ncv.values);
                                 }
 
-                                if ((getInt(exValues, CalendarContract.Events.DELETED) == 1) ||
+                                if ((getInt(exValues, Events.DELETED) == 1) ||
                                         (getInt(exValues, Events.STATUS) ==
                                             Events.STATUS_CANCELED)) {
                                     flag = Message.FLAG_OUTGOING_MEETING_CANCEL;
