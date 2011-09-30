@@ -2085,13 +2085,16 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         ContentValues cv = new ContentValues();
                         cv.put(ExtendedProperties.VALUE, newTokenizedAttendees.toString());
                         if (attendeeString != null) {
-                            cr.update(ContentUris.withAppendedId(ExtendedProperties.CONTENT_URI,
-                                    attendeeStringId), cv, null, null);
+                            cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                                    ExtendedProperties.CONTENT_URI, attendeeStringId),
+                                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                    cv, null, null);
                         } else {
                             // If there wasn't an "attendees" property, insert one
                             cv.put(ExtendedProperties.NAME, EXTENDED_PROPERTY_ATTENDEES);
                             cv.put(ExtendedProperties.EVENT_ID, eventId);
-                            cr.insert(ExtendedProperties.CONTENT_URI, cv);
+                            cr.insert(asSyncAdapter(ExtendedProperties.CONTENT_URI,
+                                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv);
                         }
                         // Whoever is left has been removed from the attendee list; send them
                         // a cancellation
