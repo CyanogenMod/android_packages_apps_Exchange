@@ -177,7 +177,9 @@
         [CHAR LIMIT=40] -->
     <string name="policy_max_attachment_size">restrict attachment size</string>
     <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
-    <string name="policy_require_encryption">require device or sd card encryption</string>
+    <string name="policy_require_encryption">require device encryption</string>
+    <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
+    <string name="policy_require_sd_encryption">require sd card encryption</string>
 
     <!--  The window length strings below MUST remain in sync with those in com.android.email -->
     <!-- In account setup options & account settings screens (exchange), sync window length; this

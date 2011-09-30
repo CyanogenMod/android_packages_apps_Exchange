@@ -213,10 +213,15 @@ public class ProvisionParser extends Parser {
                     // Read, but ignore, value
                     policy.mPasswordRecoveryEnabled = getValueInt() == 1;
                     break;
-                // The following policies, if true, can't be supported at the moment
                 // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which we do
                 // not yet support.
                 case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
+                    if (getValueInt() == 1) {
+                        tagIsSupported = false;
+                        unsupportedList.add(R.string.policy_require_sd_encryption);
+                    }
+                    break;
+                // The following policies, if true, can't be supported at the moment
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_ENCRYPTED_SMIME_MESSAGES:
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_ALGORITHM:
@@ -224,7 +229,6 @@ public class ProvisionParser extends Parser {
                     if (getValueInt() == 1) {
                         tagIsSupported = false;
                         if (!smimeRequired) {
-                            res = R.string.policy_require_smime;
                             unsupportedList.add(R.string.policy_require_smime);
                             smimeRequired = true;
                         }
