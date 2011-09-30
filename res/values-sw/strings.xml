@@ -28,7 +28,7 @@
     <string name="meeting_allday" msgid="6696389765484663513">"Lini: <xliff:g id="EVENTDATE">%s</xliff:g> (siku nzima)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"Lini: <xliff:g id="EVENTDATE">%s</xliff:g> (siku nzima, inajirudia)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Kalenda ya Exchange imeongezwa"</string>
-    <string name="app_name" msgid="5316597712787122829">"Huduma za Exchange"</string>
+    <string name="app_name" msgid="5316597712787122829">"Huduma za Ubadilishanaji"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Tukio hili limeghairiwa kwa: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Maelezo ya tukio hili yamebadilishwa kwa: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"usiruhusu viambatisho"</string>
@@ -54,7 +54,7 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"weka mipaka ya ukubwa wa barua pepe za maandishi"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"weka mipaka ya ukubwa wa barua pepe za HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"weka mipaka ya ukubwa wa viambatisho"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"inahitaji usimbaji fiche wa kifaa au kadi ya sd"</string>
+    <string name="policy_require_encryption" msgid="9370390981258441">"inahitaji sharti fiche la kifaa au kadi ya sd"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Kiotomatiki"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Siku moja"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Siku tatu"</string>
