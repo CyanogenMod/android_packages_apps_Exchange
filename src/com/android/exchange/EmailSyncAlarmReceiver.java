@@ -45,6 +45,8 @@ import java.util.ArrayList;
  * changes to be uploaded.
  * 6) ESAR calls SyncManager to start syncs of those mailboxes
  *
+ * If EmailProvider isn't available, the upsyncs will happen the next time ExchangeService starts
+ *
  */
 public class EmailSyncAlarmReceiver extends BroadcastReceiver {
     final String[] MAILBOX_DATA_PROJECTION = {MessageColumns.MAILBOX_KEY};
@@ -70,6 +72,7 @@ public class EmailSyncAlarmReceiver extends BroadcastReceiver {
             // Find all of the deletions
             Cursor c = cr.query(Message.DELETED_CONTENT_URI, MAILBOX_DATA_PROJECTION, selector,
                    null, null);
+            if (c == null) throw new ProviderUnavailableException();
             try {
                 // Keep track of which mailboxes to notify; we'll only notify each one once
                 while (c.moveToNext()) {
@@ -86,6 +89,7 @@ public class EmailSyncAlarmReceiver extends BroadcastReceiver {
             // Now, find changed messages
             c = cr.query(Message.UPDATED_CONTENT_URI, MAILBOX_DATA_PROJECTION, selector,
                     null, null);
+            if (c == null) throw new ProviderUnavailableException();
             try {
                 // Keep track of which mailboxes to notify; we'll only notify each one once
                 while (c.moveToNext()) {
