@@ -914,6 +914,7 @@ public class ExchangeService extends Service implements Runnable {
                                                 mAccountId, Mailbox.TYPE_CALENDAR);
                                         // Sanity check for mailbox deletion
                                         if (mailbox == null) return;
+                                        ContentValues cv = new ContentValues();
                                         if (newSyncEvents == 0) {
                                             // When sync is disabled, we're supposed to delete
                                             // all events in the calendar
@@ -931,9 +932,10 @@ public class ExchangeService extends Service implements Runnable {
                                             } catch (IOException e) {
                                                 // The provider can't be reached; nothing to be done
                                             }
-                                            // Reset the sync key locally
-                                            ContentValues cv = new ContentValues();
+                                            // Reset the sync key locally and stop syncing
                                             cv.put(Mailbox.SYNC_KEY, "0");
+                                            cv.put(Mailbox.SYNC_INTERVAL,
+                                                    Mailbox.CHECK_INTERVAL_NEVER);
                                             mResolver.update(ContentUris.withAppendedId(
                                                     Mailbox.CONTENT_URI, mailbox.mId), cv, null,
                                                     null);
@@ -947,9 +949,14 @@ public class ExchangeService extends Service implements Runnable {
                                             mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
                                                     new String[] {Long.toString(mCalendarId)});
                                         } else {
-                                            // If we're in a ping, stop it so that calendar sync can
-                                            // start right away
-                                            stopPing(mAccountId);
+                                            // Make this a push mailbox and kick; this will start
+                                            // a resync of the Calendar; the account mailbox will
+                                            // ping on this during the next cycle of the ping loop
+                                            cv.put(Mailbox.SYNC_INTERVAL,
+                                                    Mailbox.CHECK_INTERVAL_PUSH);
+                                            mResolver.update(ContentUris.withAppendedId(
+                                                    Mailbox.CONTENT_URI, mailbox.mId), cv, null,
+                                                    null);
                                             kick("calendar sync changed");
                                         }
 
