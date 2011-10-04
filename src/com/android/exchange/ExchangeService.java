@@ -475,10 +475,22 @@ public class ExchangeService extends Service implements Runnable {
          * @throws RemoteException
          */
         public void deleteAccountPIMData(long accountId) throws RemoteException {
+            ExchangeService exchangeService = INSTANCE;
+            if (exchangeService == null) return;
             // Stop any running syncs
             ExchangeService.stopAccountSyncs(accountId);
             // Delete the data
             ExchangeService.deleteAccountPIMData(accountId);
+            long accountMailboxId = Mailbox.findMailboxOfType(exchangeService, accountId,
+                    Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
+            if (accountMailboxId != Mailbox.NO_MAILBOX) {
+                // Make sure the account mailbox is held due to security
+                synchronized(sSyncLock) {
+                    mSyncErrorMap.put(accountMailboxId, exchangeService.new SyncError(
+                            AbstractSyncService.EXIT_SECURITY_FAILURE, false));
+
+                }
+            }
         }
 
         public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
@@ -635,17 +647,13 @@ public class ExchangeService extends Service implements Runnable {
                 public void run() {
                     synchronized (mAccountList) {
                         for (Account account : mAccountList) {
-                            if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+                            if (onSecurityHold(account)) {
                                 // If we're in a security hold, and our policies are active, release
-                                // the hold; otherwise, ping PolicyService that this account's
-                                // policies are required
+                                // the hold
                                 if (PolicyServiceProxy.isActive(ExchangeService.this, null)) {
                                     PolicyServiceProxy.setAccountHoldFlag(ExchangeService.this,
                                             account, false);
                                     log("isActive true; release hold for " + account.mDisplayName);
-                                } else {
-                                    PolicyServiceProxy.policiesRequired(ExchangeService.this,
-                                            account.mId);
                                 }
                             }
                         }
@@ -2081,6 +2089,7 @@ public class ExchangeService extends Service implements Runnable {
             if (policy == null) {
                 policy = Policy.restorePolicyWithId(INSTANCE, policyKey);
                 account.mPolicy = policy;
+                if (!PolicyServiceProxy.isActive(exchangeService, policy)) return false;
             }
             if (policy != null && policy.mRequireManualSyncWhenRoaming && networkInfo.isRoaming()) {
                 return false;
@@ -2344,7 +2353,6 @@ public class ExchangeService extends Service implements Runnable {
 
     static public void sendMessageRequest(Request req) {
         ExchangeService exchangeService = INSTANCE;
-        if (exchangeService == null) return;
         Message msg = Message.restoreMessageWithId(exchangeService, req.mMessageId);
         if (msg == null) {
             return;

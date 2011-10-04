@@ -120,66 +120,70 @@
 
     <!-- The following are a list of policies that the user's server might require, but that can't
         be enforced by our device.  We will list them separated by commas, as required -->
-    <!-- A policy in which attachments aren't allowed to be downloaded [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_attachments">don\'t allow attachments</string>
     <!-- A policy in which the device may not have a storage card [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_storage_cards">don\'t allow storage cards</string>
+    <string name="policy_dont_allow_storage_cards">Don\'t allow storage cards</string>
     <!-- A policy in which the device may not have unsigned applications installed
         [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_unsigned_apps">don\'t allow unsigned applications</string>
+    <string name="policy_dont_allow_unsigned_apps">Don\'t allow unsigned applications</string>
     <!-- A policy in which the device may not allow application installation via an unsigned
         installer [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_unsigned_installers">don\'t allow unsigned application
+    <string name="policy_dont_allow_unsigned_installers">Don\'t allow unsigned application
         installers</string>
     <!-- A policy in which the device may not allow wifi communications [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_wifi">don\'t allow wifi</string>
+    <string name="policy_dont_allow_wifi">Don\'t allow wifi</string>
     <!-- A policy in which the device may not allow text messaging [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_text_messaging">don\'t allow text messaging</string>
+    <string name="policy_dont_allow_text_messaging">Don\'t allow text messaging</string>
     <!-- A policy in which the device may not allow POP3 or IMAP email accounts [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_pop_imap">don\'t allow POP3 or IMAP accounts</string>
+    <string name="policy_dont_allow_pop_imap">Don\'t allow POP3 or IMAP accounts</string>
     <!-- A policy in which the device may allow infrared communications [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_irda">don\'t allow infrared communications</string>
+    <string name="policy_dont_allow_irda">Don\'t allow infrared communications</string>
     <!-- A policy in which the device may allow HTML email to be received [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_html">don\'t allow HTML email</string>
+    <string name="policy_dont_allow_html">Don\'t allow HTML email</string>
     <!-- A policy in which the device may not allow the user of web browsers [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_browser">don\'t allow browsers</string>
+    <string name="policy_dont_allow_browser">Don\'t allow browsers</string>
     <!-- A policy in which the device may not allow the receipt of consumer email
         [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_consumer_email">don\'t allow consumer email</string>
+    <string name="policy_dont_allow_consumer_email">Don\'t allow consumer email</string>
     <!-- A policy in which the device may not allow internet connection sharing
         [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_internet_sharing">don\'t allow internet sharing</string>
-    <!-- A policy in which the device can use a recovery password [CHAR LIMIT=40] -->
-    <string name="policy_enable_password_recovery">support a recovery password</string>
+    <string name="policy_dont_allow_internet_sharing">Don\'t allow internet sharing</string>
     <!-- A policy in which messages must be in SMIME format [CHAR LIMIT=40] -->
-    <string name="policy_require_smime">require SMIME messages</string>
-    <!-- A policy in which the device may only sync manually while roaming [CHAR LIMIT=40] -->
-    <string name="policy_require_manual_sync_roaming">only allow manual sync while roaming</string>
+    <string name="policy_require_smime">Require SMIME messages</string>
     <!-- A policy in which the device's bluetooth capabilities are restricted [CHAR LIMIT=40] -->
-    <string name="policy_bluetooth_restricted">restrict bluetooth usage</string>
+    <string name="policy_bluetooth_restricted">Restrict bluetooth usage</string>
     <!-- A policy in which the device blocks specified applications [CHAR LIMIT=40]-->
-    <string name="policy_app_blacklist">disallow specified applications</string>
+    <string name="policy_app_blacklist">Disallow specified applications</string>
     <!-- A policy in which the device allows only specified applications [CHAR LIMIT=40] -->
-    <string name="policy_app_whitelist">allow only specified applications</string>
+    <string name="policy_app_whitelist">Allow only specified applications</string>
     <!-- A policy in which the device allows only calendar items newer than a specified date
         [CHAR LIMIT=40] -->
-    <string name="policy_max_calendar_age">restrict calendar event dates</string>
+    <string name="policy_max_calendar_age">Restrict calendar event dates</string>
     <!-- A policy in which the device allows only email items newer than a specified date
         [CHAR LIMIT=40] -->
-    <string name="policy_max_email_age">restrict email dates</string>
+    <string name="policy_max_email_age">Restrict email dates</string>
     <!-- A policy in which the device limits the amount of text that can be displayed for a
         given message [CHAR LIMIT=40] -->
-    <string name="policy_text_truncation">restrict text email size</string>
+    <string name="policy_text_truncation">Restrict text email size</string>
     <!-- A policy in which the device limits the amount of HTML text that can be displayed for a
         given message [CHAR LIMIT=40] -->
-    <string name="policy_html_truncation">restrict HTML email size</string>
+    <string name="policy_html_truncation">Restrict HTML email size</string>
+    <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
+    <string name="policy_require_sd_encryption">Require sd card encryption</string>
+
+    <!-- The following are a list of policies that the user's server requires and that are
+         in force.  We will list them separated by commas, as required -->
+    <!-- A policy in which attachments aren't allowed to be downloaded [CHAR LIMIT=40] -->
+    <string name="policy_dont_allow_attachments">Don\'t allow attachments</string>
     <!-- A policy in which the device restricts the size of attachments that can be downloaded
         [CHAR LIMIT=40] -->
-    <string name="policy_max_attachment_size">restrict attachment size</string>
+    <string name="policy_max_attachment_size">Restrict attachment size</string>
+    <!-- A policy in which the device may only sync manually while roaming [CHAR LIMIT=40] -->
+    <string name="policy_require_manual_sync_roaming">Only allow manual sync while roaming</string>
+
+    <!-- The following is a policy that may or not be supported on a particular device -->
     <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
-    <string name="policy_require_encryption">require device encryption</string>
-    <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
-    <string name="policy_require_sd_encryption">require sd card encryption</string>
+    <string name="policy_require_encryption">Require device encryption</string>
+
 
     <!--  The window length strings below MUST remain in sync with those in com.android.email -->
     <!-- In account setup options & account settings screens (exchange), sync window length; this

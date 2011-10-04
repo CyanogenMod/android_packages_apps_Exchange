@@ -15,14 +15,13 @@
 
 package com.android.exchange.adapter;
 
+import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.res.Resources;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
-import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
-import com.android.exchange.SecurityPolicyDelegate;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -35,22 +34,20 @@ import java.util.ArrayList;
 
 /**
  * Parse the result of the Provision command
- *
- * Assuming a successful parse, we store the PolicySet and the policy key
  */
 public class ProvisionParser extends Parser {
     private final EasSyncService mService;
-    Policy mPolicy = null;
-    String mSecuritySyncKey = null;
-    boolean mRemoteWipe = false;
-    boolean mIsSupportable = true;
-    // An array of string resource id's describing policies that are unsupported by the device/app
-    String[] mUnsupportedPolicies;
-    boolean smimeRequired = false;
+    private Policy mPolicy = null;
+    private String mSecuritySyncKey = null;
+    private boolean mRemoteWipe = false;
+    private boolean mIsSupportable = true;
+    private boolean smimeRequired = false;
+    private final Resources mResources;
 
     public ProvisionParser(InputStream in, EasSyncService service) throws IOException {
         super(in);
         mService = service;
+        mResources = service.mContext.getResources();
     }
 
     public Policy getPolicy() {
@@ -73,18 +70,32 @@ public class ProvisionParser extends Parser {
         return (mPolicy != null) && mIsSupportable;
     }
 
-    public void clearUnsupportedPolicies() {
-        mPolicy = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicy);
+    public void clearUnsupportablePolicies() {
         mIsSupportable = true;
-        mUnsupportedPolicies = null;
+        mPolicy.mProtocolPoliciesUnsupported = null;
     }
 
-    public String[] getUnsupportedPolicies() {
-        return mUnsupportedPolicies;
+    private void addPolicyString(StringBuilder sb, int res) {
+        sb.append(mResources.getString(res));
+        sb.append(Policy.POLICY_STRING_DELIMITER);
     }
 
+    /**
+     * Complete setup of a Policy; we normalize it first (removing inconsistencies, etc.) and then
+     * generate the tokenized "protocol policies enforced" string.  Note that unsupported policies
+     * must have been added prior to calling this method (this is only a possibility with wbxml
+     * policy documents, as all versions of the OS support the policies in xml documents).
+     */
     private void setPolicy(Policy policy) {
         policy.normalize();
+        StringBuilder sb = new StringBuilder();
+        if (policy.mDontAllowAttachments) {
+            addPolicyString(sb, R.string.policy_dont_allow_attachments);
+        }
+        if (policy.mRequireManualSyncWhenRoaming) {
+            addPolicyString(sb, R.string.policy_require_manual_sync_roaming);
+        }
+        policy.mProtocolPoliciesEnforced = sb.toString();
         mPolicy = policy;
     }
 
@@ -203,7 +214,15 @@ public class ProvisionParser extends Parser {
                 // below with the call to SecurityPolicy.isSupported()
                 case Tags.PROVISION_REQUIRE_DEVICE_ENCRYPTION:
                     if (getValueInt() == 1) {
-                        policy.mRequireEncryption = true;
+                        DevicePolicyManager dpm = (DevicePolicyManager)
+                             mService.mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+                        int status = dpm.getStorageEncryptionStatus();
+                        if (status == DevicePolicyManager.ENCRYPTION_STATUS_UNSUPPORTED) {
+                            tagIsSupported = false;
+                            unsupportedList.add(R.string.policy_require_encryption);
+                        } else {
+                            policy.mRequireEncryption = true;
+                        }
                     }
                     break;
                 // Note this policy; we enforce it in ExchangeService
@@ -217,8 +236,8 @@ public class ProvisionParser extends Parser {
                     // Read, but ignore, value
                     policy.mPasswordRecoveryEnabled = getValueInt() == 1;
                     break;
-                // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which we do
-                // not yet support.
+                // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which the OS
+                // does not yet support.
                 case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
                     if (getValueInt() == 1) {
                         tagIsSupported = false;
@@ -315,26 +334,16 @@ public class ProvisionParser extends Parser {
         if (!passwordEnabled) {
             policy.mPasswordMode = Policy.PASSWORD_MODE_NONE;
         }
-        setPolicy(policy);
-
-        // We can only determine whether encryption is supported on device by using isSupported here
-        if (!SecurityPolicyDelegate.isSupported(mService.mContext, policy)) {
-            log("SecurityPolicy reports PolicySet not supported.");
-            mIsSupportable = false;
-            unsupportedList.add(R.string.policy_require_encryption);
-        }
 
         if (!unsupportedList.isEmpty()) {
-            mUnsupportedPolicies = new String[unsupportedList.size()];
-            int i = 0;
-            Context context = ExchangeService.getContext();
-            if (context != null) {
-                Resources resources = context.getResources();
-                for (int res: unsupportedList) {
-                    mUnsupportedPolicies[i++] = resources.getString(res);
-                }
+            StringBuilder sb = new StringBuilder();
+            for (int res: unsupportedList) {
+                addPolicyString(sb, res);
             }
+            policy.mProtocolPoliciesUnsupported = sb.toString();
         }
+
+        setPolicy(policy);
     }
 
     /**
