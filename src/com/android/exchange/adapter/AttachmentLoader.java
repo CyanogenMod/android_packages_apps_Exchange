@@ -212,7 +212,7 @@ public class AttachmentLoader {
                             if (len != 0) {
                                 // len > 0 means that Content-Length was set in the headers
                                 // len < 0 means "chunked" transfer-encoding
-                                readChunked(is, os, len);
+                                readChunked(is, os, (len < 0) ? mAttachmentSize : len);
                                 finishLoadAttachment();
                                 return;
                             }
