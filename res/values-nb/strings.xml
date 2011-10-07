@@ -54,7 +54,8 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"begrens størr. på e-post i tekstformat"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"begrens størr. på e-post i HTML-format"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"begrens vedleggsstørrelse"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"krev kryptering av enhet eller SD-kort"</string>
+    <string name="policy_require_encryption" msgid="1488761894213160246">"kreve enhetskryptering"</string>
+    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"kreve kryptering av SD-kort"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatisk"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Én dag"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tre dager"</string>

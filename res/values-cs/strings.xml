@@ -54,7 +54,8 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"Omezit velikost textových e-mailů"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"Omezit velikost e-mailů ve formátu HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"Omezit velikost příloh"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"Požadovat šifrování zařízení/karty SD"</string>
+    <string name="policy_require_encryption" msgid="1488761894213160246">"požadovat šifrování zařízení"</string>
+    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"požadovat šifrování karty SD"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatické"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Jeden den"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tři dny"</string>

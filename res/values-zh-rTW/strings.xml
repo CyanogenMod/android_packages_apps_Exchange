@@ -54,7 +54,8 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"限制文字電郵件大小"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"限制 HTML 電子郵件大小"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"限制附件大小"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"需要裝置或 SD 卡加密"</string>
+    <string name="policy_require_encryption" msgid="1488761894213160246">"需要裝置加密"</string>
+    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"需要 SD 卡加密"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"自動"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"1 天"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"3 天"</string>

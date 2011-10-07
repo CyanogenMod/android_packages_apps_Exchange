@@ -54,7 +54,8 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"limitar tamanho de e-mails de texto"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"limitar o tamanho de e-mails em HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"limitar o tamanho dos anexos"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"req. encriptação do aparelho ou cartão sd"</string>
+    <string name="policy_require_encryption" msgid="1488761894213160246">"requerer encriptação do aparelho"</string>
+    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"requerer encriptação do cartão sd"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automático"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Um dia"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Três dias"</string>
