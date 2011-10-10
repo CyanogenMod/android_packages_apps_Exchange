@@ -54,7 +54,8 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"apriboti teksto el. laiškų dydį"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"apriboti HTML el. laiškų dydį"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"apriboti priedo dydį"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"reikal. įreng. ar SD kortelės šifruotės"</string>
+    <string name="policy_require_encryption" msgid="1488761894213160246">"reikalauti įrenginio šifravimo"</string>
+    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"reikalauti SD kortelės šifravimo"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatinis"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Vieną dieną"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tris dienas"</string>

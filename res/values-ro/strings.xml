@@ -54,7 +54,8 @@
     <string name="policy_text_truncation" msgid="5800480928209379255">"limitaţi dimensiunea e-mailului text"</string>
     <string name="policy_html_truncation" msgid="629030762178870832">"limitaţi dimensiunea e-mailului HTML"</string>
     <string name="policy_max_attachment_size" msgid="6191034264088052742">"limitaţi dimensiunea ataşamentului"</string>
-    <string name="policy_require_encryption" msgid="9370390981258441">"solicit. criptarea dispoz./cardului SD"</string>
+    <string name="policy_require_encryption" msgid="1488761894213160246">"necesită criptarea dispozitivului"</string>
+    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"necesită criptarea cardului SD"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automat"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"O zi"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Trei zile"</string>
