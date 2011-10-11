@@ -110,6 +110,8 @@ public class AttachmentLoader {
         // Loop terminates 1) when EOF is reached or 2) IOException occurs
         // One of these is guaranteed to occur
         int totalRead = 0;
+        int lastCallbackPct = -1;
+        int lastCallbackTotalRead = 0;
         mService.userLog("Expected attachment length: ", len);
         while (true) {
             int read = inputStream.read(bytes, 0, CHUNK_SIZE);
@@ -126,8 +128,15 @@ public class AttachmentLoader {
 
             // We can't report percentage if data is chunked; the length of incoming data is unknown
             if (length > 0) {
-                // Report progress back to the UI
-                doProgressCallback((totalRead * 100) / length);
+                int pct = (totalRead * 100) / length;
+                // Callback only if we've read at least 1% more and have read more than CHUNK_SIZE
+                // We don't want to spam the Email app
+                if ((pct > lastCallbackPct) && (totalRead > (lastCallbackTotalRead + CHUNK_SIZE))) {
+                    // Report progress back to the UI
+                    doProgressCallback(pct);
+                    lastCallbackTotalRead = totalRead;
+                    lastCallbackPct = pct;
+                }
             }
         }
         if (totalRead > length) {
