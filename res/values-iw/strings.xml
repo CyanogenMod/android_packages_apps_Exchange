@@ -27,7 +27,7 @@
     <string name="meeting_recurring" msgid="3134262212606714023">"מתי: <xliff:g id="EVENTDATE">%s</xliff:g> (אירוע חוזר)"</string>
     <string name="meeting_allday" msgid="6696389765484663513">"מתי: <xliff:g id="EVENTDATE">%s</xliff:g> (כל יום)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"מתי: <xliff:g id="EVENTDATE">%s</xliff:g> (כל היום, חוזר)"</string>
-    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"נוסף לוח שנה של Exchange"</string>
+    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"נוסף יומן של Exchange"</string>
     <string name="app_name" msgid="5316597712787122829">"שירותי Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"אירוע זה בוטל לתאריך: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"הפרטים של אירוע זה השתנו בתאריך: <xliff:g id="DATE">%s</xliff:g>"</string>
