@@ -76,7 +76,6 @@ import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.CalendarUtilities;
-import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -1189,7 +1188,6 @@ public class EasSyncService extends AbstractSyncService {
     /*package*/ void setHeaders(HttpRequestBase method, boolean usePolicyKey) {
         method.setHeader("Authorization", mAuthString);
         method.setHeader("MS-ASProtocolVersion", mProtocolVersion);
-        method.setHeader("Connection", "keep-alive");
         method.setHeader("User-Agent", USER_AGENT);
         method.setHeader("Accept-Encoding", "gzip");
         if (usePolicyKey) {
@@ -1323,7 +1321,14 @@ public class EasSyncService extends AbstractSyncService {
         } else if (entity != null) {
             method.setHeader("Content-Type", "application/vnd.ms-sync.wbxml");
         }
-        setHeaders(method, !cmd.equals(PING_COMMAND));
+        setHeaders(method, !isPingCommand);
+        // NOTE
+        // The next lines are added at the insistence of $VENDOR, who is seeing inappropriate
+        // network activity related to the Ping command on some networks with some servers.
+        // This code should be removed when the underlying issue is resolved
+        if (isPingCommand) {
+            method.setHeader("Connection", "close");
+        }
         method.setEntity(entity);
         return executePostWithTimeout(client, method, timeout, isPingCommand);
     }
