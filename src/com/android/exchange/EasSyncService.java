@@ -76,6 +76,7 @@ import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.CalendarUtilities;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
