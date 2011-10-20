@@ -426,15 +426,19 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         EasResponse resp = mService.sendHttpClientPost("GetItemEstimate",
                 new ByteArrayEntity(s.toByteArray()), EasSyncService.COMMAND_TIMEOUT);
-        int code = resp.getStatus();
-        if (code == HttpStatus.SC_OK) {
-            if (!resp.isEmpty()) {
-                InputStream is = resp.getInputStream();
-                GetItemEstimateParser gieParser = new GetItemEstimateParser(is);
-                gieParser.parse();
-                // Return the estimated number of items
-                return gieParser.mEstimate;
+        try {
+            int code = resp.getStatus();
+            if (code == HttpStatus.SC_OK) {
+                if (!resp.isEmpty()) {
+                    InputStream is = resp.getInputStream();
+                    GetItemEstimateParser gieParser = new GetItemEstimateParser(is);
+                    gieParser.parse();
+                    // Return the estimated number of items
+                    return gieParser.mEstimate;
+                }
             }
+        } finally {
+            resp.close();
         }
         // If we can't get an estimate, indicate this...
         return -1;
