@@ -146,13 +146,22 @@ public class EasResponse {
     }
 
     public void close() {
-        if (mEntity != null && !mClosed) {
-            try {
-                mEntity.consumeContent();
-            } catch (IOException e) {
-                // No harm, no foul
+        if (!mClosed) {
+            if (mEntity != null) {
+                try {
+                    mEntity.consumeContent();
+                } catch (IOException e) {
+                    // No harm, no foul
+                }
             }
+            if (mInputStream instanceof GZIPInputStream) {
+                try {
+                    mInputStream.close();
+                } catch (IOException e) {
+                    // We tried
+                }
+            }
+            mClosed = true;
         }
-        mClosed = true;
     }
 }
