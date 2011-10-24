@@ -61,6 +61,10 @@ public class ProvisionParser extends Parser {
         return mSecuritySyncKey;
     }
 
+    public void setSecuritySyncKey(String securitySyncKey) {
+        mSecuritySyncKey = securitySyncKey;
+    }
+
     public boolean getRemoteWipe() {
         return mRemoteWipe;
     }
