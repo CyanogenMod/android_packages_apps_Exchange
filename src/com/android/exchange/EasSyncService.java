@@ -72,6 +72,7 @@ import com.android.exchange.adapter.Parser.EmptyStreamException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.Serializer;
+import com.android.exchange.adapter.SettingsParser;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.provider.MailboxUtilities;
@@ -388,6 +389,12 @@ public class EasSyncService extends AbstractSyncService {
             Log.w(TAG, "No supported EAS versions: " + supportedVersions);
             throw new MessagingException(MessagingException.PROTOCOL_VERSION_UNSUPPORTED);
         } else {
+            // Debug code for testing EAS 14.0; disables support for EAS 14.1
+            // "adb shell setprop log.tag.Exchange14 VERBOSE"
+            if (ourVersion.equals(Eas.SUPPORTED_PROTOCOL_EX2010_SP1) &&
+                    Log.isLoggable("Exchange14", Log.VERBOSE)) {
+                ourVersion = Eas.SUPPORTED_PROTOCOL_EX2010;
+            }
             service.mProtocolVersion = ourVersion;
             service.mProtocolVersionDouble = Eas.getProtocolVersionDouble(ourVersion);
             Account account = service.mAccount;
@@ -553,12 +560,19 @@ public class EasSyncService extends AbstractSyncService {
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
                         bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
                                 pp.getPolicy());
+                        if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                            mAccount.mSecuritySyncKey = pp.getSecuritySyncKey();
+                            if (!sendSettings()) {
+                                userLog("Denied access: ", CommandStatus.toString(status));
+                                resultCode = MessagingException.ACCESS_DENIED;
+                            }
+                        }
                     } else
                         // If not, set the proper code (the account will not be created)
                         resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
                         bundle.putStringArray(
                                 EmailServiceProxy.VALIDATE_BUNDLE_UNSUPPORTED_POLICIES,
-                                pp.getUnsupportedPolicies());
+                                ((pp == null) ? new String[0] : pp.getUnsupportedPolicies()));
                 } else if (CommandStatus.isDeniedAccess(status)) {
                     userLog("Denied access: ", CommandStatus.toString(status));
                     resultCode = MessagingException.ACCESS_DENIED;
@@ -1414,8 +1428,14 @@ public class EasSyncService extends AbstractSyncService {
             } else if (SecurityPolicyDelegate.isActive(mContext, policy)) {
                 // See if the required policies are in force; if they are, acknowledge the policies
                 // to the server and get the final policy key
-                String securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
-                        PROVISION_STATUS_OK);
+                // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
+                String securitySyncKey;
+                if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                    securitySyncKey = pp.getSecuritySyncKey();
+                } else {
+                    securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                            PROVISION_STATUS_OK);
+                }
                 if (securitySyncKey != null) {
                     // If attachment policies have changed, fix up any affected attachment records
                     if (oldPolicy != null) {
@@ -1453,8 +1473,8 @@ public class EasSyncService extends AbstractSyncService {
     private ProvisionParser canProvision() throws IOException {
         Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION);
-        if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
-            // Send settings information in 14.0 and greater
+        if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
+            // Send settings information in 14.1 and greater
             s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
             s.data(Tags.SETTINGS_MODEL, Build.MODEL);
             //s.data(Tags.SETTINGS_IMEI, "");
@@ -1479,7 +1499,16 @@ public class EasSyncService extends AbstractSyncService {
                 if (pp.parse()) {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
                     // policies.  If others are required, hasSupportablePolicySet will be false
-                    if (!pp.hasSupportablePolicySet())  {
+                    if (pp.hasSupportablePolicySet() &&
+                            mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                        // In EAS 14.0, we need the final security key in order to use the settings
+                        // command
+                        String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                                PROVISION_STATUS_OK);
+                        if (policyKey != null) {
+                            pp.setSecuritySyncKey(policyKey);
+                        }
+                    } else if (!pp.hasSupportablePolicySet())  {
                         // Try to acknowledge using the "partial" status (i.e. we can partially
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
@@ -1497,6 +1526,7 @@ public class EasSyncService extends AbstractSyncService {
         } finally {
             resp.close();
         }
+
         // On failures, simply return null
         return null;
     }
@@ -1554,6 +1584,29 @@ public class EasSyncService extends AbstractSyncService {
         ExchangeService.log("Provision confirmation failed for" +
                 (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
         return null;
+    }
+
+    private boolean sendSettings() throws IOException {
+        Serializer s = new Serializer();
+        s.start(Tags.SETTINGS_SETTINGS);
+        s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
+        s.data(Tags.SETTINGS_MODEL, Build.MODEL);
+        s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
+        s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
+        s.end().end().end().done(); // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION, SETTINGS_SETTINGS
+        EasResponse resp = sendHttpClientPost("Settings", s.toByteArray());
+        try {
+            int code = resp.getStatus();
+            if (code == HttpStatus.SC_OK) {
+                InputStream is = resp.getInputStream();
+                SettingsParser sp = new SettingsParser(is, this);
+                return sp.parse();
+            }
+        } finally {
+            resp.close();
+        }
+        // On failures, simply return false
+        return false;
     }
 
     /**
