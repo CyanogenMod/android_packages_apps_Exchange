@@ -54,6 +54,7 @@ import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -190,7 +191,7 @@ public class EasSyncService extends AbstractSyncService {
     static private final String PROVISION_STATUS_PARTIAL = "2";
 
     static /*package*/ final String DEVICE_TYPE = "Android";
-    static private final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
+    static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
 
     // Reasonable default
@@ -554,7 +555,7 @@ public class EasSyncService extends AbstractSyncService {
                 int status = e.mStatus;
                 if (CommandStatus.isNeedsProvisioning(status)) {
                     // Get the policies and see if we are able to support them
-                    ProvisionParser pp = canProvision();
+                    ProvisionParser pp = canProvision(this);
                     if (pp != null && pp.hasSupportablePolicySet()) {
                         // Set the proper result code and save the PolicySet in our Bundle
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
@@ -567,12 +568,12 @@ public class EasSyncService extends AbstractSyncService {
                                 resultCode = MessagingException.ACCESS_DENIED;
                             }
                         }
-                    } else
+                    } else {
                         // If not, set the proper code (the account will not be created)
                         resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
-                        bundle.putStringArray(
-                                EmailServiceProxy.VALIDATE_BUNDLE_UNSUPPORTED_POLICIES,
-                                ((pp == null) ? new String[0] : pp.getUnsupportedPolicies()));
+                        bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
+                                pp.getPolicy());
+                    }
                 } else if (CommandStatus.isDeniedAccess(status)) {
                     userLog("Denied access: ", CommandStatus.toString(status));
                     resultCode = MessagingException.ACCESS_DENIED;
@@ -1379,88 +1380,77 @@ public class EasSyncService extends AbstractSyncService {
      * @return whether or not provisioning has been successful
      * @throws IOException
      */
-    private boolean tryProvision() throws IOException {
+    public static boolean tryProvision(EasSyncService svc) throws IOException {
         // First, see if provisioning is even possible, i.e. do we support the policies required
         // by the server
-        ProvisionParser pp = canProvision();
-        if (pp != null && pp.hasSupportablePolicySet()) {
-            // Get the policies from ProvisionParser
-            Policy policy = pp.getPolicy();
-            Policy oldPolicy = null;
-            // Grab the old policy (if any)
-            if (mAccount.mPolicyKey > 0) {
-                oldPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+        ProvisionParser pp = canProvision(svc);
+        if (pp == null) return false;
+        Context context = svc.mContext;
+        Account account = svc.mAccount;
+        // Get the policies from ProvisionParser
+        Policy policy = pp.getPolicy();
+        Policy oldPolicy = null;
+        // Grab the old policy (if any)
+        if (svc.mAccount.mPolicyKey > 0) {
+            oldPolicy = Policy.restorePolicyWithId(context, account.mPolicyKey);
+        }
+        // Update the account with a null policyKey (the key we've gotten is
+        // temporary and cannot be used for syncing)
+        PolicyServiceProxy.setAccountPolicy(context, account.mId, policy, null);
+        // Make sure mAccount is current (with latest policy key)
+        account.refresh(context);
+        if (pp.getRemoteWipe()) {
+            // We've gotten a remote wipe command
+            ExchangeService.alwaysLog("!!! Remote wipe request received");
+            // Start by setting the account to security hold
+            PolicyServiceProxy.setAccountHoldFlag(context, account, true);
+            // Force a stop to any running syncs for this account (except this one)
+            ExchangeService.stopNonAccountMailboxSyncsForAccount(account.mId);
+
+            // First, we've got to acknowledge it, but wrap the wipe in try/catch so that
+            // we wipe the device regardless of any errors in acknowledgment
+            try {
+                ExchangeService.alwaysLog("!!! Acknowledging remote wipe to server");
+                acknowledgeRemoteWipe(svc, pp.getSecuritySyncKey());
+            } catch (Exception e) {
+                // Because remote wipe is such a high priority task, we don't want to
+                // circumvent it if there's an exception in acknowledgment
             }
-            // Update the account with a null policyKey (the key we've gotten is
-            // temporary and cannot be used for syncing)
-            Policy.setAccountPolicy(mContext, mAccount, policy, null);
-            // Make sure mAccount is current (with latest policy key)
-            mAccount.refresh(mContext);
-            // Make sure that SecurityPolicy is up-to-date
-            SecurityPolicyDelegate.policiesUpdated(mContext, mAccount.mId);
-            if (pp.getRemoteWipe()) {
-                // We've gotten a remote wipe command
-                ExchangeService.alwaysLog("!!! Remote wipe request received");
-                // Start by setting the account to security hold
-                SecurityPolicyDelegate.setAccountHoldFlag(mContext, mAccount, true);
-                // Force a stop to any running syncs for this account (except this one)
-                ExchangeService.stopNonAccountMailboxSyncsForAccount(mAccount.mId);
-
-                // If we're not the admin, we can't do the wipe, so just return
-                if (!SecurityPolicyDelegate.isActiveAdmin(mContext)) {
-                    ExchangeService.alwaysLog("!!! Not device admin; can't wipe");
-                    return false;
-                }
-
-                // First, we've got to acknowledge it, but wrap the wipe in try/catch so that
-                // we wipe the device regardless of any errors in acknowledgment
-                try {
-                    ExchangeService.alwaysLog("!!! Acknowledging remote wipe to server");
-                    acknowledgeRemoteWipe(pp.getSecuritySyncKey());
-                } catch (Exception e) {
-                    // Because remote wipe is such a high priority task, we don't want to
-                    // circumvent it if there's an exception in acknowledgment
-                }
-                // Then, tell SecurityPolicy to wipe the device
-                ExchangeService.alwaysLog("!!! Executing remote wipe");
-                SecurityPolicyDelegate.remoteWipe(mContext);
-                return false;
-            } else if (SecurityPolicyDelegate.isActive(mContext, policy)) {
-                // See if the required policies are in force; if they are, acknowledge the policies
-                // to the server and get the final policy key
-                // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
-                String securitySyncKey;
-                if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
-                    securitySyncKey = pp.getSecuritySyncKey();
-                } else {
-                    securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
-                            PROVISION_STATUS_OK);
-                }
-                if (securitySyncKey != null) {
-                    // If attachment policies have changed, fix up any affected attachment records
-                    if (oldPolicy != null) {
-                        if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
-                                (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
-                            Policy.setAttachmentFlagsForNewPolicy(mContext, mAccount, policy);
-                        }
-                    }
-                    // Write the final policy key to the Account and say we've been successful
-                    Policy.setAccountPolicy(mContext, mAccount, policy, securitySyncKey);
-                    // Release any mailboxes that might be in a security hold
-                    ExchangeService.releaseSecurityHold(mAccount);
-                    return true;
-                }
+            // Then, tell SecurityPolicy to wipe the device
+            ExchangeService.alwaysLog("!!! Executing remote wipe");
+            PolicyServiceProxy.remoteWipe(context);
+            return false;
+        } else if (pp.hasSupportablePolicySet() && PolicyServiceProxy.isActive(context, policy)) {
+            // See if the required policies are in force; if they are, acknowledge the policies
+            // to the server and get the final policy key
+            // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
+            String securitySyncKey;
+            if (svc.mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                securitySyncKey = pp.getSecuritySyncKey();
             } else {
-                // Notify that we are blocked because of policies
-                // TODO: Indicate unsupported policies here?
-                SecurityPolicyDelegate.policiesRequired(mContext, mAccount.mId);
+                securitySyncKey = acknowledgeProvision(svc, pp.getSecuritySyncKey(),
+                        PROVISION_STATUS_OK);
+            }
+            if (securitySyncKey != null) {
+                // If attachment policies have changed, fix up any affected attachment records
+                if (oldPolicy != null) {
+                    if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
+                            (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
+                        Policy.setAttachmentFlagsForNewPolicy(context, account, policy);
+                    }
+                }
+                // Write the final policy key to the Account and say we've been successful
+                PolicyServiceProxy.setAccountPolicy(context, account.mId, policy, securitySyncKey);
+                // Release any mailboxes that might be in a security hold
+                ExchangeService.releaseSecurityHold(account);
+                return true;
             }
         }
         return false;
     }
 
-    private String getPolicyType() {
-        return (mProtocolVersionDouble >=
+    private static String getPolicyType(Double protocolVersion) {
+        return (protocolVersion >=
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
@@ -1470,10 +1460,11 @@ public class EasSyncService extends AbstractSyncService {
      * @return the ProvisionParser (holds policies and key) if we receive policies; null otherwise
      * @throws IOException
      */
-    private ProvisionParser canProvision() throws IOException {
+    public static ProvisionParser canProvision(EasSyncService svc) throws IOException {
         Serializer s = new Serializer();
+        Double protocolVersion = svc.mProtocolVersionDouble;
         s.start(Tags.PROVISION_PROVISION);
-        if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
+        if (svc.mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
             // Send settings information in 14.1 and greater
             s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
             s.data(Tags.SETTINGS_MODEL, Build.MODEL);
@@ -1483,27 +1474,27 @@ public class EasSyncService extends AbstractSyncService {
             //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
             //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
             //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
-            s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
+            s.data(Tags.SETTINGS_USER_AGENT, EasSyncService.USER_AGENT);
             s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
         }
         s.start(Tags.PROVISION_POLICIES);
-        s.start(Tags.PROVISION_POLICY).data(Tags.PROVISION_POLICY_TYPE, getPolicyType()).end();
-        s.end();  // PROVISION_POLICIES
-        s.end().done(); // PROVISION_PROVISION
-        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
+        s.start(Tags.PROVISION_POLICY);
+        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(protocolVersion));
+        s.end().end().end().done(); // PROVISION_POLICY, PROVISION_POLICIES, PROVISION_PROVISION
+        EasResponse resp = svc.sendHttpClientPost("Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                ProvisionParser pp = new ProvisionParser(is, this);
+                ProvisionParser pp = new ProvisionParser(is, svc);
                 if (pp.parse()) {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
                     // policies.  If others are required, hasSupportablePolicySet will be false
                     if (pp.hasSupportablePolicySet() &&
-                            mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                            svc.mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                         // In EAS 14.0, we need the final security key in order to use the settings
                         // command
-                        String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                        String policyKey = acknowledgeProvision(svc, pp.getSecuritySyncKey(),
                                 PROVISION_STATUS_OK);
                         if (policyKey != null) {
                             pp.setSecuritySyncKey(policyKey);
@@ -1513,11 +1504,11 @@ public class EasSyncService extends AbstractSyncService {
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
                         ExchangeService.log("PolicySet is NOT fully supportable");
-                        String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
-                                PROVISION_STATUS_PARTIAL);
-                        // Return either the parser (success) or null (failure)
-                        if (policyKey != null) {
-                            pp.clearUnsupportedPolicies();
+                        if (acknowledgeProvision(svc, pp.getSecuritySyncKey(),
+                                PROVISION_STATUS_PARTIAL) != null) {
+                            // The server's ok with our inability to support policies, so we'll
+                            // clear them
+                            pp.clearUnsupportablePolicies();
                         }
                     }
                     return pp;
@@ -1538,22 +1529,24 @@ public class EasSyncService extends AbstractSyncService {
      * @return the final policy key, which can be used for syncing
      * @throws IOException
      */
-    private void acknowledgeRemoteWipe(String tempKey) throws IOException {
-        acknowledgeProvisionImpl(tempKey, PROVISION_STATUS_OK, true);
+    private static void acknowledgeRemoteWipe(EasSyncService svc, String tempKey)
+            throws IOException {
+        acknowledgeProvisionImpl(svc, tempKey, PROVISION_STATUS_OK, true);
     }
 
-    private String acknowledgeProvision(String tempKey, String result) throws IOException {
-        return acknowledgeProvisionImpl(tempKey, result, false);
+    private static String acknowledgeProvision(EasSyncService svc, String tempKey, String result)
+            throws IOException {
+        return acknowledgeProvisionImpl(svc, tempKey, result, false);
     }
 
-    private String acknowledgeProvisionImpl(String tempKey, String status,
-            boolean remoteWipe) throws IOException {
+    private static String acknowledgeProvisionImpl(EasSyncService svc, String tempKey,
+            String status, boolean remoteWipe) throws IOException {
         Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION).start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY);
 
         // Use the proper policy type, depending on EAS version
-        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType());
+        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(svc.mProtocolVersionDouble));
 
         s.data(Tags.PROVISION_POLICY_KEY, tempKey);
         s.data(Tags.PROVISION_STATUS, status);
@@ -1564,15 +1557,16 @@ public class EasSyncService extends AbstractSyncService {
             s.end();
         }
         s.end().done(); // PROVISION_PROVISION
-        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
+        EasResponse resp = svc.sendHttpClientPost("Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                ProvisionParser pp = new ProvisionParser(is, this);
+                ProvisionParser pp = new ProvisionParser(is, svc);
                 if (pp.parse()) {
                     // Return the final policy key from the ProvisionParser
-                    ExchangeService.log("Provision confirmation received for " +
+                    String result = (pp.getSecuritySyncKey() == null) ? "failed" : "confirmed";
+                    ExchangeService.log("Provision " + result + " for " +
                             (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
                     return pp.getSecuritySyncKey();
                 }
@@ -1581,7 +1575,7 @@ public class EasSyncService extends AbstractSyncService {
             resp.close();
         }
         // On failures, log issue and return null
-        ExchangeService.log("Provision confirmation failed for" +
+        ExchangeService.log("Provisioning failed for" +
                 (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
         return null;
     }
@@ -1777,7 +1771,7 @@ public class EasSyncService extends AbstractSyncService {
                 String key = mAccount.mSecuritySyncKey;
                 if (!TextUtils.isEmpty(key)) {
                     Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
-                    if ((policy != null) && !SecurityPolicyDelegate.isActive(mContext, policy)) {
+                    if ((policy != null) && !PolicyServiceProxy.isActive(mContext, policy)) {
                         resetSecurityPolicies();
                     }
                 }
@@ -1805,7 +1799,7 @@ public class EasSyncService extends AbstractSyncService {
             // creation of multiple policy keys.
             int status = e.mStatus;
             if (CommandStatus.isNeedsProvisioning(status)) {
-                if (!tryProvision()) {
+                if (!tryProvision(this)) {
                     // Set the appropriate failure status
                     mExitStatus = EXIT_SECURITY_FAILURE;
                     return;
@@ -2489,7 +2483,6 @@ public class EasSyncService extends AbstractSyncService {
         long accountId = mAccount.mId;
         mContentResolver.update(ContentUris.withAppendedId(
                 Account.CONTENT_URI, accountId), cv, null, null);
-        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
     }
 
     @Override
