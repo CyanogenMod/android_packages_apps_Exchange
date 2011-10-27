@@ -79,7 +79,7 @@ public class EasOutboxService extends EasSyncService {
     // failure would probably generate an Exception before timing out anyway
     public static final int SEND_MAIL_TIMEOUT = 15*MINUTES;
 
-    public EasOutboxService(Context _context, Mailbox _mailbox) {
+    protected EasOutboxService(Context _context, Mailbox _mailbox) {
         super(_context, _mailbox);
     }
 
