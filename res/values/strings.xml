@@ -124,13 +124,13 @@
     <string name="policy_dont_allow_storage_cards">Don\'t allow storage cards</string>
     <!-- A policy in which the device may not have unsigned applications installed
         [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_unsigned_apps">Don\'t allow unsigned applications</string>
+    <string name="policy_dont_allow_unsigned_apps">Don\'t allow unsigned apps</string>
     <!-- A policy in which the device may not allow application installation via an unsigned
         installer [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_unsigned_installers">Don\'t allow unsigned application
+    <string name="policy_dont_allow_unsigned_installers">Don\'t allow unsigned app
         installers</string>
     <!-- A policy in which the device may not allow wifi communications [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_wifi">Don\'t allow wifi</string>
+    <string name="policy_dont_allow_wifi">Don\'t allow Wi-Fi</string>
     <!-- A policy in which the device may not allow text messaging [CHAR LIMIT=40] -->
     <string name="policy_dont_allow_text_messaging">Don\'t allow text messaging</string>
     <!-- A policy in which the device may not allow POP3 or IMAP email accounts [CHAR LIMIT=40] -->
@@ -146,15 +146,15 @@
     <string name="policy_dont_allow_consumer_email">Don\'t allow consumer email</string>
     <!-- A policy in which the device may not allow internet connection sharing
         [CHAR LIMIT=40] -->
-    <string name="policy_dont_allow_internet_sharing">Don\'t allow internet sharing</string>
+    <string name="policy_dont_allow_internet_sharing">Don\'t allow Internet sharing</string>
     <!-- A policy in which messages must be in SMIME format [CHAR LIMIT=40] -->
     <string name="policy_require_smime">Require SMIME messages</string>
     <!-- A policy in which the device's bluetooth capabilities are restricted [CHAR LIMIT=40] -->
-    <string name="policy_bluetooth_restricted">Restrict bluetooth usage</string>
+    <string name="policy_bluetooth_restricted">Restrict Bluetooth usage</string>
     <!-- A policy in which the device blocks specified applications [CHAR LIMIT=40]-->
-    <string name="policy_app_blacklist">Disallow specified applications</string>
+    <string name="policy_app_blacklist">Disallow specified apps</string>
     <!-- A policy in which the device allows only specified applications [CHAR LIMIT=40] -->
-    <string name="policy_app_whitelist">Allow only specified applications</string>
+    <string name="policy_app_whitelist">Allow only specified apps</string>
     <!-- A policy in which the device allows only calendar items newer than a specified date
         [CHAR LIMIT=40] -->
     <string name="policy_max_calendar_age">Restrict calendar event dates</string>
@@ -168,7 +168,7 @@
         given message [CHAR LIMIT=40] -->
     <string name="policy_html_truncation">Restrict HTML email size</string>
     <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=40] -->
-    <string name="policy_require_sd_encryption">Require sd card encryption</string>
+    <string name="policy_require_sd_encryption">Require SD card encryption</string>
 
     <!-- The following are a list of policies that the user's server requires and that are
          in force.  We will list them separated by commas, as required -->
