@@ -31,31 +31,30 @@
     <string name="app_name" msgid="5316597712787122829">"Exchange-dienste"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Hierdie gebeurtenis is gekanselleer vir: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Die details van hierdie gebeurtenis het verander vir: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"moenie aanhegsels toelaat nie"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"moenie geheuekaarte toelaat nie"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"moenie ongetekende programme toelaat nie"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"moenie ongetekende programinstalleerders toelaat nie"</string>
-    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"moenie Wi-Fi toelaat nie"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"moenie teksboodskappe toelaat nie"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"moenie POP3- of IMAP-rekeninge toelaat nie"</string>
-    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"moenie infrarooi kommunikasie toelaat nie"</string>
-    <string name="policy_dont_allow_html" msgid="5004059292137838041">"moenie HTML-e-pos toelaat nie"</string>
-    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"moenie blaaiers toelaat nie"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"moenie verbruiker-e-pos toelaat nie"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"moenie internetdeling toelaat nie"</string>
-    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"ondersteun \'n terugstelwagwoord"</string>
-    <string name="policy_require_smime" msgid="8044392674810605617">"vereis SMIME-boodskappe"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"laat net handmatige sinkronisasie toe tydens swerwing"</string>
-    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"beperk Bluetooth-gebruik"</string>
-    <string name="policy_app_blacklist" msgid="5997243461425995435">"weier aangeduide programme"</string>
-    <string name="policy_app_whitelist" msgid="8401297908870017913">"laat net aangeduide programme toe"</string>
-    <string name="policy_max_calendar_age" msgid="6394557044887221078">"beperk datums van kalendergebeurtenisse"</string>
-    <string name="policy_max_email_age" msgid="3303242808829681352">"beperk datums van e-posse"</string>
-    <string name="policy_text_truncation" msgid="5800480928209379255">"beperk grootte van teks-e-pos"</string>
-    <string name="policy_html_truncation" msgid="629030762178870832">"beperk grootte van HTML-e-pos"</string>
-    <string name="policy_max_attachment_size" msgid="6191034264088052742">"beperk aanhegselgrootte"</string>
-    <string name="policy_require_encryption" msgid="1488761894213160246">"vereis toestelenkripsie"</string>
-    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"vereis SD-kaart-enkripsie"</string>
+    <!-- outdated translation 5600453721690619515 -->     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"moenie geheuekaarte toelaat nie"</string>
+    <!-- outdated translation 7391405270957498716 -->     <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"moenie ongetekende programme toelaat nie"</string>
+    <!-- outdated translation 8124763529572916905 -->     <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"moenie ongetekende programinstalleerders toelaat nie"</string>
+    <!-- outdated translation 8972952227139360866 -->     <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"moenie Wi-Fi toelaat nie"</string>
+    <!-- outdated translation 2705534889421216691 -->     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"moenie teksboodskappe toelaat nie"</string>
+    <!-- outdated translation 1563948038306495433 -->     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"moenie POP3- of IMAP-rekeninge toelaat nie"</string>
+    <!-- outdated translation 2864744455266260846 -->     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"moenie infrarooi kommunikasie toelaat nie"</string>
+    <!-- outdated translation 5004059292137838041 -->     <string name="policy_dont_allow_html" msgid="5888652525907651489">"moenie HTML-e-pos toelaat nie"</string>
+    <!-- outdated translation 1898383003253987916 -->     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"moenie blaaiers toelaat nie"</string>
+    <!-- outdated translation 4208507021679199773 -->     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"moenie verbruiker-e-pos toelaat nie"</string>
+    <!-- outdated translation 8866772202653485379 -->     <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"moenie internetdeling toelaat nie"</string>
+    <!-- outdated translation 8044392674810605617 -->     <string name="policy_require_smime" msgid="673557150920820590">"vereis SMIME-boodskappe"</string>
+    <!-- outdated translation 8992284721368381918 -->     <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"beperk Bluetooth-gebruik"</string>
+    <!-- outdated translation 5997243461425995435 -->     <string name="policy_app_blacklist" msgid="1189715710822154918">"weier aangeduide programme"</string>
+    <!-- outdated translation 8401297908870017913 -->     <string name="policy_app_whitelist" msgid="8710495057780148422">"laat net aangeduide programme toe"</string>
+    <!-- outdated translation 6394557044887221078 -->     <string name="policy_max_calendar_age" msgid="3323514646413599036">"beperk datums van kalendergebeurtenisse"</string>
+    <!-- outdated translation 3303242808829681352 -->     <string name="policy_max_email_age" msgid="3845699096249945617">"beperk datums van e-posse"</string>
+    <!-- outdated translation 5800480928209379255 -->     <string name="policy_text_truncation" msgid="1783448050735715818">"beperk grootte van teks-e-pos"</string>
+    <!-- outdated translation 629030762178870832 -->     <string name="policy_html_truncation" msgid="102158408055486343">"beperk grootte van HTML-e-pos"</string>
+    <!-- outdated translation 2425281481414518903 -->     <string name="policy_require_sd_encryption" msgid="6651284589918775701">"vereis SD-kaart-enkripsie"</string>
+    <!-- outdated translation 7924303012593832731 -->     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"moenie aanhegsels toelaat nie"</string>
+    <!-- outdated translation 6191034264088052742 -->     <string name="policy_max_attachment_size" msgid="4020279603050888661">"beperk aanhegselgrootte"</string>
+    <!-- outdated translation 7140792029820703854 -->     <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"laat net handmatige sinkronisasie toe tydens swerwing"</string>
+    <!-- outdated translation 1488761894213160246 -->     <string name="policy_require_encryption" msgid="7984702283392885348">"vereis toestelenkripsie"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Outomaties"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Een dag"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Drie dae"</string>

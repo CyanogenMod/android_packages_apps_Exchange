@@ -31,31 +31,30 @@
     <string name="app_name" msgid="5316597712787122829">"سرویس های Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"این رویداد لغو شده است به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"جزئیات این رویداد تغییر کرده اند به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"پیوست ها مجاز نباشد"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"کارت های حافظه مجاز نباشد"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"برنامه های امضا نشده مجاز نباشد"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"نصب کننده های برنامه امضا نشده مجاز نباشد"</string>
-    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"wifi مجاز نباشد"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"پیامرسانی متنی مجاز نباشد"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"حساب های POP3 یا IMAP مجاز نباشد"</string>
-    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"ارتباطات مادون قرمز مجاز نباشد"</string>
-    <string name="policy_dont_allow_html" msgid="5004059292137838041">"ایمیل HTML مجاز نباشد"</string>
-    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"مرورگرها مجاز نباشد"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"ایمیل مصرف کننده مجاز نباشد"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"اشتراک گذاری اینترنت مجاز نباشد"</string>
-    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"پشتیبانی رمز عبور بازیابی"</string>
-    <string name="policy_require_smime" msgid="8044392674810605617">"پیام های SMIME مورد نیاز است"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"تنها همگام سازی دستی هنگام رومینگ مجاز باشد"</string>
-    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"محدود کردن استفاده از بلوتوث"</string>
-    <string name="policy_app_blacklist" msgid="5997243461425995435">"برنامه های خاص مجاز نباشد"</string>
-    <string name="policy_app_whitelist" msgid="8401297908870017913">"تنها برنامه های خاص مجاز باشد"</string>
-    <string name="policy_max_calendar_age" msgid="6394557044887221078">"محدود کردن تاریخ های رویداد تقویم"</string>
-    <string name="policy_max_email_age" msgid="3303242808829681352">"محدود کردن تاریخ های ایمیل"</string>
-    <string name="policy_text_truncation" msgid="5800480928209379255">"محدود کردن اندازه متن ایمیل"</string>
-    <string name="policy_html_truncation" msgid="629030762178870832">"محدود کردن اندازه ایمیل HTML"</string>
-    <string name="policy_max_attachment_size" msgid="6191034264088052742">"محدود کردن اندازه پیوست"</string>
-    <string name="policy_require_encryption" msgid="1488761894213160246">"نیاز به رمزگذاری دستگاه دارد"</string>
-    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"نیاز به رمزگذاری کارت sd دارد"</string>
+    <!-- outdated translation 5600453721690619515 -->     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"کارت های حافظه مجاز نباشد"</string>
+    <!-- outdated translation 7391405270957498716 -->     <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"برنامه های امضا نشده مجاز نباشد"</string>
+    <!-- outdated translation 8124763529572916905 -->     <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"نصب کننده های برنامه امضا نشده مجاز نباشد"</string>
+    <!-- outdated translation 8972952227139360866 -->     <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"wifi مجاز نباشد"</string>
+    <!-- outdated translation 2705534889421216691 -->     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"پیامرسانی متنی مجاز نباشد"</string>
+    <!-- outdated translation 1563948038306495433 -->     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"حساب های POP3 یا IMAP مجاز نباشد"</string>
+    <!-- outdated translation 2864744455266260846 -->     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"ارتباطات مادون قرمز مجاز نباشد"</string>
+    <!-- outdated translation 5004059292137838041 -->     <string name="policy_dont_allow_html" msgid="5888652525907651489">"ایمیل HTML مجاز نباشد"</string>
+    <!-- outdated translation 1898383003253987916 -->     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"مرورگرها مجاز نباشد"</string>
+    <!-- outdated translation 4208507021679199773 -->     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ایمیل مصرف کننده مجاز نباشد"</string>
+    <!-- outdated translation 8866772202653485379 -->     <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"اشتراک گذاری اینترنت مجاز نباشد"</string>
+    <!-- outdated translation 8044392674810605617 -->     <string name="policy_require_smime" msgid="673557150920820590">"پیام های SMIME مورد نیاز است"</string>
+    <!-- outdated translation 8992284721368381918 -->     <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"محدود کردن استفاده از بلوتوث"</string>
+    <!-- outdated translation 5997243461425995435 -->     <string name="policy_app_blacklist" msgid="1189715710822154918">"برنامه های خاص مجاز نباشد"</string>
+    <!-- outdated translation 8401297908870017913 -->     <string name="policy_app_whitelist" msgid="8710495057780148422">"تنها برنامه های خاص مجاز باشد"</string>
+    <!-- outdated translation 6394557044887221078 -->     <string name="policy_max_calendar_age" msgid="3323514646413599036">"محدود کردن تاریخ های رویداد تقویم"</string>
+    <!-- outdated translation 3303242808829681352 -->     <string name="policy_max_email_age" msgid="3845699096249945617">"محدود کردن تاریخ های ایمیل"</string>
+    <!-- outdated translation 5800480928209379255 -->     <string name="policy_text_truncation" msgid="1783448050735715818">"محدود کردن اندازه متن ایمیل"</string>
+    <!-- outdated translation 629030762178870832 -->     <string name="policy_html_truncation" msgid="102158408055486343">"محدود کردن اندازه ایمیل HTML"</string>
+    <!-- outdated translation 2425281481414518903 -->     <string name="policy_require_sd_encryption" msgid="6651284589918775701">"نیاز به رمزگذاری کارت sd دارد"</string>
+    <!-- outdated translation 7924303012593832731 -->     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"پیوست ها مجاز نباشد"</string>
+    <!-- outdated translation 6191034264088052742 -->     <string name="policy_max_attachment_size" msgid="4020279603050888661">"محدود کردن اندازه پیوست"</string>
+    <!-- outdated translation 7140792029820703854 -->     <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"تنها همگام سازی دستی هنگام رومینگ مجاز باشد"</string>
+    <!-- outdated translation 1488761894213160246 -->     <string name="policy_require_encryption" msgid="7984702283392885348">"نیاز به رمزگذاری دستگاه دارد"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"خودکار"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"یک روز"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"سه روز"</string>
