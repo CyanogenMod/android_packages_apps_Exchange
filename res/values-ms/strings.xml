@@ -31,31 +31,30 @@
     <string name="app_name" msgid="5316597712787122829">"Perkhidmatan Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Acara ini sudah dibatalkan untuk: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Butiran acara ini telah ditukar kepada: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"tidak membenarkan lampiran"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"tidak membenarkan kad storan"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"tidak membenarkan apl tanpa tandatangan"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"tidak benarkn pemsg apl tnpa tandatangan"</string>
-    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"tidak membenarkan wifi"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"tidak membenarkan pemesejan teks"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"tidak membenarkan akaun POP3 atau IMAP"</string>
-    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"tidak membenarkan komunikasi inframerah"</string>
-    <string name="policy_dont_allow_html" msgid="5004059292137838041">"tidak membenarkan e-mel HTML"</string>
-    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"tidak membenarkan penyemak imbas"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"tidak membenarkan e-mel pengguna"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"tidak membenarkan perkongsian internet"</string>
-    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"menyokong kata laluan pemulihan"</string>
-    <string name="policy_require_smime" msgid="8044392674810605617">"memerlukan mesej SMIME"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"benarkn segerak mnual shj smsa peryaun"</string>
-    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"mengehadkan penggunaan bluetooth"</string>
-    <string name="policy_app_blacklist" msgid="5997243461425995435">"tidak membenarkan aplikasi tertentu"</string>
-    <string name="policy_app_whitelist" msgid="8401297908870017913">"membenarkan aplikasi tertentu sahaja"</string>
-    <string name="policy_max_calendar_age" msgid="6394557044887221078">"mengehadkan tarikh acara kalendar"</string>
-    <string name="policy_max_email_age" msgid="3303242808829681352">"mengehadkan tarikh e-mel"</string>
-    <string name="policy_text_truncation" msgid="5800480928209379255">"mengehadkan saiz e-mel teks"</string>
-    <string name="policy_html_truncation" msgid="629030762178870832">"mengehadkan saiz e-mel HTML"</string>
-    <string name="policy_max_attachment_size" msgid="6191034264088052742">"mengehadkan saiz lampiran"</string>
-    <string name="policy_require_encryption" msgid="1488761894213160246">"memerlukan penyulitan peranti"</string>
-    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"memerlukan penyulitan kad sd"</string>
+    <!-- outdated translation 5600453721690619515 -->     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"tidak membenarkan kad storan"</string>
+    <!-- outdated translation 7391405270957498716 -->     <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"tidak membenarkan apl tanpa tandatangan"</string>
+    <!-- outdated translation 8124763529572916905 -->     <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"tidak benarkn pemsg apl tnpa tandatangan"</string>
+    <!-- outdated translation 8972952227139360866 -->     <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"tidak membenarkan wifi"</string>
+    <!-- outdated translation 2705534889421216691 -->     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"tidak membenarkan pemesejan teks"</string>
+    <!-- outdated translation 1563948038306495433 -->     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"tidak membenarkan akaun POP3 atau IMAP"</string>
+    <!-- outdated translation 2864744455266260846 -->     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"tidak membenarkan komunikasi inframerah"</string>
+    <!-- outdated translation 5004059292137838041 -->     <string name="policy_dont_allow_html" msgid="5888652525907651489">"tidak membenarkan e-mel HTML"</string>
+    <!-- outdated translation 1898383003253987916 -->     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"tidak membenarkan penyemak imbas"</string>
+    <!-- outdated translation 4208507021679199773 -->     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"tidak membenarkan e-mel pengguna"</string>
+    <!-- outdated translation 8866772202653485379 -->     <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"tidak membenarkan perkongsian internet"</string>
+    <!-- outdated translation 8044392674810605617 -->     <string name="policy_require_smime" msgid="673557150920820590">"memerlukan mesej SMIME"</string>
+    <!-- outdated translation 8992284721368381918 -->     <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"mengehadkan penggunaan bluetooth"</string>
+    <!-- outdated translation 5997243461425995435 -->     <string name="policy_app_blacklist" msgid="1189715710822154918">"tidak membenarkan aplikasi tertentu"</string>
+    <!-- outdated translation 8401297908870017913 -->     <string name="policy_app_whitelist" msgid="8710495057780148422">"membenarkan aplikasi tertentu sahaja"</string>
+    <!-- outdated translation 6394557044887221078 -->     <string name="policy_max_calendar_age" msgid="3323514646413599036">"mengehadkan tarikh acara kalendar"</string>
+    <!-- outdated translation 3303242808829681352 -->     <string name="policy_max_email_age" msgid="3845699096249945617">"mengehadkan tarikh e-mel"</string>
+    <!-- outdated translation 5800480928209379255 -->     <string name="policy_text_truncation" msgid="1783448050735715818">"mengehadkan saiz e-mel teks"</string>
+    <!-- outdated translation 629030762178870832 -->     <string name="policy_html_truncation" msgid="102158408055486343">"mengehadkan saiz e-mel HTML"</string>
+    <!-- outdated translation 2425281481414518903 -->     <string name="policy_require_sd_encryption" msgid="6651284589918775701">"memerlukan penyulitan kad sd"</string>
+    <!-- outdated translation 7924303012593832731 -->     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"tidak membenarkan lampiran"</string>
+    <!-- outdated translation 6191034264088052742 -->     <string name="policy_max_attachment_size" msgid="4020279603050888661">"mengehadkan saiz lampiran"</string>
+    <!-- outdated translation 7140792029820703854 -->     <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"benarkn segerak mnual shj smsa peryaun"</string>
+    <!-- outdated translation 1488761894213160246 -->     <string name="policy_require_encryption" msgid="7984702283392885348">"memerlukan penyulitan peranti"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatik"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Satu hari"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tiga hari"</string>

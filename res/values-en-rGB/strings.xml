@@ -31,31 +31,30 @@
     <string name="app_name" msgid="5316597712787122829">"Exchange Services"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"This event has been cancelled for: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"The details of this event have been changed for: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"don\'t allow attachments"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"don\'t allow storage cards"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"don\'t allow unsigned applications"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"don\'t allow unsigned application installers"</string>
-    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"don\'t allow Wi-Fi"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"don\'t allow text messaging"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"don\'t allow POP3 or IMAP accounts"</string>
-    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"don\'t allow infrared communications"</string>
-    <string name="policy_dont_allow_html" msgid="5004059292137838041">"don\'t allow HTML email"</string>
-    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"don\'t allow browsers"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"don\'t allow consumer email"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"don\'t allow Internet sharing"</string>
-    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"support a recovery password"</string>
-    <string name="policy_require_smime" msgid="8044392674810605617">"require SMIME messages"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"only allow manual sync while roaming"</string>
-    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"restrict Bluetooth usage"</string>
-    <string name="policy_app_blacklist" msgid="5997243461425995435">"disallow specified applications"</string>
-    <string name="policy_app_whitelist" msgid="8401297908870017913">"allow only specified applications"</string>
-    <string name="policy_max_calendar_age" msgid="6394557044887221078">"restrict calendar event dates"</string>
-    <string name="policy_max_email_age" msgid="3303242808829681352">"restrict email dates"</string>
-    <string name="policy_text_truncation" msgid="5800480928209379255">"restrict text email size"</string>
-    <string name="policy_html_truncation" msgid="629030762178870832">"restrict HTML email size"</string>
-    <string name="policy_max_attachment_size" msgid="6191034264088052742">"restrict attachment size"</string>
-    <string name="policy_require_encryption" msgid="1488761894213160246">"require device encryption"</string>
-    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"require sd card encryption"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"Don\'t allow storage cards"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"Don\'t allow unsigned applications"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"Don\'t allow unsigned application installers"</string>
+    <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"Don\'t allow Wi-Fi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Don\'t allow text messaging"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Don\'t allow POP3 or IMAP accounts"</string>
+    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Don\'t allow infrared communications"</string>
+    <string name="policy_dont_allow_html" msgid="5888652525907651489">"Don\'t allow HTML email"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Don\'t allow browsers"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Don\'t allow consumer email"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"Don\'t allow Internet sharing"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"Require SMIME messages"</string>
+    <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"Restrict Bluetooth usage"</string>
+    <string name="policy_app_blacklist" msgid="1189715710822154918">"Disallow specified applications"</string>
+    <string name="policy_app_whitelist" msgid="8710495057780148422">"Allow only specified applications"</string>
+    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Restrict calendar event dates"</string>
+    <string name="policy_max_email_age" msgid="3845699096249945617">"Restrict email dates"</string>
+    <string name="policy_text_truncation" msgid="1783448050735715818">"Restrict text email size"</string>
+    <string name="policy_html_truncation" msgid="102158408055486343">"Restrict HTML email size"</string>
+    <string name="policy_require_sd_encryption" msgid="6651284589918775701">"Require SD card encryption"</string>
+    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"Don\'t allow attachments"</string>
+    <string name="policy_max_attachment_size" msgid="4020279603050888661">"Restrict attachment size"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Only allow manual sync while roaming"</string>
+    <string name="policy_require_encryption" msgid="7984702283392885348">"Require device encryption"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatic"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"One day"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Three days"</string>
