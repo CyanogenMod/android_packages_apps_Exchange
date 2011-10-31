@@ -120,7 +120,12 @@ public class CalendarUtilities {
     private static HashMap<TimeZone, String> sTziStringCache = new HashMap<TimeZone, String>();
 
     private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
+    // Default, Popup
     private static final String ALLOWED_REMINDER_TYPES = "0,1";
+    // None, required, optional
+    private static final String ALLOWED_ATTENDEE_TYPES = "0,1,2";
+    // Busy, free, tentative
+    private static final String ALLOWED_AVAILABILITIES = "0,1,2";
 
     // There is no type 4 (thus, the "")
     static final String[] sTypeToFreq =
@@ -1320,6 +1325,8 @@ public class CalendarUtilities {
         cv.put(Calendars.CAN_MODIFY_TIME_ZONE, 0);
         cv.put(Calendars.MAX_REMINDERS, 1);
         cv.put(Calendars.ALLOWED_REMINDERS, ALLOWED_REMINDER_TYPES);
+        cv.put(Calendars.ALLOWED_ATTENDEE_TYPES, ALLOWED_ATTENDEE_TYPES);
+        cv.put(Calendars.ALLOWED_AVAILABILITY, ALLOWED_AVAILABILITIES);
 
         // TODO Coordinate account colors w/ Calendar, if possible
         int color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
