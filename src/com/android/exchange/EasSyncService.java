@@ -511,8 +511,13 @@ public class EasSyncService extends AbstractSyncService {
                         .end().end().done();
                     resp = sendHttpClientPost("FolderSync", s.toByteArray());
                     code = resp.getStatus();
-                    // We'll get one of the following responses if policies are required
-                    if (EasResponse.isProvisionError(code)) {
+                    // Handle HTTP error responses accordingly
+                    if (code == HttpStatus.SC_FORBIDDEN) {
+                        // For validation only, we take 403 as ACCESS_DENIED (the account isn't
+                        // authorized, possibly due to device type)
+                        resultCode = MessagingException.ACCESS_DENIED;
+                    } else if (EasResponse.isProvisionError(code)) {
+                        // The device needs to have security policies enforced
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (code == HttpStatus.SC_NOT_FOUND) {
                         // We get a 404 from OWA addresses (which are NOT EAS addresses)
