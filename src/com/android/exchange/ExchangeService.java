@@ -17,7 +17,6 @@
 
 package com.android.exchange;
 
-import android.accounts.AccountManager;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -732,15 +731,24 @@ public class ExchangeService extends Service implements Runnable {
                         // If the current list doesn't include this account and the account wasn't
                         // incomplete, then this is a deletion
                         if (!currentAccounts.contains(account.mId) && !accountIncomplete) {
-                            // Shut down any account-related syncs
-                            stopAccountSyncs(account.mId, true);
-                            // Delete this from AccountManager...
-                            android.accounts.Account acct = new android.accounts.Account(
-                                    account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                            AccountManager.get(ExchangeService.this)
-                            .removeAccount(acct, null, null);
-                            mSyncableEasMailboxSelector = null;
-                            mEasAccountSelector = null;
+                            // The implication is that the account has been deleted; let's find out
+                            alwaysLog("Observer found deleted account: " + account.mDisplayName);
+                            // Run the reconciler (the reconciliation itself runs in the Email app)
+                            runAccountReconcilerSync(ExchangeService.this);
+                            // See if the account is still around
+                            Account deletedAccount =
+                                Account.restoreAccountWithId(context, account.mId);
+                            if (deletedAccount != null) {
+                                // It is; add it to our account list
+                                alwaysLog("Account still in provider: " + account.mDisplayName);
+                                currentAccounts.add(account);
+                            } else {
+                                // It isn't; stop syncs and clear our selectors
+                                alwaysLog("Account deletion confirmed: " + account.mDisplayName);
+                                stopAccountSyncs(account.mId, true);
+                                mSyncableEasMailboxSelector = null;
+                                mEasAccountSelector = null;
+                            }
                         } else {
                             // Get the newest version of this account
                             Account updatedAccount =
@@ -797,7 +805,7 @@ public class ExchangeService extends Service implements Runnable {
                 // See if there's anything to do...
                 kick("account changed");
             } catch (ProviderUnavailableException e) {
-                Log.w(TAG, "Observer failed; provider unavailable");
+                alwaysLog("Observer failed; provider unavailable");
             }
         }
 
@@ -1898,7 +1906,7 @@ public class ExchangeService extends Service implements Runnable {
                 // on the insert/delete/update of mailboxes and accounts
                 // We also observe synced messages to trigger upsyncs at the appropriate time
                 mAccountObserver = new AccountObserver(mHandler);
-                mResolver.registerContentObserver(Account.CONTENT_URI, true, mAccountObserver);
+                mResolver.registerContentObserver(Account.NOTIFIER_URI, true, mAccountObserver);
                 mMailboxObserver = new MailboxObserver(mHandler);
                 mResolver.registerContentObserver(Mailbox.CONTENT_URI, false, mMailboxObserver);
                 mSyncedMessageObserver = new SyncedMessageObserver(mHandler);
