@@ -32,6 +32,7 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
@@ -303,6 +304,31 @@ public class EasAccountService extends EasSyncService {
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
+                        return;
+                    } else if (code == AUTO_DISCOVER_REDIRECT_CODE) {
+                        Header header = resp.getHeader("X-MS-Location");
+                        if (header != null) {
+                            String hostAddress = autodiscoverUrlToHostAddress(header.getValue());
+                            if (hostAddress != null) {
+                                errorLog("Exchange server redirect to " + hostAddress);
+                                cv.clear();
+                                cv.put(HostAuth.ADDRESS, hostAddress);
+                                // Update the account's address
+                                mContentResolver.update(
+                                        ContentUris.withAppendedId(HostAuth.CONTENT_URI,
+                                                mAccount.mHostAuthKeyRecv), cv, null, null);
+                                // And return normally; the sync will restart
+                                mExitStatus = EXIT_DONE;
+                                return;
+                            } else {
+                                // Not sure it's possible, but log it if it happens
+                                errorLog("Exchange server redirect without valid new location: " +
+                                        header.getValue());
+                            }
+                        } else {
+                            // Server would have to be broken, but ...
+                            errorLog("Exchange server redirect without new location?");
+                        }
                         return;
                     } else {
                         userLog("FolderSync response error: ", code);
