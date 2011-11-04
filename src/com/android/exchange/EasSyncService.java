@@ -118,7 +118,7 @@ public class EasSyncService extends AbstractSyncService {
     static private final String AUTO_DISCOVER_SCHEMA_PREFIX =
         "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
     static private final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
-    static private final int AUTO_DISCOVER_REDIRECT_CODE = 451;
+    static protected final int AUTO_DISCOVER_REDIRECT_CODE = 451;
 
     static public final int INTERNAL_SERVER_ERROR_CODE = 500;
 
@@ -625,6 +625,17 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
+     * Convert an EAS server url to a HostAuth host address
+     * @param url a url, as provided by the Exchange server
+     * @return our equivalent host address
+     */
+    protected String autodiscoverUrlToHostAddress(String url) {
+        if (url == null) return null;
+        // We need to extract the server address from a url
+        return Uri.parse(url).getHost();
+    }
+
+    /**
      * Use the Exchange 2007 AutoDiscover feature to try to retrieve server information using
      * only an email address and the password
      *
@@ -774,14 +785,11 @@ public class EasSyncService extends AbstractSyncService {
                         mobileSync = true;
                     }
                 } else if (mobileSync && name.equals("Url")) {
-                    String url = parser.nextText().toLowerCase();
-                    // This will look like https://<server address>/Microsoft-Server-ActiveSync
-                    // We need to extract the <server address>
-                    if (url.startsWith("https://") &&
-                            url.endsWith("/microsoft-server-activesync")) {
-                        int lastSlash = url.lastIndexOf('/');
-                        hostAuth.mAddress = url.substring(8, lastSlash);
-                        userLog("Autodiscover, server: " + hostAuth.mAddress);
+                    String hostAddress =
+                        autodiscoverUrlToHostAddress(parser.nextText());
+                    if (hostAddress != null) {
+                        hostAuth.mAddress = hostAddress;
+                        userLog("Autodiscover, server: " + hostAddress);
                     }
                 }
             }
