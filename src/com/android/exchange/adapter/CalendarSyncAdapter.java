@@ -2143,8 +2143,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                 cidValues.clear();
                                 cidValues.put(ExtendedProperties.VALUE,
                                         Integer.toString(currentStatus));
-                                cr.update(ContentUris.withAppendedId(ExtendedProperties.CONTENT_URI,
-                                        userAttendeeStatusId), cidValues, null, null);
+                                cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                                        ExtendedProperties.CONTENT_URI, userAttendeeStatusId),
+                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                        cidValues, null, null);
                                 // Send mail to the organizer advising of the new status
                                 EmailContent.Message msg =
                                     CalendarUtilities.createMessageForEventId(mContext, eventId,
