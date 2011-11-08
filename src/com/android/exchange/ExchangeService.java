@@ -2119,7 +2119,10 @@ public class ExchangeService extends Service implements Runnable {
     private boolean isMailboxSyncable(Account account, int type) {
         // This 'if' statement performs checks to see whether or not a mailbox is a
         // candidate for syncing based on policies, user settings, & other restrictions
-        if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
+        if (type == Mailbox.TYPE_OUTBOX || type == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+            // Outbox and account mailbox are always syncable
+            return true;
+        } else if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
             // Contacts/Calendar obey this setting from ContentResolver
             if (!ContentResolver.getMasterSyncAutomatically()) {
                 return false;
@@ -2146,13 +2149,11 @@ public class ExchangeService extends Service implements Runnable {
         // Never automatically sync trash
         } else if (type == Mailbox.TYPE_TRASH) {
             return false;
-        // For non-outbox mail, we do three checks:
+        // For non-outbox, non-account mail, we do three checks:
         // 1) are we restricted by policy (i.e. manual sync only),
         // 2) has the user checked the "Sync Email" box in Account Settings, and
         // 3) does the user have the master "background data" box checked in Settings
-        } else if (type != Mailbox.TYPE_OUTBOX &&
-                (!canAutoSync(account) || !canSyncEmail(account.mAmAccount) ||
-                        !mBackgroundData)) {
+        } else if (!canAutoSync(account) || !canSyncEmail(account.mAmAccount) || !mBackgroundData) {
             return false;
         }
         return true;
