@@ -1696,13 +1696,6 @@ public class EasSyncService extends AbstractSyncService {
                         // Save the protocol version in the account; if we're using 12.0 or greater,
                         // set the flag for support of SmartForward
                         cv.put(Account.PROTOCOL_VERSION, mProtocolVersion);
-                        if (mProtocolVersionDouble >= 12.0) {
-                            cv.put(Account.FLAGS,
-                                    mAccount.mFlags |
-                                    Account.FLAGS_SUPPORTS_SMART_FORWARD |
-                                    Account.FLAGS_SUPPORTS_SEARCH |
-                                    Account.FLAGS_SUPPORTS_GLOBAL_SEARCH);
-                        }
                         mAccount.update(mContext, cv);
                         cv.clear();
                         // Save the sync time of the account mailbox to current time
@@ -1715,6 +1708,16 @@ public class EasSyncService extends AbstractSyncService {
                 } finally {
                     resp.close();
                 }
+            }
+
+            // Make sure we've upgraded flags for ICS if we're using v12.0 or later
+            if (mProtocolVersionDouble >= 12.0 &&
+                    (mAccount.mFlags & Account.FLAGS_SUPPORTS_SEARCH) == 0) {
+                cv.clear();
+                mAccount.mFlags = mAccount.mFlags | Account.FLAGS_SUPPORTS_SMART_FORWARD |
+                        Account.FLAGS_SUPPORTS_SEARCH | Account.FLAGS_SUPPORTS_GLOBAL_SEARCH;
+                cv.put(AccountColumns.FLAGS, mAccount.mFlags);
+                mAccount.update(mContext, cv);
             }
 
             // Change all pushable boxes to push when we start the account mailbox
