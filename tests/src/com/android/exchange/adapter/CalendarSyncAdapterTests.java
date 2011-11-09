@@ -16,6 +16,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.adapter.AbstractSyncAdapter.Operation;
 import com.android.exchange.adapter.CalendarSyncAdapter.CalendarOperations;
 import com.android.exchange.adapter.CalendarSyncAdapter.EasCalendarSyncParser;
 import com.android.exchange.provider.MockProvider;
@@ -38,6 +39,7 @@ import android.test.suitebuilder.annotation.MediumTest;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
@@ -266,10 +268,12 @@ public class CalendarSyncAdapterTests extends SyncAdapterTestCase<CalendarSyncAd
 
     private int countInsertOperationsForTable(CalendarOperations ops, String tableName) {
         int cnt = 0;
-        for (ContentProviderOperation op: ops) {
-            List<String> segments = op.getUri().getPathSegments();
+        for (Operation op: ops) {
+            ContentProviderOperation cpo =
+                    AbstractSyncAdapter.operationToContentProviderOperation(op, 0);
+            List<String> segments = cpo.getUri().getPathSegments();
             if (segments.get(0).equalsIgnoreCase(tableName) &&
-                    op.getType() == ContentProviderOperation.TYPE_INSERT) {
+                    cpo.getType() == ContentProviderOperation.TYPE_INSERT) {
                 cnt++;
             }
         }
@@ -420,7 +424,11 @@ public class CalendarSyncAdapterTests extends SyncAdapterTestCase<CalendarSyncAd
         EasCalendarSyncParser p = event.getParser();
         p.addEvent(p.mOps, "1:1", update);
         // Send the CPO's to the mock provider
-        mMockResolver.applyBatch(MockProvider.AUTHORITY, p.mOps);
+        ArrayList<ContentProviderOperation> cpos = new ArrayList<ContentProviderOperation>();
+        for (Operation op: p.mOps) {
+            cpos.add(AbstractSyncAdapter.operationToContentProviderOperation(op, 0));
+        }
+        mMockResolver.applyBatch(MockProvider.AUTHORITY, cpos);
         return mMockResolver.query(MockProvider.uri(Attendees.CONTENT_URI), ATTENDEE_PROJECTION,
                 null, null, null);
     }
