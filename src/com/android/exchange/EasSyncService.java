@@ -1558,8 +1558,7 @@ public class EasSyncService extends AbstractSyncService {
         return false;
     }
 
-    /**
-     * Common code to sync E+PIM data
+    /** Common code to sync E+PIM data
      *
      * @param target an EasMailbox, EasContacts, or EasCalendar object
      */
