@@ -31,30 +31,30 @@
     <string name="app_name" msgid="5316597712787122829">"خدمات Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"تم إلغاء هذا الحدث لـ: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"تم تغيير التفاصيل لهذا الحدث لـ: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <!-- outdated translation 5600453721690619515 -->     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"عدم السماح ببطاقات التخزين"</string>
-    <!-- outdated translation 7391405270957498716 -->     <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"عدم السماح بالتطبيقات غير الموقعة"</string>
-    <!-- outdated translation 8124763529572916905 -->     <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"عدم السماح بمثبتات التطبيقات غير الموقعة"</string>
-    <!-- outdated translation 8972952227139360866 -->     <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"عدم السماح باتصالات wifi"</string>
-    <!-- outdated translation 2705534889421216691 -->     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"عدم السماح بالرسائل النصية"</string>
-    <!-- outdated translation 1563948038306495433 -->     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"عدم السماح بحسابات POP3 أو IMAP"</string>
-    <!-- outdated translation 2864744455266260846 -->     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"عدم السماح باتصالات الأشعة تحت الحمراء"</string>
-    <!-- outdated translation 5004059292137838041 -->     <string name="policy_dont_allow_html" msgid="5888652525907651489">"عدم السماح بالرسائل الإلكترونية بتنسيق HTML"</string>
-    <!-- outdated translation 1898383003253987916 -->     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"عدم السماح للمتصفحات"</string>
-    <!-- outdated translation 4208507021679199773 -->     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"عدم السماح بالرسائل الإلكترونية للعميل"</string>
-    <!-- outdated translation 8866772202653485379 -->     <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"عدم السماح بالمشاركة عبر الإنترنت"</string>
-    <!-- outdated translation 8044392674810605617 -->     <string name="policy_require_smime" msgid="673557150920820590">"طلب الرسائل بتنسيق SMIME"</string>
-    <!-- outdated translation 8992284721368381918 -->     <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"تقييد استخدام بلوتوث"</string>
-    <!-- outdated translation 5997243461425995435 -->     <string name="policy_app_blacklist" msgid="1189715710822154918">"عدم السماح بتطبيقات محددة"</string>
-    <!-- outdated translation 8401297908870017913 -->     <string name="policy_app_whitelist" msgid="8710495057780148422">"السماح بتطبيقات محددة فقط"</string>
-    <!-- outdated translation 6394557044887221078 -->     <string name="policy_max_calendar_age" msgid="3323514646413599036">"حصر تواريخ أحداث التقويم"</string>
-    <!-- outdated translation 3303242808829681352 -->     <string name="policy_max_email_age" msgid="3845699096249945617">"حصر تواريخ الرسائل الإلكترونية"</string>
-    <!-- outdated translation 5800480928209379255 -->     <string name="policy_text_truncation" msgid="1783448050735715818">"حصر حجم الرسالة الإلكترونية النصية"</string>
-    <!-- outdated translation 629030762178870832 -->     <string name="policy_html_truncation" msgid="102158408055486343">"حصر حجم الرسالة الإلكترونية بتنسيق HTML"</string>
-    <!-- outdated translation 2425281481414518903 -->     <string name="policy_require_sd_encryption" msgid="6651284589918775701">"يتطلب تشفير بطاقة SD"</string>
-    <!-- outdated translation 7924303012593832731 -->     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"عدم السماح بالمرفقات"</string>
-    <!-- outdated translation 6191034264088052742 -->     <string name="policy_max_attachment_size" msgid="4020279603050888661">"حصر حجم المرفق"</string>
-    <!-- outdated translation 7140792029820703854 -->     <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"السماح بالمزامنة اليدوية فقط أثناء التجوال"</string>
-    <!-- outdated translation 1488761894213160246 -->     <string name="policy_require_encryption" msgid="7984702283392885348">"يتطلب تشفير الجهاز"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"عدم السماح ببطاقات التخزين"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"عدم السماح بالتطبيقات غير الموقعة"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"عدم السماح بمثبتات التطبيقات غير الموقعة"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"عدم السماح باتصالات Wi-Fi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"عدم السماح بالرسائل النصية"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"عدم السماح بحسابات POP3 أو IMAP"</string>
+    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"عدم السماح باتصالات الأشعة تحت الحمراء"</string>
+    <string name="policy_dont_allow_html" msgid="5888652525907651489">"عدم السماح برسائل HTML الإلكترونية"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"عدم السماح للمتصفحات"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"عدم السماح برسائل المستهلكين الإلكترونية"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"عدم السماح بالمشاركة عبر الإنترنت"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"يلزم توفر الرسائل بتنسيق SMIME"</string>
+    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"تقييد استخدام البلوتوث"</string>
+    <string name="policy_app_blacklist" msgid="8169194058285873461">"عدم السماح بتطبيقات محددة"</string>
+    <string name="policy_app_whitelist" msgid="3670572644342165306">"السماح بتطبيقات محددة فقط"</string>
+    <string name="policy_max_calendar_age" msgid="3323514646413599036">"تقييد تواريخ أحداث التقويم"</string>
+    <string name="policy_max_email_age" msgid="3845699096249945617">"تقييد تواريخ الرسائل الإلكترونية"</string>
+    <string name="policy_text_truncation" msgid="1783448050735715818">"تقييد حجم الرسالة الإلكترونية النصية"</string>
+    <string name="policy_html_truncation" msgid="102158408055486343">"تقييد حجم رسائل HTML الإلكترونية"</string>
+    <string name="policy_require_sd_encryption" msgid="366468398301273342">"يلزم تشفير بطاقة SD"</string>
+    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"عدم السماح بالمرفقات"</string>
+    <string name="policy_max_attachment_size" msgid="4020279603050888661">"تقييد حجم المرفق"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"السماح بالمزامنة اليدوية فقط أثناء التجوال"</string>
+    <string name="policy_require_encryption" msgid="7984702283392885348">"يلزم تشفير الجهاز"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"تلقائي"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"يوم واحد"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"ثلاثة أيام"</string>

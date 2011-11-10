@@ -31,30 +31,30 @@
     <string name="app_name" msgid="5316597712787122829">"Servicios de Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Este evento se ha cancelado el día: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Los detalles de este evento se han cambiado al día: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <!-- outdated translation 5600453721690619515 -->     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"no permitir tarjetas de almacenamiento"</string>
-    <!-- outdated translation 7391405270957498716 -->     <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"no permitir aplicaciones sin firmar"</string>
-    <!-- outdated translation 8124763529572916905 -->     <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"no permitir instaladores sin firmar"</string>
-    <!-- outdated translation 8972952227139360866 -->     <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"no permitir Wi-Fi"</string>
-    <!-- outdated translation 2705534889421216691 -->     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"no permitir mensajes de texto"</string>
-    <!-- outdated translation 1563948038306495433 -->     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"no permitir cuentas POP3 ni IMAP"</string>
-    <!-- outdated translation 2864744455266260846 -->     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"no permitir comunicación por infrarrojos"</string>
-    <!-- outdated translation 5004059292137838041 -->     <string name="policy_dont_allow_html" msgid="5888652525907651489">"no permitir mensajes de correo HTML"</string>
-    <!-- outdated translation 1898383003253987916 -->     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"no permitir navegadores"</string>
-    <!-- outdated translation 4208507021679199773 -->     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"no permitir correos comerciales"</string>
-    <!-- outdated translation 8866772202653485379 -->     <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"no permitir compartir Internet"</string>
-    <!-- outdated translation 8044392674810605617 -->     <string name="policy_require_smime" msgid="673557150920820590">"se requieren mensajes S/MIME."</string>
-    <!-- outdated translation 8992284721368381918 -->     <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"restringir el uso de Bluetooth"</string>
-    <!-- outdated translation 5997243461425995435 -->     <string name="policy_app_blacklist" msgid="1189715710822154918">"no permitir aplicaciones especificadas"</string>
-    <!-- outdated translation 8401297908870017913 -->     <string name="policy_app_whitelist" msgid="8710495057780148422">"permitir solo aplicaciones especificadas"</string>
-    <!-- outdated translation 6394557044887221078 -->     <string name="policy_max_calendar_age" msgid="3323514646413599036">"restringir fechas de eventos de calendario"</string>
-    <!-- outdated translation 3303242808829681352 -->     <string name="policy_max_email_age" msgid="3845699096249945617">"restringir fechas de mensajes"</string>
-    <!-- outdated translation 5800480928209379255 -->     <string name="policy_text_truncation" msgid="1783448050735715818">"restringir tamaño de letra del mensaje"</string>
-    <!-- outdated translation 629030762178870832 -->     <string name="policy_html_truncation" msgid="102158408055486343">"restringir el tamaño del mensaje HTML"</string>
-    <!-- outdated translation 2425281481414518903 -->     <string name="policy_require_sd_encryption" msgid="6651284589918775701">"requiere que la tarjeta SD esté encriptada"</string>
-    <!-- outdated translation 7924303012593832731 -->     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"no permitir archivos adjuntos"</string>
-    <!-- outdated translation 6191034264088052742 -->     <string name="policy_max_attachment_size" msgid="4020279603050888661">"restringir tamaño de archivos adjuntos"</string>
-    <!-- outdated translation 7140792029820703854 -->     <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"permitir solo sinc manual en itinerancia"</string>
-    <!-- outdated translation 1488761894213160246 -->     <string name="policy_require_encryption" msgid="7984702283392885348">"requiere que el dispositivo esté encriptado"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"No permitir tarjetas de almacenamiento"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"No permitir aplicaciones sin firmar"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"No permitir instaladores sin firmar"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"No permitir Wi-Fi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"No permitir mensajes de texto"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"No permitir cuentas POP3 ni IMAP"</string>
+    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"No permitir comunicación por infrarrojos"</string>
+    <string name="policy_dont_allow_html" msgid="5888652525907651489">"No permitir correos HTML"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"No permitir navegadores"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"No permitir correos comerciales"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"No permitir compartir conexión a Internet"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"Solicitar mensajes SMIME"</string>
+    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Restringir uso de Bluetooth"</string>
+    <string name="policy_app_blacklist" msgid="8169194058285873461">"No permitir aplicaciones especificadas"</string>
+    <string name="policy_app_whitelist" msgid="3670572644342165306">"Permitir solo aplicaciones especificadas"</string>
+    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Restringir fechas eventos de calendario"</string>
+    <string name="policy_max_email_age" msgid="3845699096249945617">"Restringir fechas de correos"</string>
+    <string name="policy_text_truncation" msgid="1783448050735715818">"Restringir tamaño de letra del correo"</string>
+    <string name="policy_html_truncation" msgid="102158408055486343">"Restringir el tamaño del correo HTML"</string>
+    <string name="policy_require_sd_encryption" msgid="366468398301273342">"Solicitar encriptación de tarjeta SD"</string>
+    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"No permitir archivos adjuntos"</string>
+    <string name="policy_max_attachment_size" msgid="4020279603050888661">"Restringir tamaño de archivos adjuntos"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Sincronización manual solo en itinerancia"</string>
+    <string name="policy_require_encryption" msgid="7984702283392885348">"Solicitar encriptación de dispositivo"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automática"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Un día"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tres días"</string>

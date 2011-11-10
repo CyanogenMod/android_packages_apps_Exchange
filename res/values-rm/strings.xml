@@ -35,11 +35,11 @@
     <string name="exception_updated" msgid="3397583105901142050">"Ils detagls da questa occurrenza èn vegnids modifitgads: <xliff:g id="DATE">%s</xliff:g>"</string>
     <!-- no translation found for policy_dont_allow_storage_cards (2765447013574188473) -->
     <skip />
-    <!-- no translation found for policy_dont_allow_unsigned_apps (4621662871593845171) -->
+    <!-- no translation found for policy_dont_allow_unsigned_apps (4896164334956001479) -->
     <skip />
-    <!-- no translation found for policy_dont_allow_unsigned_installers (1008787087103087705) -->
+    <!-- no translation found for policy_dont_allow_unsigned_installers (1326544905185523540) -->
     <skip />
-    <!-- no translation found for policy_dont_allow_wifi (4469703437299203989) -->
+    <!-- no translation found for policy_dont_allow_wifi (3109487776704143995) -->
     <skip />
     <!-- no translation found for policy_dont_allow_text_messaging (7846141657345860427) -->
     <skip />
@@ -53,15 +53,15 @@
     <skip />
     <!-- no translation found for policy_dont_allow_consumer_email (6958427300686692292) -->
     <skip />
-    <!-- no translation found for policy_dont_allow_internet_sharing (9206676985695291954) -->
+    <!-- no translation found for policy_dont_allow_internet_sharing (2370083814654927695) -->
     <skip />
     <!-- no translation found for policy_require_smime (673557150920820590) -->
     <skip />
-    <!-- no translation found for policy_bluetooth_restricted (8993502640254846921) -->
+    <!-- no translation found for policy_bluetooth_restricted (5248824127186039567) -->
     <skip />
-    <!-- no translation found for policy_app_blacklist (1189715710822154918) -->
+    <!-- no translation found for policy_app_blacklist (8169194058285873461) -->
     <skip />
-    <!-- no translation found for policy_app_whitelist (8710495057780148422) -->
+    <!-- no translation found for policy_app_whitelist (3670572644342165306) -->
     <skip />
     <!-- no translation found for policy_max_calendar_age (3323514646413599036) -->
     <skip />
@@ -71,7 +71,7 @@
     <skip />
     <!-- no translation found for policy_html_truncation (102158408055486343) -->
     <skip />
-    <!-- no translation found for policy_require_sd_encryption (6651284589918775701) -->
+    <!-- no translation found for policy_require_sd_encryption (366468398301273342) -->
     <skip />
     <!-- no translation found for policy_dont_allow_attachments (6250520458670348907) -->
     <skip />
