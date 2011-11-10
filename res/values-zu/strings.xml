@@ -32,25 +32,25 @@
     <string name="exception_cancel" msgid="6160117429428313805">"Lesi senzakalo sikhanselwe i-<xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Imininingwane yalesenzakalo ishintshelwe:<xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"ungavumeli amakhadi okulonda"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="4621662871593845171">"ungavumeli izinhlelo zokusebenza ezingasayiniwe"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="1008787087103087705">"ungavumeli izifaki ezingasayiniwe zezinhlelo zokusebenza"</string>
-    <string name="policy_dont_allow_wifi" msgid="4469703437299203989">"ungavumeli i-wifi"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Ungavumeli ama-apps angabhalisiwe"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Ungafumeli izifaki ze-app ezingangenanga"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Ungavumeli i-Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"ungavumeli imilayezo yombhalo"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Ungavumeli i-POP3 noma ama-akhawunti e-IMAP"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"ungavumeli ukukhulumisana kwe-infrared"</string>
     <string name="policy_dont_allow_html" msgid="5888652525907651489">"ungavumeli i-imeyli ye-HTML"</string>
     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"ungavumeli isiphequluli"</string>
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ungavumeli i-imeyli yomthengi"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="9206676985695291954">"Ungavumeli ukwabelana nge-inthanethi"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Ungavumeli ukwabelana nge-inthanethi"</string>
     <string name="policy_require_smime" msgid="673557150920820590">"idinga imiyalezo ye-SMME"</string>
-    <string name="policy_bluetooth_restricted" msgid="8993502640254846921">"Nciphisa ukusetshenziswa kwe-Bluetooth"</string>
-    <string name="policy_app_blacklist" msgid="1189715710822154918">"Ungavumeli izinhlelo ezibonisiwe"</string>
-    <string name="policy_app_whitelist" msgid="8710495057780148422">"vumela kuphela izinhlelo zokusebenza ezibonisiwe"</string>
+    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Nciphisa ukusetshenziswa kwe-Bluetooth"</string>
+    <string name="policy_app_blacklist" msgid="8169194058285873461">"Ungavumeli ama-apps angacacisiwe"</string>
+    <string name="policy_app_whitelist" msgid="3670572644342165306">"Vumela ama-apps avunyelwe"</string>
     <string name="policy_max_calendar_age" msgid="3323514646413599036">"Linganisela amadethi ezenzakalo kukhalenda"</string>
     <string name="policy_max_email_age" msgid="3845699096249945617">"Nciphisa amadethi e-imeyli"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Nciphisa usayizi wombhalo we-imeyli"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"Nciphisa usayizi wama-imeyli e-HTML"</string>
-    <string name="policy_require_sd_encryption" msgid="6651284589918775701">"Idinga ikhadimfihlo lekhadi le-sd"</string>
+    <string name="policy_require_sd_encryption" msgid="366468398301273342">"Idinga ikhadimfihlo lekhadi le-sd"</string>
     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"ungavumeli okunamathiselwa ku-imeyli"</string>
     <string name="policy_max_attachment_size" msgid="4020279603050888661">"Nciphisa usayizi wokunamathiselwa ku-imeyli"</string>
     <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"vumela ukuvumelanisa ngokwenziwa ngezandla kuphela uma uzulazula"</string>
