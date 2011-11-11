@@ -1751,8 +1751,10 @@ public class EasSyncService extends AbstractSyncService {
                             }
                         }
                     } else if (EasResponse.isProvisionError(code)) {
+                        userLog("FolderSync provisioning error: ", code);
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (EasResponse.isAuthError(code)) {
+                        userLog("FolderSync auth error: ", code);
                         mExitStatus = EXIT_LOGIN_FAILURE;
                         return;
                     } else {
