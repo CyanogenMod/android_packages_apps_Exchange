@@ -1559,7 +1559,6 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /** Common code to sync E+PIM data
-     *
      * @param target an EasMailbox, EasContacts, or EasCalendar object
      */
     public void sync(AbstractSyncAdapter target) throws IOException {
