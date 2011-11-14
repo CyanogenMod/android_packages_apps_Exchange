@@ -766,7 +766,7 @@ public class EasSyncService extends AbstractSyncService {
                     MessagingException.IOERROR);
         } catch (MessagingException e) {
             bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
-                    MessagingException.AUTHENTICATION_FAILED);
+                    MessagingException.AUTODISCOVER_AUTHENTICATION_FAILED);
         }
         return bundle;
     }
