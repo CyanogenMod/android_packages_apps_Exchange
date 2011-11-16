@@ -59,7 +59,7 @@
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Tự động"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Một ngày"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Ba ngày"</string>
-    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Một tuần"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Một tuần"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Hai tuần"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Một tháng"</string>
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tất cả"</string>
