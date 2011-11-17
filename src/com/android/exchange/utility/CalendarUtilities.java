@@ -74,6 +74,14 @@ public class CalendarUtilities {
     static final int HOURS = MINUTES*60;
     static final long DAYS = HOURS*24;
 
+    // We want to find a time zone whose DST info is accurate to one minute
+    static final int STANDARD_DST_PRECISION = MINUTES;
+    // If we can't find one, we'll try a more lenient standard (this is better than guessing a
+    // time zone, which is what we otherwise do).  Note that this specifically addresses an issue
+    // seen in some time zones sent by MS Exchange in which the start and end hour differ
+    // for no apparent reason
+    static final int LENIENT_DST_PRECISION = 4*HOURS;
+
     private static final String SYNC_VERSION = Events.SYNC_DATA4;
     // NOTE All Microsoft data structures are little endian
 
@@ -729,9 +737,11 @@ public class CalendarUtilities {
     /**
      * Given a String as directly read from EAS, returns a TimeZone corresponding to that String
      * @param timeZoneString the String read from the server
+     * @param precision the number of milliseconds of precision in TimeZone determination
      * @return the TimeZone, or TimeZone.getDefault() if not found
      */
-    static public TimeZone tziStringToTimeZone(String timeZoneString) {
+    @VisibleForTesting
+    static TimeZone tziStringToTimeZone(String timeZoneString, int precision) {
         // If we have this time zone cached, use that value and return
         TimeZone timeZone = sTimeZoneCache.get(timeZoneString);
         if (timeZone != null) {
@@ -739,7 +749,7 @@ public class CalendarUtilities {
                 ExchangeService.log(TAG, " Using cached TimeZone " + timeZone.getID());
             }
         } else {
-            timeZone = tziStringToTimeZoneImpl(timeZoneString);
+            timeZone = tziStringToTimeZoneImpl(timeZoneString, precision);
             if (timeZone == null) {
                 // If we don't find a match, we just return the current TimeZone.  In theory, this
                 // shouldn't be happening...
@@ -752,12 +762,21 @@ public class CalendarUtilities {
     }
 
     /**
+     * The standard entry to EAS time zone conversion, using one minute as the precision
+     */
+    static public TimeZone tziStringToTimeZone(String timeZoneString) {
+        return tziStringToTimeZone(timeZoneString, MINUTES);
+    }
+
+    /**
      * Given a String as directly read from EAS, tries to find a TimeZone in the database of all
-     * time zones that corresponds to that String.
+     * time zones that corresponds to that String.  If the test time zone string includes DST and
+     * we don't find a match, and we're using standard precision, we try again with lenient
+     * precision, which is a bit better than guessing
      * @param timeZoneString the String read from the server
      * @return the TimeZone, or null if not found
      */
-    static TimeZone tziStringToTimeZoneImpl(String timeZoneString) {
+    static TimeZone tziStringToTimeZoneImpl(String timeZoneString, int precision) {
         TimeZone timeZone = null;
         // First, we need to decode the base64 string
         byte[] timeZoneBytes = Base64.decode(timeZoneString, Base64.DEFAULT);
@@ -823,8 +842,8 @@ public class CalendarUtilities {
 
                     // Check one minute before and after DST start transition
                     long millisAtTransition = getMillisAtTimeZoneDateTransition(timeZone, dstStart);
-                    Date before = new Date(millisAtTransition - MINUTES);
-                    Date after = new Date(millisAtTransition + MINUTES);
+                    Date before = new Date(millisAtTransition - precision);
+                    Date after = new Date(millisAtTransition + precision);
                     if (timeZone.inDaylightTime(before)) continue;
                     if (!timeZone.inDaylightTime(after)) continue;
 
@@ -832,8 +851,8 @@ public class CalendarUtilities {
                     millisAtTransition = getMillisAtTimeZoneDateTransition(timeZone, dstEnd);
                     // Note that we need to subtract an extra hour here, because we end up with
                     // gaining an hour in the transition BACK to standard time
-                    before = new Date(millisAtTransition - (dstSavings + MINUTES));
-                    after = new Date(millisAtTransition + MINUTES);
+                    before = new Date(millisAtTransition - (dstSavings + precision));
+                    after = new Date(millisAtTransition + precision);
                     if (!timeZone.inDaylightTime(before)) continue;
                     if (timeZone.inDaylightTime(after)) continue;
 
@@ -843,11 +862,17 @@ public class CalendarUtilities {
                 }
                 // In this case, there is no daylight savings time, so the only interesting data
                 // is the offset, and we know that all of the zoneId's match; we'll take the first
-                timeZone = TimeZone.getTimeZone(zoneIds[0]);
+                boolean lenient = false;
+                if ((dstStart.hour != dstEnd.hour) && (precision == STANDARD_DST_PRECISION)) {
+                    timeZone = tziStringToTimeZoneImpl(timeZoneString, LENIENT_DST_PRECISION);
+                    lenient = true;
+                } else {
+                    timeZone = TimeZone.getTimeZone(zoneIds[0]);
+                }
                 if (Eas.USER_LOG) {
                     ExchangeService.log(TAG,
-                            "No TimeZone with correct DST settings; using first: " +
-                            timeZone.getID());
+                            "No TimeZone with correct DST settings; using " +
+                            (lenient ? "lenient" : "first") + ": " + timeZone.getID());
                 }
                 return timeZone;
             }
