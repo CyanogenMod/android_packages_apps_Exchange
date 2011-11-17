@@ -103,6 +103,13 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAYQB3AGEAaQBpAGEAbgAgAEQAYQB5AGwAaQBnAGgAdAAgAFQA" +
         "aQBtAGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
+    // This is time zone sent by Exchange 2007, apparently; the start time of DST for the eastern
+    // time zone (EST) is off by two hours, which we should correct in our new "lenient" code
+    private static final String LENIENT_EASTERN_TIME =
+        "LAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+        "AAAAAAAAAAsAAAABAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAACAAAAAAAAAAAAxP///w==";
+
     private static final String ORGANIZER = "organizer@server.com";
     private static final String ATTENDEE = "attendee@server.com";
 
@@ -132,6 +139,17 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         assertEquals("Asia/Calcutta", tz.getID());
         tz = CalendarUtilities.tziStringToTimeZone(AUSTRALIA_ACT_TIME);
         assertEquals("Australia/ACT", tz.getID());
+
+        // Test peculiar MS sent EST data with and without lenient precision; send standard
+        // precision + 1 (i.e. 1ms) to make sure the code doesn't automatically flip to lenient
+        // when the tz isn't found
+        tz = CalendarUtilities.tziStringToTimeZoneImpl(LENIENT_EASTERN_TIME,
+                CalendarUtilities.STANDARD_DST_PRECISION+1);
+        assertEquals("America/Atikokan", tz.getID());
+        tz = CalendarUtilities.tziStringToTimeZoneImpl(LENIENT_EASTERN_TIME,
+                CalendarUtilities.LENIENT_DST_PRECISION);
+        assertEquals("America/Detroit", tz.getID());
+
         tz = CalendarUtilities.tziStringToTimeZone(GMT_UNKNOWN_DAYLIGHT_TIME);
         int bias = tz.getOffset(System.currentTimeMillis());
         assertEquals(0, bias);
