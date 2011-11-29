@@ -33,7 +33,7 @@
     <string name="exception_updated" msgid="3397583105901142050">"Maelezo ya tukio hili yamebadilishwa kwa: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"usiruhusu kadi za kuhifadhi"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Usiruhusu programu ambazo hazina saini"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Usiruhusu visakanishaji vya programu ambazo hazina saini"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Usiruhusu visakanishaji vya programu ambavyo havina saini"</string>
     <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Usiruhusu Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Usiruhusu utumaji ujumbe wa maandishi"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"usiruhusu akaunti za POP3 au IMAP"</string>
@@ -41,7 +41,7 @@
     <string name="policy_dont_allow_html" msgid="5888652525907651489">"Usiruhusu barua pepe ya HTML"</string>
     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"usiruhusu vivinjari"</string>
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Usiruhusu barua pepe ya watumiaji"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Usiruhusu ushirikiano wa mtandao"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Usiruhusu ushiriki kwenye mtandao"</string>
     <string name="policy_require_smime" msgid="673557150920820590">"Inahitaji ujumbe wa SMIME"</string>
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Zuia matumizi ya Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Usiruhusu programu zilizobainishwa"</string>
