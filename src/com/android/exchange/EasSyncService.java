@@ -2077,6 +2077,9 @@ public class EasSyncService extends AbstractSyncService {
                             mExitStatus = EXIT_LOGIN_FAILURE;
                             userLog("Authorization error during Ping: ", code);
                             throw new IOException();
+                        } else if (EasResponse.isProvisionError(code)) {
+                            userLog("Provisioning required during Ping: ", code);
+                            throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                         }
                     } finally {
                         resp.close();
