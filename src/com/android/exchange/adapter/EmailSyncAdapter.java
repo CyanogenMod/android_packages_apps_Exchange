@@ -220,7 +220,17 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         // so we turn MIME support off.  Note that we are always using EAS 2.5 if there are fetch
         // requests
         if (mFetchRequestList.isEmpty()) {
-            s.tag(Tags.SYNC_DELETES_AS_MOVES);
+            // Permanently delete if in trash mailbox
+            // In Exchange 2003, deletes-as-moves tag = true; no tag = false
+            // In Exchange 2007 and up, deletes-as-moves tag is "0" (false) or "1" (true)
+            boolean isTrashMailbox = mMailbox.mType == Mailbox.TYPE_TRASH;
+            if (protocolVersion < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+                if (!isTrashMailbox) {
+                    s.tag(Tags.SYNC_DELETES_AS_MOVES);
+                }
+            } else {
+                s.data(Tags.SYNC_DELETES_AS_MOVES, isTrashMailbox ? "0" : "1");
+            }
             s.tag(Tags.SYNC_GET_CHANGES);
             s.data(Tags.SYNC_WINDOW_SIZE, EMAIL_WINDOW_SIZE);
             s.start(Tags.SYNC_OPTIONS);
