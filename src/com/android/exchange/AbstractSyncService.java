@@ -256,15 +256,14 @@ public abstract class AbstractSyncService implements Runnable {
      */
     public boolean hasConnectivity() {
         ConnectivityManager cm =
-            (ConnectivityManager)mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+                (ConnectivityManager)mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         int tries = 0;
         while (tries++ < 1) {
+            // Use the same test as in ExchangeService#waitForConnectivity
+            // TODO: Create common code for this test in emailcommon
             NetworkInfo info = cm.getActiveNetworkInfo();
-            if (info != null && info.isConnected()) {
-                DetailedState state = info.getDetailedState();
-                if (state == DetailedState.CONNECTED) {
-                    return true;
-                }
+            if (info != null) {
+                return true;
             }
             try {
                 Thread.sleep(10*SECONDS);
