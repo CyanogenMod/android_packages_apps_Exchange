@@ -292,15 +292,9 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_MAX_CALENDAR_AGE_FILTER:
                     policy.mMaxCalendarLookback = getValueInt();
                     break;
-                // We currently reject max email age filter (unless it's 0, i.e. none specified)
+                // We handle max email lookback
                 case Tags.PROVISION_MAX_EMAIL_AGE_FILTER:
-                    max = getValueInt();
-                    policy.mMaxEmailLookback = max;
-                    // 0 indicates no specified filter
-                    if (max != 0) {
-                        unsupportedList.add(R.string.policy_max_email_age);
-                        tagIsSupported = false;
-                    }
+                    policy.mMaxEmailLookback = getValueInt();
                     break;
                 // We currently reject these next two policies
                 case Tags.PROVISION_MAX_EMAIL_BODY_TRUNCATION_SIZE:

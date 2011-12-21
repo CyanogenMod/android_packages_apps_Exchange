@@ -155,12 +155,6 @@
     <string name="policy_app_blacklist">Disallow specified apps</string>
     <!-- A policy in which the device allows only specified applications [CHAR LIMIT=50] -->
     <string name="policy_app_whitelist">Allow only specified apps</string>
-    <!-- A policy in which the device allows only calendar items newer than a specified date
-        [CHAR LIMIT=50] -->
-    <string name="policy_max_calendar_age">Restrict calendar event dates</string>
-    <!-- A policy in which the device allows only email items newer than a specified date
-        [CHAR LIMIT=50] -->
-    <string name="policy_max_email_age">Restrict email dates</string>
     <!-- A policy in which the device limits the amount of text that can be displayed for a
         given message [CHAR LIMIT=50] -->
     <string name="policy_text_truncation">Restrict text email size</string>

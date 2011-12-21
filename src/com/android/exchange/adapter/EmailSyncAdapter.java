@@ -316,6 +316,17 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             lookback = SyncWindow.SYNC_WINDOW_1_MONTH;
         }
 
+        // Limit lookback to policy limit
+        if (mAccount.mPolicyKey > 0) {
+            Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+            if (policy != null) {
+                int maxLookback = policy.mMaxEmailLookback;
+                if (maxLookback != 0 && (lookback > policy.mMaxEmailLookback)) {
+                    lookback = policy.mMaxEmailLookback;
+                }
+            }
+        }
+
         // Store the new lookback and persist it
         // TODO Code similar to this is used elsewhere (e.g. MailboxSettings); try to clean this up
         ContentValues cv = new ContentValues();
