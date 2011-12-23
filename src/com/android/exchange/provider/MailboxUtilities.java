@@ -21,6 +21,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.os.Debug;
 import android.util.Log;
 
 import com.android.emailcommon.Logging;
@@ -130,15 +131,22 @@ public class MailboxUtilities {
 
         // We'll loop through mailboxes with an uninitialized parent key
         ContentResolver resolver = context.getContentResolver();
-        Cursor parentCursor = resolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
-                noParentKeySelection, null, null);
-        if (parentCursor == null) return;
+        Cursor noParentKeyMailboxCursor =
+                resolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
+                        noParentKeySelection, null, null);
+        if (noParentKeyMailboxCursor == null) return;
         try {
-            while (parentCursor.moveToNext()) {
-                setFlagsAndChildrensParentKey(context, parentCursor, accountSelector);
+            while (noParentKeyMailboxCursor.moveToNext()) {
+                setFlagsAndChildrensParentKey(context, noParentKeyMailboxCursor, accountSelector);
+                String parentServerId =
+                        noParentKeyMailboxCursor.getString(Mailbox.CONTENT_PARENT_SERVER_ID_COLUMN);
+                // Fixup the parent so that the children's parentKey is updated
+                if (parentServerId != null) {
+                    setFlagsAndChildrensParentKey(context, accountSelector, parentServerId);
+                }
             }
         } finally {
-            parentCursor.close();
+            noParentKeyMailboxCursor.close();
         }
 
         // Any mailboxes without a parent key should have parentKey set to -1 (no parent)

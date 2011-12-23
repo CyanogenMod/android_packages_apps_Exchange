@@ -201,7 +201,7 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
                 "box3", mAccount.mId, false, mProviderContext, Mailbox.TYPE_MAIL, box2);
         box3.mParentKey = Mailbox.PARENT_KEY_UNINITIALIZED;
         box3.save(mProviderContext);
-        simulateFolderSyncChangeHandling(accountSelector, box2 /*box3's parent*/);
+        simulateFolderSyncChangeHandling(accountSelector, box3 /*box3's parent*/);
 
         box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
         box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
