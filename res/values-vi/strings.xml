@@ -46,8 +46,6 @@
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Hạn chế sử dụng Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Ko cho phép các ứng dụng được chỉ định"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Chỉ cho phép các ứng dụng được chỉ định"</string>
-    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Hạn chế ngày của sự kiện lịch"</string>
-    <string name="policy_max_email_age" msgid="3845699096249945617">"Hạn chế ngày của email"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Hạn chế kích thước email văn bản"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"Hạn chế kích thước email HTML"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Yêu cầu mã hóa thẻ SD"</string>

@@ -46,8 +46,6 @@
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Rajoita bluetoothin käyttöä"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Älä salli määritettyjä sovelluksia"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Salli vain määritetyt sovellukset"</string>
-    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Rajoita kalenterin tapahtumapäivämääriä"</string>
-    <string name="policy_max_email_age" msgid="3845699096249945617">"Rajoita sähköpostin päivämäärät"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Rajoita tekstimuot. sähköpostien kokoa"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"Rajoita HTML-muot. sähköpostien kokoa"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Vaatii SD-kortin salauksen"</string>

@@ -46,8 +46,6 @@
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Het gebruik van Bluetooth beperken"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Opgegeven apps niet toestaan"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Alleen opgegeven apps toestaan"</string>
-    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Datums van agenda-afspraken beperken"</string>
-    <string name="policy_max_email_age" msgid="3845699096249945617">"E-maildatums beperken"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Tekstgrootte van e-mail beperken"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"Grootte van HTML-e-mails beperken"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Codering van SD-kaart vereisen"</string>
