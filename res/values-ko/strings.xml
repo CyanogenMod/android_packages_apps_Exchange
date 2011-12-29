@@ -46,8 +46,6 @@
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"블루투스 사용 제한"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"지정된 앱 허용 안함"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"지정한 앱만 허용"</string>
-    <string name="policy_max_calendar_age" msgid="3323514646413599036">"캘린더 일정 날짜 제한"</string>
-    <string name="policy_max_email_age" msgid="3845699096249945617">"이메일 날짜 제한"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"텍스트 이메일 크기 제한"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"HTML 이메일 크기 제한"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"SD 카드 암호화 필요"</string>

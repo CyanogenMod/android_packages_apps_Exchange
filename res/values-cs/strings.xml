@@ -46,8 +46,6 @@
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Omezit použití připojení Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Blokovat zadané aplikace"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Povolit pouze zadané aplikace"</string>
-    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Omezit data událostí v kalendáři"</string>
-    <string name="policy_max_email_age" msgid="3845699096249945617">"Omezit kalendářní data e-mailů"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Omezit velikost textových e-mailů"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"Omezit velikost e-mailů ve formátu HTML"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Požadovat šifrování karty SD"</string>

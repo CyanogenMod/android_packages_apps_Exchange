@@ -46,8 +46,6 @@
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Begræns brugen af bluetooth"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Tillad ikke angivne apps"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Tillad kun angivne apps"</string>
-    <string name="policy_max_calendar_age" msgid="3323514646413599036">"Begræns kalenderbegivenheder efter dato"</string>
-    <string name="policy_max_email_age" msgid="3845699096249945617">"Begræns e-mail efter dato"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Begræns tekststørrelsen for e-mail"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"Begræns størrelsen på e-mail i HTML"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Kræv kryptering af SD-kort"</string>
