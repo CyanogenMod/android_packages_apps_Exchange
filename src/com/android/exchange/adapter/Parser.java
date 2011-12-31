@@ -361,7 +361,7 @@ public abstract class Parser {
      */
     public void setInput(InputStream in, boolean initialize) throws IOException {
         this.in = in;
-        if (initialize) {
+        if ((in != null) && initialize) {
             // If we fail on the very first byte, report an empty stream
             try {
                 readByte(); // version

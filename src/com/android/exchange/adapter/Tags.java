@@ -680,8 +680,8 @@ public class Tags {
         },
         {
             // 0x06 ItemEstimate
-            "GetItemEstimate", "Version", "Collections", "Collection", "Class", "CollectionId",
-            "DateTime", "Estimate", "Response", "Status"
+            "GetItemEstimate", "Version", "IECollections", "IECollection", "IEClass",
+            "IECollectionId", "DateTime", "Estimate", "IEResponse", "ItemEstimateStatus"
         },
         {
             // 0x07 FolderHierarchy
@@ -693,17 +693,17 @@ public class Tags {
         {
             // 0x08 MeetingResponse
             "CalId", "CollectionId", "MeetingResponse", "ReqId", "Request",
-            "Result", "Status", "UserResponse", "Version"
+            "MeetingResponseResult", "MeetingResponseStatus", "UserResponse", "Version"
         },
         {
             // 0x09 Tasks
-            "Body", "BodySize", "BodyTruncated", "Categories", "Category", "Complete",
-            "DateCompleted", "DueDate", "UTCDueDate", "Importance", "Recurrence", "RecurrenceType",
-            "RecurrenceStart", "RecurrenceUntil", "RecurrenceOccurrences", "RecurrenceInterval",
-            "RecurrenceDOM", "RecurrenceDOW", "RecurrenceWOM", "RecurrenceMOY",
-            "RecurrenceRegenerate", "RecurrenceDeadOccur", "ReminderSet", "ReminderTime",
-            "Sensitivity", "StartDate", "UTCStartDate", "Subject", "CompressedRTF", "OrdinalDate",
-            "SubordinalDate"
+            "TasksBody", "TasksBodySize", "TasksBodyTruncated", "TasksCategories", "TasksCategory",
+            "Complete", "DateCompleted", "DueDate", "UTCDueDate", "TasksImportance", "Recurrence",
+            "RecurrenceType", "RecurrenceStart", "RecurrenceUntil", "RecurrenceOccurrences",
+            "RecurrenceInterval", "RecurrenceDOM", "RecurrenceDOW", "RecurrenceWOM",
+            "RecurrenceMOY", "RecurrenceRegenerate", "RecurrenceDeadOccur", "ReminderSet",
+            "ReminderTime", "TasksSensitivity", "StartDate", "UTCStartDate", "TasksSubject",
+            "TasksCompressedRTF", "OrdinalDate", "SubordinalDate"
         },
         {
             // 0x0A ResolveRecipients
@@ -746,10 +746,10 @@ public class Tags {
         {
             // 0x0F Search
             "Search", "Stores", "Store", "Name", "Query",
-            "Options", "Range", "Status", "Response", "Result",
+            "SearchOptions", "Range", "SearchStatus", "Response", "Result",
             "Properties", "Total", "EqualTo", "Value", "And",
             "Or", "FreeText", "SubstringOp", "DeepTraversal", "LongId",
-            "RebuildResults", "LessThan", "GreateerThan", "Schema", "Supported"
+            "RebuildResults", "LessThan", "GreateerThan", "Schema", "SearchSupported"
         },
         {
             // 0x10 Gal
@@ -759,7 +759,7 @@ public class Tags {
         {
             // 0x11 AirSyncBase
             "BodyPreference", "BodyPreferenceType", "BodyPreferenceTruncationSize", "AllOrNone",
-            "--unused--", "BaseBody", "BaseData", "BaseEstimatedDataSize", "BaseTruncated",
+            "--unused1--", "BaseBody", "BaseData", "BaseEstimatedDataSize", "BaseTruncated",
             "BaseAttachments", "BaseAttachment", "BaseDisplayName", "FileReference", "BaseMethod",
             "BaseContentId", "BaseContentLocation", "BaseIsInline", "BaseNativeBodyType",
             "BaseContentType"
@@ -787,7 +787,7 @@ public class Tags {
         {
             // 0x15 ComposeMail
             "SendMail", "SmartForward", "SmartReply", "SaveInSentItems", "ReplaceMime",
-            "--unused--", "ComposeSource", "ComposeFolderId", "ComposeItemId", "ComposeLongId",
+            "--unused2--", "ComposeSource", "ComposeFolderId", "ComposeItemId", "ComposeLongId",
             "ComposeInstanceId", "ComposeMime", "ComposeClientId", "ComposeStatus",
             "ComposeAccountId"
         },
