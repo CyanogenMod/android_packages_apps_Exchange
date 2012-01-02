@@ -49,6 +49,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
 import org.apache.http.entity.InputStreamEntity;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -113,11 +114,37 @@ public class EasOutboxService extends EasSyncService {
          */
         @Override
         public long getContentLength() {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try {
+                // Calculate the overhead for the WBXML data
+                writeTo(baos, false);
+                // Return the actual size that will be sent
+                return baos.size() + mFileLength;
+            } catch (IOException e) {
+                // Just return -1 (unknown)
+            } finally {
+                try {
+                    baos.close();
+                } catch (IOException e) {
+                    // Ignore
+                }
+            }
             return -1;
         }
 
         @Override
         public void writeTo(OutputStream outstream) throws IOException {
+            writeTo(outstream, true);
+        }
+
+        /**
+         * Write the message to the output stream
+         * @param outstream the output stream to write
+         * @param withData whether or not the actual data is to be written; true when sending
+         *   mail; false when calculating size only
+         * @throws IOException
+         */
+        public void writeTo(OutputStream outstream, boolean withData) throws IOException {
             // Not sure if this is possible; the check is taken from the superclass
             if (outstream == null) {
                 throw new IllegalArgumentException("Output stream may not be null");
@@ -153,7 +180,11 @@ public class EasOutboxService extends EasSyncService {
             // Start the MIME tag; this is followed by "opaque" data (byte array)
             s.start(Tags.COMPOSE_MIME);
             // Send opaque data from the file stream
-            s.opaque(mFileStream, (int)mFileLength);
+            if (withData) {
+                s.opaque(mFileStream, (int)mFileLength);
+            } else {
+                s.opaqueWithoutData((int)mFileLength);
+            }
             // And we're done
             s.end().end().done();
         }
