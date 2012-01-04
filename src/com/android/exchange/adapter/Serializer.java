@@ -192,6 +192,13 @@ public class Serializer {
         return this;
     }
 
+    public Serializer opaqueWithoutData(int length) throws IOException {
+        checkPendingTag(false);
+        mOutput.write(Wbxml.OPAQUE);
+        writeInteger(mOutput, length);
+        return this;
+    }
+
     void writeInteger(OutputStream out, int i) throws IOException {
         byte[] buf = new byte[5];
         int idx = 0;
