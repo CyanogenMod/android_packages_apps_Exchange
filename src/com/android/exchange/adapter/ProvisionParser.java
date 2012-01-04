@@ -18,6 +18,8 @@ package com.android.exchange.adapter;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.res.Resources;
+import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
@@ -97,6 +99,13 @@ public class ProvisionParser extends Parser {
         }
         policy.mProtocolPoliciesEnforced = sb.toString();
         mPolicy = policy;
+    }
+
+    private boolean deviceSupportsEncryption() {
+        DevicePolicyManager dpm = (DevicePolicyManager)
+                mService.mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+        int status = dpm.getStorageEncryptionStatus();
+        return status != DevicePolicyManager.ENCRYPTION_STATUS_UNSUPPORTED;
     }
 
     private void parseProvisionDocWbxml() throws IOException {
@@ -214,10 +223,7 @@ public class ProvisionParser extends Parser {
                 // below with the call to SecurityPolicy.isSupported()
                 case Tags.PROVISION_REQUIRE_DEVICE_ENCRYPTION:
                     if (getValueInt() == 1) {
-                        DevicePolicyManager dpm = (DevicePolicyManager)
-                             mService.mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
-                        int status = dpm.getStorageEncryptionStatus();
-                        if (status == DevicePolicyManager.ENCRYPTION_STATUS_UNSUPPORTED) {
+                         if (!deviceSupportsEncryption()) {
                             tagIsSupported = false;
                             unsupportedList.add(R.string.policy_require_encryption);
                         } else {
@@ -225,7 +231,43 @@ public class ProvisionParser extends Parser {
                         }
                     }
                     break;
-                // Note this policy; we enforce it in ExchangeService
+                // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which the OS
+                // does not yet support.
+                case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
+                    if (getValueInt() == 1) {
+                        log("Policy requires SD card encryption");
+                        // Let's see if this can be supported on our device...
+                        if (deviceSupportsEncryption()) {
+                            StorageManager sm = (StorageManager)mService.mContext.getSystemService(
+                                    Context.STORAGE_SERVICE);
+                            // NOTE: Private API!
+                            // Go through volumes; if ANY are removable, we can't support this
+                            // policy.
+                            StorageVolume[] volumeList = sm.getVolumeList();
+                            for (StorageVolume volume: volumeList) {
+                                if (volume.isRemovable()) {
+                                    tagIsSupported = false;
+                                    log("Removable: " + volume.getDescription());
+                                    break;  // Break only from the storage volume loop
+                                } else {
+                                    log("Not Removable: " + volume.getDescription());
+                                }
+                            }
+                            if (tagIsSupported) {
+                                // If this policy is requested, we MUST also require encryption
+                                log("Device supports SD card encryption");
+                                policy.mRequireEncryption = true;
+                                break;
+                            }
+                        } else {
+                            log("Device doesn't support encryption; failing");
+                            tagIsSupported = false;
+                        }
+                        // If we fall through, we can't support the policy
+                        unsupportedList.add(R.string.policy_require_sd_encryption);
+                    }
+                    break;
+                    // Note this policy; we enforce it in ExchangeService
                 case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
                     policy.mRequireManualSyncWhenRoaming = getValueInt() == 1;
                     break;
@@ -235,14 +277,6 @@ public class ProvisionParser extends Parser {
                 case Tags.PROVISION_PASSWORD_RECOVERY_ENABLED:
                     // Read, but ignore, value
                     policy.mPasswordRecoveryEnabled = getValueInt() == 1;
-                    break;
-                // Note that DEVICE_ENCRYPTION_ENABLED refers to SD card encryption, which the OS
-                // does not yet support.
-                case Tags.PROVISION_DEVICE_ENCRYPTION_ENABLED:
-                    if (getValueInt() == 1) {
-                        tagIsSupported = false;
-                        unsupportedList.add(R.string.policy_require_sd_encryption);
-                    }
                     break;
                 // The following policies, if true, can't be supported at the moment
                 case Tags.PROVISION_REQUIRE_SIGNED_SMIME_MESSAGES:
