@@ -136,6 +136,12 @@ public class MailboxUtilities {
         try {
             while (parentCursor.moveToNext()) {
                 setFlagsAndChildrensParentKey(context, parentCursor, accountSelector);
+                // Fix up the parent as well
+                String parentServerId =
+                        parentCursor.getString(Mailbox.CONTENT_PARENT_SERVER_ID_COLUMN);
+                if (parentServerId != null) {
+                    setFlagsAndChildrensParentKey(context, accountSelector, parentServerId);
+                }
             }
         } finally {
             parentCursor.close();
