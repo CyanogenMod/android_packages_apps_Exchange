@@ -17,15 +17,21 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentResolver;
+import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.SyncWindow;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.provider.EmailContentSetupUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 
 /**
@@ -38,6 +44,7 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
     // We increment this to generate unique server id's
     private int mServerIdCount = 0;
     private final long mCreationTime = System.currentTimeMillis();
+    private final String[] mMailboxQueryArgs = new String[2];
 
     public FolderSyncParserTests() {
         super();
@@ -203,5 +210,209 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
         assertTrue(syncOptionsSame(boxc, boxcx));
         assertTrue(syncOptionsSame(boxd, boxdx));
         assertTrue(syncOptionsSame(boxe, boxex));
+    }
+
+    private static class MockFolderSyncParser extends FolderSyncParser {
+        private BufferedReader mReader;
+        private int mDepth = 0;
+        private String[] mStack = new String[32];
+        private HashMap<String, Integer> mTagMap;
+
+
+        public MockFolderSyncParser(String fileName, AbstractSyncAdapter adapter)
+                throws IOException {
+            super(null, adapter);
+            AssetManager am = mContext.getAssets();
+            InputStream is = am.open(fileName);
+            if (is != null) {
+                mReader = new BufferedReader(new InputStreamReader(is));
+            }
+            mInUnitTest = true;
+        }
+
+        private void initTagMap() {
+            mTagMap = new HashMap<String, Integer>();
+            int pageNum = 0;
+            for (String[] page: Tags.pages) {
+                int tagNum = 5;
+                for (String tag: page) {
+                    if (mTagMap.containsKey(tag)) {
+                        System.err.println("Duplicate tag: " + tag);
+                    }
+                    int val = (pageNum << Tags.PAGE_SHIFT) + tagNum;
+                    mTagMap.put(tag, val);
+                    tagNum++;
+                }
+                pageNum++;
+            }
+        }
+
+        private int lookupTag(String tagName) {
+            if (mTagMap == null) {
+                initTagMap();
+            }
+            int res = mTagMap.get(tagName);
+            return res;
+        }
+
+        private String getLine() throws IOException {
+            while (true) {
+                String line = mReader.readLine();
+                if (line == null) {
+                    return null;
+                }
+                int start = line.indexOf("| ");
+                if (start > 2) {
+                    return line.substring(start + 2);
+                }
+                // Keep looking for a suitable line
+            }
+        }
+
+        @Override
+        public int getValueInt() throws IOException {
+            return Integer.parseInt(getValue());
+        }
+
+        @Override
+        public String getValue() throws IOException {
+            String line = getLine();
+            if (line == null) throw new IOException();
+            int start = line.indexOf(": ");
+            if (start < 0) throw new IOException("Line has no value: " + line);
+            try {
+                return line.substring(start + 2).trim();
+            } finally {
+                if (nextTag(0) != END) {
+                    throw new IOException("Value not followed by end tag: " + name);
+                }
+            }
+        }
+
+        @Override
+        public void skipTag() throws IOException {
+            if (nextTag(0) == -1) {
+                nextTag(0);
+            }
+        }
+
+        @Override
+        public int nextTag(int endingTag) throws IOException {
+            String line = getLine();
+            if (line == null) {
+                return DONE;
+            }
+            if (line.startsWith("</")) {
+                int end = line.indexOf('>');
+                String tagName = line.substring(2, end).trim();
+                if (!tagName.equals(mStack[--mDepth])) {
+                    throw new IOException("Tag end doesn't match tag");
+                }
+                mStack[mDepth] = null;
+                return END;
+            } else if (line.startsWith("<")) {
+                int end = line.indexOf('>');
+                String tagName = line.substring(1, end).trim();
+                mStack[mDepth++] = tagName;
+                tag = lookupTag(tagName);
+                return tag;
+            } else {
+                return -1;
+            }
+        }
+    }
+
+    private Mailbox getMailboxWithName(String folderName) {
+        mMailboxQueryArgs[1] = folderName;
+        Cursor c = mResolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
+                Mailbox.ACCOUNT_KEY + "=? AND " + Mailbox.DISPLAY_NAME + "=?", mMailboxQueryArgs,
+                null);
+        try {
+            assertTrue(c.getCount() == 1);
+            c.moveToFirst();
+            Mailbox m = new Mailbox();
+            m.restore(c);
+            return m;
+        } finally {
+            c.close();
+        }
+    }
+
+    private boolean isTopLevel(String folderName) {
+        Mailbox m = getMailboxWithName(folderName);
+        assertNotNull(m);
+        return m.mParentKey == Mailbox.NO_MAILBOX;
+    }
+
+    private boolean isSubfolder(String parentName, String childName) {
+        Mailbox parent = getMailboxWithName(parentName);
+        Mailbox child = getMailboxWithName(childName);
+        assertNotNull(parent);
+        assertNotNull(child);
+        assertTrue((parent.mFlags & Mailbox.FLAG_HAS_CHILDREN) != 0);
+        return child.mParentKey == parent.mId;
+    }
+
+    /**
+     * Parse a set of EAS FolderSync commands and create the Mailbox tree accordingly
+     *
+     * @param fileName the name of the file containing emaillog data for folder sync
+     * @throws IOException
+     * @throws CommandStatusException
+     */
+    private void testComplexFolderListParse(String fileName) throws IOException,
+    CommandStatusException {
+        EasSyncService service = getTestService();
+        EmailSyncAdapter adapter = new EmailSyncAdapter(service);
+        FolderSyncParser parser = new MockFolderSyncParser(fileName, adapter);
+        mAccount.save(mProviderContext);
+        mMailboxQueryArgs[0] = Long.toString(mAccount.mId);
+        parser.mAccount = mAccount;
+        parser.mAccountId = mAccount.mId;
+        parser.mAccountIdAsString = Long.toString(mAccount.mId);
+        parser.mContext = mProviderContext;
+        parser.mContentResolver = mResolver;
+
+        parser.parse();
+
+        assertTrue(isTopLevel("Inbox"));
+        assertTrue(isSubfolder("Inbox", "Gecko"));
+        assertTrue(isSubfolder("Inbox", "Wombat"));
+        assertTrue(isSubfolder("Inbox", "Laslo"));
+        assertTrue(isSubfolder("Inbox", "Tomorrow"));
+        assertTrue(isSubfolder("Inbox", "Vader"));
+        assertTrue(isSubfolder("Inbox", "Personal"));
+        assertTrue(isSubfolder("Laslo", "Lego"));
+        assertTrue(isSubfolder("Tomorrow", "HomeRun"));
+        assertTrue(isSubfolder("Tomorrow", "Services"));
+        assertTrue(isSubfolder("HomeRun", "Review"));
+        assertTrue(isSubfolder("Vader", "Max"));
+        assertTrue(isSubfolder("Vader", "Parser"));
+        assertTrue(isSubfolder("Vader", "Scott"));
+        assertTrue(isSubfolder("Vader", "Surfing"));
+        assertTrue(isSubfolder("Max", "Thomas"));
+        assertTrue(isSubfolder("Personal", "Famine"));
+        assertTrue(isSubfolder("Personal", "Bar"));
+        assertTrue(isSubfolder("Personal", "Bill"));
+        assertTrue(isSubfolder("Personal", "Boss"));
+        assertTrue(isSubfolder("Personal", "Houston"));
+        assertTrue(isSubfolder("Personal", "Mistake"));
+        assertTrue(isSubfolder("Personal", "Online"));
+        assertTrue(isSubfolder("Personal", "Sports"));
+        assertTrue(isSubfolder("Famine", "Buffalo"));
+        assertTrue(isSubfolder("Famine", "CornedBeef"));
+        assertTrue(isSubfolder("Houston", "Rebar"));
+        assertTrue(isSubfolder("Mistake", "Intro"));
+    }
+
+    // FolderSyncParserTest.txt is based on customer data (all names changed) that failed to
+    // properly create the Mailbox list
+    public void testComplexFolderListParse1() throws CommandStatusException, IOException {
+        testComplexFolderListParse("FolderSyncParserTest.txt");
+    }
+
+    // As above, with the order changed (putting children before parents; a more difficult case
+    public void testComplexFolderListParse2() throws CommandStatusException, IOException {
+        testComplexFolderListParse("FolderSyncParserTest2.txt");
     }
 }
