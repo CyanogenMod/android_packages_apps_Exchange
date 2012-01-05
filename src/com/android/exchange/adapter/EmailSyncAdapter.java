@@ -1344,7 +1344,23 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     boolean readChange = false;
 
                     long mailbox = currentCursor.getLong(UPDATES_MAILBOX_KEY_COLUMN);
-                    if (mailbox != c.getLong(Message.LIST_MAILBOX_KEY_COLUMN)) {
+                    // If the message is now in the trash folder, it has been deleted by the user
+                    if (mailbox == trashMailboxId) {
+                         if (firstCommand) {
+                            s.start(Tags.SYNC_COMMANDS);
+                            firstCommand = false;
+                        }
+                        // Send the command to delete this message
+                        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
+                        // Mark the message as moved (so the copy will be deleted if/when the server
+                        // version is synced)
+                        int flags = c.getInt(Message.LIST_FLAGS_COLUMN);
+                        cv.put(MessageColumns.FLAGS,
+                                flags | EasSyncService.MESSAGE_FLAG_MOVED_MESSAGE);
+                        cr.update(ContentUris.withAppendedId(Message.CONTENT_URI, id), cv,
+                                null, null);
+                        continue;
+                    } else if (mailbox != c.getLong(Message.LIST_MAILBOX_KEY_COLUMN)) {
                         // The message has moved to another mailbox; add a request for this
                         // Note: The Sync command doesn't handle moving messages, so we need
                         // to handle this as a "request" (similar to meeting response and
@@ -1417,24 +1433,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         }
                     }
                     s.end().end(); // SYNC_APPLICATION_DATA, SYNC_CHANGE
-
-                    // If the message is now in the trash folder, it has been deleted by the user
-                    if (currentCursor.getLong(UPDATES_MAILBOX_KEY_COLUMN) == trashMailboxId) {
-                         if (firstCommand) {
-                            s.start(Tags.SYNC_COMMANDS);
-                            firstCommand = false;
-                        }
-                        // Send the command to delete this message
-                        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
-                        // Mark the message as moved (so the copy will be deleted if/when the server
-                        // version is synced)
-                        int flags = c.getInt(Message.LIST_FLAGS_COLUMN);
-                        cv.put(MessageColumns.FLAGS,
-                                flags | EasSyncService.MESSAGE_FLAG_MOVED_MESSAGE);
-                        cr.update(ContentUris.withAppendedId(Message.CONTENT_URI, id), cv,
-                                null, null);
-                        continue;
-                    }
                 } finally {
                     currentCursor.close();
                 }
