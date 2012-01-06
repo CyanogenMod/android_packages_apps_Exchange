@@ -366,11 +366,11 @@ public class EasOutboxService extends EasSyncService {
             boolean isEas14 = (Double.parseDouble(mAccount.mProtocolVersion) >=
                 Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE);
 
-            // Get an input stream to our temporary file and create an entity with it
-            FileInputStream fileStream = new FileInputStream(tmpFile);
-            long fileLength = tmpFile.length();
-
             while (true) {
+                // Get an input stream to our temporary file and create an entity with it
+                FileInputStream fileStream = new FileInputStream(tmpFile);
+                long fileLength = tmpFile.length();
+
                 // The type of entity depends on whether we're using EAS 14
                 HttpEntity inputEntity;
                 // For EAS 14, we need to save the wbxml tag we're using
