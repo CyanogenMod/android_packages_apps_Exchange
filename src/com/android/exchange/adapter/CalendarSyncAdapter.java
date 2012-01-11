@@ -545,9 +545,14 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         organizerName = getValue();
                         break;
                     case Tags.CALENDAR_REMINDER_MINS_BEFORE:
+                        // Save away whether this tag has content; Exchange 2010 sends an empty tag
+                        // rather than not sending one (as with Ex07 and Ex03)
+                        boolean hasContent = !noContent;
                         reminderMins = getValueInt();
-                        ops.newReminder(reminderMins);
-                        cv.put(Events.HAS_ALARM, 1);
+                        if (hasContent) {
+                            ops.newReminder(reminderMins);
+                            cv.put(Events.HAS_ALARM, 1);
+                        }
                         break;
                     // The following are fields we should save (for changes), though they don't
                     // relate to data used by CalendarProvider at this point

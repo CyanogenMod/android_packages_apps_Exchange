@@ -99,7 +99,7 @@ public abstract class Parser {
     public String name;
 
     // Whether the current tag is associated with content (a value)
-    private boolean noContent;
+    public boolean noContent;
 
     // The value read, as a String.  Only one of text or num will be valid, depending on whether the
     // value was requested as a String or an int (to avoid wasted effort in parsing)
