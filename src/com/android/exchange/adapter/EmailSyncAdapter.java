@@ -875,6 +875,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             Cursor c = mContentResolver.query(Message.CONTENT_URI, projection,
                     WHERE_SERVER_ID_AND_MAILBOX_KEY, mBindArguments, null);
             if (c == null) throw new ProviderUnavailableException();
+            if (c.getCount() > 1) {
+                userLog("Multiple messages with the same serverId/mailbox: " + serverId);
+            }
             return c;
         }
 
@@ -1074,6 +1077,13 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 try {
                     if (c.moveToFirst()) {
                         id = c.getString(EmailContent.ID_PROJECTION_COLUMN);
+                        while (c.moveToNext()) {
+                            // This shouldn't happen, but clean up if it does
+                            Long dupId =
+                                    Long.parseLong(c.getString(EmailContent.ID_PROJECTION_COLUMN));
+                            userLog("Delete duplicate with id: " + dupId);
+                            deletedEmails.add(dupId);
+                        }
                     }
                 } finally {
                     c.close();
