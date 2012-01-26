@@ -43,6 +43,7 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
@@ -144,7 +145,7 @@ public class EasSyncService extends AbstractSyncService {
     static private final String AUTO_DISCOVER_SCHEMA_PREFIX =
         "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
     static private final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
-    static private final int AUTO_DISCOVER_REDIRECT_CODE = 451;
+    static private final int EAS_REDIRECT_CODE = 451;
 
     static public final int INTERNAL_SERVER_ERROR_CODE = 500;
 
@@ -455,8 +456,36 @@ public class EasSyncService extends AbstractSyncService {
         return svc;
     }
 
+    /**
+     * Get a redirect address and validate against it
+     * @param resp the EasResponse to our POST
+     * @param hostAuth the HostAuth we're using to validate
+     * @return true if we have an updated HostAuth (with redirect address); false otherwise
+     */
+    private boolean getValidateRedirect(EasResponse resp, HostAuth hostAuth) {
+        Header locHeader = resp.getHeader("X-MS-Location");
+        if (locHeader != null) {
+            String loc;
+            try {
+                loc = locHeader.getValue();
+                // Reset our host address and uncache our base uri
+                mHostAddress = Uri.parse(loc).getHost();
+                mBaseUriString = null;
+                hostAuth.mAddress = mHostAddress;
+                userLog("Redirecting to: " + loc);
+                return true;
+            } catch (RuntimeException e) {
+                // Just don't crash if the Uri is illegal
+            }
+        }
+        return false;
+    }
+
+    private static final int MAX_REDIRECTS = 3;
+    private int mRedirectCount = 0;
+
     @Override
-    public Bundle validateAccount(HostAuth hostAuth,  Context context) {
+    public Bundle validateAccount(HostAuth hostAuth, Context context) {
         Bundle bundle = new Bundle();
         int resultCode = MessagingException.NO_ERROR;
         try {
@@ -526,6 +555,10 @@ public class EasSyncService extends AbstractSyncService {
                                 ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
                                 : MessagingException.AUTHENTICATION_FAILED;
                     } else if (code != HttpStatus.SC_OK) {
+                        if ((code == EAS_REDIRECT_CODE) && (mRedirectCount++ < MAX_REDIRECTS) &&
+                                getValidateRedirect(resp, hostAuth)) {
+                            return validateAccount(hostAuth, context);
+                        }
                         // Fail generically with anything other than success
                         userLog("Unexpected response for FolderSync: ", code);
                         resultCode = MessagingException.UNSPECIFIED_EXCEPTION;
@@ -551,6 +584,10 @@ public class EasSyncService extends AbstractSyncService {
                     userLog("Internal server error");
                     resultCode = MessagingException.AUTHENTICATION_FAILED_OR_SERVER_ERROR;
                 } else {
+                    if ((code == EAS_REDIRECT_CODE) && (mRedirectCount++ < MAX_REDIRECTS) &&
+                            getValidateRedirect(resp, hostAuth)) {
+                        return validateAccount(hostAuth, context);
+                    }
                     // TODO Need to catch other kinds of errors (e.g. policy) For now, report code.
                     userLog("Validation failed, reporting I/O error: ", code);
                     resultCode = MessagingException.IOERROR;
@@ -649,7 +686,7 @@ public class EasSyncService extends AbstractSyncService {
         EasResponse resp = executePostWithTimeout(client, post, COMMAND_TIMEOUT);
         int code = resp.getStatus();
         // On a redirect, try the new location
-        if (code == AUTO_DISCOVER_REDIRECT_CODE) {
+        if (code == EAS_REDIRECT_CODE) {
             post = getRedirect(resp.mResponse, post);
             if (post != null) {
                 userLog("Posting autodiscover to redirect: " + post.getURI());
@@ -1631,6 +1668,25 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
+     * If possible, update the account to the new server address; report result
+     * @param resp the EasResponse from the current POST
+     * @return whether or not the redirect is handled and the POST should be retried
+     */
+    private boolean canHandleAccountMailboxRedirect(EasResponse resp) {
+        userLog("AccountMailbox redirect error");
+        HostAuth ha =
+                HostAuth.restoreHostAuthWithId(mContext, mAccount.mHostAuthKeyRecv);
+        if (ha != null && getValidateRedirect(resp, ha)) {
+            // Update the account's HostAuth with new values
+            ContentValues haValues = new ContentValues();
+            haValues.put(HostAuthColumns.ADDRESS, ha.mAddress);
+            ha.update(mContext, haValues);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Performs FolderSync
      *
      * @throws IOException
@@ -1701,7 +1757,10 @@ public class EasSyncService extends AbstractSyncService {
                         // Save the sync time of the account mailbox to current time
                         cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
                         mMailbox.update(mContext, cv);
-                     } else {
+                    } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
+                        // Cause this to re-run
+                        throw new IOException("Will retry after a brief hold...");
+                    } else {
                         errorLog("OPTIONS command failed; throwing IOException");
                         throw new IOException();
                     }
@@ -1757,6 +1816,9 @@ public class EasSyncService extends AbstractSyncService {
                         userLog("FolderSync auth error: ", code);
                         mExitStatus = EXIT_LOGIN_FAILURE;
                         return;
+                    } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
+                        // This will cause a retry of the FolderSync
+                        continue;
                     } else {
                         userLog("FolderSync response error: ", code);
                     }
