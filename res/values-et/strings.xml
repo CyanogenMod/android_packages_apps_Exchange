@@ -31,31 +31,28 @@
     <string name="app_name" msgid="5316597712787122829">"Vahetusteenused"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"See sündmus on tühistatud: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Selle sündmuse andmed on muutunud: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_attachments" msgid="7924303012593832731">"ära luba manuseid"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="5600453721690619515">"ära luba mälukaarte"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7391405270957498716">"ära luba allkirjastamata rakendusi"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8124763529572916905">"ära luba allkir.-mata rak.-installerit"</string>
-    <string name="policy_dont_allow_wifi" msgid="8972952227139360866">"ära luba WiFi-t"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="2705534889421216691">"ära luba tekstsõnumsidet"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="1563948038306495433">"ära luba POP3- või IMAP-kontosid"</string>
-    <string name="policy_dont_allow_irda" msgid="2864744455266260846">"ära luba infrapunasidet"</string>
-    <string name="policy_dont_allow_html" msgid="5004059292137838041">"ära luba HTML-meili"</string>
-    <string name="policy_dont_allow_browser" msgid="1898383003253987916">"ära luba brausereid"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="4208507021679199773">"ära luba tarbija meili"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="8866772202653485379">"ära luba Interneti-jagamist"</string>
-    <string name="policy_enable_password_recovery" msgid="3082147682445934504">"toeta taasteparooli"</string>
-    <string name="policy_require_smime" msgid="8044392674810605617">"nõua SMIME-sõnumeid"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="7140792029820703854">"luba rändlusel vaid käsitsi sünkr."</string>
-    <string name="policy_bluetooth_restricted" msgid="8992284721368381918">"piira Bluetoothi kasutamist"</string>
-    <string name="policy_app_blacklist" msgid="5997243461425995435">"ära luba määratud rakendusi"</string>
-    <string name="policy_app_whitelist" msgid="8401297908870017913">"luba ainult määratud rakendusi"</string>
-    <string name="policy_max_calendar_age" msgid="6394557044887221078">"piira kalendri sündmuste kuupäevi"</string>
-    <string name="policy_max_email_age" msgid="3303242808829681352">"piira meilide kuupäevi"</string>
-    <string name="policy_text_truncation" msgid="5800480928209379255">"piira tekstmeilide suurust"</string>
-    <string name="policy_html_truncation" msgid="629030762178870832">"piira HTML-meili suurust"</string>
-    <string name="policy_max_attachment_size" msgid="6191034264088052742">"piira manuse suurust"</string>
-    <string name="policy_require_encryption" msgid="1488761894213160246">"nõua seadme krüpteerimist"</string>
-    <string name="policy_require_sd_encryption" msgid="2425281481414518903">"nõua SD-kaardi krüpteerimist"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"Keela mälukaardid"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Keela allkirjastamata rakendused"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Keela allkirjata rakenduste installerid"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Keela WiFi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Keela tekstsõnumside"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Keela POP3- või IMAP-kontod"</string>
+    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Keela infrapunaside"</string>
+    <string name="policy_dont_allow_html" msgid="5888652525907651489">"Keela HTML-meilid"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Keela brauserid"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Keela tarbijate meilid"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Keela Interneti jagamine"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"Nõua SMIME-sõnumeid"</string>
+    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Piira Bluetoothi kasutamist"</string>
+    <string name="policy_app_blacklist" msgid="8169194058285873461">"Keela määratud rakendused"</string>
+    <string name="policy_app_whitelist" msgid="3670572644342165306">"Luba ainult määratud rakendused"</string>
+    <string name="policy_text_truncation" msgid="1783448050735715818">"Piira tekstmeilide suurust"</string>
+    <string name="policy_html_truncation" msgid="102158408055486343">"Piira HTML-meili suurust"</string>
+    <string name="policy_require_sd_encryption" msgid="366468398301273342">"Nõua SD-kaardi krüpteerimist"</string>
+    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"Keela manused"</string>
+    <string name="policy_max_attachment_size" msgid="4020279603050888661">"Piira manuse suurust"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Luba käsitsi sünkr. ainult rändlusel"</string>
+    <string name="policy_require_encryption" msgid="7984702283392885348">"Nõua seadme krüpteerimist"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automaatne"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Üks päev"</string>
     <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Kolm päeva"</string>

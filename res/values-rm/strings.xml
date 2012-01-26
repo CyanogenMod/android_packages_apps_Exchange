@@ -30,7 +30,8 @@
     <!-- no translation found for meeting_allday_recurring (2320264182781062684) -->
     <skip />
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Agiuntà in chalender Exchange"</string>
-    <!-- outdated translation 5815426892327290362 -->     <string name="app_name" msgid="5316597712787122829">"E-mail"</string>
+    <!-- no translation found for app_name (5316597712787122829) -->
+    <skip />
     <string name="exception_cancel" msgid="6160117429428313805">"Questa occurrenza è vegnida annullada: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Ils detagls da questa occurrenza èn vegnids modifitgads: <xliff:g id="DATE">%s</xliff:g>"</string>
     <!-- no translation found for policy_dont_allow_storage_cards (2765447013574188473) -->
@@ -84,5 +85,6 @@
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Ina emna"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Duas emnas"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"In mais"</string>
-    <!-- outdated translation 5383858972681926166 -->     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tut ils e-mails"</string>
+    <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
+    <skip />
 </resources>
