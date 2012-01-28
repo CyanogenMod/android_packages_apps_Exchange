@@ -31,6 +31,7 @@ import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
@@ -184,6 +185,25 @@ public class EasAccountService extends EasSyncService {
     }
 
     /**
+     * If possible, update the account to the new server address; report result
+     * @param resp the EasResponse from the current POST
+     * @return whether or not the redirect is handled and the POST should be retried
+     */
+    private boolean canHandleAccountMailboxRedirect(EasResponse resp) {
+        userLog("AccountMailbox redirect error");
+        HostAuth ha =
+                HostAuth.restoreHostAuthWithId(mContext, mAccount.mHostAuthKeyRecv);
+        if (ha != null && getValidateRedirect(resp, ha)) {
+            // Update the account's HostAuth with new values
+            ContentValues haValues = new ContentValues();
+            haValues.put(HostAuthColumns.ADDRESS, ha.mAddress);
+            ha.update(mContext, haValues);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Performs FolderSync
      *
      * @throws IOException
@@ -260,6 +280,9 @@ public class EasAccountService extends EasSyncService {
                         // Save the sync time of the account mailbox to current time
                         cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
                         mMailbox.update(mContext, cv);
+                     } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
+                        // Cause this to re-run
+                        throw new IOException("Will retry after a brief hold...");
                      } else {
                         errorLog("OPTIONS command failed; throwing IOException");
                         throw new IOException();
@@ -305,31 +328,9 @@ public class EasAccountService extends EasSyncService {
                     } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                         return;
-                    } else if (code == AUTO_DISCOVER_REDIRECT_CODE) {
-                        Header header = resp.getHeader("X-MS-Location");
-                        if (header != null) {
-                            String hostAddress = autodiscoverUrlToHostAddress(header.getValue());
-                            if (hostAddress != null) {
-                                errorLog("Exchange server redirect to " + hostAddress);
-                                cv.clear();
-                                cv.put(HostAuth.ADDRESS, hostAddress);
-                                // Update the account's address
-                                mContentResolver.update(
-                                        ContentUris.withAppendedId(HostAuth.CONTENT_URI,
-                                                mAccount.mHostAuthKeyRecv), cv, null, null);
-                                // And return normally; the sync will restart
-                                mExitStatus = EXIT_DONE;
-                                return;
-                            } else {
-                                // Not sure it's possible, but log it if it happens
-                                errorLog("Exchange server redirect without valid new location: " +
-                                        header.getValue());
-                            }
-                        } else {
-                            // Server would have to be broken, but ...
-                            errorLog("Exchange server redirect without new location?");
-                        }
-                        return;
+                    } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
+                        // This will cause a retry of the FolderSync
+                        continue;
                     } else {
                         userLog("FolderSync response error: ", code);
                     }
