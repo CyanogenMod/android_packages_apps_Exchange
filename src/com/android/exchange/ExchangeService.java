@@ -326,6 +326,11 @@ public class ExchangeService extends Service implements Runnable {
                 }
             });
         }
+
+        @Override
+        public void loadMessageStatus(long messageId, int statusCode, int progress)
+                throws RemoteException {
+        }
     };
 
     /**
