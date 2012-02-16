@@ -524,6 +524,10 @@ public class ExchangeService extends Service implements Runnable {
             return Search.searchMessages(exchangeService, accountId, searchParams,
                     destMailboxId);
         }
+
+        @Override
+        public void sendMail(long accountId) throws RemoteException {
+        }
     };
 
     /**
