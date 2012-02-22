@@ -1674,7 +1674,6 @@ public class ExchangeService extends Service implements Runnable {
         // Don't sync if there's no connectivity
         if (sConnectivityHold || (m == null) || sStop) {
             if (reason >= SYNC_CALLBACK_START) {
-                syncStatus = EmailContent.SYNC_STATUS_USER;
                 try {
                     sCallbackProxy.syncMailboxStatus(m.mId, EmailServiceStatus.CONNECTION_ERROR, 0);
                 } catch (RemoteException e) {
@@ -1696,6 +1695,9 @@ public class ExchangeService extends Service implements Runnable {
                         service.addRequest(req);
                     }
                     startServiceThread(service);
+                    if (reason >= SYNC_CALLBACK_START) {
+                        syncStatus = EmailContent.SYNC_STATUS_USER;
+                    }
                     setMailboxSyncStatus(m.mId, syncStatus);
                 }
             }
