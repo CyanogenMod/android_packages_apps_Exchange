@@ -1670,9 +1670,11 @@ public class ExchangeService extends Service implements Runnable {
     }
 
     private void requestSync(Mailbox m, int reason, Request req) {
+        int syncStatus = EmailContent.SYNC_STATUS_BACKGROUND;
         // Don't sync if there's no connectivity
         if (sConnectivityHold || (m == null) || sStop) {
             if (reason >= SYNC_CALLBACK_START) {
+                syncStatus = EmailContent.SYNC_STATUS_USER;
                 try {
                     sCallbackProxy.syncMailboxStatus(m.mId, EmailServiceStatus.CONNECTION_ERROR, 0);
                 } catch (RemoteException e) {
@@ -1694,9 +1696,16 @@ public class ExchangeService extends Service implements Runnable {
                         service.addRequest(req);
                     }
                     startServiceThread(service);
+                    setMailboxSyncStatus(m.mId, syncStatus);
                 }
             }
         }
+    }
+
+    private void setMailboxSyncStatus(long id, int status) {
+        ContentValues values = new ContentValues();
+        values.put(Mailbox.UI_SYNC_STATUS, status);
+        mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, id), values, null, null);
     }
 
     private void stopServiceThreads() {
@@ -2540,6 +2549,7 @@ public class ExchangeService extends Service implements Runnable {
                 return;
             }
             exchangeService.releaseMailbox(mailboxId);
+            exchangeService.setMailboxSyncStatus(mailboxId, EmailContent.SYNC_STATUS_NONE);
 
             ConcurrentHashMap<Long, SyncError> errorMap = exchangeService.mSyncErrorMap;
             SyncError syncError = errorMap.get(mailboxId);
