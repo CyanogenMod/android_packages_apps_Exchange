@@ -1710,6 +1710,12 @@ public class ExchangeService extends Service implements Runnable {
         mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, id), values, null, null);
     }
 
+    private void setMailboxLastSyncResult(long id, int result) {
+        ContentValues values = new ContentValues();
+        values.put(Mailbox.UI_LAST_SYNC_RESULT, result);
+        mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, id), values, null, null);
+    }
+
     private void stopServiceThreads() {
         synchronized (sSyncLock) {
             ArrayList<Long> toStop = new ArrayList<Long>();
@@ -2570,38 +2576,53 @@ public class ExchangeService extends Service implements Runnable {
                 }
             }
 
-            switch (exitStatus) {
-                case AbstractSyncService.EXIT_DONE:
-                    if (svc.hasPendingRequests()) {
-                        // TODO Handle this case
-                    }
-                    errorMap.remove(mailboxId);
-                    // If we've had a successful sync, clear the shutdown count
-                    synchronized (ExchangeService.class) {
-                        sClientConnectionManagerShutdownCount = 0;
-                    }
-                    break;
-                // I/O errors get retried at increasing intervals
-                case AbstractSyncService.EXIT_IO_ERROR:
-                    if (syncError != null) {
-                        syncError.escalate();
-                        log(m.mDisplayName + " held for " + syncError.holdDelay + "ms");
-                    } else {
-                        errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, false));
-                        log(m.mDisplayName + " added to syncErrorMap, hold for 15s");
-                    }
-                    break;
-                // These errors are not retried automatically
-                case AbstractSyncService.EXIT_LOGIN_FAILURE:
-                    new AccountServiceProxy(exchangeService).notifyLoginFailed(m.mAccountKey);
-                    // Fall through
-                case AbstractSyncService.EXIT_SECURITY_FAILURE:
-                case AbstractSyncService.EXIT_ACCESS_DENIED:
-                case AbstractSyncService.EXIT_EXCEPTION:
-                    errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, true));
-                    break;
+            int lastResult = EmailContent.LAST_SYNC_RESULT_SUCCESS;
+            // For error states, whether the error is fatal (won't automatically be retried)
+            boolean errorIsFatal = true;
+            try {
+                switch (exitStatus) {
+                    case AbstractSyncService.EXIT_DONE:
+                        if (svc.hasPendingRequests()) {
+                            // TODO Handle this case
+                        }
+                        errorMap.remove(mailboxId);
+                        // If we've had a successful sync, clear the shutdown count
+                        synchronized (ExchangeService.class) {
+                            sClientConnectionManagerShutdownCount = 0;
+                        }
+                        // Leave now; other statuses are errors
+                        return;
+                    // I/O errors get retried at increasing intervals
+                    case AbstractSyncService.EXIT_IO_ERROR:
+                        if (syncError != null) {
+                            syncError.escalate();
+                            log(m.mDisplayName + " held for " + syncError.holdDelay + "ms");
+                        } else {
+                            log(m.mDisplayName + " added to syncErrorMap, hold for 15s");
+                        }
+                        lastResult = EmailContent.LAST_SYNC_RESULT_CONNECTION_ERROR;
+                        errorIsFatal = false;
+                        break;
+                    // These errors are not retried automatically
+                    case AbstractSyncService.EXIT_LOGIN_FAILURE:
+                        new AccountServiceProxy(exchangeService).notifyLoginFailed(m.mAccountKey);
+                        lastResult = EmailContent.LAST_SYNC_RESULT_AUTH_ERROR;
+                        break;
+                    case AbstractSyncService.EXIT_SECURITY_FAILURE:
+                    case AbstractSyncService.EXIT_ACCESS_DENIED:
+                        lastResult = EmailContent.LAST_SYNC_RESULT_SECURITY_ERROR;
+                        break;
+                    case AbstractSyncService.EXIT_EXCEPTION:
+                        lastResult = EmailContent.LAST_SYNC_RESULT_INTERNAL_ERROR;
+                        break;
+                }
+                // Add this box to the error map
+                errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, errorIsFatal));
+            } finally {
+                // Always set the last result
+                exchangeService.setMailboxLastSyncResult(mailboxId, lastResult);
+                kick("sync completed");
             }
-            kick("sync completed");
         }
     }
 
