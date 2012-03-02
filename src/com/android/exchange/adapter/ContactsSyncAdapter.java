@@ -17,10 +17,6 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.CommandStatusException;
-import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
-
 import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderOperation.Builder;
@@ -61,6 +57,10 @@ import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Base64;
 import android.util.Log;
+
+import com.android.exchange.CommandStatusException;
+import com.android.exchange.Eas;
+import com.android.exchange.EasSyncService;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -1535,7 +1535,14 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
         // Compose address from name and addr
         if (addr != null) {
-            String value = '\"' + name + "\" <" + addr + '>';
+            String value;
+            // Only send the raw email address for EAS 2.5 (Hotmail, in particular, chokes on
+            // an RFC822 address)
+            if (mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+                value = addr;
+            } else {
+                value = '\"' + name + "\" <" + addr + '>';
+            }
             if (count < MAX_EMAIL_ROWS) {
                 s.data(EMAIL_TAGS[count], value);
             }
