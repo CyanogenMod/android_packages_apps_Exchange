@@ -2181,9 +2181,12 @@ public class ExchangeService extends Service implements Runnable {
     private boolean isMailboxSyncable(Account account, int type) {
         // This 'if' statement performs checks to see whether or not a mailbox is a
         // candidate for syncing based on policies, user settings, & other restrictions
-        if (type == Mailbox.TYPE_OUTBOX || type == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
-            // Outbox and account mailbox are always syncable
+        if (type == Mailbox.TYPE_OUTBOX) {
+            // Outbox is always syncable
             return true;
+        } else if (type == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+            // Always sync EAS mailbox unless master sync is off
+            return ContentResolver.getMasterSyncAutomatically();
         } else if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
             // Contacts/Calendar obey this setting from ContentResolver
             if (!ContentResolver.getMasterSyncAutomatically()) {
