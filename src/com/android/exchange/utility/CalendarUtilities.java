@@ -1496,7 +1496,6 @@ public class CalendarUtilities {
             sb = new StringBuilder();
         }
         Resources resources = context.getResources();
-        Date date = new Date(entityValues.getAsLong(Events.DTSTART));
         // TODO: Add more detail to message text
         // Right now, we're using.. When: Tuesday, March 5th at 2:00pm
         // What we're missing is the duration and any recurrence information.  So this should be
@@ -1514,11 +1513,13 @@ public class CalendarUtilities {
 
         String dateTimeString;
         int res;
+        long startTime = entityValues.getAsLong(Events.DTSTART);
         if (allDayEvent) {
+            Date date = new Date(getLocalAllDayCalendarTime(startTime, TimeZone.getDefault()));
             dateTimeString = DateFormat.getDateInstance().format(date);
             res = recurringEvent ? R.string.meeting_allday_recurring : R.string.meeting_allday;
         } else {
-            dateTimeString = DateFormat.getDateTimeInstance().format(date);
+            dateTimeString = DateFormat.getDateTimeInstance().format(new Date(startTime));
             res = recurringEvent ? R.string.meeting_recurring : R.string.meeting_when;
         }
         sb.append(resources.getString(res, dateTimeString));
