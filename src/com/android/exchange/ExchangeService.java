@@ -175,6 +175,8 @@ public class ExchangeService extends Service implements Runnable {
     public static final int PING_STATUS_WAITING = 2;
     // Service had a fatal error; can't run
     public static final int PING_STATUS_UNABLE = 3;
+    // Service is disabled by user (checkbox)
+    public static final int PING_STATUS_DISABLED = 4;
 
     private static final int MAX_CLIENT_CONNECTION_MANAGER_SHUTDOWNS = 1;
 

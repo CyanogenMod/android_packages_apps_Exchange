@@ -24,12 +24,15 @@ import android.database.Cursor;
 import android.net.TrafficStats;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.provider.CalendarContract;
+import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
@@ -533,7 +536,8 @@ public class EasAccountService extends EasSyncService {
         ArrayList<String> notReadyMailboxes = new ArrayList<String>();
         int pingWaitCount = 0;
         long inboxId = -1;
-
+        android.accounts.Account amAccount = new android.accounts.Account(mAccount.mEmailAddress,
+                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         while ((System.currentTimeMillis() < endTime) && !isStopped()) {
             // Count of pushable mailboxes
             int pushCount = 0;
@@ -561,8 +565,29 @@ public class EasAccountService extends EasSyncService {
                     // 1) ExchangeService tells us the mailbox is syncable (not running/not stopped)
                     // 2) The syncKey isn't "0" (i.e. it's synced at least once)
                     long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
-                    int pingStatus = ExchangeService.pingStatus(mailboxId);
                     String mailboxName = c.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN);
+
+                    // See what type of box we've got and get authority
+                    int mailboxType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
+                    String authority = EmailContent.AUTHORITY;
+                    switch(mailboxType) {
+                        case Mailbox.TYPE_CALENDAR:
+                            authority = CalendarContract.AUTHORITY;
+                            break;
+                        case Mailbox.TYPE_CONTACTS:
+                            authority = ContactsContract.AUTHORITY;
+                            break;
+                    }
+
+                    // See whether we can ping for this mailbox
+                    int pingStatus;
+                    if (!ContentResolver.getSyncAutomatically(amAccount, authority)) {
+                        pingStatus = ExchangeService.PING_STATUS_DISABLED;
+                    } else {
+                        pingStatus = ExchangeService.pingStatus(mailboxId);
+
+                    }
+
                     if (pingStatus == ExchangeService.PING_STATUS_OK) {
                         String syncKey = c.getString(Mailbox.CONTENT_SYNC_KEY_COLUMN);
                         if ((syncKey == null) || syncKey.equals("0")) {
@@ -592,6 +617,10 @@ public class EasAccountService extends EasSyncService {
                     } else if (pingStatus == ExchangeService.PING_STATUS_UNABLE) {
                         pushCount--;
                         userLog(mailboxName, " in error state; ignore");
+                        continue;
+                    } else if (pingStatus == ExchangeService.PING_STATUS_DISABLED) {
+                        pushCount--;
+                        userLog(mailboxName, " disabled by user; ignore");
                         continue;
                     }
                 }
