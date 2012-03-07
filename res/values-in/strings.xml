@@ -39,7 +39,7 @@
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Jangan izinkan akun POP3 atau IMAP"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Jangan izinkan komunikasi inframerah"</string>
     <string name="policy_dont_allow_html" msgid="5888652525907651489">"Jangan izinkan email HTML"</string>
-    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Jangan izinkan peramban"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Jangan izinkan browser"</string>
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Jangan izinkan email pelanggan"</string>
     <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Jangan izinkan berbagi internet"</string>
     <string name="policy_require_smime" msgid="673557150920820590">"Memerlukan pesan SMIME"</string>
