@@ -32,6 +32,7 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.PartRequest;
 import com.android.exchange.utility.UriCodec;
+import com.android.mail.providers.UIProvider;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
@@ -94,6 +95,7 @@ public class AttachmentLoader {
     private void finishLoadAttachment() {
         ContentValues cv = new ContentValues();
         cv.put(AttachmentColumns.CONTENT_URI, mAttachmentUri.toString());
+        cv.put(AttachmentColumns.UI_STATE, UIProvider.AttachmentState.SAVED);
         mAttachment.update(mContext, cv);
         doStatusCallback(EmailServiceStatus.SUCCESS);
     }
