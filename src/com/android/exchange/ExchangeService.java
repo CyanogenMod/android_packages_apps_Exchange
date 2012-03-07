@@ -517,6 +517,8 @@ public class ExchangeService extends Service implements Runnable {
 
                 }
             }
+            // Make sure the reconciler runs
+            runAccountReconcilerSync(ExchangeService.this);
         }
 
         @Override
