@@ -43,6 +43,8 @@ import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.calendarcommon.DateException;
+import com.android.calendarcommon.Duration;
 import com.android.emailcommon.AccountManagerTypes;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -53,11 +55,9 @@ import com.android.exchange.EasOutboxService;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.utility.CalendarUtilities;
-import com.android.exchange.utility.Duration;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.Map.Entry;
@@ -1566,7 +1566,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 try {
                     duration.parse(entityValues.getAsString(Events.DURATION));
                     durationMillis = duration.getMillis();
-                } catch (ParseException e) {
+                } catch (DateException e) {
                     // Can't do much about this; use the default (1 hour)
                 }
             }
