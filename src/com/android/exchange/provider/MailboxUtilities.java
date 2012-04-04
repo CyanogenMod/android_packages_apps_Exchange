@@ -21,7 +21,6 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.os.Debug;
 import android.util.Log;
 
 import com.android.emailcommon.Logging;
@@ -53,7 +52,7 @@ public class MailboxUtilities {
         String parentServerId = parentCursor.getString(Mailbox.CONTENT_SERVER_ID_COLUMN);
         // All email-type boxes hold mail
         if (parentType <= Mailbox.TYPE_NOT_EMAIL) {
-            parentFlags |= Mailbox.FLAG_HOLDS_MAIL;
+            parentFlags |= Mailbox.FLAG_HOLDS_MAIL + Mailbox.FLAG_SUPPORTS_SETTINGS;
         }
         // Outbox, Drafts, and Sent don't allow mail to be moved to them
         if (parentType == Mailbox.TYPE_MAIL || parentType == Mailbox.TYPE_TRASH ||
