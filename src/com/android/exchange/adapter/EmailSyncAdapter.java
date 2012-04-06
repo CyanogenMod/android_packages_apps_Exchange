@@ -60,7 +60,6 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
-
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
@@ -575,6 +574,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         break;
                     case Tags.EMAIL_MEETING_REQUEST:
                         meetingRequestParser(msg);
+                        break;
+                    case Tags.EMAIL_THREAD_TOPIC:
+                        msg.mThreadTopic = getValue();
                         break;
                     case Tags.RIGHTS_LICENSE:
                         skipParser(tag);
