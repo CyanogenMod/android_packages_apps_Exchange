@@ -15,14 +15,39 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
+#
+# Exchange
+#
+
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_SRC_FILES += $(call all-java-files-under, exchange1_src)
+
+LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon
+LOCAL_STATIC_JAVA_LIBRARIES += calendar-common
+
+LOCAL_PACKAGE_NAME := Exchange
+
+LOCAL_PROGUARD_FLAG_FILES := proguard.flags
+
+LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
+
+include $(BUILD_PACKAGE)
+
+include $(CLEAR_VARS)
+#
+# Exchange2
+#
+LOCAL_MODULE_TAGS := optional
+
+LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_SRC_FILES += $(call all-java-files-under, exchange2_src)
 
 LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon2
 LOCAL_STATIC_JAVA_LIBRARIES += calendar-common
 
-LOCAL_PACKAGE_NAME := Exchange
+LOCAL_PACKAGE_NAME := Exchange2
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
 
