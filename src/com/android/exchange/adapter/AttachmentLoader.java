@@ -90,13 +90,30 @@ public class AttachmentLoader {
     }
 
     /**
-     * Save away the contentUri for this Attachment and notify listeners
+     * If this attachment was destined for external storage, move it there. In either event, make
+     * sure the attachment itself is updated and the callback sent
      */
     private void finishLoadAttachment() {
-        ContentValues cv = new ContentValues();
-        cv.put(AttachmentColumns.CONTENT_URI, mAttachmentUri.toString());
-        cv.put(AttachmentColumns.UI_STATE, UIProvider.AttachmentState.SAVED);
-        mAttachment.update(mContext, cv);
+        // The file has been downloaded to the cache
+        if (mAttachment.mUiDestination == UIProvider.AttachmentDestination.EXTERNAL) {
+            // If we want it saved, save it and delete the cached version
+            try {
+                InputStream in = mResolver.openInputStream(mAttachmentUri);
+                // Note that saveAttachment updates the attachment itself
+                AttachmentUtilities.saveAttachment(mContext, in, mAttachment);
+                // We don't need the cached file anymore
+                mResolver.delete(mAttachmentUri, null, null);
+            } catch (FileNotFoundException e) {
+                // Something of a WTF, since we just created it
+                doStatusCallback(EmailServiceStatus.ATTACHMENT_NOT_FOUND);
+                return;
+            }
+        } else {
+            ContentValues cv = new ContentValues();
+            cv.put(AttachmentColumns.CONTENT_URI, mAttachmentUri.toString());
+            cv.put(AttachmentColumns.UI_STATE, UIProvider.AttachmentState.SAVED);
+            mAttachment.update(mContext, cv);
+        }
         doStatusCallback(EmailServiceStatus.SUCCESS);
     }
 
