@@ -53,6 +53,8 @@ import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.Body;
+import com.android.emailcommon.provider.EmailContent.BodyColumns;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -2423,12 +2425,28 @@ public class ExchangeService extends Service implements Runnable {
     static public void sendMessageRequest(Request req) {
         ExchangeService exchangeService = INSTANCE;
         Message msg = Message.restoreMessageWithId(exchangeService, req.mMessageId);
-        if (msg == null) {
-            return;
-        }
+        if (msg == null) return;
         long mailboxId = msg.mMailboxKey;
-        AbstractSyncService service = exchangeService.mServiceMap.get(mailboxId);
+        Mailbox mailbox = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
+        if (mailbox == null) return;
 
+        // If we're loading an attachment for Outbox, we want to look at the source message
+        // to find the loading mailbox
+        if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
+            long sourceId = Utility.getFirstRowLong(exchangeService, Body.CONTENT_URI,
+                    new String[] {BodyColumns.SOURCE_MESSAGE_KEY},
+                    BodyColumns.MESSAGE_KEY + "=?",
+                    new String[] {Long.toString(msg.mId)}, null, 0, -1L);
+            if (sourceId != -1L) {
+                EmailContent.Message sourceMsg =
+                        EmailContent.Message.restoreMessageWithId(exchangeService, sourceId);
+                if (sourceMsg != null) {
+                    mailboxId = sourceMsg.mMailboxKey;
+                }
+            }
+        }
+
+        AbstractSyncService service = exchangeService.mServiceMap.get(mailboxId);
         if (service == null) {
             startManualSync(mailboxId, SYNC_SERVICE_PART_REQUEST, req);
             kick("part request");
