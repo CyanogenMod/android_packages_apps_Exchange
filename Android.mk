@@ -48,6 +48,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon2
 LOCAL_STATIC_JAVA_LIBRARIES += calendar-common
 
 LOCAL_PACKAGE_NAME := Exchange2
+LOCAL_OVERRIDES_PACKAGES := Exchange
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
 
