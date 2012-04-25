@@ -23,7 +23,9 @@ import android.os.storage.StorageVolume;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
+import com.android.exchange.SecurityPolicyDelegate;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -36,20 +38,22 @@ import java.util.ArrayList;
 
 /**
  * Parse the result of the Provision command
+ *
+ * Assuming a successful parse, we store the PolicySet and the policy key
  */
 public class ProvisionParser extends Parser {
     private final EasSyncService mService;
-    private Policy mPolicy = null;
-    private String mSecuritySyncKey = null;
-    private boolean mRemoteWipe = false;
-    private boolean mIsSupportable = true;
-    private boolean smimeRequired = false;
-    private final Resources mResources;
+    Policy mPolicy = null;
+    String mSecuritySyncKey = null;
+    boolean mRemoteWipe = false;
+    boolean mIsSupportable = true;
+    // An array of string resource id's describing policies that are unsupported by the device/app
+    String[] mUnsupportedPolicies;
+    boolean smimeRequired = false;
 
     public ProvisionParser(InputStream in, EasSyncService service) throws IOException {
         super(in);
         mService = service;
-        mResources = service.mContext.getResources();
     }
 
     public Policy getPolicy() {
@@ -72,32 +76,18 @@ public class ProvisionParser extends Parser {
         return (mPolicy != null) && mIsSupportable;
     }
 
-    public void clearUnsupportablePolicies() {
+    public void clearUnsupportedPolicies() {
+        mPolicy = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicy);
         mIsSupportable = true;
-        mPolicy.mProtocolPoliciesUnsupported = null;
+        mUnsupportedPolicies = null;
     }
 
-    private void addPolicyString(StringBuilder sb, int res) {
-        sb.append(mResources.getString(res));
-        sb.append(Policy.POLICY_STRING_DELIMITER);
+    public String[] getUnsupportedPolicies() {
+        return mUnsupportedPolicies;
     }
 
-    /**
-     * Complete setup of a Policy; we normalize it first (removing inconsistencies, etc.) and then
-     * generate the tokenized "protocol policies enforced" string.  Note that unsupported policies
-     * must have been added prior to calling this method (this is only a possibility with wbxml
-     * policy documents, as all versions of the OS support the policies in xml documents).
-     */
     private void setPolicy(Policy policy) {
         policy.normalize();
-        StringBuilder sb = new StringBuilder();
-        if (policy.mDontAllowAttachments) {
-            addPolicyString(sb, R.string.policy_dont_allow_attachments);
-        }
-        if (policy.mRequireManualSyncWhenRoaming) {
-            addPolicyString(sb, R.string.policy_require_manual_sync_roaming);
-        }
-        policy.mProtocolPoliciesEnforced = sb.toString();
         mPolicy = policy;
     }
 
@@ -361,16 +351,26 @@ public class ProvisionParser extends Parser {
         if (!passwordEnabled) {
             policy.mPasswordMode = Policy.PASSWORD_MODE_NONE;
         }
+        setPolicy(policy);
 
-        if (!unsupportedList.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (int res: unsupportedList) {
-                addPolicyString(sb, res);
-            }
-            policy.mProtocolPoliciesUnsupported = sb.toString();
+        // We can only determine whether encryption is supported on device by using isSupported here
+        if (!SecurityPolicyDelegate.isSupported(mService.mContext, policy)) {
+            log("SecurityPolicy reports PolicySet not supported.");
+            mIsSupportable = false;
+            unsupportedList.add(R.string.policy_require_encryption);
         }
 
-        setPolicy(policy);
+        if (!unsupportedList.isEmpty()) {
+            mUnsupportedPolicies = new String[unsupportedList.size()];
+            int i = 0;
+            Context context = ExchangeService.getContext();
+            if (context != null) {
+                Resources resources = context.getResources();
+                for (int res: unsupportedList) {
+                    mUnsupportedPolicies[i++] = resources.getString(res);
+                }
+            }
+        }
     }
 
     /**

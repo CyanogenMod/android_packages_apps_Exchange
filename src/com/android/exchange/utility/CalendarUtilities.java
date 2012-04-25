@@ -35,8 +35,6 @@ import android.text.format.Time;
 import android.util.Base64;
 import android.util.Log;
 
-import com.android.calendarcommon.DateException;
-import com.android.calendarcommon.Duration;
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
@@ -57,6 +55,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -1497,6 +1496,7 @@ public class CalendarUtilities {
             sb = new StringBuilder();
         }
         Resources resources = context.getResources();
+        Date date = new Date(entityValues.getAsLong(Events.DTSTART));
         // TODO: Add more detail to message text
         // Right now, we're using.. When: Tuesday, March 5th at 2:00pm
         // What we're missing is the duration and any recurrence information.  So this should be
@@ -1514,13 +1514,11 @@ public class CalendarUtilities {
 
         String dateTimeString;
         int res;
-        long startTime = entityValues.getAsLong(Events.DTSTART);
         if (allDayEvent) {
-            Date date = new Date(getLocalAllDayCalendarTime(startTime, TimeZone.getDefault()));
             dateTimeString = DateFormat.getDateInstance().format(date);
             res = recurringEvent ? R.string.meeting_allday_recurring : R.string.meeting_allday;
         } else {
-            dateTimeString = DateFormat.getDateTimeInstance().format(new Date(startTime));
+            dateTimeString = DateFormat.getDateTimeInstance().format(date);
             res = recurringEvent ? R.string.meeting_recurring : R.string.meeting_when;
         }
         sb.append(resources.getString(res, dateTimeString));
@@ -1703,7 +1701,7 @@ public class CalendarUtilities {
                 try {
                     duration.parse(entityValues.getAsString(Events.DURATION));
                     durationMillis = duration.getMillis();
-                } catch (DateException e) {
+                } catch (ParseException e) {
                     // We'll use the default in this case
                 }
                 ics.writeTag("DTEND" + vCalendarDateSuffix,
