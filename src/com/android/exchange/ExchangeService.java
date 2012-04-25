@@ -53,8 +53,6 @@ import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Attachment;
-import com.android.emailcommon.provider.EmailContent.Body;
-import com.android.emailcommon.provider.EmailContent.BodyColumns;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -177,8 +175,6 @@ public class ExchangeService extends Service implements Runnable {
     public static final int PING_STATUS_WAITING = 2;
     // Service had a fatal error; can't run
     public static final int PING_STATUS_UNABLE = 3;
-    // Service is disabled by user (checkbox)
-    public static final int PING_STATUS_DISABLED = 4;
 
     private static final int MAX_CLIENT_CONNECTION_MANAGER_SHUTDOWNS = 1;
 
@@ -287,7 +283,6 @@ public class ExchangeService extends Service implements Runnable {
             }
         }
 
-        @Override
         public void loadAttachmentStatus(final long messageId, final long attachmentId,
                 final int status, final int progress) {
             broadcastCallback(new ServiceCallbackWrapper() {
@@ -298,7 +293,6 @@ public class ExchangeService extends Service implements Runnable {
             });
         }
 
-        @Override
         public void sendMessageStatus(final long messageId, final String subject, final int status,
                 final int progress) {
             broadcastCallback(new ServiceCallbackWrapper() {
@@ -309,7 +303,6 @@ public class ExchangeService extends Service implements Runnable {
             });
         }
 
-        @Override
         public void syncMailboxListStatus(final long accountId, final int status,
                 final int progress) {
             broadcastCallback(new ServiceCallbackWrapper() {
@@ -320,7 +313,6 @@ public class ExchangeService extends Service implements Runnable {
             });
         }
 
-        @Override
         public void syncMailboxStatus(final long mailboxId, final int status,
                 final int progress) {
             broadcastCallback(new ServiceCallbackWrapper() {
@@ -330,11 +322,6 @@ public class ExchangeService extends Service implements Runnable {
                 }
             });
         }
-
-        @Override
-        public void loadMessageStatus(long messageId, int statusCode, int progress)
-                throws RemoteException {
-        }
     };
 
     /**
@@ -342,23 +329,19 @@ public class ExchangeService extends Service implements Runnable {
      */
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
 
-        @Override
         public int getApiLevel() {
             return Api.LEVEL;
         }
 
-        @Override
         public Bundle validate(HostAuth hostAuth) throws RemoteException {
             return AbstractSyncService.validate(EasSyncService.class,
                     hostAuth, ExchangeService.this);
         }
 
-        @Override
         public Bundle autoDiscover(String userName, String password) throws RemoteException {
             return new EasSyncService().tryAutodiscover(userName, password);
         }
 
-        @Override
         public void startSync(long mailboxId, boolean userRequest) throws RemoteException {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return;
@@ -417,24 +400,20 @@ public class ExchangeService extends Service implements Runnable {
                 ExchangeService.SYNC_SERVICE_START_SYNC, null);
         }
 
-        @Override
         public void stopSync(long mailboxId) throws RemoteException {
             stopManualSync(mailboxId);
         }
 
-        @Override
         public void loadAttachment(long attachmentId, boolean background) throws RemoteException {
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
             log("loadAttachment " + attachmentId + ": " + att.mFileName);
             sendMessageRequest(new PartRequest(att, null, null));
         }
 
-        @Override
         public void updateFolderList(long accountId) throws RemoteException {
             reloadFolderList(ExchangeService.this, accountId, false);
         }
 
-        @Override
         public void hostChanged(long accountId) throws RemoteException {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return;
@@ -459,38 +438,31 @@ public class ExchangeService extends Service implements Runnable {
             kick("host changed");
         }
 
-        @Override
         public void setLogging(int flags) throws RemoteException {
             Eas.setUserDebug(flags);
         }
 
-        @Override
         public void sendMeetingResponse(long messageId, int response) throws RemoteException {
             sendMessageRequest(new MeetingResponseRequest(messageId, response));
         }
 
-        @Override
         public void loadMore(long messageId) throws RemoteException {
         }
 
         // The following three methods are not implemented in this version
-        @Override
         public boolean createFolder(long accountId, String name) throws RemoteException {
             return false;
         }
 
-        @Override
         public boolean deleteFolder(long accountId, String name) throws RemoteException {
             return false;
         }
 
-        @Override
         public boolean renameFolder(long accountId, String oldName, String newName)
                 throws RemoteException {
             return false;
         }
 
-        @Override
         public void setCallback(IEmailServiceCallback cb) throws RemoteException {
             mCallbackList.register(cb);
         }
@@ -501,38 +473,18 @@ public class ExchangeService extends Service implements Runnable {
          * @param accountId the account whose data should be deleted
          * @throws RemoteException
          */
-        @Override
         public void deleteAccountPIMData(long accountId) throws RemoteException {
-            ExchangeService exchangeService = INSTANCE;
-            if (exchangeService == null) return;
             // Stop any running syncs
             ExchangeService.stopAccountSyncs(accountId);
             // Delete the data
             ExchangeService.deleteAccountPIMData(accountId);
-            long accountMailboxId = Mailbox.findMailboxOfType(exchangeService, accountId,
-                    Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
-            if (accountMailboxId != Mailbox.NO_MAILBOX) {
-                // Make sure the account mailbox is held due to security
-                synchronized(sSyncLock) {
-                    mSyncErrorMap.put(accountMailboxId, exchangeService.new SyncError(
-                            AbstractSyncService.EXIT_SECURITY_FAILURE, false));
-
-                }
-            }
-            // Make sure the reconciler runs
-            runAccountReconcilerSync(ExchangeService.this);
         }
 
-        @Override
         public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
             ExchangeService exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
             return Search.searchMessages(exchangeService, accountId, searchParams,
                     destMailboxId);
-        }
-
-        @Override
-        public void sendMail(long accountId) throws RemoteException {
         }
     };
 
@@ -628,14 +580,14 @@ public class ExchangeService extends Service implements Runnable {
         Mailbox mailbox =
             Mailbox.restoreMailboxOfType(exchangeService, accountId, Mailbox.TYPE_CONTACTS);
         if (mailbox != null) {
-            EasSyncService service = EasSyncService.getServiceForMailbox(exchangeService, mailbox);
+            EasSyncService service = new EasSyncService(exchangeService, mailbox);
             ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
             adapter.wipe();
         }
         mailbox =
             Mailbox.restoreMailboxOfType(exchangeService, accountId, Mailbox.TYPE_CALENDAR);
         if (mailbox != null) {
-            EasSyncService service = EasSyncService.getServiceForMailbox(exchangeService, mailbox);
+            EasSyncService service = new EasSyncService(exchangeService, mailbox);
             CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
             adapter.wipe();
         }
@@ -682,13 +634,17 @@ public class ExchangeService extends Service implements Runnable {
                 public void run() {
                     synchronized (mAccountList) {
                         for (Account account : mAccountList) {
-                            if (onSecurityHold(account)) {
+                            if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
                                 // If we're in a security hold, and our policies are active, release
-                                // the hold
+                                // the hold; otherwise, ping PolicyService that this account's
+                                // policies are required
                                 if (PolicyServiceProxy.isActive(ExchangeService.this, null)) {
                                     PolicyServiceProxy.setAccountHoldFlag(ExchangeService.this,
                                             account, false);
                                     log("isActive true; release hold for " + account.mDisplayName);
+                                } else {
+                                    PolicyServiceProxy.policiesRequired(ExchangeService.this,
+                                            account.mId);
                                 }
                             }
                         }
@@ -848,8 +804,7 @@ public class ExchangeService extends Service implements Runnable {
         @Override
         public void onChange(boolean selfChange) {
             new Thread(new Runnable() {
-               @Override
-            public void run() {
+               public void run() {
                    onAccountChanged();
                 }}, "Account Observer").start();
         }
@@ -951,7 +906,6 @@ public class ExchangeService extends Service implements Runnable {
             // See if the user has changed syncing of our calendar
             if (!selfChange) {
                 new Thread(new Runnable() {
-                    @Override
                     public void run() {
                         try {
                             Cursor c = mResolver.query(Calendars.CONTENT_URI,
@@ -978,8 +932,7 @@ public class ExchangeService extends Service implements Runnable {
                                             stopManualSync(mailbox.mId);
                                             // Set the syncKey to 0 (reset)
                                             EasSyncService service =
-                                                EasSyncService.getServiceForMailbox(
-                                                        INSTANCE, mailbox);
+                                                new EasSyncService(INSTANCE, mailbox);
                                             CalendarSyncAdapter adapter =
                                                 new CalendarSyncAdapter(service);
                                             try {
@@ -1257,7 +1210,6 @@ public class ExchangeService extends Service implements Runnable {
     }
 
     static public ConnPerRoute sConnPerRoute = new ConnPerRoute() {
-        @Override
         public int getMaxForRoute(HttpRoute route) {
             return 8;
         }
@@ -1545,8 +1497,7 @@ public class ExchangeService extends Service implements Runnable {
                     threadName += service.mMailbox.mDisplayName;
                 }
                 new Thread(new Runnable() {
-                   @Override
-                public void run() {
+                   public void run() {
                        Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, id);
                        if (m != null) {
                            // We ignore drafts completely (doesn't sync).  Changes in Outbox are
@@ -1637,18 +1588,18 @@ public class ExchangeService extends Service implements Runnable {
      * @param service the service to start
      * @param m the Mailbox on which the service will operate
      */
-    private void startServiceThread(AbstractSyncService service) {
+    private void startServiceThread(AbstractSyncService service, Mailbox m) {
+        if (m == null) return;
         synchronized (sSyncLock) {
-            Mailbox mailbox = service.mMailbox;
-            String mailboxName = mailbox.mDisplayName;
+            String mailboxName = m.mDisplayName;
             String accountName = service.mAccount.mDisplayName;
             Thread thread = new Thread(service, mailboxName + "[" + accountName + "]");
             log("Starting thread for " + mailboxName + " in account " + accountName);
             thread.start();
-            mServiceMap.put(mailbox.mId, service);
-            runAwake(mailbox.mId);
-            if (mailbox.mServerId != null && mailbox.mType != Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
-                stopPing(mailbox.mAccountKey);
+            mServiceMap.put(m.mId, service);
+            runAwake(m.mId);
+            if ((m.mServerId != null) && !m.mServerId.startsWith(Eas.ACCOUNT_MAILBOX_PREFIX)) {
+                stopPing(m.mAccountKey);
             }
         }
     }
@@ -1665,7 +1616,7 @@ public class ExchangeService extends Service implements Runnable {
                 if (m != null) {
                     String serverId = m.mServerId;
                     if (m.mAccountKey == accountId && serverId != null &&
-                          m.mType == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+                            serverId.startsWith(Eas.ACCOUNT_MAILBOX_PREFIX)) {
                         // Here's our account mailbox; reset him (stopping pings)
                         AbstractSyncService svc = mServiceMap.get(mailboxId);
                         svc.reset();
@@ -1676,7 +1627,6 @@ public class ExchangeService extends Service implements Runnable {
     }
 
     private void requestSync(Mailbox m, int reason, Request req) {
-        int syncStatus = EmailContent.SYNC_STATUS_BACKGROUND;
         // Don't sync if there's no connectivity
         if (sConnectivityHold || (m == null) || sStop) {
             if (reason >= SYNC_CALLBACK_START) {
@@ -1694,32 +1644,16 @@ public class ExchangeService extends Service implements Runnable {
                 // Always make sure there's not a running instance of this service
                 AbstractSyncService service = mServiceMap.get(m.mId);
                 if (service == null) {
-                    service = EasSyncService.getServiceForMailbox(this, m);
+                    service = new EasSyncService(this, m);
                     if (!((EasSyncService)service).mIsValid) return;
                     service.mSyncReason = reason;
                     if (req != null) {
                         service.addRequest(req);
                     }
-                    startServiceThread(service);
-                    if (reason >= SYNC_CALLBACK_START) {
-                        syncStatus = EmailContent.SYNC_STATUS_USER;
-                    }
-                    setMailboxSyncStatus(m.mId, syncStatus);
+                    startServiceThread(service, m);
                 }
             }
         }
-    }
-
-    private void setMailboxSyncStatus(long id, int status) {
-        ContentValues values = new ContentValues();
-        values.put(Mailbox.UI_SYNC_STATUS, status);
-        mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, id), values, null, null);
-    }
-
-    private void setMailboxLastSyncResult(long id, int result) {
-        ContentValues values = new ContentValues();
-        values.put(Mailbox.UI_LAST_SYNC_RESULT, result);
-        mResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, id), values, null, null);
     }
 
     private void stopServiceThreads() {
@@ -1937,7 +1871,6 @@ public class ExchangeService extends Service implements Runnable {
         }
     }
 
-    @Override
     public void run() {
         sStop = false;
         alwaysLog("ExchangeService thread running");
@@ -2156,7 +2089,6 @@ public class ExchangeService extends Service implements Runnable {
             if (policy == null) {
                 policy = Policy.restorePolicyWithId(INSTANCE, policyKey);
                 account.mPolicy = policy;
-                if (!PolicyServiceProxy.isActive(exchangeService, policy)) return false;
             }
             if (policy != null && policy.mRequireManualSyncWhenRoaming && networkInfo.isRoaming()) {
                 return false;
@@ -2187,12 +2119,9 @@ public class ExchangeService extends Service implements Runnable {
     private boolean isMailboxSyncable(Account account, int type) {
         // This 'if' statement performs checks to see whether or not a mailbox is a
         // candidate for syncing based on policies, user settings, & other restrictions
-        if (type == Mailbox.TYPE_OUTBOX) {
-            // Outbox is always syncable
+        if (type == Mailbox.TYPE_OUTBOX || type == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+            // Outbox and account mailbox are always syncable
             return true;
-        } else if (type == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
-            // Always sync EAS mailbox unless master sync is off
-            return ContentResolver.getMasterSyncAutomatically();
         } else if (type == Mailbox.TYPE_CONTACTS || type == Mailbox.TYPE_CALENDAR) {
             // Contacts/Calendar obey this setting from ContentResolver
             if (!ContentResolver.getMasterSyncAutomatically()) {
@@ -2317,7 +2246,7 @@ public class ExchangeService extends Service implements Runnable {
                     } else if (mailboxType == Mailbox.TYPE_OUTBOX) {
                         if (hasSendableMessages(c)) {
                             Mailbox m = EmailContent.getContent(c, Mailbox.class);
-                            startServiceThread(EasSyncService.getServiceForMailbox(this, m));
+                            startServiceThread(new EasOutboxService(this, m), m);
                         }
                     } else if (syncInterval > 0 && syncInterval <= ONE_DAY_MINUTES) {
                         long lastSync = c.getLong(Mailbox.CONTENT_SYNC_TIME_COLUMN);
@@ -2424,29 +2353,14 @@ public class ExchangeService extends Service implements Runnable {
 
     static public void sendMessageRequest(Request req) {
         ExchangeService exchangeService = INSTANCE;
+        if (exchangeService == null) return;
         Message msg = Message.restoreMessageWithId(exchangeService, req.mMessageId);
-        if (msg == null) return;
-        long mailboxId = msg.mMailboxKey;
-        Mailbox mailbox = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
-        if (mailbox == null) return;
-
-        // If we're loading an attachment for Outbox, we want to look at the source message
-        // to find the loading mailbox
-        if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
-            long sourceId = Utility.getFirstRowLong(exchangeService, Body.CONTENT_URI,
-                    new String[] {BodyColumns.SOURCE_MESSAGE_KEY},
-                    BodyColumns.MESSAGE_KEY + "=?",
-                    new String[] {Long.toString(msg.mId)}, null, 0, -1L);
-            if (sourceId != -1L) {
-                EmailContent.Message sourceMsg =
-                        EmailContent.Message.restoreMessageWithId(exchangeService, sourceId);
-                if (sourceMsg != null) {
-                    mailboxId = sourceMsg.mMailboxKey;
-                }
-            }
+        if (msg == null) {
+            return;
         }
-
+        long mailboxId = msg.mMailboxKey;
         AbstractSyncService service = exchangeService.mServiceMap.get(mailboxId);
+
         if (service == null) {
             startManualSync(mailboxId, SYNC_SERVICE_PART_REQUEST, req);
             kick("part request");
@@ -2582,7 +2496,6 @@ public class ExchangeService extends Service implements Runnable {
                 return;
             }
             exchangeService.releaseMailbox(mailboxId);
-            exchangeService.setMailboxSyncStatus(mailboxId, EmailContent.SYNC_STATUS_NONE);
 
             ConcurrentHashMap<Long, SyncError> errorMap = exchangeService.mSyncErrorMap;
             SyncError syncError = errorMap.get(mailboxId);
@@ -2601,53 +2514,38 @@ public class ExchangeService extends Service implements Runnable {
                 }
             }
 
-            int lastResult = EmailContent.LAST_SYNC_RESULT_SUCCESS;
-            // For error states, whether the error is fatal (won't automatically be retried)
-            boolean errorIsFatal = true;
-            try {
-                switch (exitStatus) {
-                    case AbstractSyncService.EXIT_DONE:
-                        if (svc.hasPendingRequests()) {
-                            // TODO Handle this case
-                        }
-                        errorMap.remove(mailboxId);
-                        // If we've had a successful sync, clear the shutdown count
-                        synchronized (ExchangeService.class) {
-                            sClientConnectionManagerShutdownCount = 0;
-                        }
-                        // Leave now; other statuses are errors
-                        return;
-                    // I/O errors get retried at increasing intervals
-                    case AbstractSyncService.EXIT_IO_ERROR:
-                        if (syncError != null) {
-                            syncError.escalate();
-                            log(m.mDisplayName + " held for " + syncError.holdDelay + "ms");
-                        } else {
-                            log(m.mDisplayName + " added to syncErrorMap, hold for 15s");
-                        }
-                        lastResult = EmailContent.LAST_SYNC_RESULT_CONNECTION_ERROR;
-                        errorIsFatal = false;
-                        break;
-                    // These errors are not retried automatically
-                    case AbstractSyncService.EXIT_LOGIN_FAILURE:
-                        new AccountServiceProxy(exchangeService).notifyLoginFailed(m.mAccountKey);
-                        lastResult = EmailContent.LAST_SYNC_RESULT_AUTH_ERROR;
-                        break;
-                    case AbstractSyncService.EXIT_SECURITY_FAILURE:
-                    case AbstractSyncService.EXIT_ACCESS_DENIED:
-                        lastResult = EmailContent.LAST_SYNC_RESULT_SECURITY_ERROR;
-                        break;
-                    case AbstractSyncService.EXIT_EXCEPTION:
-                        lastResult = EmailContent.LAST_SYNC_RESULT_INTERNAL_ERROR;
-                        break;
-                }
-                // Add this box to the error map
-                errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, errorIsFatal));
-            } finally {
-                // Always set the last result
-                exchangeService.setMailboxLastSyncResult(mailboxId, lastResult);
-                kick("sync completed");
+            switch (exitStatus) {
+                case AbstractSyncService.EXIT_DONE:
+                    if (svc.hasPendingRequests()) {
+                        // TODO Handle this case
+                    }
+                    errorMap.remove(mailboxId);
+                    // If we've had a successful sync, clear the shutdown count
+                    synchronized (ExchangeService.class) {
+                        sClientConnectionManagerShutdownCount = 0;
+                    }
+                    break;
+                // I/O errors get retried at increasing intervals
+                case AbstractSyncService.EXIT_IO_ERROR:
+                    if (syncError != null) {
+                        syncError.escalate();
+                        log(m.mDisplayName + " held for " + syncError.holdDelay + "ms");
+                    } else {
+                        errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, false));
+                        log(m.mDisplayName + " added to syncErrorMap, hold for 15s");
+                    }
+                    break;
+                // These errors are not retried automatically
+                case AbstractSyncService.EXIT_LOGIN_FAILURE:
+                    new AccountServiceProxy(exchangeService).notifyLoginFailed(m.mAccountKey);
+                    // Fall through
+                case AbstractSyncService.EXIT_SECURITY_FAILURE:
+                case AbstractSyncService.EXIT_ACCESS_DENIED:
+                case AbstractSyncService.EXIT_EXCEPTION:
+                    errorMap.put(mailboxId, exchangeService.new SyncError(exitStatus, true));
+                    break;
             }
+            kick("sync completed");
         }
     }
 

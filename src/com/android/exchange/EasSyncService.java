@@ -28,6 +28,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Events;
 import android.text.TextUtils;
@@ -42,6 +43,8 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
@@ -52,7 +55,6 @@ import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -66,12 +68,15 @@ import com.android.exchange.adapter.FolderSyncParser;
 import com.android.exchange.adapter.GalParser;
 import com.android.exchange.adapter.MeetingResponseParser;
 import com.android.exchange.adapter.MoveItemsParser;
+import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.Parser.EmptyStreamException;
+import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SettingsParser;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
+import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.CalendarUtilities;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -100,12 +105,27 @@ import java.io.InputStream;
 import java.lang.Thread.State;
 import java.net.URI;
 import java.security.cert.CertificateException;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class EasSyncService extends AbstractSyncService {
     // DO NOT CHECK IN SET TO TRUE
     public static final boolean DEBUG_GAL_SERVICE = false;
 
-    protected static final String PING_COMMAND = "Ping";
+    private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
+        MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
+    private static final String WHERE_ACCOUNT_AND_SYNC_INTERVAL_PING =
+        MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SYNC_INTERVAL +
+        '=' + Mailbox.CHECK_INTERVAL_PING;
+    private static final String AND_FREQUENCY_PING_PUSH_AND_NOT_ACCOUNT_MAILBOX = " AND " +
+        MailboxColumns.SYNC_INTERVAL + " IN (" + Mailbox.CHECK_INTERVAL_PING +
+        ',' + Mailbox.CHECK_INTERVAL_PUSH + ") AND " + MailboxColumns.TYPE + "!=\"" +
+        Mailbox.TYPE_EAS_ACCOUNT_MAILBOX + '\"';
+    private static final String WHERE_PUSH_HOLD_NOT_ACCOUNT_MAILBOX =
+        MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SYNC_INTERVAL +
+        '=' + Mailbox.CHECK_INTERVAL_PUSH_HOLD;
+
+    static private final String PING_COMMAND = "Ping";
     // Command timeout is the the time allowed for reading data from an open connection before an
     // IOException is thrown.  After a small added allowance, our watchdog alarm goes off (allowing
     // us to detect a silently dropped connection).  The allowance is defined below.
@@ -115,10 +135,17 @@ public class EasSyncService extends AbstractSyncService {
     // The extra time allowed beyond the COMMAND_TIMEOUT before which our watchdog alarm triggers
     static private final int WATCHDOG_TIMEOUT_ALLOWANCE = 30*SECONDS;
 
+    // The amount of time the account mailbox will sleep if there are no pingable mailboxes
+    // This could happen if the sync time is set to "never"; we always want to check in from time
+    // to time, however, for folder list/policy changes
+    static private final int ACCOUNT_MAILBOX_SLEEP_TIME = 20*MINUTES;
+    static private final String ACCOUNT_MAILBOX_SLEEP_TEXT =
+        "Account mailbox sleeping for " + (ACCOUNT_MAILBOX_SLEEP_TIME / MINUTES) + "m";
+
     static private final String AUTO_DISCOVER_SCHEMA_PREFIX =
         "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
     static private final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
-    static protected final int EAS_REDIRECT_CODE = 451;
+    static private final int EAS_REDIRECT_CODE = 451;
 
     static public final int INTERNAL_SERVER_ERROR_CODE = 500;
 
@@ -126,8 +153,37 @@ public class EasSyncService extends AbstractSyncService {
     static public final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";
 
     static public final int MESSAGE_FLAG_MOVED_MESSAGE = 1 << Message.FLAG_SYNC_ADAPTER_SHIFT;
+
+    /**
+     * We start with an 8 minute timeout, and increase/decrease by 3 minutes at a time.  There's
+     * no point having a timeout shorter than 5 minutes, I think; at that point, we can just let
+     * the ping exception out.  The maximum I use is 17 minutes, which is really an empirical
+     * choice; too long and we risk silent connection loss and loss of push for that period.  Too
+     * short and we lose efficiency/battery life.
+     *
+     * If we ever have to drop the ping timeout, we'll never increase it again.  There's no point
+     * going into hysteresis; the NAT timeout isn't going to change without a change in connection,
+     * which will cause the sync service to be restarted at the starting heartbeat and going through
+     * the process again.
+     */
+    static private final int PING_MINUTES = 60; // in seconds
+    static private final int PING_FUDGE_LOW = 10;
+    static private final int PING_STARTING_HEARTBEAT = (8*PING_MINUTES)-PING_FUDGE_LOW;
+    static private final int PING_HEARTBEAT_INCREMENT = 3*PING_MINUTES;
+
+    // Maximum number of times we'll allow a sync to "loop" with MoreAvailable true before
+    // forcing it to stop.  This number has been determined empirically.
+    static private final int MAX_LOOPING_COUNT = 100;
+
+    static private final int PROTOCOL_PING_STATUS_COMPLETED = 1;
+
     // The amount of time we allow for a thread to release its post lock after receiving an alert
     static private final int POST_LOCK_TIMEOUT = 10*SECONDS;
+
+    // Fallbacks (in minutes) for ping loop failures
+    static private final int MAX_PING_FAILURES = 1;
+    static private final int PING_FALLBACK_INBOX = 5;
+    static private final int PING_FALLBACK_PIM = 25;
 
     // The EAS protocol Provision status for "we implement all of the policies"
     static private final String PROVISION_STATUS_OK = "1";
@@ -135,12 +191,9 @@ public class EasSyncService extends AbstractSyncService {
     static private final String PROVISION_STATUS_PARTIAL = "2";
 
     static /*package*/ final String DEVICE_TYPE = "Android";
-    static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
+    static private final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
 
-    // Maximum number of times we'll allow a sync to "loop" with MoreAvailable true before
-    // forcing it to stop.  This number has been determined empirically.
-    static private final int MAX_LOOPING_COUNT = 100;
     // Reasonable default
     public String mProtocolVersion = Eas.DEFAULT_PROTOCOL_VERSION;
     public Double mProtocolVersionDouble;
@@ -155,26 +208,39 @@ public class EasSyncService extends AbstractSyncService {
     public String mUserName;
     public String mPassword;
 
-    // The HttpPost in progress
-    private volatile HttpPost mPendingPost = null;
-    // Whether a POST was aborted due to alarm (watchdog alarm)
-    protected boolean mPostAborted = false;
-    // Whether a POST was aborted due to reset
-    protected boolean mPostReset = false;
-
     // The parameters for the connection must be modified through setConnectionParameters
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     private String mClientCertAlias = null;
 
     public ContentResolver mContentResolver;
+    private final String[] mBindArguments = new String[2];
+    private ArrayList<String> mPingChangeList;
+    // The HttpPost in progress
+    private volatile HttpPost mPendingPost = null;
+    // Our heartbeat when we are waiting for ping boxes to be ready
+    /*package*/ int mPingForceHeartbeat = 2*PING_MINUTES;
+    // The minimum heartbeat we will send
+    /*package*/ int mPingMinHeartbeat = (5*PING_MINUTES)-PING_FUDGE_LOW;
+    // The maximum heartbeat we will send
+    /*package*/ int mPingMaxHeartbeat = (17*PING_MINUTES)-PING_FUDGE_LOW;
+    // The ping time (in seconds)
+    /*package*/ int mPingHeartbeat = PING_STARTING_HEARTBEAT;
+    // The longest successful ping heartbeat
+    private int mPingHighWaterMark = 0;
+    // Whether we've ever lowered the heartbeat
+    /*package*/ boolean mPingHeartbeatDropped = false;
+    // Whether a POST was aborted due to alarm (watchdog alarm)
+    private boolean mPostAborted = false;
+    // Whether a POST was aborted due to reset
+    private boolean mPostReset = false;
     // Whether or not the sync service is valid (usable)
     public boolean mIsValid = true;
 
     // Whether the most recent upsync failed (status 7)
     public boolean mUpsyncFailed = false;
 
-    protected EasSyncService(Context _context, Mailbox _mailbox) {
+    public EasSyncService(Context _context, Mailbox _mailbox) {
         super(_context, _mailbox);
         mContentResolver = _context.getContentResolver();
         if (mAccount == null) {
@@ -196,17 +262,6 @@ public class EasSyncService extends AbstractSyncService {
 
     public EasSyncService() {
         this("EAS Validation");
-    }
-
-    public static EasSyncService getServiceForMailbox(Context context, Mailbox m) {
-        switch(m.mType) {
-            case Mailbox.TYPE_EAS_ACCOUNT_MAILBOX:
-                return new EasAccountService(context, m);
-            case Mailbox.TYPE_OUTBOX:
-                return new EasOutboxService(context, m);
-            default:
-                return new EasSyncService(context, m);
-        }
     }
 
     /**
@@ -311,7 +366,7 @@ public class EasSyncService extends AbstractSyncService {
         super.addRequest(request);
     }
 
-    void setupProtocolVersion(EasSyncService service, Header versionHeader)
+    private void setupProtocolVersion(EasSyncService service, Header versionHeader)
             throws MessagingException {
         // The string is a comma separated list of EAS versions in ascending order
         // e.g. 1.0,2.0,2.5,12.0,12.1,14.0,14.1
@@ -407,7 +462,7 @@ public class EasSyncService extends AbstractSyncService {
      * @param hostAuth the HostAuth we're using to validate
      * @return true if we have an updated HostAuth (with redirect address); false otherwise
      */
-    protected boolean getValidateRedirect(EasResponse resp, HostAuth hostAuth) {
+    private boolean getValidateRedirect(EasResponse resp, HostAuth hostAuth) {
         Header locHeader = resp.getHeader("X-MS-Location");
         if (locHeader != null) {
             String loc;
@@ -541,7 +596,7 @@ public class EasSyncService extends AbstractSyncService {
                 int status = e.mStatus;
                 if (CommandStatus.isNeedsProvisioning(status)) {
                     // Get the policies and see if we are able to support them
-                    ProvisionParser pp = canProvision(this);
+                    ProvisionParser pp = canProvision();
                     if (pp != null && pp.hasSupportablePolicySet()) {
                         // Set the proper result code and save the PolicySet in our Bundle
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
@@ -554,12 +609,12 @@ public class EasSyncService extends AbstractSyncService {
                                 resultCode = MessagingException.ACCESS_DENIED;
                             }
                         }
-                    } else {
+                    } else
                         // If not, set the proper code (the account will not be created)
                         resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
-                        bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
-                                pp.getPolicy());
-                    }
+                        bundle.putStringArray(
+                                EmailServiceProxy.VALIDATE_BUNDLE_UNSUPPORTED_POLICIES,
+                                ((pp == null) ? null : pp.getUnsupportedPolicies()));
                 } else if (CommandStatus.isDeniedAccess(status)) {
                     userLog("Denied access: ", CommandStatus.toString(status));
                     resultCode = MessagingException.ACCESS_DENIED;
@@ -658,17 +713,6 @@ public class EasSyncService extends AbstractSyncService {
             throw new IOException();
         }
         return resp;
-    }
-
-    /**
-     * Convert an EAS server url to a HostAuth host address
-     * @param url a url, as provided by the Exchange server
-     * @return our equivalent host address
-     */
-    protected String autodiscoverUrlToHostAddress(String url) {
-        if (url == null) return null;
-        // We need to extract the server address from a url
-        return Uri.parse(url).getHost();
     }
 
     /**
@@ -821,11 +865,14 @@ public class EasSyncService extends AbstractSyncService {
                         mobileSync = true;
                     }
                 } else if (mobileSync && name.equals("Url")) {
-                    String hostAddress =
-                        autodiscoverUrlToHostAddress(parser.nextText());
-                    if (hostAddress != null) {
-                        hostAuth.mAddress = hostAddress;
-                        userLog("Autodiscover, server: " + hostAddress);
+                    String url = parser.nextText().toLowerCase();
+                    // This will look like https://<server address>/Microsoft-Server-ActiveSync
+                    // We need to extract the <server address>
+                    if (url.startsWith("https://") &&
+                            url.endsWith("/microsoft-server-activesync")) {
+                        int lastSlash = url.lastIndexOf('/');
+                        hostAuth.mAddress = url.substring(8, lastSlash);
+                        userLog("Autodiscover, server: " + hostAuth.mAddress);
                     }
                 }
             }
@@ -1256,6 +1303,9 @@ public class EasSyncService extends AbstractSyncService {
 
     protected EasResponse sendPing(byte[] bytes, int heartbeat) throws IOException {
        Thread.currentThread().setName(mAccount.mDisplayName + ": Ping");
+       if (Eas.USER_LOG) {
+           userLog("Send ping, timeout: " + heartbeat + "s, high: " + mPingHighWaterMark + 's');
+       }
        return sendHttpClientPost(PING_COMMAND, new ByteArrayEntity(bytes), (heartbeat+5)*SECONDS);
     }
 
@@ -1351,7 +1401,7 @@ public class EasSyncService extends AbstractSyncService {
         return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
     }
 
-    String getTargetCollectionClassFromCursor(Cursor c) {
+    private String getTargetCollectionClassFromCursor(Cursor c) {
         int type = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
         if (type == Mailbox.TYPE_CONTACTS) {
             return "Contacts";
@@ -1371,77 +1421,88 @@ public class EasSyncService extends AbstractSyncService {
      * @return whether or not provisioning has been successful
      * @throws IOException
      */
-    public static boolean tryProvision(EasSyncService svc) throws IOException {
+    private boolean tryProvision() throws IOException {
         // First, see if provisioning is even possible, i.e. do we support the policies required
         // by the server
-        ProvisionParser pp = canProvision(svc);
-        if (pp == null) return false;
-        Context context = svc.mContext;
-        Account account = svc.mAccount;
-        // Get the policies from ProvisionParser
-        Policy policy = pp.getPolicy();
-        Policy oldPolicy = null;
-        // Grab the old policy (if any)
-        if (svc.mAccount.mPolicyKey > 0) {
-            oldPolicy = Policy.restorePolicyWithId(context, account.mPolicyKey);
-        }
-        // Update the account with a null policyKey (the key we've gotten is
-        // temporary and cannot be used for syncing)
-        PolicyServiceProxy.setAccountPolicy(context, account.mId, policy, null);
-        // Make sure mAccount is current (with latest policy key)
-        account.refresh(context);
-        if (pp.getRemoteWipe()) {
-            // We've gotten a remote wipe command
-            ExchangeService.alwaysLog("!!! Remote wipe request received");
-            // Start by setting the account to security hold
-            PolicyServiceProxy.setAccountHoldFlag(context, account, true);
-            // Force a stop to any running syncs for this account (except this one)
-            ExchangeService.stopNonAccountMailboxSyncsForAccount(account.mId);
+        ProvisionParser pp = canProvision();
+        if (pp != null && pp.hasSupportablePolicySet()) {
+            // Get the policies from ProvisionParser
+            Policy policy = pp.getPolicy();
+            Policy oldPolicy = null;
+            // Grab the old policy (if any)
+            if (mAccount.mPolicyKey > 0) {
+                oldPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+            }
+            // Update the account with a null policyKey (the key we've gotten is
+            // temporary and cannot be used for syncing)
+            Policy.setAccountPolicy(mContext, mAccount, policy, null);
+            // Make sure mAccount is current (with latest policy key)
+            mAccount.refresh(mContext);
+            // Make sure that SecurityPolicy is up-to-date
+            SecurityPolicyDelegate.policiesUpdated(mContext, mAccount.mId);
+            if (pp.getRemoteWipe()) {
+                // We've gotten a remote wipe command
+                ExchangeService.alwaysLog("!!! Remote wipe request received");
+                // Start by setting the account to security hold
+                SecurityPolicyDelegate.setAccountHoldFlag(mContext, mAccount, true);
+                // Force a stop to any running syncs for this account (except this one)
+                ExchangeService.stopNonAccountMailboxSyncsForAccount(mAccount.mId);
 
-            // First, we've got to acknowledge it, but wrap the wipe in try/catch so that
-            // we wipe the device regardless of any errors in acknowledgment
-            try {
-                ExchangeService.alwaysLog("!!! Acknowledging remote wipe to server");
-                acknowledgeRemoteWipe(svc, pp.getSecuritySyncKey());
-            } catch (Exception e) {
-                // Because remote wipe is such a high priority task, we don't want to
-                // circumvent it if there's an exception in acknowledgment
-            }
-            // Then, tell SecurityPolicy to wipe the device
-            ExchangeService.alwaysLog("!!! Executing remote wipe");
-            PolicyServiceProxy.remoteWipe(context);
-            return false;
-        } else if (pp.hasSupportablePolicySet() && PolicyServiceProxy.isActive(context, policy)) {
-            // See if the required policies are in force; if they are, acknowledge the policies
-            // to the server and get the final policy key
-            // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
-            String securitySyncKey;
-            if (svc.mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
-                securitySyncKey = pp.getSecuritySyncKey();
-            } else {
-                securitySyncKey = acknowledgeProvision(svc, pp.getSecuritySyncKey(),
-                        PROVISION_STATUS_OK);
-            }
-            if (securitySyncKey != null) {
-                // If attachment policies have changed, fix up any affected attachment records
-                if (oldPolicy != null) {
-                    if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
-                            (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
-                        Policy.setAttachmentFlagsForNewPolicy(context, account, policy);
-                    }
+                // If we're not the admin, we can't do the wipe, so just return
+                if (!SecurityPolicyDelegate.isActiveAdmin(mContext)) {
+                    ExchangeService.alwaysLog("!!! Not device admin; can't wipe");
+                    return false;
                 }
-                // Write the final policy key to the Account and say we've been successful
-                PolicyServiceProxy.setAccountPolicy(context, account.mId, policy, securitySyncKey);
-                // Release any mailboxes that might be in a security hold
-                ExchangeService.releaseSecurityHold(account);
-                return true;
+
+                // First, we've got to acknowledge it, but wrap the wipe in try/catch so that
+                // we wipe the device regardless of any errors in acknowledgment
+                try {
+                    ExchangeService.alwaysLog("!!! Acknowledging remote wipe to server");
+                    acknowledgeRemoteWipe(pp.getSecuritySyncKey());
+                } catch (Exception e) {
+                    // Because remote wipe is such a high priority task, we don't want to
+                    // circumvent it if there's an exception in acknowledgment
+                }
+                // Then, tell SecurityPolicy to wipe the device
+                ExchangeService.alwaysLog("!!! Executing remote wipe");
+                SecurityPolicyDelegate.remoteWipe(mContext);
+                return false;
+            } else if (SecurityPolicyDelegate.isActive(mContext, policy)) {
+                // See if the required policies are in force; if they are, acknowledge the policies
+                // to the server and get the final policy key
+                // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
+                String securitySyncKey;
+                if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                    securitySyncKey = pp.getSecuritySyncKey();
+                } else {
+                    securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                            PROVISION_STATUS_OK);
+                }
+                if (securitySyncKey != null) {
+                    // If attachment policies have changed, fix up any affected attachment records
+                    if (oldPolicy != null) {
+                        if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
+                                (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
+                            Policy.setAttachmentFlagsForNewPolicy(mContext, mAccount, policy);
+                        }
+                    }
+                    // Write the final policy key to the Account and say we've been successful
+                    Policy.setAccountPolicy(mContext, mAccount, policy, securitySyncKey);
+                    // Release any mailboxes that might be in a security hold
+                    ExchangeService.releaseSecurityHold(mAccount);
+                    return true;
+                }
+            } else {
+                // Notify that we are blocked because of policies
+                // TODO: Indicate unsupported policies here?
+                SecurityPolicyDelegate.policiesRequired(mContext, mAccount.mId);
             }
         }
         return false;
     }
 
-    private static String getPolicyType(Double protocolVersion) {
-        return (protocolVersion >=
+    private String getPolicyType() {
+        return (mProtocolVersionDouble >=
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
@@ -1451,11 +1512,10 @@ public class EasSyncService extends AbstractSyncService {
      * @return the ProvisionParser (holds policies and key) if we receive policies; null otherwise
      * @throws IOException
      */
-    public static ProvisionParser canProvision(EasSyncService svc) throws IOException {
+    private ProvisionParser canProvision() throws IOException {
         Serializer s = new Serializer();
-        Double protocolVersion = svc.mProtocolVersionDouble;
         s.start(Tags.PROVISION_PROVISION);
-        if (svc.mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
+        if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
             // Send settings information in 14.1 and greater
             s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
             s.data(Tags.SETTINGS_MODEL, Build.MODEL);
@@ -1465,27 +1525,27 @@ public class EasSyncService extends AbstractSyncService {
             //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
             //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
             //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
-            s.data(Tags.SETTINGS_USER_AGENT, EasSyncService.USER_AGENT);
+            s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
             s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
         }
         s.start(Tags.PROVISION_POLICIES);
-        s.start(Tags.PROVISION_POLICY);
-        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(protocolVersion));
-        s.end().end().end().done(); // PROVISION_POLICY, PROVISION_POLICIES, PROVISION_PROVISION
-        EasResponse resp = svc.sendHttpClientPost("Provision", s.toByteArray());
+        s.start(Tags.PROVISION_POLICY).data(Tags.PROVISION_POLICY_TYPE, getPolicyType()).end();
+        s.end();  // PROVISION_POLICIES
+        s.end().done(); // PROVISION_PROVISION
+        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                ProvisionParser pp = new ProvisionParser(is, svc);
+                ProvisionParser pp = new ProvisionParser(is, this);
                 if (pp.parse()) {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
                     // policies.  If others are required, hasSupportablePolicySet will be false
                     if (pp.hasSupportablePolicySet() &&
-                            svc.mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                            mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                         // In EAS 14.0, we need the final security key in order to use the settings
                         // command
-                        String policyKey = acknowledgeProvision(svc, pp.getSecuritySyncKey(),
+                        String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
                                 PROVISION_STATUS_OK);
                         if (policyKey != null) {
                             pp.setSecuritySyncKey(policyKey);
@@ -1495,11 +1555,11 @@ public class EasSyncService extends AbstractSyncService {
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
                         ExchangeService.log("PolicySet is NOT fully supportable");
-                        if (acknowledgeProvision(svc, pp.getSecuritySyncKey(),
-                                PROVISION_STATUS_PARTIAL) != null) {
-                            // The server's ok with our inability to support policies, so we'll
-                            // clear them
-                            pp.clearUnsupportablePolicies();
+                        String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                                PROVISION_STATUS_PARTIAL);
+                        // Return either the parser (success) or null (failure)
+                        if (policyKey != null) {
+                            pp.clearUnsupportedPolicies();
                         }
                     }
                     return pp;
@@ -1520,24 +1580,22 @@ public class EasSyncService extends AbstractSyncService {
      * @return the final policy key, which can be used for syncing
      * @throws IOException
      */
-    private static void acknowledgeRemoteWipe(EasSyncService svc, String tempKey)
-            throws IOException {
-        acknowledgeProvisionImpl(svc, tempKey, PROVISION_STATUS_OK, true);
+    private void acknowledgeRemoteWipe(String tempKey) throws IOException {
+        acknowledgeProvisionImpl(tempKey, PROVISION_STATUS_OK, true);
     }
 
-    private static String acknowledgeProvision(EasSyncService svc, String tempKey, String result)
-            throws IOException {
-        return acknowledgeProvisionImpl(svc, tempKey, result, false);
+    private String acknowledgeProvision(String tempKey, String result) throws IOException {
+        return acknowledgeProvisionImpl(tempKey, result, false);
     }
 
-    private static String acknowledgeProvisionImpl(EasSyncService svc, String tempKey,
-            String status, boolean remoteWipe) throws IOException {
+    private String acknowledgeProvisionImpl(String tempKey, String status,
+            boolean remoteWipe) throws IOException {
         Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION).start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY);
 
         // Use the proper policy type, depending on EAS version
-        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(svc.mProtocolVersionDouble));
+        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType());
 
         s.data(Tags.PROVISION_POLICY_KEY, tempKey);
         s.data(Tags.PROVISION_STATUS, status);
@@ -1548,16 +1606,15 @@ public class EasSyncService extends AbstractSyncService {
             s.end();
         }
         s.end().done(); // PROVISION_PROVISION
-        EasResponse resp = svc.sendHttpClientPost("Provision", s.toByteArray());
+        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                ProvisionParser pp = new ProvisionParser(is, svc);
+                ProvisionParser pp = new ProvisionParser(is, this);
                 if (pp.parse()) {
                     // Return the final policy key from the ProvisionParser
-                    String result = (pp.getSecuritySyncKey() == null) ? "failed" : "confirmed";
-                    ExchangeService.log("Provision " + result + " for " +
+                    ExchangeService.log("Provision confirmation received for " +
                             (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
                     return pp.getSecuritySyncKey();
                 }
@@ -1566,7 +1623,7 @@ public class EasSyncService extends AbstractSyncService {
             resp.close();
         }
         // On failures, log issue and return null
-        ExchangeService.log("Provisioning failed for" +
+        ExchangeService.log("Provision confirmation failed for" +
                 (PROVISION_STATUS_PARTIAL.equals(status) ? "PART" : "FULL") + " set");
         return null;
     }
@@ -1595,7 +1652,662 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
+     * Translate exit status code to service status code (used in callbacks)
+     * @param exitStatus the service's exit status
+     * @return the corresponding service status
+     */
+    private int exitStatusToServiceStatus(int exitStatus) {
+        switch(exitStatus) {
+            case EXIT_SECURITY_FAILURE:
+                return EmailServiceStatus.SECURITY_FAILURE;
+            case EXIT_LOGIN_FAILURE:
+                return EmailServiceStatus.LOGIN_FAILED;
+            default:
+                return EmailServiceStatus.SUCCESS;
+        }
+    }
+
+    /**
+     * If possible, update the account to the new server address; report result
+     * @param resp the EasResponse from the current POST
+     * @return whether or not the redirect is handled and the POST should be retried
+     */
+    private boolean canHandleAccountMailboxRedirect(EasResponse resp) {
+        userLog("AccountMailbox redirect error");
+        HostAuth ha =
+                HostAuth.restoreHostAuthWithId(mContext, mAccount.mHostAuthKeyRecv);
+        if (ha != null && getValidateRedirect(resp, ha)) {
+            // Update the account's HostAuth with new values
+            ContentValues haValues = new ContentValues();
+            haValues.put(HostAuthColumns.ADDRESS, ha.mAddress);
+            ha.update(mContext, haValues);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Performs FolderSync
+     *
+     * @throws IOException
+     * @throws EasParserException
+     */
+    public void runAccountMailbox() throws IOException, EasParserException {
+        // Check that the account's mailboxes are consistent
+        MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
+        // Initialize exit status to success
+        mExitStatus = EXIT_DONE;
+        try {
+            try {
+                ExchangeService.callback()
+                    .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.IN_PROGRESS, 0);
+            } catch (RemoteException e1) {
+                // Don't care if this fails
+            }
+
+            if (mAccount.mSyncKey == null) {
+                mAccount.mSyncKey = "0";
+                userLog("Account syncKey INIT to 0");
+                ContentValues cv = new ContentValues();
+                cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
+                mAccount.update(mContext, cv);
+            }
+
+            boolean firstSync = mAccount.mSyncKey.equals("0");
+            if (firstSync) {
+                userLog("Initial FolderSync");
+            }
+
+            // When we first start up, change all mailboxes to push.
+            ContentValues cv = new ContentValues();
+            cv.put(Mailbox.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_PUSH);
+            if (mContentResolver.update(Mailbox.CONTENT_URI, cv,
+                    WHERE_ACCOUNT_AND_SYNC_INTERVAL_PING,
+                    new String[] {Long.toString(mAccount.mId)}) > 0) {
+                ExchangeService.kick("change ping boxes to push");
+            }
+
+            // Determine our protocol version, if we haven't already and save it in the Account
+            // Also re-check protocol version at least once a day (in case of upgrade)
+            if (mAccount.mProtocolVersion == null || firstSync ||
+                   ((System.currentTimeMillis() - mMailbox.mSyncTime) > DAYS)) {
+                userLog("Determine EAS protocol version");
+                EasResponse resp = sendHttpClientOptions();
+                try {
+                    int code = resp.getStatus();
+                    userLog("OPTIONS response: ", code);
+                    if (code == HttpStatus.SC_OK) {
+                        Header header = resp.getHeader("MS-ASProtocolCommands");
+                        userLog(header.getValue());
+                        header = resp.getHeader("ms-asprotocolversions");
+                        try {
+                            setupProtocolVersion(this, header);
+                        } catch (MessagingException e) {
+                            // Since we've already validated, this can't really happen
+                            // But if it does, we'll rethrow this...
+                            throw new IOException();
+                        }
+                        // Save the protocol version
+                        cv.clear();
+                        // Save the protocol version in the account; if we're using 12.0 or greater,
+                        // set the flag for support of SmartForward
+                        cv.put(Account.PROTOCOL_VERSION, mProtocolVersion);
+                        mAccount.update(mContext, cv);
+                        cv.clear();
+                        // Save the sync time of the account mailbox to current time
+                        cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
+                        mMailbox.update(mContext, cv);
+                    } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
+                        // Cause this to re-run
+                        throw new IOException("Will retry after a brief hold...");
+                    } else {
+                        errorLog("OPTIONS command failed; throwing IOException");
+                        throw new IOException();
+                    }
+                } finally {
+                    resp.close();
+                }
+            }
+
+            // Make sure we've upgraded flags for ICS if we're using v12.0 or later
+            if (mProtocolVersionDouble >= 12.0 &&
+                    (mAccount.mFlags & Account.FLAGS_SUPPORTS_SEARCH) == 0) {
+                cv.clear();
+                mAccount.mFlags = mAccount.mFlags | Account.FLAGS_SUPPORTS_SMART_FORWARD |
+                        Account.FLAGS_SUPPORTS_SEARCH | Account.FLAGS_SUPPORTS_GLOBAL_SEARCH;
+                cv.put(AccountColumns.FLAGS, mAccount.mFlags);
+                mAccount.update(mContext, cv);
+            }
+
+            // Change all pushable boxes to push when we start the account mailbox
+            if (mAccount.mSyncInterval == Account.CHECK_INTERVAL_PUSH) {
+                cv.clear();
+                cv.put(Mailbox.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_PUSH);
+                if (mContentResolver.update(Mailbox.CONTENT_URI, cv,
+                        ExchangeService.WHERE_IN_ACCOUNT_AND_PUSHABLE,
+                        new String[] {Long.toString(mAccount.mId)}) > 0) {
+                    userLog("Push account; set pushable boxes to push...");
+                }
+            }
+
+            while (!mStop) {
+                // If we're not allowed to sync (e.g. roaming policy), leave now
+                if (!ExchangeService.canAutoSync(mAccount)) return;
+                userLog("Sending Account syncKey: ", mAccount.mSyncKey);
+                Serializer s = new Serializer();
+                s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
+                    .text(mAccount.mSyncKey).end().end().done();
+                EasResponse resp = sendHttpClientPost("FolderSync", s.toByteArray());
+                try {
+                    if (mStop) break;
+                    int code = resp.getStatus();
+                    if (code == HttpStatus.SC_OK) {
+                        if (!resp.isEmpty()) {
+                            InputStream is = resp.getInputStream();
+                            // Returns true if we need to sync again
+                            if (new FolderSyncParser(is, new AccountSyncAdapter(this)).parse()) {
+                                continue;
+                            }
+                        }
+                    } else if (EasResponse.isProvisionError(code)) {
+                        userLog("FolderSync provisioning error: ", code);
+                        throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
+                    } else if (EasResponse.isAuthError(code)) {
+                        userLog("FolderSync auth error: ", code);
+                        mExitStatus = EXIT_LOGIN_FAILURE;
+                        return;
+                    } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
+                        // This will cause a retry of the FolderSync
+                        continue;
+                    } else {
+                        userLog("FolderSync response error: ", code);
+                    }
+                } finally {
+                    resp.close();
+                }
+
+                // Change all push/hold boxes to push
+                cv.clear();
+                cv.put(Mailbox.SYNC_INTERVAL, Account.CHECK_INTERVAL_PUSH);
+                if (mContentResolver.update(Mailbox.CONTENT_URI, cv,
+                        WHERE_PUSH_HOLD_NOT_ACCOUNT_MAILBOX,
+                        new String[] {Long.toString(mAccount.mId)}) > 0) {
+                    userLog("Set push/hold boxes to push...");
+                }
+
+                try {
+                    ExchangeService.callback()
+                        .syncMailboxListStatus(mAccount.mId, exitStatusToServiceStatus(mExitStatus),
+                                0);
+                } catch (RemoteException e1) {
+                    // Don't care if this fails
+                }
+
+                // Before each run of the pingLoop, if this Account has a PolicySet, make sure it's
+                // active; otherwise, clear out the key/flag.  This should cause a provisioning
+                // error on the next POST, and start the security sequence over again
+                String key = mAccount.mSecuritySyncKey;
+                if (!TextUtils.isEmpty(key)) {
+                    Policy policy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+                    if ((policy != null) && !SecurityPolicyDelegate.isActive(mContext, policy)) {
+                        resetSecurityPolicies();
+                    }
+                }
+
+                // Wait for push notifications.
+                String threadName = Thread.currentThread().getName();
+                try {
+                    runPingLoop();
+                } catch (StaleFolderListException e) {
+                    // We break out if we get told about a stale folder list
+                    userLog("Ping interrupted; folder list requires sync...");
+                } catch (IllegalHeartbeatException e) {
+                    // If we're sending an illegal heartbeat, reset either the min or the max to
+                    // that heartbeat
+                    resetHeartbeats(e.mLegalHeartbeat);
+                } finally {
+                    Thread.currentThread().setName(threadName);
+                }
+            }
+        } catch (CommandStatusException e) {
+            // If the sync error is a provisioning failure (perhaps policies changed),
+            // let's try the provisioning procedure
+            // Provisioning must only be attempted for the account mailbox - trying to
+            // provision any other mailbox may result in race conditions and the
+            // creation of multiple policy keys.
+            int status = e.mStatus;
+            if (CommandStatus.isNeedsProvisioning(status)) {
+                if (!tryProvision()) {
+                    // Set the appropriate failure status
+                    mExitStatus = EXIT_SECURITY_FAILURE;
+                    return;
+                }
+            } else if (CommandStatus.isDeniedAccess(status)) {
+                mExitStatus = EXIT_ACCESS_DENIED;
+                try {
+                    ExchangeService.callback().syncMailboxListStatus(mAccount.mId,
+                            EmailServiceStatus.ACCESS_DENIED, 0);
+                } catch (RemoteException e1) {
+                    // Don't care if this fails
+                }
+                return;
+            } else {
+                userLog("Unexpected status: " + CommandStatus.toString(status));
+                mExitStatus = EXIT_EXCEPTION;
+            }
+        } catch (IOException e) {
+            // We catch this here to send the folder sync status callback
+            // A folder sync failed callback will get sent from run()
+            try {
+                if (!mStop) {
+                    // NOTE: The correct status is CONNECTION_ERROR, but the UI displays this, and
+                    // it's not really appropriate for EAS as this is not unexpected for a ping and
+                    // connection errors are retried in any case
+                    ExchangeService.callback()
+                        .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.SUCCESS, 0);
+                }
+            } catch (RemoteException e1) {
+                // Don't care if this fails
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Reset either our minimum or maximum ping heartbeat to a heartbeat known to be legal
+     * @param legalHeartbeat a known legal heartbeat (from the EAS server)
+     */
+    /*package*/ void resetHeartbeats(int legalHeartbeat) {
+        userLog("Resetting min/max heartbeat, legal = " + legalHeartbeat);
+        // We are here because the current heartbeat (mPingHeartbeat) is invalid.  Depending on
+        // whether the argument is above or below the current heartbeat, we can infer the need to
+        // change either the minimum or maximum heartbeat
+        if (legalHeartbeat > mPingHeartbeat) {
+            // The legal heartbeat is higher than the ping heartbeat; therefore, our minimum was
+            // too low.  We respond by raising either or both of the minimum heartbeat or the
+            // force heartbeat to the argument value
+            if (mPingMinHeartbeat < legalHeartbeat) {
+                mPingMinHeartbeat = legalHeartbeat;
+            }
+            if (mPingForceHeartbeat < legalHeartbeat) {
+                mPingForceHeartbeat = legalHeartbeat;
+            }
+            // If our minimum is now greater than the max, bring them together
+            if (mPingMinHeartbeat > mPingMaxHeartbeat) {
+                mPingMaxHeartbeat = legalHeartbeat;
+            }
+        } else if (legalHeartbeat < mPingHeartbeat) {
+            // The legal heartbeat is lower than the ping heartbeat; therefore, our maximum was
+            // too high.  We respond by lowering the maximum to the argument value
+            mPingMaxHeartbeat = legalHeartbeat;
+            // If our maximum is now less than the minimum, bring them together
+            if (mPingMaxHeartbeat < mPingMinHeartbeat) {
+                mPingMinHeartbeat = legalHeartbeat;
+            }
+        }
+        // Set current heartbeat to the legal heartbeat
+        mPingHeartbeat = legalHeartbeat;
+        // Allow the heartbeat logic to run
+        mPingHeartbeatDropped = false;
+    }
+
+    private void pushFallback(long mailboxId) {
+        Mailbox mailbox = Mailbox.restoreMailboxWithId(mContext, mailboxId);
+        if (mailbox == null) {
+            return;
+        }
+        ContentValues cv = new ContentValues();
+        int mins = PING_FALLBACK_PIM;
+        if (mailbox.mType == Mailbox.TYPE_INBOX) {
+            mins = PING_FALLBACK_INBOX;
+        }
+        cv.put(Mailbox.SYNC_INTERVAL, mins);
+        mContentResolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, mailboxId),
+                cv, null, null);
+        errorLog("*** PING ERROR LOOP: Set " + mailbox.mDisplayName + " to " + mins + " min sync");
+        ExchangeService.kick("push fallback");
+    }
+
+    /**
+     * Simplistic attempt to determine a NAT timeout, based on experience with various carriers
+     * and networks.  The string "reset by peer" is very common in these situations, so we look for
+     * that specifically.  We may add additional tests here as more is learned.
+     * @param message
+     * @return whether this message is likely associated with a NAT failure
+     */
+    private boolean isLikelyNatFailure(String message) {
+        if (message == null) return false;
+        if (message.contains("reset by peer")) {
+            return true;
+        }
+        return false;
+    }
+
+    private void runPingLoop() throws IOException, StaleFolderListException,
+            IllegalHeartbeatException, CommandStatusException {
+        int pingHeartbeat = mPingHeartbeat;
+        userLog("runPingLoop");
+        // Do push for all sync services here
+        long endTime = System.currentTimeMillis() + (30*MINUTES);
+        HashMap<String, Integer> pingErrorMap = new HashMap<String, Integer>();
+        ArrayList<String> readyMailboxes = new ArrayList<String>();
+        ArrayList<String> notReadyMailboxes = new ArrayList<String>();
+        int pingWaitCount = 0;
+        long inboxId = -1;
+
+        while ((System.currentTimeMillis() < endTime) && !mStop) {
+            // Count of pushable mailboxes
+            int pushCount = 0;
+            // Count of mailboxes that can be pushed right now
+            int canPushCount = 0;
+            // Count of uninitialized boxes
+            int uninitCount = 0;
+
+            Serializer s = new Serializer();
+            Cursor c = mContentResolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
+                    MailboxColumns.ACCOUNT_KEY + '=' + mAccount.mId +
+                    AND_FREQUENCY_PING_PUSH_AND_NOT_ACCOUNT_MAILBOX, null, null);
+            if (c == null) throw new ProviderUnavailableException();
+            notReadyMailboxes.clear();
+            readyMailboxes.clear();
+            // Look for an inbox, and remember its id
+            if (inboxId == -1) {
+                inboxId = Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_INBOX);
+            }
+            try {
+                // Loop through our pushed boxes seeing what is available to push
+                while (c.moveToNext()) {
+                    pushCount++;
+                    // Two requirements for push:
+                    // 1) ExchangeService tells us the mailbox is syncable (not running/not stopped)
+                    // 2) The syncKey isn't "0" (i.e. it's synced at least once)
+                    long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
+                    int pingStatus = ExchangeService.pingStatus(mailboxId);
+                    String mailboxName = c.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN);
+                    if (pingStatus == ExchangeService.PING_STATUS_OK) {
+                        String syncKey = c.getString(Mailbox.CONTENT_SYNC_KEY_COLUMN);
+                        if ((syncKey == null) || syncKey.equals("0")) {
+                            // We can't push until the initial sync is done
+                            pushCount--;
+                            uninitCount++;
+                            continue;
+                        }
+
+                        if (canPushCount++ == 0) {
+                            // Initialize the Ping command
+                            s.start(Tags.PING_PING)
+                                .data(Tags.PING_HEARTBEAT_INTERVAL,
+                                        Integer.toString(pingHeartbeat))
+                                .start(Tags.PING_FOLDERS);
+                        }
+
+                        String folderClass = getTargetCollectionClassFromCursor(c);
+                        s.start(Tags.PING_FOLDER)
+                            .data(Tags.PING_ID, c.getString(Mailbox.CONTENT_SERVER_ID_COLUMN))
+                            .data(Tags.PING_CLASS, folderClass)
+                            .end();
+                        readyMailboxes.add(mailboxName);
+                    } else if ((pingStatus == ExchangeService.PING_STATUS_RUNNING) ||
+                            (pingStatus == ExchangeService.PING_STATUS_WAITING)) {
+                        notReadyMailboxes.add(mailboxName);
+                    } else if (pingStatus == ExchangeService.PING_STATUS_UNABLE) {
+                        pushCount--;
+                        userLog(mailboxName, " in error state; ignore");
+                        continue;
+                    }
+                }
+            } finally {
+                c.close();
+            }
+
+            if (Eas.USER_LOG) {
+                if (!notReadyMailboxes.isEmpty()) {
+                    userLog("Ping not ready for: " + notReadyMailboxes);
+                }
+                if (!readyMailboxes.isEmpty()) {
+                    userLog("Ping ready for: " + readyMailboxes);
+                }
+            }
+
+            // If we've waited 10 seconds or more, just ping with whatever boxes are ready
+            // But use a shorter than normal heartbeat
+            boolean forcePing = !notReadyMailboxes.isEmpty() && (pingWaitCount > 5);
+
+            if ((canPushCount > 0) && ((canPushCount == pushCount) || forcePing)) {
+                // If all pingable boxes are ready for push, send Ping to the server
+                s.end().end().done();
+                pingWaitCount = 0;
+                mPostReset = false;
+                mPostAborted = false;
+
+                // If we've been stopped, this is a good time to return
+                if (mStop) return;
+
+                long pingTime = SystemClock.elapsedRealtime();
+                try {
+                    // Send the ping, wrapped by appropriate timeout/alarm
+                    if (forcePing) {
+                        userLog("Forcing ping after waiting for all boxes to be ready");
+                    }
+                    EasResponse resp =
+                        sendPing(s.toByteArray(), forcePing ? mPingForceHeartbeat : pingHeartbeat);
+
+                    try {
+                        int code = resp.getStatus();
+                        userLog("Ping response: ", code);
+
+                        // If we're not allowed to sync (e.g. roaming policy), terminate gracefully
+                        // now; otherwise we might start a sync based on the response
+                        if (!ExchangeService.canAutoSync(mAccount)) {
+                            mStop = true;
+                        }
+
+                        // Return immediately if we've been asked to stop during the ping
+                        if (mStop) {
+                            userLog("Stopping pingLoop");
+                            return;
+                        }
+
+                        if (code == HttpStatus.SC_OK) {
+                            // Make sure to clear out any pending sync errors
+                            ExchangeService.removeFromSyncErrorMap(mMailboxId);
+                            if (!resp.isEmpty()) {
+                                InputStream is = resp.getInputStream();
+                                int pingResult = parsePingResult(is, mContentResolver,
+                                        pingErrorMap);
+                                // If our ping completed (status = 1), and wasn't forced and we're
+                                // not at the maximum, try increasing timeout by two minutes
+                                if (pingResult == PROTOCOL_PING_STATUS_COMPLETED && !forcePing) {
+                                    if (pingHeartbeat > mPingHighWaterMark) {
+                                        mPingHighWaterMark = pingHeartbeat;
+                                        userLog("Setting high water mark at: ", mPingHighWaterMark);
+                                    }
+                                    if ((pingHeartbeat < mPingMaxHeartbeat) &&
+                                            !mPingHeartbeatDropped) {
+                                        pingHeartbeat += PING_HEARTBEAT_INCREMENT;
+                                        if (pingHeartbeat > mPingMaxHeartbeat) {
+                                            pingHeartbeat = mPingMaxHeartbeat;
+                                        }
+                                        userLog("Increase ping heartbeat to ", pingHeartbeat, "s");
+                                    }
+                                }
+                            } else {
+                                userLog("Ping returned empty result; throwing IOException");
+                                throw new IOException();
+                            }
+                        } else if (EasResponse.isAuthError(code)) {
+                            mExitStatus = EXIT_LOGIN_FAILURE;
+                            userLog("Authorization error during Ping: ", code);
+                            throw new IOException();
+                        } else if (EasResponse.isProvisionError(code)) {
+                            userLog("Provisioning required during Ping: ", code);
+                            throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
+                        }
+                    } finally {
+                        resp.close();
+                    }
+                } catch (IOException e) {
+                    String message = e.getMessage();
+                    // If we get the exception that is indicative of a NAT timeout and if we
+                    // haven't yet "fixed" the timeout, back off by two minutes and "fix" it
+                    boolean hasMessage = message != null;
+                    userLog("IOException runPingLoop: " + (hasMessage ? message : "[no message]"));
+                    if (mPostReset) {
+                        // Nothing to do in this case; this is ExchangeService telling us to try
+                        // another ping.
+                    } else if (mPostAborted || isLikelyNatFailure(message)) {
+                        long pingLength = SystemClock.elapsedRealtime() - pingTime;
+                        if ((pingHeartbeat > mPingMinHeartbeat) &&
+                                (pingHeartbeat > mPingHighWaterMark)) {
+                            pingHeartbeat -= PING_HEARTBEAT_INCREMENT;
+                            mPingHeartbeatDropped = true;
+                            if (pingHeartbeat < mPingMinHeartbeat) {
+                                pingHeartbeat = mPingMinHeartbeat;
+                            }
+                            userLog("Decreased ping heartbeat to ", pingHeartbeat, "s");
+                        } else if (mPostAborted) {
+                            // There's no point in throwing here; this can happen in two cases
+                            // 1) An alarm, which indicates minutes without activity; no sense
+                            //    backing off
+                            // 2) ExchangeService abort, due to sync of mailbox.  Again, we want to
+                            //    keep on trying to ping
+                            userLog("Ping aborted; retry");
+                        } else if (pingLength < 2000) {
+                            userLog("Abort or NAT type return < 2 seconds; throwing IOException");
+                            throw e;
+                        } else {
+                            userLog("NAT type IOException");
+                        }
+                    } else if (hasMessage && message.contains("roken pipe")) {
+                        // The "broken pipe" error (uppercase or lowercase "b") seems to be an
+                        // internal error, so let's not throw an exception (which leads to delays)
+                        // but rather simply run through the loop again
+                    } else {
+                        throw e;
+                    }
+                }
+            } else if (forcePing) {
+                // In this case, there aren't any boxes that are pingable, but there are boxes
+                // waiting (for IOExceptions)
+                userLog("pingLoop waiting 60s for any pingable boxes");
+                sleep(60*SECONDS, true);
+            } else if (pushCount > 0) {
+                // If we want to Ping, but can't just yet, wait a little bit
+                // TODO Change sleep to wait and use notify from ExchangeService when a sync ends
+                sleep(2*SECONDS, false);
+                pingWaitCount++;
+                //userLog("pingLoop waited 2s for: ", (pushCount - canPushCount), " box(es)");
+            } else if (uninitCount > 0) {
+                // In this case, we're doing an initial sync of at least one mailbox.  Since this
+                // is typically a one-time case, I'm ok with trying again every 10 seconds until
+                // we're in one of the other possible states.
+                userLog("pingLoop waiting for initial sync of ", uninitCount, " box(es)");
+                sleep(10*SECONDS, true);
+            } else if (inboxId == -1) {
+                // In this case, we're still syncing mailboxes, so sleep for only a short time
+                sleep(45*SECONDS, true);
+            } else {
+                // We've got nothing to do, so we'll check again in 20 minutes at which time
+                // we'll update the folder list, check for policy changes and/or remote wipe, etc.
+                // Let the device sleep in the meantime...
+                userLog(ACCOUNT_MAILBOX_SLEEP_TEXT);
+                sleep(ACCOUNT_MAILBOX_SLEEP_TIME, true);
+            }
+        }
+
+        // Save away the current heartbeat
+        mPingHeartbeat = pingHeartbeat;
+    }
+
+    private void sleep(long ms, boolean runAsleep) {
+        if (runAsleep) {
+            ExchangeService.runAsleep(mMailboxId, ms+(5*SECONDS));
+        }
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            // Doesn't matter whether we stop early; it's the thought that counts
+        } finally {
+            if (runAsleep) {
+                ExchangeService.runAwake(mMailboxId);
+            }
+        }
+    }
+
+    private int parsePingResult(InputStream is, ContentResolver cr,
+            HashMap<String, Integer> errorMap)
+            throws IOException, StaleFolderListException, IllegalHeartbeatException,
+                CommandStatusException {
+        PingParser pp = new PingParser(is, this);
+        if (pp.parse()) {
+            // True indicates some mailboxes need syncing...
+            // syncList has the serverId's of the mailboxes...
+            mBindArguments[0] = Long.toString(mAccount.mId);
+            mPingChangeList = pp.getSyncList();
+            for (String serverId: mPingChangeList) {
+                mBindArguments[1] = serverId;
+                Cursor c = cr.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
+                        WHERE_ACCOUNT_KEY_AND_SERVER_ID, mBindArguments, null);
+                if (c == null) throw new ProviderUnavailableException();
+                try {
+                    if (c.moveToFirst()) {
+
+                        /**
+                         * Check the boxes reporting changes to see if there really were any...
+                         * We do this because bugs in various Exchange servers can put us into a
+                         * looping behavior by continually reporting changes in a mailbox, even when
+                         * there aren't any.
+                         *
+                         * This behavior is seemingly random, and therefore we must code defensively
+                         * by backing off of push behavior when it is detected.
+                         *
+                         * One known cause, on certain Exchange 2003 servers, is acknowledged by
+                         * Microsoft, and the server hotfix for this case can be found at
+                         * http://support.microsoft.com/kb/923282
+                         */
+
+                        // Check the status of the last sync
+                        String status = c.getString(Mailbox.CONTENT_SYNC_STATUS_COLUMN);
+                        int type = ExchangeService.getStatusType(status);
+                        // This check should always be true...
+                        if (type == ExchangeService.SYNC_PING) {
+                            int changeCount = ExchangeService.getStatusChangeCount(status);
+                            if (changeCount > 0) {
+                                errorMap.remove(serverId);
+                            } else if (changeCount == 0) {
+                                // This means that a ping reported changes in error; we keep a count
+                                // of consecutive errors of this kind
+                                String name = c.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN);
+                                Integer failures = errorMap.get(serverId);
+                                if (failures == null) {
+                                    userLog("Last ping reported changes in error for: ", name);
+                                    errorMap.put(serverId, 1);
+                                } else if (failures > MAX_PING_FAILURES) {
+                                    // We'll back off of push for this box
+                                    pushFallback(c.getLong(Mailbox.CONTENT_ID_COLUMN));
+                                    continue;
+                                } else {
+                                    userLog("Last ping reported changes in error for: ", name);
+                                    errorMap.put(serverId, failures + 1);
+                                }
+                            }
+                        }
+
+                        // If there were no problems with previous sync, we'll start another one
+                        ExchangeService.startManualSync(c.getLong(Mailbox.CONTENT_ID_COLUMN),
+                                ExchangeService.SYNC_PING, null);
+                    }
+                } finally {
+                    c.close();
+                }
+            }
+        }
+        return pp.getSyncStatus();
+    }
+
+    /**
      * Common code to sync E+PIM data
+     *
      * @param target an EasMailbox, EasContacts, or EasCalendar object
      */
     public void sync(AbstractSyncAdapter target) throws IOException {
@@ -1845,14 +2557,14 @@ public class EasSyncService extends AbstractSyncService {
      * Clears out the security policies associated with the account, forcing a provision error
      * and a re-sync of the policy information for the account.
      */
-    @SuppressWarnings("deprecation")
-    void resetSecurityPolicies() {
+    private void resetSecurityPolicies() {
         ContentValues cv = new ContentValues();
         cv.put(AccountColumns.SECURITY_FLAGS, 0);
         cv.putNull(AccountColumns.SECURITY_SYNC_KEY);
         long accountId = mAccount.mId;
         mContentResolver.update(ContentUris.withAppendedId(
                 Account.CONTENT_URI, accountId), cv, null, null);
+        SecurityPolicyDelegate.policiesRequired(mContext, accountId);
     }
 
     @Override
@@ -1869,6 +2581,9 @@ public class EasSyncService extends AbstractSyncService {
                 int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
                 if ((mMailbox == null) || (mAccount == null)) {
                     return;
+                } else if (mMailbox.mType == Mailbox.TYPE_EAS_ACCOUNT_MAILBOX) {
+                    TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
+                    runAccountMailbox();
                 } else {
                     AbstractSyncAdapter target;
                     if (mMailbox.mType == Mailbox.TYPE_CONTACTS) {
