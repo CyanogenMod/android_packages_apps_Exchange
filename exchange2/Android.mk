@@ -29,6 +29,7 @@ LOCAL_PACKAGE_NAME := Exchange2
 LOCAL_OVERRIDES_PACKAGES := Exchange
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
+LOCAL_SDK_VERSION := 15
 
 LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
 
