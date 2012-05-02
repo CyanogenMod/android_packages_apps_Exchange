@@ -1298,7 +1298,7 @@ public class CalendarUtilities {
                 if (dow == 127) {
                     rrule.append(";BYMONTHDAY=-1");
                 // week 5 and dow = weekdays -> last weekday (need BYSETPOS)
-                } else if (wom == 5 && (dow == EAS_WEEKDAYS || dow == EAS_WEEKENDS)) {
+                } else if ((wom == 5 || wom == 1) && (dow == EAS_WEEKDAYS || dow == EAS_WEEKENDS)) {
                     addBySetpos(rrule, dow, wom);
                 } else if (dow > 0) addByDay(rrule, dow, wom);
                 break;
