@@ -32,7 +32,7 @@ LOCAL_PROGUARD_FLAG_FILES := proguard.flags
 
 LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
 
-include $(BUILD_PACKAGE)
+#include $(BUILD_PACKAGE)
 
 include $(CLEAR_VARS)
 
