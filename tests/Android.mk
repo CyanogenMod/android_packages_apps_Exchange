@@ -31,4 +31,4 @@ LOCAL_PACKAGE_NAME := ExchangeTests
 
 LOCAL_INSTRUMENTATION_FOR := Exchange
 
-# include $(BUILD_PACKAGE)
+include $(BUILD_PACKAGE)
