@@ -193,8 +193,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public void sendSyncOptions(Double protocolVersion, Serializer s)
+    public void sendSyncOptions(Double protocolVersion, Serializer s, boolean initialSync)
             throws IOException  {
+        if (initialSync) return;
         mFetchRequestList.clear();
         // Find partially loaded messages; this should typically be a rare occurrence
         Cursor c = mContext.getContentResolver().query(Message.CONTENT_URI,

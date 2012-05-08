@@ -1668,14 +1668,14 @@ public class EasSyncService extends AbstractSyncService {
 
             // Start with the default timeout
             int timeout = COMMAND_TIMEOUT;
-            if (!syncKey.equals("0")) {
-                // EAS doesn't allow GetChanges in an initial sync; sending other options
-                // appears to cause the server to delay its response in some cases, and this delay
-                // can be long enough to result in an IOException and total failure to sync.
-                // Therefore, we don't send any options with the initial sync.
-                // Set the truncation amount, body preference, lookback, etc.
-                target.sendSyncOptions(mProtocolVersionDouble, s);
-            } else {
+            boolean initialSync = syncKey.equals("0");
+            // EAS doesn't allow GetChanges in an initial sync; sending other options
+            // appears to cause the server to delay its response in some cases, and this delay
+            // can be long enough to result in an IOException and total failure to sync.
+            // Therefore, we don't send any options with the initial sync.
+            // Set the truncation amount, body preference, lookback, etc.
+            target.sendSyncOptions(mProtocolVersionDouble, s, initialSync);
+            if (initialSync) {
                 // Use enormous timeout for initial sync, which empirically can take a while longer
                 timeout = 120*SECONDS;
             }

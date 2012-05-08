@@ -144,8 +144,73 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public void sendSyncOptions(Double protocolVersion, Serializer s) throws IOException  {
-        setPimSyncOptions(protocolVersion, null, s);
+    public void sendSyncOptions(Double protocolVersion, Serializer s, boolean initialSync)
+            throws IOException  {
+        if (initialSync) {
+            // These are the tags we support for upload; whenever we add/remove support
+            // (in addData), we need to update this list
+            s.start(Tags.SYNC_SUPPORTED);
+            s.tag(Tags.CONTACTS_FIRST_NAME);
+            s.tag(Tags.CONTACTS_LAST_NAME);
+            s.tag(Tags.CONTACTS_MIDDLE_NAME);
+            s.tag(Tags.CONTACTS_SUFFIX);
+            s.tag(Tags.CONTACTS_COMPANY_NAME);
+            s.tag(Tags.CONTACTS_JOB_TITLE);
+            s.tag(Tags.CONTACTS_EMAIL1_ADDRESS);
+            s.tag(Tags.CONTACTS_EMAIL2_ADDRESS);
+            s.tag(Tags.CONTACTS_EMAIL3_ADDRESS);
+            s.tag(Tags.CONTACTS_BUSINESS2_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS_BUSINESS_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS2_MMS);
+            s.tag(Tags.CONTACTS_BUSINESS_FAX_NUMBER);
+            s.tag(Tags.CONTACTS2_COMPANY_MAIN_PHONE);
+            s.tag(Tags.CONTACTS_HOME_FAX_NUMBER);
+            s.tag(Tags.CONTACTS_HOME_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS_HOME2_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS_MOBILE_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS_CAR_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS_RADIO_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS_PAGER_NUMBER);
+            s.tag(Tags.CONTACTS_ASSISTANT_TELEPHONE_NUMBER);
+            s.tag(Tags.CONTACTS2_IM_ADDRESS);
+            s.tag(Tags.CONTACTS2_IM_ADDRESS_2);
+            s.tag(Tags.CONTACTS2_IM_ADDRESS_3);
+            s.tag(Tags.CONTACTS_BUSINESS_ADDRESS_CITY);
+            s.tag(Tags.CONTACTS_BUSINESS_ADDRESS_COUNTRY);
+            s.tag(Tags.CONTACTS_BUSINESS_ADDRESS_POSTAL_CODE);
+            s.tag(Tags.CONTACTS_BUSINESS_ADDRESS_STATE);
+            s.tag(Tags.CONTACTS_BUSINESS_ADDRESS_STREET);
+            s.tag(Tags.CONTACTS_HOME_ADDRESS_CITY);
+            s.tag(Tags.CONTACTS_HOME_ADDRESS_COUNTRY);
+            s.tag(Tags.CONTACTS_HOME_ADDRESS_POSTAL_CODE);
+            s.tag(Tags.CONTACTS_HOME_ADDRESS_STATE);
+            s.tag(Tags.CONTACTS_HOME_ADDRESS_STREET);
+            s.tag(Tags.CONTACTS_OTHER_ADDRESS_CITY);
+            s.tag(Tags.CONTACTS_OTHER_ADDRESS_COUNTRY);
+            s.tag(Tags.CONTACTS_OTHER_ADDRESS_POSTAL_CODE);
+            s.tag(Tags.CONTACTS_OTHER_ADDRESS_STATE);
+            s.tag(Tags.CONTACTS_OTHER_ADDRESS_STREET);
+            s.tag(Tags.CONTACTS_YOMI_COMPANY_NAME);
+            s.tag(Tags.CONTACTS_YOMI_FIRST_NAME);
+            s.tag(Tags.CONTACTS_YOMI_LAST_NAME);
+            s.tag(Tags.CONTACTS2_NICKNAME);
+            s.tag(Tags.CONTACTS_ASSISTANT_NAME);
+            s.tag(Tags.CONTACTS2_MANAGER_NAME);
+            s.tag(Tags.CONTACTS_SPOUSE);
+            s.tag(Tags.CONTACTS_DEPARTMENT);
+            s.tag(Tags.CONTACTS_TITLE);
+            s.tag(Tags.CONTACTS_OFFICE_LOCATION);
+            s.tag(Tags.CONTACTS2_CUSTOMER_ID);
+            s.tag(Tags.CONTACTS2_GOVERNMENT_ID);
+            s.tag(Tags.CONTACTS2_ACCOUNT_NAME);
+            s.tag(Tags.CONTACTS_ANNIVERSARY);
+            s.tag(Tags.CONTACTS_BIRTHDAY);
+            s.tag(Tags.CONTACTS_WEBPAGE);
+            s.tag(Tags.CONTACTS_PICTURE);
+            s.end(); // SYNC_SUPPORTED
+        } else {
+            setPimSyncOptions(protocolVersion, null, s);
+        }
     }
 
     @Override
@@ -352,7 +417,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
 
         public void addData(String serverId, ContactOperations ops, Entity entity)
                 throws IOException {
-            String fileAs = null;
             String prefix = null;
             String firstName = null;
             String lastName = null;
@@ -389,9 +453,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                         break;
                     case Tags.CONTACTS_MIDDLE_NAME:
                         middleName = getValue();
-                        break;
-                    case Tags.CONTACTS_FILE_AS:
-                        fileAs = getValue();
                         break;
                     case Tags.CONTACTS_SUFFIX:
                         suffix = getValue();
@@ -568,11 +629,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                         categoriesParser(ops, entity);
                         break;
 
-                    case Tags.CONTACTS_COMPRESSED_RTF:
-                        // We don't use this, and it isn't necessary to upload, so we'll ignore it
-                        skipTag();
-                        break;
-
                     default:
                         skipTag();
                 }
@@ -593,7 +649,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             }
 
             ops.addName(entity, prefix, firstName, lastName, middleName, suffix, name,
-                    yomiFirstName, yomiLastName, fileAs);
+                    yomiFirstName, yomiLastName);
             ops.addBusiness(entity, business);
             ops.addPersonal(entity, personal);
 
@@ -1209,7 +1265,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
 
         public void addName(Entity entity, String prefix, String givenName, String familyName,
                 String middleName, String suffix, String displayName, String yomiFirstName,
-                String yomiLastName, String fileAs) {
+                String yomiLastName) {
             RowBuilder builder = untypedRowBuilder(entity, StructuredName.CONTENT_ITEM_TYPE);
             ContentValues cv = builder.cv;
             if (cv != null && cvCompareString(cv, StructuredName.GIVEN_NAME, givenName) &&
@@ -1218,7 +1274,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                     cvCompareString(cv, StructuredName.PREFIX, prefix) &&
                     cvCompareString(cv, StructuredName.PHONETIC_GIVEN_NAME, yomiFirstName) &&
                     cvCompareString(cv, StructuredName.PHONETIC_FAMILY_NAME, yomiLastName) &&
-                    //cvCompareString(cv, StructuredName.DISPLAY_NAME, fileAs) &&
                     cvCompareString(cv, StructuredName.SUFFIX, suffix)) {
                 return;
             }
@@ -1229,7 +1284,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             builder.withValue(StructuredName.PHONETIC_GIVEN_NAME, yomiFirstName);
             builder.withValue(StructuredName.PHONETIC_FAMILY_NAME, yomiLastName);
             builder.withValue(StructuredName.PREFIX, prefix);
-            //builder.withValue(StructuredName.DISPLAY_NAME, fileAs);
             add(builder.build());
         }
 
@@ -1601,12 +1655,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         sendStringData(s, cv, StructuredName.PHONETIC_GIVEN_NAME, Tags.CONTACTS_YOMI_FIRST_NAME);
         sendStringData(s, cv, StructuredName.PHONETIC_FAMILY_NAME, Tags.CONTACTS_YOMI_LAST_NAME);
         sendStringData(s, cv, StructuredName.PREFIX, Tags.CONTACTS_TITLE);
-        if (cv.containsKey(StructuredName.DISPLAY_NAME)) {
-            displayName = cv.getAsString(StructuredName.DISPLAY_NAME);
-            if (!TextUtils.isEmpty(displayName)) {
-                s.data(Tags.CONTACTS_FILE_AS, displayName);
-            }
-        }
         return displayName;
     }
 
