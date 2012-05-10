@@ -166,6 +166,7 @@ public class EasSyncService extends AbstractSyncService {
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     private String mClientCertAlias = null;
+    private int mPort;
 
     public ContentResolver mContentResolver;
     // Whether or not the sync service is valid (usable)
@@ -387,10 +388,7 @@ public class EasSyncService extends AbstractSyncService {
         svc.mUserName = ha.mLogin;
         svc.mPassword = ha.mPassword;
         try {
-            svc.setConnectionParameters(
-                    (ha.mFlags & HostAuth.FLAG_SSL) != 0,
-                    (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
-                    ha.mClientCertAlias);
+            svc.setConnectionParameters(ha);
             svc.mDeviceId = ExchangeService.getDeviceId(context);
         } catch (IOException e) {
             return null;
@@ -441,10 +439,7 @@ public class EasSyncService extends AbstractSyncService {
             mUserName = hostAuth.mLogin;
             mPassword = hostAuth.mPassword;
 
-            setConnectionParameters(
-                    hostAuth.shouldUseSsl(),
-                    hostAuth.shouldTrustAllServerCerts(),
-                    hostAuth.mClientCertAlias);
+            setConnectionParameters(hostAuth);
             mDeviceId = ExchangeService.getDeviceId(context);
             mAccount = new Account();
             mAccount.mEmailAddress = hostAuth.mLogin;
@@ -705,6 +700,10 @@ public class EasSyncService extends AbstractSyncService {
             // Initialize the user name and password
             mUserName = userName;
             mPassword = password;
+            // Port is always 443 and SSL is used
+            mPort = 443;
+            mSsl = true;
+
             // Make sure the authentication string is recreated and cached
             cacheAuthUserAndBaseUriStrings();
 
@@ -1215,26 +1214,23 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
-    protected void setConnectionParameters(
-            boolean useSsl, boolean trustAllServerCerts, String clientCertAlias)
-            throws CertificateException {
-
-        EmailClientConnectionManager connManager = getClientConnectionManager();
-
-        mSsl = useSsl;
-        mTrustSsl = trustAllServerCerts;
-        mClientCertAlias = clientCertAlias;
+    protected void setConnectionParameters(HostAuth hostAuth) throws CertificateException {
+        mSsl = hostAuth.shouldUseSsl();
+        mTrustSsl = hostAuth.shouldTrustAllServerCerts();
+        mClientCertAlias = hostAuth.mClientCertAlias;
+        mPort = hostAuth.mPort;
 
         // Register the new alias, if needed.
         if (mClientCertAlias != null) {
             // Ensure that the connection manager knows to use the proper client certificate
             // when establishing connections for this service.
-            connManager.registerClientCert(mContext, mClientCertAlias, mTrustSsl);
+            EmailClientConnectionManager connManager = getClientConnectionManager();
+            connManager.registerClientCert(mContext, hostAuth);
         }
     }
 
     private EmailClientConnectionManager getClientConnectionManager() {
-        return ExchangeService.getClientConnectionManager();
+        return ExchangeService.getClientConnectionManager(mSsl, mPort);
     }
 
     private HttpClient getHttpClient(int timeout) {
@@ -1805,10 +1801,7 @@ public class EasSyncService extends AbstractSyncService {
         mPassword = ha.mPassword;
 
         try {
-            setConnectionParameters(
-                    (ha.mFlags & HostAuth.FLAG_SSL) != 0,
-                    (ha.mFlags & HostAuth.FLAG_TRUST_ALL) != 0,
-                    ha.mClientCertAlias);
+            setConnectionParameters(ha);
         } catch (CertificateException e) {
             userLog("Couldn't retrieve certificate for connection");
             try {
