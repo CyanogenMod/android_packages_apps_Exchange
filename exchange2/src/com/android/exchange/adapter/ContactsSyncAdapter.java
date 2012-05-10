@@ -58,13 +58,17 @@ import android.text.util.Rfc822Tokenizer;
 import android.util.Base64;
 import android.util.Log;
 
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.utility.CalendarUtilities;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 /**
  * Sync adapter for EAS Contacts
@@ -359,11 +363,13 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
+        @Override
         public void addValues(RowBuilder builder) {
             builder.withValue(Email.DATA, email);
             builder.withValue(Email.DISPLAY_NAME, displayName);
         }
 
+        @Override
         public boolean isSameAs(int type, String value) {
             return email.equalsIgnoreCase(value);
         }
@@ -376,10 +382,12 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             im = _im;
         }
 
+        @Override
         public void addValues(RowBuilder builder) {
             builder.withValue(Im.DATA, im);
         }
 
+        @Override
         public boolean isSameAs(int type, String value) {
             return im.equalsIgnoreCase(value);
         }
@@ -394,11 +402,13 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             type = _type;
         }
 
+        @Override
         public void addValues(RowBuilder builder) {
             builder.withValue(Im.DATA, phone);
             builder.withValue(Phone.TYPE, type);
         }
 
+        @Override
         public boolean isSameAs(int _type, String value) {
             return type == _type && phone.equalsIgnoreCase(value);
         }
@@ -1258,7 +1268,14 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             if (cv != null && cvCompareString(cv, Event.START_DATE, birthday)) {
                 return;
             }
-            builder.withValue(Event.START_DATE, birthday);
+            long millis = Utility.parseEmailDateTimeToMillis(birthday);
+            GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
+            cal.setTimeInMillis(millis);
+            if (cal.get(GregorianCalendar.HOUR_OF_DAY) >= 12) {
+                cal.add(GregorianCalendar.DATE, 1);
+            }
+            String realBirthday = CalendarUtilities.calendarToBirthdayString(cal);
+            builder.withValue(Event.START_DATE, realBirthday);
             builder.withValue(Event.TYPE, Event.TYPE_BIRTHDAY);
             add(builder.build());
         }

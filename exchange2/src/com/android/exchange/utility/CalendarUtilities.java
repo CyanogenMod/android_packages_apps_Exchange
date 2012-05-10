@@ -903,6 +903,22 @@ public class CalendarUtilities {
     }
 
     /**
+     * Generate a birthday string from a GregorianCalendar set appropriately; the format of this
+     * string is YYYY-MM-DD
+     * @param cal the calendar
+     * @return the birthday string
+     */
+    static public String calendarToBirthdayString(GregorianCalendar cal) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(cal.get(Calendar.YEAR));
+        sb.append('-');
+        sb.append(formatTwo(cal.get(Calendar.MONTH) + 1));
+        sb.append('-');
+        sb.append(formatTwo(cal.get(Calendar.DAY_OF_MONTH)));
+        return sb.toString();
+    }
+
+    /**
      * Generate an EAS formatted local date/time string from a time and a time zone. If the final
      * argument is false, only a date will be returned (e.g. 20100331)
      * @param millis a time in milliseconds
