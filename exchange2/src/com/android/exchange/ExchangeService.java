@@ -220,8 +220,9 @@ public class ExchangeService extends Service implements Runnable {
     private static Thread sServiceThread = null;
     // Cached unique device id
     private static String sDeviceId = null;
-    // ConnectionManager that all EAS threads can use
-    private static EmailClientConnectionManager sClientConnectionManager = null;
+    // HashMap of ConnectionManagers that all EAS threads can use (by ssl/port pair)
+    private static HashMap<Integer, EmailClientConnectionManager> sClientConnectionManagers =
+            new HashMap<Integer, EmailClientConnectionManager>();
     // Count of ClientConnectionManager shutdowns
     private static volatile int sClientConnectionManagerShutdownCount = 0;
 
@@ -1263,8 +1264,12 @@ public class ExchangeService extends Service implements Runnable {
         }
     };
 
-    static public synchronized EmailClientConnectionManager getClientConnectionManager() {
-        if (sClientConnectionManager == null) {
+    static public synchronized EmailClientConnectionManager getClientConnectionManager(boolean ssl,
+            int port) {
+        // We'll use a different connection manager for each ssl/port pair
+        int key = (ssl ? 0x10000 : 0) + port;
+        EmailClientConnectionManager mgr = sClientConnectionManagers.get(key);
+        if (mgr == null) {
             // After two tries, kill the process.  Most likely, this will happen in the background
             // The service will restart itself after about 5 seconds
             if (sClientConnectionManagerShutdownCount > MAX_CLIENT_CONNECTION_MANAGER_SHUTDOWNS) {
@@ -1274,19 +1279,20 @@ public class ExchangeService extends Service implements Runnable {
             HttpParams params = new BasicHttpParams();
             params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
             params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
-            sClientConnectionManager = EmailClientConnectionManager.newInstance(params);
+            mgr = EmailClientConnectionManager.newInstance(params, ssl, port);
+            log("Creating connection manager for port " + port + ", ssl: " + ssl);
+            sClientConnectionManagers.put(key, mgr);
         }
         // Null is a valid return result if we get an exception
-        return sClientConnectionManager;
+        return mgr;
     }
 
     static private synchronized void shutdownConnectionManager() {
-        if (sClientConnectionManager != null) {
-            log("Shutting down ClientConnectionManager");
-            sClientConnectionManager.shutdown();
-            sClientConnectionManagerShutdownCount++;
-            sClientConnectionManager = null;
+        log("Shutting down ClientConnectionManagers");
+        for (EmailClientConnectionManager mgr: sClientConnectionManagers.values()) {
+            mgr.shutdown();
         }
+        sClientConnectionManagers.clear();
     }
 
     public static void stopAccountSyncs(long acctId) {
