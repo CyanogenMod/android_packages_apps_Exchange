@@ -426,11 +426,14 @@ public class FolderSyncParser extends AbstractSyncParser {
         // Mailbox, so we'll have to query the database
         if (parent == null) {
             mBindArguments[0] = Long.toString(mAccount.mId);
-            mBindArguments[1] = mailbox.mParentServerId;
-            long parentId = Utility.getFirstRowInt(mContext, Mailbox.CONTENT_URI,
-                    EmailContent.ID_PROJECTION,
-                    MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.SERVER_ID + "=?",
-                    mBindArguments, null, EmailContent.ID_PROJECTION_COLUMN, -1);
+            long parentId = -1;
+            if (mailbox.mParentServerId != null) {
+                mBindArguments[1] = mailbox.mParentServerId;
+                parentId = Utility.getFirstRowInt(mContext, Mailbox.CONTENT_URI,
+                        EmailContent.ID_PROJECTION,
+                        MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.SERVER_ID + "=?",
+                        mBindArguments, null, EmailContent.ID_PROJECTION_COLUMN, -1);
+            }
             if (parentId != -1) {
                 // Get the parent from the database
                 parent = Mailbox.restoreMailboxWithId(mContext, parentId);
