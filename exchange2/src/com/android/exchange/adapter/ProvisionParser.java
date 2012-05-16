@@ -19,7 +19,6 @@ import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.storage.StorageManager;
-import android.os.storage.StorageVolume;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
@@ -32,6 +31,8 @@ import org.xmlpull.v1.XmlPullParserFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 /**
@@ -238,21 +239,10 @@ public class ProvisionParser extends Parser {
                         log("Policy requires SD card encryption");
                         // Let's see if this can be supported on our device...
                         if (deviceSupportsEncryption()) {
-                            StorageManager sm = (StorageManager)mService.mContext.getSystemService(
-                                    Context.STORAGE_SERVICE);
                             // NOTE: Private API!
                             // Go through volumes; if ANY are removable, we can't support this
                             // policy.
-                            StorageVolume[] volumeList = sm.getVolumeList();
-                            for (StorageVolume volume: volumeList) {
-                                if (volume.isRemovable()) {
-                                    tagIsSupported = false;
-                                    log("Removable: " + volume.getDescription());
-                                    break;  // Break only from the storage volume loop
-                                } else {
-                                    log("Not Removable: " + volume.getDescription());
-                                }
-                            }
+                            tagIsSupported = !hasRemovableStorage();
                             if (tagIsSupported) {
                                 // If this policy is requested, we MUST also require encryption
                                 log("Device supports SD card encryption");
@@ -612,5 +602,42 @@ public class ProvisionParser extends Parser {
             }
         }
         return res;
+    }
+
+    /**
+     * In order to determine whether the device has removable storage, we need to use the
+     * StorageVolume class, which is hidden (for now) by the framework.  Without this, we'd have
+     * to reject all policies that require sd card encryption.
+     *
+     * TODO: Rewrite this when an appropriate API is available from the framework
+     */
+    private boolean hasRemovableStorage() {
+        try {
+            StorageManager sm = (StorageManager)mService.mContext.getSystemService(
+                    Context.STORAGE_SERVICE);
+            Class<?> svClass = Class.forName("android.os.storage.StorageVolume");
+            Class<?> svManager = Class.forName("android.os.storage.StorageManager");
+            Method gvl = svManager.getDeclaredMethod("getVolumeList");
+            Object[] volumeList = (Object[]) gvl.invoke(sm);
+            for (Object volume: volumeList) {
+                Method isRemovable = svClass.getDeclaredMethod("isRemovable");
+                Method getDescription = svClass.getDeclaredMethod("getDescription");
+                String desc = (String)getDescription.invoke(volume);
+                if ((Boolean)isRemovable.invoke(volume)) {
+                    log("Removable: " + desc);
+                    return true;
+                } else {
+                    log("Not Removable: " + desc);
+                }
+            }
+            return false;
+        } catch (ClassNotFoundException e) {
+        } catch (NoSuchMethodException e) {
+        } catch (IllegalArgumentException e) {
+        } catch (IllegalAccessException e) {
+        } catch (InvocationTargetException e) {
+        }
+        // To be safe, we'll always indicate that there IS removable storage
+        return true;
     }
 }
