@@ -32,7 +32,6 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
-import com.android.emailcommon.utility.EmailAsyncTask;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -47,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Parse the result of a FolderSync command
@@ -428,11 +426,14 @@ public class FolderSyncParser extends AbstractSyncParser {
         // Mailbox, so we'll have to query the database
         if (parent == null) {
             mBindArguments[0] = Long.toString(mAccount.mId);
-            mBindArguments[1] = mailbox.mParentServerId;
-            long parentId = Utility.getFirstRowInt(mContext, Mailbox.CONTENT_URI,
-                    EmailContent.ID_PROJECTION,
-                    MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.SERVER_ID + "=?",
-                    mBindArguments, null, EmailContent.ID_PROJECTION_COLUMN, -1);
+            long parentId = -1;
+            if (mailbox.mParentServerId != null) {
+                mBindArguments[1] = mailbox.mParentServerId;
+                parentId = Utility.getFirstRowInt(mContext, Mailbox.CONTENT_URI,
+                        EmailContent.ID_PROJECTION,
+                        MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.SERVER_ID + "=?",
+                        mBindArguments, null, EmailContent.ID_PROJECTION_COLUMN, -1);
+            }
             if (parentId != -1) {
                 // Get the parent from the database
                 parent = Mailbox.restoreMailboxWithId(mContext, parentId);
@@ -540,6 +541,7 @@ public class FolderSyncParser extends AbstractSyncParser {
 
     public void changesParser(final ArrayList<ContentProviderOperation> ops,
             final boolean initialSync) throws IOException {
+
         // Array of added mailboxes
         final ArrayList<Mailbox> addMailboxes = new ArrayList<Mailbox>();
 
@@ -562,89 +564,77 @@ public class FolderSyncParser extends AbstractSyncParser {
                 skipTag();
         }
 
-        EmailAsyncTask<?, ?, ?> task =
-                EmailAsyncTask.runAsyncParallel(new Runnable() {
-                    @Override
-                    public void run() {
-                        // Synchronize on the parser to prevent this being run concurrently
-                        // (an extremely unlikely event, but nonetheless possible)
-                        synchronized (FolderSyncParser.this) {
-                            // Mailboxes that we known contain email
-                            ArrayList<Mailbox> validMailboxes = new ArrayList<Mailbox>();
-                            // Mailboxes that we're unsure about
-                            ArrayList<Mailbox> userMailboxes = new ArrayList<Mailbox>();
+        // Synchronize on the parser to prevent this being run concurrently
+        // (an extremely unlikely event, but nonetheless possible)
+        synchronized (FolderSyncParser.this) {
+            // Mailboxes that we known contain email
+            ArrayList<Mailbox> validMailboxes = new ArrayList<Mailbox>();
+            // Mailboxes that we're unsure about
+            ArrayList<Mailbox> userMailboxes = new ArrayList<Mailbox>();
 
-                            // Maps folder serverId to mailbox (used to validate user mailboxes)
-                            HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
-                            for (Mailbox mailbox : addMailboxes) {
-                                mailboxMap.put(mailbox.mServerId, mailbox);
-                            }
-
-                            int mailboxCommitCount = 0;
-                            for (Mailbox mailbox : addMailboxes) {
-                                // And add the mailbox to the proper list
-                                if (type == USER_MAILBOX_TYPE) {
-                                    userMailboxes.add(mailbox);
-                                } else {
-                                    validMailboxes.add(mailbox);
-                                }
-                                // On initial sync, we commit what we have every 20 mailboxes
-                                if (initialSync && (++mailboxCommitCount == MAILBOX_COMMIT_SIZE)) {
-                                    if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap,
-                                            ops)) {
-                                        mService.stop();
-                                        return;
-                                    }
-                                    // Clear our arrays to prepare for more
-                                    userMailboxes.clear();
-                                    validMailboxes.clear();
-                                    ops.clear();
-                                    mailboxCommitCount = 0;
-                                }
-                            }
-                            // Commit the sync key and mailboxes
-                            ContentValues cv = new ContentValues();
-                            cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
-                            ops.add(ContentProviderOperation
-                                    .newUpdate(
-                                            ContentUris.withAppendedId(Account.CONTENT_URI,
-                                                    mAccount.mId))
-                                            .withValues(cv).build());
-                            if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap, ops)) {
-                                mService.stop();
-                                return;
-                            }
-                            String accountSelector = Mailbox.ACCOUNT_KEY + "=" + mAccount.mId;
-                            // For new boxes, setup the parent key and flags
-                            if (mFixupUninitializedNeeded) {
-                                MailboxUtilities.fixupUninitializedParentKeys(mContext,
-                                        accountSelector);
-                            }
-                            // For modified parents, reset the flags (and children's parent key)
-                            for (String parentServerId: mParentFixupsNeeded) {
-                                Cursor c = mContentResolver.query(Mailbox.CONTENT_URI,
-                                        Mailbox.CONTENT_PROJECTION, Mailbox.PARENT_SERVER_ID + "=?",
-                                        new String[] {parentServerId}, null);
-                                try {
-                                    if (c.moveToFirst()) {
-                                        MailboxUtilities.setFlagsAndChildrensParentKey(mContext, c,
-                                                accountSelector);
-                                    }
-                                } finally {
-                                    c.close();
-                                }
-                            }
-
-                            // Signal completion of mailbox changes
-                            MailboxUtilities.endMailboxChanges(mContext, mAccount.mId);
-                        }
-                    }});
-        // Make this synchronous if in a unit test
-        if (mInUnitTest) {
-            try {
-                task.get();
-            } catch (Exception e) {
+            // Maps folder serverId to mailbox (used to validate user mailboxes)
+            HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
+            for (Mailbox mailbox : addMailboxes) {
+                mailboxMap.put(mailbox.mServerId, mailbox);
             }
+
+            int mailboxCommitCount = 0;
+            for (Mailbox mailbox : addMailboxes) {
+                // And add the mailbox to the proper list
+                if (mailbox.mType == Mailbox.TYPE_UNKNOWN) {
+                    userMailboxes.add(mailbox);
+                } else {
+                    validMailboxes.add(mailbox);
+                }
+                // On initial sync, we commit what we have every 20 mailboxes
+                if (initialSync && (++mailboxCommitCount == MAILBOX_COMMIT_SIZE)) {
+                    if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap,
+                            ops)) {
+                        mService.stop();
+                        return;
+                    }
+                    // Clear our arrays to prepare for more
+                    userMailboxes.clear();
+                    validMailboxes.clear();
+                    ops.clear();
+                    mailboxCommitCount = 0;
+                }
+            }
+            // Commit the sync key and mailboxes
+            ContentValues cv = new ContentValues();
+            cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
+            ops.add(ContentProviderOperation
+                    .newUpdate(
+                            ContentUris.withAppendedId(Account.CONTENT_URI,
+                                    mAccount.mId))
+                            .withValues(cv).build());
+            if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap, ops)) {
+                mService.stop();
+                return;
+            }
+            String accountSelector = Mailbox.ACCOUNT_KEY + "=" + mAccount.mId;
+            // For new boxes, setup the parent key and flags
+            if (mFixupUninitializedNeeded) {
+                MailboxUtilities.fixupUninitializedParentKeys(mContext,
+                        accountSelector);
+            }
+            // For modified parents, reset the flags (and children's parent key)
+            for (String parentServerId: mParentFixupsNeeded) {
+                Cursor c = mContentResolver.query(Mailbox.CONTENT_URI,
+                        Mailbox.CONTENT_PROJECTION, Mailbox.PARENT_SERVER_ID + "=?",
+                        new String[] {parentServerId}, null);
+                try {
+                    if (c.moveToFirst()) {
+                        MailboxUtilities.setFlagsAndChildrensParentKey(mContext, c,
+                                accountSelector);
+                    }
+                } finally {
+                    c.close();
+                }
+            }
+
+            // Signal completion of mailbox changes
+            MailboxUtilities.endMailboxChanges(mContext, mAccount.mId);
         }
     }
 
