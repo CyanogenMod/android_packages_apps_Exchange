@@ -97,6 +97,8 @@ public class EasAccountService extends EasSyncService {
     static private final int PING_HEARTBEAT_INCREMENT = 3*PING_MINUTES;
 
     static private final int PROTOCOL_PING_STATUS_COMPLETED = 1;
+    static private final int PROTOCOL_PING_STATUS_BAD_PARAMETERS = 3;
+    static private final int PROTOCOL_PING_STATUS_RETRY = 8;
 
     // Fallbacks (in minutes) for ping loop failures
     static private final int MAX_PING_FAILURES = 1;
@@ -698,6 +700,13 @@ public class EasAccountService extends EasSyncService {
                                         }
                                         userLog("Increase ping heartbeat to ", pingHeartbeat, "s");
                                     }
+                                } else if (pingResult == PROTOCOL_PING_STATUS_BAD_PARAMETERS ||
+                                        pingResult == PROTOCOL_PING_STATUS_RETRY) {
+                                    // These errors appear to be server-related (I've seen a bad
+                                    // parameters result with known good parameters...)
+                                    userLog("Server error during Ping: " + pingResult);
+                                    // Act as if we have an IOException (backoff, etc.)
+                                    throw new IOException();
                                 }
                             } else {
                                 userLog("Ping returned empty result; throwing IOException");
