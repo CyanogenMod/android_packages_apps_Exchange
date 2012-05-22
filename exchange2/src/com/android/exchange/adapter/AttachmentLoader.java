@@ -16,13 +16,10 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
-import android.net.Uri;
 import android.os.RemoteException;
 
 import com.android.emailcommon.provider.EmailContent.Attachment;
-import com.android.emailcommon.provider.EmailContent.AttachmentColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.utility.AttachmentUtilities;
@@ -32,12 +29,15 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.PartRequest;
 import com.android.exchange.utility.UriCodec;
-import com.android.mail.providers.UIProvider;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
 
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -56,8 +56,6 @@ public class AttachmentLoader {
     private final int mAttachmentSize;
     private final long mMessageId;
     private final Message mMessage;
-    private final long mAccountId;
-    private final Uri mAttachmentUri;
 
     public AttachmentLoader(EasSyncService service, PartRequest req) {
         mService = service;
@@ -66,10 +64,8 @@ public class AttachmentLoader {
         mAttachment = req.mAttachment;
         mAttachmentId = mAttachment.mId;
         mAttachmentSize = (int)mAttachment.mSize;
-        mAccountId = mAttachment.mAccountKey;
         mMessageId = mAttachment.mMessageKey;
         mMessage = Message.restoreMessageWithId(mContext, mMessageId);
-        mAttachmentUri = AttachmentUtilities.getAttachmentUri(mAccountId, mAttachmentId);
     }
 
     private void doStatusCallback(int status) {
@@ -87,17 +83,6 @@ public class AttachmentLoader {
         } catch (RemoteException e) {
             // No danger if the client is no longer around
         }
-    }
-
-    /**
-     * Save away the contentUri for this Attachment and notify listeners
-     */
-    private void finishLoadAttachment() {
-        ContentValues cv = new ContentValues();
-        cv.put(AttachmentColumns.CONTENT_URI, mAttachmentUri.toString());
-        cv.put(AttachmentColumns.UI_STATE, UIProvider.AttachmentState.SAVED);
-        mAttachment.update(mContext, cv);
-        doStatusCallback(EmailServiceStatus.SUCCESS);
     }
 
     /**
@@ -170,6 +155,35 @@ public class AttachmentLoader {
     }
 
     /**
+     * Close, ignoring errors (as during cleanup)
+     * @param c a Closeable
+     */
+    private void close(Closeable c) {
+        try {
+            c.close();
+        } catch (IOException e) {
+        }
+    }
+
+    /**
+     * Save away the contentUri for this Attachment and notify listeners
+     * @throws IOException
+     */
+    private void finishLoadAttachment(File file, OutputStream os) throws IOException {
+        InputStream in = null;
+        try {
+            in = new FileInputStream(file);
+            AttachmentUtilities.saveAttachment(mContext, in, mAttachment);
+            doStatusCallback(EmailServiceStatus.SUCCESS);
+        } catch (FileNotFoundException e) {
+            // Not bloody likely, as we just created it successfully
+            throw new IOException("Attachment file not found?");
+        } finally {
+            close(in);
+        }
+    }
+
+    /**
      * Loads an attachment, based on the PartRequest passed in the constructor
      * @throws IOException
      */
@@ -181,41 +195,43 @@ public class AttachmentLoader {
         // Say we've started loading the attachment
         doProgressCallback(0);
 
-        EasResponse resp;
-        boolean eas14 = mService.mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE;
+        EasResponse resp = null;
         // The method of attachment loading is different in EAS 14.0 than in earlier versions
-        if (eas14) {
-            Serializer s = new Serializer();
-            s.start(Tags.ITEMS_ITEMS).start(Tags.ITEMS_FETCH);
-            s.data(Tags.ITEMS_STORE, "Mailbox");
-            s.data(Tags.BASE_FILE_REFERENCE, mAttachment.mLocation);
-            s.end().end().done(); // ITEMS_FETCH, ITEMS_ITEMS
-            resp = mService.sendHttpClientPost("ItemOperations", s.toByteArray());
-        } else {
-            String location = mAttachment.mLocation;
-            // For Exchange 2003 (EAS 2.5), we have to look for illegal characters in the file name
-            // that EAS sent to us!
-            if (mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
-                location = encodeForExchange2003(location);
-            }
-            String cmd = "GetAttachment&AttachmentName=" + location;
-            resp = mService.sendHttpClientPost(cmd, null, EasSyncService.COMMAND_TIMEOUT);
-        }
-
+        boolean eas14 = mService.mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE;
         try {
+            if (eas14) {
+                Serializer s = new Serializer();
+                s.start(Tags.ITEMS_ITEMS).start(Tags.ITEMS_FETCH);
+                s.data(Tags.ITEMS_STORE, "Mailbox");
+                s.data(Tags.BASE_FILE_REFERENCE, mAttachment.mLocation);
+                s.end().end().done(); // ITEMS_FETCH, ITEMS_ITEMS
+                resp = mService.sendHttpClientPost("ItemOperations", s.toByteArray());
+            } else {
+                String location = mAttachment.mLocation;
+                // For Exchange 2003 (EAS 2.5), we have to look for illegal chars in the file name
+                // that EAS sent to us!
+                if (mService.mProtocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+                    location = encodeForExchange2003(location);
+                }
+                String cmd = "GetAttachment&AttachmentName=" + location;
+                resp = mService.sendHttpClientPost(cmd, null, EasSyncService.COMMAND_TIMEOUT);
+            }
+
             int status = resp.getStatus();
             if (status == HttpStatus.SC_OK) {
                 if (!resp.isEmpty()) {
                     InputStream is = resp.getInputStream();
                     OutputStream os = null;
+                    File tmpFile = null;
                     try {
-                        os = mResolver.openOutputStream(mAttachmentUri);
+                        tmpFile = File.createTempFile("eas_", "tmp", mContext.getCacheDir());
+                        os = new FileOutputStream(tmpFile);
                         if (eas14) {
                             ItemOperationsParser p = new ItemOperationsParser(this, is, os,
                                     mAttachmentSize);
                             p.parse();
                             if (p.getStatusCode() == 1 /* Success */) {
-                                finishLoadAttachment();
+                                finishLoadAttachment(tmpFile, os);
                                 return;
                             }
                         } else {
@@ -224,25 +240,30 @@ public class AttachmentLoader {
                                 // len > 0 means that Content-Length was set in the headers
                                 // len < 0 means "chunked" transfer-encoding
                                 readChunked(is, os, (len < 0) ? mAttachmentSize : len);
-                                finishLoadAttachment();
+                                finishLoadAttachment(tmpFile, os);
                                 return;
                             }
                         }
                     } catch (FileNotFoundException e) {
                         mService.errorLog("Can't get attachment; write file not found?");
+                        doStatusCallback(EmailServiceStatus.ATTACHMENT_NOT_FOUND);
                     } finally {
-                        if (os != null) {
-                            os.flush();
-                            os.close();
+                        close(is);
+                        close(os);
+                        if (tmpFile != null) {
+                            tmpFile.delete();
                         }
                     }
                 }
             }
+        } catch (IOException e) {
+            // Report the error, but also report back to the service
+            doStatusCallback(EmailServiceStatus.CONNECTION_ERROR);
+            throw e;
         } finally {
-            resp.close();
+            if (resp != null) {
+                resp.close();
+            }
         }
-
-        // All errors lead here...
-        doStatusCallback(EmailServiceStatus.ATTACHMENT_NOT_FOUND);
     }
 }
