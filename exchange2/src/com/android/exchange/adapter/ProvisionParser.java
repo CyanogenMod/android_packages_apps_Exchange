@@ -247,10 +247,10 @@ public class ProvisionParser extends Parser {
                             for (StorageVolume volume: volumeList) {
                                 if (volume.isRemovable()) {
                                     tagIsSupported = false;
-                                    log("Removable: " + volume.getDescription());
+                                    log("Removable: " + volume.getDescription(mService.mContext));
                                     break;  // Break only from the storage volume loop
                                 } else {
-                                    log("Not Removable: " + volume.getDescription());
+                                    log("Not Removable: " + volume.getDescription(mService.mContext));
                                 }
                             }
                             if (tagIsSupported) {
