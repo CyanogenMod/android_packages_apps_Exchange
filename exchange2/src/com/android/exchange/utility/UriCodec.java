@@ -20,9 +20,26 @@ package com.android.exchange.utility;
 import java.io.ByteArrayOutputStream;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
-import java.nio.charset.Charsets;
 
-// Note: This class copied verbatim from libcore.net
+class Misc {
+    public static final Charset UTF_8 = Charset.forName("UTF-8");
+
+    private static final char[] UPPER_CASE_DIGITS = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
+        'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+        'U', 'V', 'W', 'X', 'Y', 'Z'
+    };
+
+    public static String byteToHexString(byte b, boolean upperCase) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(UPPER_CASE_DIGITS[(b >> 4) & 0xf]);
+        sb.append(UPPER_CASE_DIGITS[b & 0xf]);
+        return sb.toString();
+    }
+}
+
+// Note: The UriCodec class is copied verbatim from libcore.net
 
 /**
  * Encodes and decodes {@code application/x-www-form-urlencoded} content.
@@ -137,11 +154,11 @@ public abstract class UriCodec {
     }
 
     public final void appendEncoded(StringBuilder builder, String s) {
-        appendEncoded(builder, s, Charsets.UTF_8, false);
+        appendEncoded(builder, s, Misc.UTF_8, false);
     }
 
     public final void appendPartiallyEncoded(StringBuilder builder, String s) {
-        appendEncoded(builder, s, Charsets.UTF_8, true);
+        appendEncoded(builder, s, Misc.UTF_8, true);
     }
 
     /**
@@ -200,7 +217,7 @@ public abstract class UriCodec {
     }
 
     public static String decode(String s) {
-        return decode(s, false, Charsets.UTF_8);
+        return decode(s, false, Misc.UTF_8);
     }
 
     private static void appendHex(StringBuilder builder, String s, Charset charset) {
@@ -211,6 +228,6 @@ public abstract class UriCodec {
 
     private static void appendHex(StringBuilder sb, byte b) {
         sb.append('%');
-        sb.append(Byte.toHexString(b, true));
+        sb.append(Misc.byteToHexString(b, true));
     }
 }

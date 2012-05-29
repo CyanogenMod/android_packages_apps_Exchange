@@ -710,6 +710,7 @@ public class EasAccountService extends EasSyncService {
                                 }
                             } else {
                                 userLog("Ping returned empty result; throwing IOException");
+                                // Act as if we have an IOException (backoff, etc.)
                                 throw new IOException();
                             }
                         } else if (EasResponse.isAuthError(code)) {

@@ -52,7 +52,6 @@ import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.internal.util.ArrayUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
@@ -769,6 +768,15 @@ public class CalendarUtilities {
         return tziStringToTimeZone(timeZoneString, MINUTES);
     }
 
+    static private boolean hasTimeZoneId(String[] timeZoneIds, String id) {
+    for (String timeZoneId: timeZoneIds) {
+            if (id.equals(timeZoneId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Given a String as directly read from EAS, tries to find a TimeZone in the database of all
      * time zones that corresponds to that String.  If the test time zone string includes DST and
@@ -800,7 +808,7 @@ public class CalendarUtilities {
                 // If the default time zone is a match
                 TimeZone defaultTimeZone = TimeZone.getDefault();
                 if (!defaultTimeZone.useDaylightTime() &&
-                        ArrayUtils.contains(zoneIds, defaultTimeZone.getID())) {
+                        hasTimeZoneId(zoneIds, defaultTimeZone.getID())) {
                     if (Eas.USER_LOG) {
                         ExchangeService.log(TAG, "TimeZone without DST found to be default: " +
                                 defaultTimeZone.getID());

@@ -2140,6 +2140,22 @@ public class ExchangeService extends Service implements Runnable {
     }
 
     /**
+     * Taken from ConnectivityManager using public constants
+     */
+    public static boolean isNetworkTypeMobile(int networkType) {
+        switch (networkType) {
+            case ConnectivityManager.TYPE_MOBILE:
+            case ConnectivityManager.TYPE_MOBILE_MMS:
+            case ConnectivityManager.TYPE_MOBILE_SUPL:
+            case ConnectivityManager.TYPE_MOBILE_DUN:
+            case ConnectivityManager.TYPE_MOBILE_HIPRI:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
      * Determine whether the account is allowed to sync automatically, as opposed to manually, based
      * on whether the "require manual sync when roaming" policy is in force and applicable
      * @param account the account
@@ -2156,7 +2172,7 @@ public class ExchangeService extends Service implements Runnable {
         long policyKey = account.mPolicyKey;
         // Quick exit from this check
         if ((policyKey != 0) && (networkInfo != null) &&
-                (ConnectivityManager.isNetworkTypeMobile(networkInfo.getType()))) {
+                isNetworkTypeMobile(networkInfo.getType())) {
             // We'll cache the Policy data here
             Policy policy = account.mPolicy;
             if (policy == null) {
