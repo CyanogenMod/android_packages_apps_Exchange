@@ -155,9 +155,12 @@ public class FolderSyncParser extends AbstractSyncParser {
                 // Do a sanity check on the account here; if we have any duplicated folders, we'll
                 // act as though we have a bad folder sync key (wipe/reload mailboxes)
                 // Note: The ContentValues isn't used, but no point creating a new one
-                int dupes =  mContentResolver.update(
-                        ContentUris.withAppendedId(EmailContent.ACCOUNT_CHECK_URI, mAccountId),
-                        UNINITIALIZED_PARENT_KEY, null, null);
+                int dupes = 0;
+                if (mAccountId > 0) {
+                    dupes = mContentResolver.update(
+                            ContentUris.withAppendedId(EmailContent.ACCOUNT_CHECK_URI, mAccountId),
+                            UNINITIALIZED_PARENT_KEY, null, null);
+                }
                 if (dupes > 0) {
                     String e = "Duplicate mailboxes found for account " + mAccountId + ": " + dupes;
                     // For verbose logging, make sure this is in emaillog.txt
