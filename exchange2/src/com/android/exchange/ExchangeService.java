@@ -79,6 +79,8 @@ import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.FileLogger;
+import com.android.mail.providers.UIProvider;
+import com.android.mail.providers.UIProvider.AccountCapabilities;
 
 import org.apache.http.conn.params.ConnManagerPNames;
 import org.apache.http.conn.params.ConnPerRoute;
@@ -182,6 +184,20 @@ public class ExchangeService extends Service implements Runnable {
     public static final int PING_STATUS_DISABLED = 4;
 
     private static final int MAX_CLIENT_CONNECTION_MANAGER_SHUTDOWNS = 1;
+
+    private static final int EAS_12_CAPABILITIES =
+            AccountCapabilities.SYNCABLE_FOLDERS |
+            AccountCapabilities.FOLDER_SERVER_SEARCH |
+            AccountCapabilities.SANITIZED_HTML |
+            AccountCapabilities.SMART_REPLY |
+            AccountCapabilities.SERVER_SEARCH |
+            AccountCapabilities.UNDO;
+
+    private static final int EAS_2_CAPABILITIES =
+            AccountCapabilities.SYNCABLE_FOLDERS |
+            AccountCapabilities.SANITIZED_HTML |
+            AccountCapabilities.SMART_REPLY |
+            AccountCapabilities.UNDO;
 
     // We synchronize on this for all actions affecting the service and error maps
     private static final Object sSyncLock = new Object();
@@ -535,6 +551,28 @@ public class ExchangeService extends Service implements Runnable {
 
         @Override
         public void sendMail(long accountId) throws RemoteException {
+        }
+
+        @Override
+        public int getCapabilities(long accountId) throws RemoteException {
+            ExchangeService exchangeService = INSTANCE;
+            if (exchangeService == null) return 0;
+            Account account = Account.restoreAccountWithId(exchangeService, accountId);
+            if (account == null) return 0;
+            String easVersion = account.mProtocolVersion;
+            Double easVersionDouble = 2.5D;
+            if (easVersion != null) {
+                try {
+                    easVersionDouble = Double.parseDouble(easVersion);
+                } catch (NumberFormatException e) {
+                    // Stick with 2.5
+                }
+            }
+            if (easVersionDouble >= 12.0D) {
+                return EAS_12_CAPABILITIES;
+            } else {
+                return EAS_2_CAPABILITIES;
+            }
         }
     };
 
@@ -1218,7 +1256,7 @@ public class ExchangeService extends Service implements Runnable {
     public static void runAccountReconcilerSync(Context context) {
         alwaysLog("Reconciling accounts...");
         new AccountServiceProxy(context).reconcileAccounts(
-                HostAuth.SCHEME_EAS, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                Eas.PROTOCOL, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
     }
 
     public static void log(String str) {
@@ -2413,7 +2451,10 @@ public class ExchangeService extends Service implements Runnable {
      * @return whether or not the mailbox can be synced
      */
     public static boolean isSyncable(Mailbox m) {
-        return m.loadsFromServer(HostAuth.SCHEME_EAS);
+        return m.mType != Mailbox.TYPE_DRAFTS
+                && m.mType != Mailbox.TYPE_OUTBOX
+                && m.mType != Mailbox.TYPE_SEARCH
+                && m.mType < Mailbox.TYPE_NOT_SYNCABLE;
     }
 
     static public void serviceRequest(long mailboxId, long ms, int reason) {

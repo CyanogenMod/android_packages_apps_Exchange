@@ -53,6 +53,7 @@ public class Eas {
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
 
     public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE = "com.android.exchange";
+    public static final String PROTOCOL = "eas";
 
     // From EAS spec
     //                Mail Cal
