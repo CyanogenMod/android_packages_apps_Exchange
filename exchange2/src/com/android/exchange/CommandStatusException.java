@@ -32,7 +32,6 @@ public class CommandStatusException extends EasException {
     public final String mItemId;
 
     public static class CommandStatus {
-        private static final long serialVersionUID = 1L;
 
         // Fatal user/provisioning issues (put on security hold)
         public static final int USER_DISABLED_FOR_SYNC = 126;

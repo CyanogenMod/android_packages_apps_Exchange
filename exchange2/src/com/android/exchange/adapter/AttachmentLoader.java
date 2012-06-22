@@ -15,19 +15,18 @@
 
 package com.android.exchange.adapter;
 
-import android.content.ContentResolver;
 import android.content.Context;
 import android.os.RemoteException;
 
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailsync.PartRequest;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
-import com.android.exchange.PartRequest;
 import com.android.exchange.utility.UriCodec;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -50,7 +49,6 @@ public class AttachmentLoader {
 
     private final EasSyncService mService;
     private final Context mContext;
-    private final ContentResolver mResolver;
     private final Attachment mAttachment;
     private final long mAttachmentId;
     private final int mAttachmentSize;
@@ -60,7 +58,6 @@ public class AttachmentLoader {
     public AttachmentLoader(EasSyncService service, PartRequest req) {
         mService = service;
         mContext = service.mContext;
-        mResolver = service.mContentResolver;
         mAttachment = req.mAttachment;
         mAttachmentId = mAttachment.mId;
         mAttachmentSize = (int)mAttachment.mSize;

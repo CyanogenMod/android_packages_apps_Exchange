@@ -204,7 +204,7 @@ public class Search {
 
             while (nextTag(Tags.SEARCH_STORE) != END) {
                 if (tag == Tags.SEARCH_STATUS) {
-                    String status = getValue();
+                    getValue();
                 } else if (tag == Tags.SEARCH_TOTAL) {
                     mTotalResults = getValueInt();
                 } else if (tag == Tags.SEARCH_RESULT) {

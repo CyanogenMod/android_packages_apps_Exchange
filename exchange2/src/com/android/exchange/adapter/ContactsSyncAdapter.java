@@ -993,11 +993,6 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             cv = _ncv.values;
         }
 
-        RowBuilder withValues(ContentValues values) {
-            builder.withValues(values);
-            return this;
-        }
-
         RowBuilder withValueBackReference(String key, int previousResult) {
             builder.withValueBackReference(key, previousResult);
             return this;

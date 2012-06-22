@@ -93,6 +93,7 @@ public class CalendarSyncEnabler {
      * @param emailAddresses space delimited list of email addresses of Exchange accounts.  It'll
      *     be shown on the notification.
      */
+    @SuppressWarnings("deprecation")
     /* package for testing */ void showNotificationForTest(String emailAddresses) {
         // Launch Calendar app when clicked.
         PendingIntent launchCalendarPendingIntent = PendingIntent.getActivity(mContext, 0,

@@ -35,7 +35,6 @@ public class SettingsRedirector extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Intent intent = getIntent();
         Intent redirect = new Intent(
                 Intent.ACTION_EDIT,
                 IntentUtilities.createActivityIntentUrlBuilder("settings").build());
