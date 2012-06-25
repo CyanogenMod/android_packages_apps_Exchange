@@ -223,7 +223,7 @@ public class EasSyncService extends AbstractSyncService {
     // The minimum heartbeat we will send
     /*package*/ int mPingMinHeartbeat = (5*PING_MINUTES)-PING_FUDGE_LOW;
     // The maximum heartbeat we will send
-    /*package*/ int mPingMaxHeartbeat = (17*PING_MINUTES)-PING_FUDGE_LOW;
+    /*package*/ int mPingMaxHeartbeat = (30*PING_MINUTES)-PING_FUDGE_LOW;
     // The ping time (in seconds)
     /*package*/ int mPingHeartbeat = PING_STARTING_HEARTBEAT;
     // The longest successful ping heartbeat
