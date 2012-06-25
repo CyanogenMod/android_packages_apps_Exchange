@@ -2115,9 +2115,16 @@ public class EasSyncService extends AbstractSyncService {
                                 InputStream is = resp.getInputStream();
                                 int pingResult = parsePingResult(is, mContentResolver,
                                         pingErrorMap);
+                                // if the pingResult was 2, but the pingTime was >= the heartbeat
+                                // then allow the heartbeat to increase as if the result was 1
+                                long pingLength = (SystemClock.elapsedRealtime() - pingTime) / 1000;
+
                                 // If our ping completed (status = 1), and wasn't forced and we're
                                 // not at the maximum, try increasing timeout by two minutes
-                                if (pingResult == PROTOCOL_PING_STATUS_COMPLETED && !forcePing) {
+                                if (!forcePing &&
+                                    ((pingResult == PROTOCOL_PING_STATUS_COMPLETED) || 
+                                     ((2 == pingResult) && (pingLength >= pingHeartbeat)))) {
+
                                     if (pingHeartbeat > mPingHighWaterMark) {
                                         mPingHighWaterMark = pingHeartbeat;
                                         userLog("Setting high water mark at: ", mPingHighWaterMark);
