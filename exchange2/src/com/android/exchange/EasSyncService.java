@@ -53,6 +53,9 @@ import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.PolicyServiceProxy;
+import com.android.emailsync.AbstractSyncService;
+import com.android.emailsync.PartRequest;
+import com.android.emailsync.Request;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -210,6 +213,15 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
+    public void resetCalendarSyncKey() {
+        CalendarSyncAdapter adapter = new CalendarSyncAdapter(this);
+            try {
+                adapter.setSyncKey("0", false);
+            } catch (IOException e) {
+                // The provider can't be reached; nothing to be done
+            }
+    }
+
     /**
      * Try to wake up a sync thread that is waiting on an HttpClient POST and has waited past its
      * socket timeout without having thrown an Exception
@@ -302,14 +314,6 @@ public class EasSyncService extends AbstractSyncService {
                 mPendingPost.abort();
             }
         }
-    }
-
-    @Override
-    public void addRequest(Request request) {
-        // Don't allow duplicates of requests; just refuse them
-        if (mRequestQueue.contains(request)) return;
-        // Add the request
-        super.addRequest(request);
     }
 
     void setupProtocolVersion(EasSyncService service, Header versionHeader)

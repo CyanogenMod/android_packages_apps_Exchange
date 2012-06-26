@@ -78,6 +78,10 @@ public class EasAccountService extends EasSyncService {
         '=' + Mailbox.CHECK_INTERVAL_PUSH_HOLD;
     private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
         MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
+    protected static final String WHERE_IN_ACCOUNT_AND_PUSHABLE =
+            MailboxColumns.ACCOUNT_KEY + "=? and type in (" + Mailbox.TYPE_INBOX + ','
+            + Mailbox.TYPE_EAS_ACCOUNT_MAILBOX + ',' + Mailbox.TYPE_CONTACTS + ','
+            + Mailbox.TYPE_CALENDAR + ')';
 
     /**
      * We start with an 8 minute timeout, and increase/decrease by 3 minutes at a time.  There's
@@ -288,6 +292,11 @@ public class EasAccountService extends EasSyncService {
                      } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
                         // Cause this to re-run
                         throw new IOException("Will retry after a brief hold...");
+                     } else if (EasResponse.isProvisionError(code)) {
+                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
+                     } else if (EasResponse.isAuthError(code)) {
+                         mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
+                         return;
                      } else {
                         errorLog("OPTIONS command failed; throwing IOException");
                         throw new IOException();
@@ -302,7 +311,7 @@ public class EasAccountService extends EasSyncService {
                 cv.clear();
                 cv.put(Mailbox.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_PUSH);
                 if (mContentResolver.update(Mailbox.CONTENT_URI, cv,
-                        ExchangeService.WHERE_IN_ACCOUNT_AND_PUSHABLE,
+                        WHERE_IN_ACCOUNT_AND_PUSHABLE,
                         new String[] {Long.toString(mAccount.mId)}) > 0) {
                     userLog("Push account; set pushable boxes to push...");
                 }

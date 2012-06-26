@@ -352,7 +352,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     private static class GetItemEstimateParser extends Parser {
-        @SuppressWarnings("hiding")
         private static final String TAG = "GetItemEstimateParser";
         private int mEstimate = -1;
 

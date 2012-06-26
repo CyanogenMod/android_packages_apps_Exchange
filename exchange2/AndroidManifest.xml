@@ -72,9 +72,9 @@
         >
 
         <receiver
-            android:name="com.android.exchange.EmailSyncAlarmReceiver"/>
+            android:name="com.android.emailsync.EmailSyncAlarmReceiver"/>
         <receiver
-            android:name="com.android.exchange.MailboxAlarmReceiver"/>
+            android:name="com.android.emailsync.MailboxAlarmReceiver"/>
 
         <receiver
             android:name=".service.ExchangeBroadcastReceiver"
