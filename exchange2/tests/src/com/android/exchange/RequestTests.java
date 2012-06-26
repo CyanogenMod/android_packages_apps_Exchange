@@ -17,6 +17,7 @@
 package com.android.exchange;
 
 import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailsync.PartRequest;
 
 import android.test.AndroidTestCase;
 
