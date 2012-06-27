@@ -31,6 +31,6 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_PACKAGE_NAME := ExchangeTests
 
-LOCAL_INSTRUMENTATION_FOR := Exchange2
+LOCAL_INSTRUMENTATION_FOR := Exchange
 
 include $(BUILD_PACKAGE)
