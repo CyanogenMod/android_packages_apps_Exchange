@@ -660,6 +660,8 @@ public class FolderSyncParser extends AbstractSyncParser {
                 }
             }
 
+            MailboxUtilities.setupHierarchicalNames(mContext, mAccount.mId);
+
             // Signal completion of mailbox changes
             MailboxUtilities.endMailboxChanges(mContext, mAccount.mId);
         }

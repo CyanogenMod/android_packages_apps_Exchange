@@ -623,7 +623,6 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         assertEquals(box2.mId, box3.mParentKey);
     }
 
-
     /**
      * Tests the proper separation of two accounts using the methodology from the previous test.
      * This test will fail if MailboxUtilities fails to distinguish between mailboxes in different
@@ -758,5 +757,63 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
 
         assertEquals(CHILD_FLAGS, box6.mFlags);
         assertEquals(box5.mId, box6.mParentKey);
+    }
+
+    /**
+     * Tests the proper separation of two accounts using the methodology from the previous test.
+     * This test will fail if MailboxUtilities fails to distinguish between mailboxes in different
+     * accounts that happen to have the same serverId
+     */
+    public void testSetupHierarchicalNames() {
+        // Set up account and mailboxes
+        mAccount = setupTestAccount("acct1", true);
+        long accountId = mAccount.mId;
+
+        // Box3 is in Box1
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox(
+                "box1", accountId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box1.mServerId = "1:1";
+        box1.save(mProviderContext);
+        Mailbox box2 = EmailContentSetupUtils.setupMailbox(
+                "box2", accountId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box2.mServerId = "1:2";
+        box2.save(mProviderContext);
+        Mailbox box3 = EmailContentSetupUtils.setupMailbox(
+                "box3", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box1);
+        box3.mServerId = "1:3";
+        box3.save(mProviderContext);
+
+        // Box4 is in Box2; Box5 is in Box4; Box 6 is in Box5
+        Mailbox box4 = EmailContentSetupUtils.setupMailbox(
+                "box4", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box2);
+        box4.mServerId = "1:4";
+        box4.save(mProviderContext);
+        Mailbox box5 = EmailContentSetupUtils.setupMailbox(
+                "box5", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box4);
+        box5.mServerId = "1:5";
+        box5.save(mProviderContext);
+        Mailbox box6 = EmailContentSetupUtils.setupMailbox(
+                "box6", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box5);
+        box6.mServerId = "1:6";
+        box6.save(mProviderContext);
+
+        // Setup hierarchy
+        String accountSelector1 = MailboxColumns.ACCOUNT_KEY + " IN (" + accountId + ")";
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector1);
+        // Setup hierarchy names
+        MailboxUtilities.setupHierarchicalNames(mProviderContext, accountId);
+        box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
+        box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
+        box3 = Mailbox.restoreMailboxWithId(mProviderContext, box3.mId);
+        box4 = Mailbox.restoreMailboxWithId(mProviderContext, box4.mId);
+        box5 = Mailbox.restoreMailboxWithId(mProviderContext, box5.mId);
+        box6 = Mailbox.restoreMailboxWithId(mProviderContext, box6.mId);
+
+        assertEquals("box1", box1.mHierarchicalName);
+        assertEquals("box2", box2.mHierarchicalName);
+        assertEquals("box1/box3", box3.mHierarchicalName);
+        assertEquals("box2/box4", box4.mHierarchicalName);
+        assertEquals("box2/box4/box5", box5.mHierarchicalName);
+        assertEquals("box2/box4/box5/box6", box6.mHierarchicalName);
     }
 }
