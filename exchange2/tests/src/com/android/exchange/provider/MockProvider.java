@@ -61,6 +61,9 @@ import java.util.Map.Entry;
  *
  *     NOTE: See MockProviderTests for usage examples
  **/
+
+// The constructor call below is commented out because it won't compile under SDK
+
 public class MockProvider extends ContentProvider {
     public static final String AUTHORITY = "com.android.exchange.mock.provider";
     /*package*/ static final UriMatcher sURIMatcher = new UriMatcher(UriMatcher.NO_MATCH);
@@ -70,9 +73,9 @@ public class MockProvider extends ContentProvider {
 
     public static final String ID_COLUMN = "_id";
 
-    public MockProvider(Context context) {
-        super(context, null, null, null);
-    }
+    //    public MockProvider(Context context) {
+    //        super(context, null, null, null);
+    //    }
 
     public MockProvider() {
         super();
@@ -90,7 +93,7 @@ public class MockProvider extends ContentProvider {
      */
     public static Uri uri(Uri uri) {
         return new Uri.Builder().scheme("content").authority(AUTHORITY)
-            .path(uri.getPath().substring(1)).build();
+                .path(uri.getPath().substring(1)).build();
     }
 
     @Override
