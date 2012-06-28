@@ -16,28 +16,24 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 #
-# Exchange
+# Exchange2
 #
-
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
-LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon
+LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon2 com.android.emailsync
 LOCAL_STATIC_JAVA_LIBRARIES += calendar-common
 
-LOCAL_PACKAGE_NAME := Exchange
+LOCAL_PACKAGE_NAME := Exchange2
+LOCAL_OVERRIDES_PACKAGES := Exchange
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
+LOCAL_SDK_VERSION := 15
 
 LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
 
 include $(BUILD_PACKAGE)
 
-include $(CLEAR_VARS)
-
-
-##################################################
-# Build all sub-directories
-
+# additionally, build unit tests in a separate .apk
 include $(call all-makefiles-under,$(LOCAL_PATH))

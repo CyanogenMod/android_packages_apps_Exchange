@@ -16,6 +16,8 @@
 
 package com.android.exchange;
 
+import com.android.emailsync.Request;
+
 /**
  * MessageMoveRequest is the EAS wrapper for requesting a "move to folder"
  */

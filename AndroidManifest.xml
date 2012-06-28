@@ -17,8 +17,8 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.exchange"
-    android:versionCode="410000"
-    android:versionName="4.1"
+    android:versionCode="500000"
+    android:versionName="5.0"
      >
 
     <uses-permission
@@ -72,9 +72,9 @@
         >
 
         <receiver
-            android:name="com.android.exchange.EmailSyncAlarmReceiver"/>
+            android:name="com.android.emailsync.EmailSyncAlarmReceiver"/>
         <receiver
-            android:name="com.android.exchange.MailboxAlarmReceiver"/>
+            android:name="com.android.emailsync.MailboxAlarmReceiver"/>
 
         <receiver
             android:name=".service.ExchangeBroadcastReceiver"

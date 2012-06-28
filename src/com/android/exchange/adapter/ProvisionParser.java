@@ -19,13 +19,10 @@ import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.storage.StorageManager;
-import android.os.storage.StorageVolume;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
-import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
-import com.android.exchange.SecurityPolicyDelegate;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -34,26 +31,26 @@ import org.xmlpull.v1.XmlPullParserFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 /**
  * Parse the result of the Provision command
- *
- * Assuming a successful parse, we store the PolicySet and the policy key
  */
 public class ProvisionParser extends Parser {
     private final EasSyncService mService;
-    Policy mPolicy = null;
-    String mSecuritySyncKey = null;
-    boolean mRemoteWipe = false;
-    boolean mIsSupportable = true;
-    // An array of string resource id's describing policies that are unsupported by the device/app
-    String[] mUnsupportedPolicies;
-    boolean smimeRequired = false;
+    private Policy mPolicy = null;
+    private String mSecuritySyncKey = null;
+    private boolean mRemoteWipe = false;
+    private boolean mIsSupportable = true;
+    private boolean smimeRequired = false;
+    private final Resources mResources;
 
     public ProvisionParser(InputStream in, EasSyncService service) throws IOException {
         super(in);
         mService = service;
+        mResources = service.mContext.getResources();
     }
 
     public Policy getPolicy() {
@@ -76,18 +73,32 @@ public class ProvisionParser extends Parser {
         return (mPolicy != null) && mIsSupportable;
     }
 
-    public void clearUnsupportedPolicies() {
-        mPolicy = SecurityPolicyDelegate.clearUnsupportedPolicies(mService.mContext, mPolicy);
+    public void clearUnsupportablePolicies() {
         mIsSupportable = true;
-        mUnsupportedPolicies = null;
+        mPolicy.mProtocolPoliciesUnsupported = null;
     }
 
-    public String[] getUnsupportedPolicies() {
-        return mUnsupportedPolicies;
+    private void addPolicyString(StringBuilder sb, int res) {
+        sb.append(mResources.getString(res));
+        sb.append(Policy.POLICY_STRING_DELIMITER);
     }
 
+    /**
+     * Complete setup of a Policy; we normalize it first (removing inconsistencies, etc.) and then
+     * generate the tokenized "protocol policies enforced" string.  Note that unsupported policies
+     * must have been added prior to calling this method (this is only a possibility with wbxml
+     * policy documents, as all versions of the OS support the policies in xml documents).
+     */
     private void setPolicy(Policy policy) {
         policy.normalize();
+        StringBuilder sb = new StringBuilder();
+        if (policy.mDontAllowAttachments) {
+            addPolicyString(sb, R.string.policy_dont_allow_attachments);
+        }
+        if (policy.mRequireManualSyncWhenRoaming) {
+            addPolicyString(sb, R.string.policy_require_manual_sync_roaming);
+        }
+        policy.mProtocolPoliciesEnforced = sb.toString();
         mPolicy = policy;
     }
 
@@ -228,21 +239,10 @@ public class ProvisionParser extends Parser {
                         log("Policy requires SD card encryption");
                         // Let's see if this can be supported on our device...
                         if (deviceSupportsEncryption()) {
-                            StorageManager sm = (StorageManager)mService.mContext.getSystemService(
-                                    Context.STORAGE_SERVICE);
                             // NOTE: Private API!
                             // Go through volumes; if ANY are removable, we can't support this
                             // policy.
-                            StorageVolume[] volumeList = sm.getVolumeList();
-                            for (StorageVolume volume: volumeList) {
-                                if (volume.isRemovable()) {
-                                    tagIsSupported = false;
-                                    log("Removable: " + volume.getDescription());
-                                    break;  // Break only from the storage volume loop
-                                } else {
-                                    log("Not Removable: " + volume.getDescription());
-                                }
-                            }
+                            tagIsSupported = !hasRemovableStorage();
                             if (tagIsSupported) {
                                 // If this policy is requested, we MUST also require encryption
                                 log("Device supports SD card encryption");
@@ -351,26 +351,16 @@ public class ProvisionParser extends Parser {
         if (!passwordEnabled) {
             policy.mPasswordMode = Policy.PASSWORD_MODE_NONE;
         }
-        setPolicy(policy);
-
-        // We can only determine whether encryption is supported on device by using isSupported here
-        if (!SecurityPolicyDelegate.isSupported(mService.mContext, policy)) {
-            log("SecurityPolicy reports PolicySet not supported.");
-            mIsSupportable = false;
-            unsupportedList.add(R.string.policy_require_encryption);
-        }
 
         if (!unsupportedList.isEmpty()) {
-            mUnsupportedPolicies = new String[unsupportedList.size()];
-            int i = 0;
-            Context context = ExchangeService.getContext();
-            if (context != null) {
-                Resources resources = context.getResources();
-                for (int res: unsupportedList) {
-                    mUnsupportedPolicies[i++] = resources.getString(res);
-                }
+            StringBuilder sb = new StringBuilder();
+            for (int res: unsupportedList) {
+                addPolicyString(sb, res);
             }
+            policy.mProtocolPoliciesUnsupported = sb.toString();
         }
+
+        setPolicy(policy);
     }
 
     /**
@@ -612,5 +602,42 @@ public class ProvisionParser extends Parser {
             }
         }
         return res;
+    }
+
+    /**
+     * In order to determine whether the device has removable storage, we need to use the
+     * StorageVolume class, which is hidden (for now) by the framework.  Without this, we'd have
+     * to reject all policies that require sd card encryption.
+     *
+     * TODO: Rewrite this when an appropriate API is available from the framework
+     */
+    private boolean hasRemovableStorage() {
+        try {
+            StorageManager sm = (StorageManager)mService.mContext.getSystemService(
+                    Context.STORAGE_SERVICE);
+            Class<?> svClass = Class.forName("android.os.storage.StorageVolume");
+            Class<?> svManager = Class.forName("android.os.storage.StorageManager");
+            Method gvl = svManager.getDeclaredMethod("getVolumeList");
+            Object[] volumeList = (Object[]) gvl.invoke(sm);
+            for (Object volume: volumeList) {
+                Method isRemovable = svClass.getDeclaredMethod("isRemovable");
+                Method getDescription = svClass.getDeclaredMethod("getDescription");
+                String desc = (String)getDescription.invoke(volume);
+                if ((Boolean)isRemovable.invoke(volume)) {
+                    log("Removable: " + desc);
+                    return true;
+                } else {
+                    log("Not Removable: " + desc);
+                }
+            }
+            return false;
+        } catch (ClassNotFoundException e) {
+        } catch (NoSuchMethodException e) {
+        } catch (IllegalArgumentException e) {
+        } catch (IllegalAccessException e) {
+        } catch (InvocationTargetException e) {
+        }
+        // To be safe, we'll always indicate that there IS removable storage
+        return true;
     }
 }

@@ -21,12 +21,16 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.os.Debug;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+
+import java.util.HashMap;
 
 public class MailboxUtilities {
     public static final String WHERE_PARENT_KEY_UNINITIALIZED =
@@ -52,7 +56,7 @@ public class MailboxUtilities {
         String parentServerId = parentCursor.getString(Mailbox.CONTENT_SERVER_ID_COLUMN);
         // All email-type boxes hold mail
         if (parentType <= Mailbox.TYPE_NOT_EMAIL) {
-            parentFlags |= Mailbox.FLAG_HOLDS_MAIL;
+            parentFlags |= Mailbox.FLAG_HOLDS_MAIL + Mailbox.FLAG_SUPPORTS_SETTINGS;
         }
         // Outbox, Drafts, and Sent don't allow mail to be moved to them
         if (parentType == Mailbox.TYPE_MAIL || parentType == Mailbox.TYPE_TRASH ||
@@ -130,21 +134,22 @@ public class MailboxUtilities {
 
         // We'll loop through mailboxes with an uninitialized parent key
         ContentResolver resolver = context.getContentResolver();
-        Cursor parentCursor = resolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
-                noParentKeySelection, null, null);
-        if (parentCursor == null) return;
+        Cursor noParentKeyMailboxCursor =
+                resolver.query(Mailbox.CONTENT_URI, Mailbox.CONTENT_PROJECTION,
+                        noParentKeySelection, null, null);
+        if (noParentKeyMailboxCursor == null) return;
         try {
-            while (parentCursor.moveToNext()) {
-                setFlagsAndChildrensParentKey(context, parentCursor, accountSelector);
-                // Fix up the parent as well
+            while (noParentKeyMailboxCursor.moveToNext()) {
+                setFlagsAndChildrensParentKey(context, noParentKeyMailboxCursor, accountSelector);
                 String parentServerId =
-                        parentCursor.getString(Mailbox.CONTENT_PARENT_SERVER_ID_COLUMN);
+                        noParentKeyMailboxCursor.getString(Mailbox.CONTENT_PARENT_SERVER_ID_COLUMN);
+                // Fixup the parent so that the children's parentKey is updated
                 if (parentServerId != null) {
                     setFlagsAndChildrensParentKey(context, accountSelector, parentServerId);
                 }
             }
         } finally {
-            parentCursor.close();
+            noParentKeyMailboxCursor.close();
         }
 
         // Any mailboxes without a parent key should have parentKey set to -1 (no parent)
@@ -207,6 +212,64 @@ public class MailboxUtilities {
             MailboxUtilities.fixupUninitializedParentKeys(context, accountSelector);
             // Clear the temporary flag
             endMailboxChanges(context, accountId);
+        }
+    }
+
+    private static final String[] HIERARCHY_PROJECTION = new String[] {
+        MailboxColumns.ID, MailboxColumns.DISPLAY_NAME, MailboxColumns.PARENT_KEY,
+        MailboxColumns.HIERARCHICAL_NAME
+    };
+    private static final int HIERARCHY_ID = 0;
+    private static final int HIERARCHY_NAME = 1;
+    private static final int HIERARCHY_PARENT_KEY = 2;
+    private static final int HIERARCHY_HIERARCHICAL_NAME = 3;
+
+    private static String getHierarchicalName(Context context, long id, HashMap<Long, String> map,
+            String name, long parentId) {
+        String hierarchicalName;
+        if (map.containsKey(id)) {
+            return map.get(id);
+        } else if (parentId == Mailbox.NO_MAILBOX) {
+            hierarchicalName = name;
+        } else {
+            Mailbox parent = Mailbox.restoreMailboxWithId(context, parentId);
+            if (parent == null) return name + "/" + "??";
+            hierarchicalName = getHierarchicalName(context, parentId, map, parent.mDisplayName,
+                    parent.mParentKey) + "/" + name;
+        }
+        map.put(id, hierarchicalName);
+        return hierarchicalName;
+    }
+
+    public static void setupHierarchicalNames(Context context, long accountId) {
+        Account account = Account.restoreAccountWithId(context, accountId);
+        if (account == null) return;
+        // Start by clearing all names
+        ContentValues values = new ContentValues();
+        String accountSelector = Mailbox.ACCOUNT_KEY + "=" + account.mId;
+        ContentResolver resolver = context.getContentResolver();
+        HashMap<Long, String> nameMap = new HashMap<Long, String>();
+        Cursor c = resolver.query(Mailbox.CONTENT_URI, HIERARCHY_PROJECTION, accountSelector,
+                null, null);
+        try {
+            while(c.moveToNext()) {
+                long id = c.getLong(HIERARCHY_ID);
+                String displayName = c.getString(HIERARCHY_NAME);
+                String name = getHierarchicalName(context, id, nameMap, displayName,
+                        c.getLong(HIERARCHY_PARENT_KEY));
+                String oldHierarchicalName = c.getString(HIERARCHY_HIERARCHICAL_NAME);
+                // Don't write the name unless it has changed or we don't need one (it's top-level)
+                if (name.equals(oldHierarchicalName) ||
+                        ((name.equals(displayName)) && TextUtils.isEmpty(oldHierarchicalName))) {
+                    continue;
+                }
+                // If the name has changed, update it
+                values.put(MailboxColumns.HIERARCHICAL_NAME, name);
+                resolver.update(ContentUris.withAppendedId(Mailbox.CONTENT_URI, id), values, null,
+                        null);
+            }
+        } finally {
+            c.close();
         }
     }
 }

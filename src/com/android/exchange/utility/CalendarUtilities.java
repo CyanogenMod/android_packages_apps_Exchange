@@ -35,6 +35,8 @@ import android.text.format.Time;
 import android.util.Base64;
 import android.util.Log;
 
+import com.android.calendarcommon.DateException;
+import com.android.calendarcommon.Duration;
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
@@ -50,12 +52,10 @@ import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.internal.util.ArrayUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -768,6 +768,15 @@ public class CalendarUtilities {
         return tziStringToTimeZone(timeZoneString, MINUTES);
     }
 
+    static private boolean hasTimeZoneId(String[] timeZoneIds, String id) {
+    for (String timeZoneId: timeZoneIds) {
+            if (id.equals(timeZoneId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Given a String as directly read from EAS, tries to find a TimeZone in the database of all
      * time zones that corresponds to that String.  If the test time zone string includes DST and
@@ -799,7 +808,7 @@ public class CalendarUtilities {
                 // If the default time zone is a match
                 TimeZone defaultTimeZone = TimeZone.getDefault();
                 if (!defaultTimeZone.useDaylightTime() &&
-                        ArrayUtils.contains(zoneIds, defaultTimeZone.getID())) {
+                        hasTimeZoneId(zoneIds, defaultTimeZone.getID())) {
                     if (Eas.USER_LOG) {
                         ExchangeService.log(TAG, "TimeZone without DST found to be default: " +
                                 defaultTimeZone.getID());
@@ -899,6 +908,22 @@ public class CalendarUtilities {
      */
     static public String millisToEasDateTime(long millis) {
         return millisToEasDateTime(millis, sGmtTimeZone, true);
+    }
+
+    /**
+     * Generate a birthday string from a GregorianCalendar set appropriately; the format of this
+     * string is YYYY-MM-DD
+     * @param cal the calendar
+     * @return the birthday string
+     */
+    static public String calendarToBirthdayString(GregorianCalendar cal) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(cal.get(Calendar.YEAR));
+        sb.append('-');
+        sb.append(formatTwo(cal.get(Calendar.MONTH) + 1));
+        sb.append('-');
+        sb.append(formatTwo(cal.get(Calendar.DAY_OF_MONTH)));
+        return sb.toString();
     }
 
     /**
@@ -1297,7 +1322,7 @@ public class CalendarUtilities {
                 if (dow == 127) {
                     rrule.append(";BYMONTHDAY=-1");
                 // week 5 and dow = weekdays -> last weekday (need BYSETPOS)
-                } else if (wom == 5 && (dow == EAS_WEEKDAYS || dow == EAS_WEEKENDS)) {
+                } else if ((wom == 5 || wom == 1) && (dow == EAS_WEEKDAYS || dow == EAS_WEEKENDS)) {
                     addBySetpos(rrule, dow, wom);
                 } else if (dow > 0) addByDay(rrule, dow, wom);
                 break;
@@ -1496,7 +1521,6 @@ public class CalendarUtilities {
             sb = new StringBuilder();
         }
         Resources resources = context.getResources();
-        Date date = new Date(entityValues.getAsLong(Events.DTSTART));
         // TODO: Add more detail to message text
         // Right now, we're using.. When: Tuesday, March 5th at 2:00pm
         // What we're missing is the duration and any recurrence information.  So this should be
@@ -1514,11 +1538,13 @@ public class CalendarUtilities {
 
         String dateTimeString;
         int res;
+        long startTime = entityValues.getAsLong(Events.DTSTART);
         if (allDayEvent) {
+            Date date = new Date(getLocalAllDayCalendarTime(startTime, TimeZone.getDefault()));
             dateTimeString = DateFormat.getDateInstance().format(date);
             res = recurringEvent ? R.string.meeting_allday_recurring : R.string.meeting_allday;
         } else {
-            dateTimeString = DateFormat.getDateTimeInstance().format(date);
+            dateTimeString = DateFormat.getDateTimeInstance().format(new Date(startTime));
             res = recurringEvent ? R.string.meeting_recurring : R.string.meeting_when;
         }
         sb.append(resources.getString(res, dateTimeString));
@@ -1701,7 +1727,7 @@ public class CalendarUtilities {
                 try {
                     duration.parse(entityValues.getAsString(Events.DURATION));
                     durationMillis = duration.getMillis();
-                } catch (ParseException e) {
+                } catch (DateException e) {
                     // We'll use the default in this case
                 }
                 ics.writeTag("DTEND" + vCalendarDateSuffix,

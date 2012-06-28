@@ -16,6 +16,8 @@
 
 package com.android.exchange;
 
+import com.android.emailsync.Request;
+
 /**
  * MeetingResponseRequest is the EAS wrapper for responding to meeting requests.
  */

@@ -43,9 +43,11 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
     // Flag sets found in regular email folders that are parents or children
     private static final int PARENT_FLAGS =
             Mailbox.FLAG_ACCEPTS_MOVED_MAIL | Mailbox.FLAG_HOLDS_MAIL |
-            Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE;
+            Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE |
+            Mailbox.FLAG_SUPPORTS_SETTINGS;
     private static final int CHILD_FLAGS =
-            Mailbox.FLAG_ACCEPTS_MOVED_MAIL | Mailbox.FLAG_HOLDS_MAIL;
+            Mailbox.FLAG_ACCEPTS_MOVED_MAIL | Mailbox.FLAG_HOLDS_MAIL |
+            Mailbox.FLAG_SUPPORTS_SETTINGS;
 
     @Override
     public void setUp() throws Exception {
@@ -97,10 +99,10 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
 
         // Test that flags and parent key are set properly
         assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_HAS_CHILDREN |
-                Mailbox.FLAG_CHILDREN_VISIBLE, box1.mFlags);
+                Mailbox.FLAG_CHILDREN_VISIBLE | Mailbox.FLAG_SUPPORTS_SETTINGS, box1.mFlags);
         assertEquals(-1, box1.mParentKey);
 
-        assertEquals(Mailbox.FLAG_HOLDS_MAIL, box2.mFlags);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_SUPPORTS_SETTINGS, box2.mFlags);
         assertEquals(box1.mId, box2.mParentKey);
 
         assertEquals(Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE, box3.mFlags);
@@ -109,7 +111,8 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         assertEquals(0, box4.mFlags);
         assertEquals(box3.mId, box4.mParentKey);
 
-        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_ACCEPTS_MOVED_MAIL, box5.mFlags);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_ACCEPTS_MOVED_MAIL |
+                Mailbox.FLAG_SUPPORTS_SETTINGS, box5.mFlags);
         assertEquals(box3.mId, box5.mParentKey);
     }
 
@@ -201,7 +204,7 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
                 "box3", mAccount.mId, false, mProviderContext, Mailbox.TYPE_MAIL, box2);
         box3.mParentKey = Mailbox.PARENT_KEY_UNINITIALIZED;
         box3.save(mProviderContext);
-        simulateFolderSyncChangeHandling(accountSelector, box2 /*box3's parent*/);
+        simulateFolderSyncChangeHandling(accountSelector, box3 /*box3's parent*/);
 
         box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
         box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
@@ -561,7 +564,7 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         // Box 2 should be a child with no parent (see above).  Since it's an outbox, the flags are
         // only "holds mail".
         assertEquals(Mailbox.NO_MAILBOX, box2.mParentKey);
-        assertEquals(Mailbox.FLAG_HOLDS_MAIL, box2.mFlags);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_SUPPORTS_SETTINGS, box2.mFlags);
     }
 
     /**
@@ -622,7 +625,6 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         assertEquals(CHILD_FLAGS, box3.mFlags);         // Should still be a child (of box2)
         assertEquals(box2.mId, box3.mParentKey);
     }
-
 
     /**
      * Tests the proper separation of two accounts using the methodology from the previous test.
@@ -758,5 +760,65 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
 
         assertEquals(CHILD_FLAGS, box6.mFlags);
         assertEquals(box5.mId, box6.mParentKey);
+    }
+
+    /**
+     * Tests the proper separation of two accounts using the methodology from the previous test.
+     * This test will fail if MailboxUtilities fails to distinguish between mailboxes in different
+     * accounts that happen to have the same serverId
+     */
+    public void testSetupHierarchicalNames() {
+        // Set up account and mailboxes
+        mAccount = setupTestAccount("acct1", true);
+        long accountId = mAccount.mId;
+
+        // Box3 is in Box1
+        Mailbox box1 = EmailContentSetupUtils.setupMailbox(
+                "box1", accountId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box1.mServerId = "1:1";
+        box1.save(mProviderContext);
+        Mailbox box2 = EmailContentSetupUtils.setupMailbox(
+                "box2", accountId, false, mProviderContext, Mailbox.TYPE_MAIL);
+        box2.mServerId = "1:2";
+        box2.save(mProviderContext);
+        Mailbox box3 = EmailContentSetupUtils.setupMailbox(
+                "box3", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box1);
+        box3.mServerId = "1:3";
+        box3.save(mProviderContext);
+
+        // Box4 is in Box2; Box5 is in Box4; Box 6 is in Box5
+        Mailbox box4 = EmailContentSetupUtils.setupMailbox(
+                "box4", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box2);
+        box4.mServerId = "1:4";
+        box4.save(mProviderContext);
+        Mailbox box5 = EmailContentSetupUtils.setupMailbox(
+                "box5", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box4);
+        box5.mServerId = "1:5";
+        box5.save(mProviderContext);
+        Mailbox box6 = EmailContentSetupUtils.setupMailbox(
+                "box6", accountId, false, mProviderContext, Mailbox.TYPE_MAIL, box5);
+        box6.mServerId = "1:6";
+        box6.save(mProviderContext);
+
+        // Setup hierarchy
+        String accountSelector1 = MailboxColumns.ACCOUNT_KEY + " IN (" + accountId + ")";
+        MailboxUtilities.fixupUninitializedParentKeys(mProviderContext, accountSelector1);
+        // Setup hierarchy names
+        MailboxUtilities.setupHierarchicalNames(mProviderContext, accountId);
+        box1 = Mailbox.restoreMailboxWithId(mProviderContext, box1.mId);
+        box2 = Mailbox.restoreMailboxWithId(mProviderContext, box2.mId);
+        box3 = Mailbox.restoreMailboxWithId(mProviderContext, box3.mId);
+        box4 = Mailbox.restoreMailboxWithId(mProviderContext, box4.mId);
+        box5 = Mailbox.restoreMailboxWithId(mProviderContext, box5.mId);
+        box6 = Mailbox.restoreMailboxWithId(mProviderContext, box6.mId);
+
+        // box1 and box don't need a hierarchy, so the column is null
+        assertNull(box1.mHierarchicalName);
+        assertNull(box2.mHierarchicalName);
+        // the others have various levels of depth
+        assertEquals("box1/box3", box3.mHierarchicalName);
+        assertEquals("box2/box4", box4.mHierarchicalName);
+        assertEquals("box2/box4/box5", box5.mHierarchicalName);
+        assertEquals("box2/box4/box5/box6", box6.mHierarchicalName);
     }
 }

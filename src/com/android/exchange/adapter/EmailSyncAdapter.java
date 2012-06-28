@@ -25,6 +25,9 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.provider.CalendarContract.Events;
+import android.text.Html;
+import android.text.SpannedString;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -52,6 +55,7 @@ import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.ConversionUtilities;
+import com.android.emailcommon.utility.TextUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
@@ -60,7 +64,6 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
-
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
@@ -194,8 +197,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public void sendSyncOptions(Double protocolVersion, Serializer s)
+    public void sendSyncOptions(Double protocolVersion, Serializer s, boolean initialSync)
             throws IOException  {
+        if (initialSync) return;
         mFetchRequestList.clear();
         // Find partially loaded messages; this should typically be a rare occurrence
         Cursor c = mContext.getContentResolver().query(Message.CONTENT_URI,
@@ -348,7 +352,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     private static class GetItemEstimateParser extends Parser {
-        @SuppressWarnings("hiding")
         private static final String TAG = "GetItemEstimateParser";
         private int mEstimate = -1;
 
@@ -576,6 +579,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     case Tags.EMAIL_MEETING_REQUEST:
                         meetingRequestParser(msg);
                         break;
+                    case Tags.EMAIL_THREAD_TOPIC:
+                        msg.mThreadTopic = getValue();
+                        break;
                     case Tags.RIGHTS_LICENSE:
                         skipParser(tag);
                         break;
@@ -603,6 +609,39 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
             if (atts.size() > 0) {
                 msg.mAttachments = atts;
+            }
+
+            if ((msg.mFlags & Message.FLAG_INCOMING_MEETING_MASK) != 0) {
+                String text = TextUtilities.makeSnippetFromHtmlText(
+                        msg.mText != null ? msg.mText : msg.mHtml);
+                if (TextUtils.isEmpty(text)) {
+                    // Create text for this invitation
+                    String meetingInfo = msg.mMeetingInfo;
+                    if (!TextUtils.isEmpty(meetingInfo)) {
+                        PackedString ps = new PackedString(meetingInfo);
+                        ContentValues values = new ContentValues();
+                        putFromMeeting(ps, MeetingInfo.MEETING_LOCATION, values,
+                                Events.EVENT_LOCATION);
+                        String dtstart = ps.get(MeetingInfo.MEETING_DTSTART);
+                        if (!TextUtils.isEmpty(dtstart)) {
+                            long startTime = Utility.parseEmailDateTimeToMillis(dtstart);
+                            values.put(Events.DTSTART, startTime);
+                        }
+                        putFromMeeting(ps, MeetingInfo.MEETING_ALL_DAY, values,
+                                Events.ALL_DAY);
+                        msg.mText = CalendarUtilities.buildMessageTextFromEntityValues(
+                                mContext, values, null);
+                        msg.mHtml = Html.toHtml(new SpannedString(msg.mText));
+                    }
+                }
+            }
+        }
+
+        private void putFromMeeting(PackedString ps, String field, ContentValues values,
+                String column) {
+            String val = ps.get(field);
+            if (!TextUtils.isEmpty(val)) {
+                values.put(column, val);
             }
         }
 
@@ -644,6 +683,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         break;
                     case Tags.EMAIL_RESPONSE_REQUESTED:
                         packedString.put(MeetingInfo.MEETING_RESPONSE_REQUESTED, getValue());
+                        break;
+                    case Tags.EMAIL_ALL_DAY_EVENT:
+                        if (getValueInt() == 1) {
+                            packedString.put(MeetingInfo.MEETING_ALL_DAY, getValue());
+                        }
                         break;
                     default:
                         skipTag();

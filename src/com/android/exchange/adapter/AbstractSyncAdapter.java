@@ -71,7 +71,8 @@ public abstract class AbstractSyncAdapter {
     public abstract void cleanup();
     public abstract boolean isSyncable();
     // Add sync options (filter, body type - html vs plain, and truncation)
-    public abstract void sendSyncOptions(Double protocolVersion, Serializer s) throws IOException;
+    public abstract void sendSyncOptions(Double protocolVersion, Serializer s, boolean initialSync)
+            throws IOException;
     /**
      * Delete all records of this class in this account
      */

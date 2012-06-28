@@ -21,7 +21,6 @@ LOCAL_MODULE_TAGS := tests
 #LOCAL_JAVA_LIBRARIES := android.test.runner
 LOCAL_SDK_VERSION := current
 
-
 # Include all test java files.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
@@ -29,8 +28,8 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 # running the tests using an instrumentation targeting Exchange, we
 # automatically get all of its classes loaded into our environment.
 
-LOCAL_PACKAGE_NAME := ExchangeTests
+LOCAL_PACKAGE_NAME := Exchange2Tests
 
-LOCAL_INSTRUMENTATION_FOR := Exchange
+LOCAL_INSTRUMENTATION_FOR := Exchange2
 
 include $(BUILD_PACKAGE)

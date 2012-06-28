@@ -40,6 +40,7 @@ public class AccountSyncAdapter extends AbstractSyncAdapter {
     }
 
     @Override
-    public void sendSyncOptions(Double protocolVersion, Serializer s) throws IOException {
+    public void sendSyncOptions(Double protocolVersion, Serializer s, boolean initialSync)
+            throws IOException {
     }
 }

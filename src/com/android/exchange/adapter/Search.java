@@ -17,6 +17,7 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentProviderOperation;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
 import android.os.RemoteException;
@@ -35,6 +36,7 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
+import com.android.mail.providers.UIProvider;
 
 import org.apache.http.HttpStatus;
 
@@ -67,10 +69,15 @@ public class Search {
         if (account == null) return res;
         EasSyncService svc = EasSyncService.setupServiceForAccount(context, account);
         if (svc == null) return res;
+        Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
+        // Sanity check; account might have been deleted?
+        if (searchMailbox == null) return res;
+        ContentValues statusValues = new ContentValues();
         try {
-            Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
-            // Sanity check; account might have been deleted?
-            if (searchMailbox == null) return res;
+            // Set the status of this mailbox to indicate query
+            statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.USER_QUERY);
+            searchMailbox.update(context, statusValues);
+
             svc.mMailbox = searchMailbox;
             svc.mAccount = account;
             Serializer s = new Serializer();
@@ -124,6 +131,10 @@ public class Search {
             svc.userLog("Search exception " + e);
         } finally {
             try {
+                // TODO: Handle error states
+                // Set the status of this mailbox to indicate query over
+                statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.NO_SYNC);
+                searchMailbox.update(context, statusValues);
                 ExchangeService.callback().syncMailboxStatus(destMailboxId,
                         EmailServiceStatus.SUCCESS, 100);
             } catch (RemoteException e) {
@@ -193,7 +204,7 @@ public class Search {
 
             while (nextTag(Tags.SEARCH_STORE) != END) {
                 if (tag == Tags.SEARCH_STATUS) {
-                    String status = getValue();
+                    getValue();
                 } else if (tag == Tags.SEARCH_TOTAL) {
                     mTotalResults = getValueInt();
                 } else if (tag == Tags.SEARCH_RESULT) {
