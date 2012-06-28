@@ -43,9 +43,11 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
     // Flag sets found in regular email folders that are parents or children
     private static final int PARENT_FLAGS =
             Mailbox.FLAG_ACCEPTS_MOVED_MAIL | Mailbox.FLAG_HOLDS_MAIL |
-            Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE;
+            Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE |
+            Mailbox.FLAG_SUPPORTS_SETTINGS;
     private static final int CHILD_FLAGS =
-            Mailbox.FLAG_ACCEPTS_MOVED_MAIL | Mailbox.FLAG_HOLDS_MAIL;
+            Mailbox.FLAG_ACCEPTS_MOVED_MAIL | Mailbox.FLAG_HOLDS_MAIL |
+            Mailbox.FLAG_SUPPORTS_SETTINGS;
 
     @Override
     public void setUp() throws Exception {
@@ -97,10 +99,10 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
 
         // Test that flags and parent key are set properly
         assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_HAS_CHILDREN |
-                Mailbox.FLAG_CHILDREN_VISIBLE, box1.mFlags);
+                Mailbox.FLAG_CHILDREN_VISIBLE | Mailbox.FLAG_SUPPORTS_SETTINGS, box1.mFlags);
         assertEquals(-1, box1.mParentKey);
 
-        assertEquals(Mailbox.FLAG_HOLDS_MAIL, box2.mFlags);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_SUPPORTS_SETTINGS, box2.mFlags);
         assertEquals(box1.mId, box2.mParentKey);
 
         assertEquals(Mailbox.FLAG_HAS_CHILDREN | Mailbox.FLAG_CHILDREN_VISIBLE, box3.mFlags);
@@ -109,7 +111,8 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         assertEquals(0, box4.mFlags);
         assertEquals(box3.mId, box4.mParentKey);
 
-        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_ACCEPTS_MOVED_MAIL, box5.mFlags);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_ACCEPTS_MOVED_MAIL |
+                Mailbox.FLAG_SUPPORTS_SETTINGS, box5.mFlags);
         assertEquals(box3.mId, box5.mParentKey);
     }
 
@@ -561,7 +564,7 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         // Box 2 should be a child with no parent (see above).  Since it's an outbox, the flags are
         // only "holds mail".
         assertEquals(Mailbox.NO_MAILBOX, box2.mParentKey);
-        assertEquals(Mailbox.FLAG_HOLDS_MAIL, box2.mFlags);
+        assertEquals(Mailbox.FLAG_HOLDS_MAIL | Mailbox.FLAG_SUPPORTS_SETTINGS, box2.mFlags);
     }
 
     /**
