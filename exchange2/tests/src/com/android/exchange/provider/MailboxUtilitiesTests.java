@@ -812,8 +812,10 @@ public class MailboxUtilitiesTests extends ExchangeTestCase {
         box5 = Mailbox.restoreMailboxWithId(mProviderContext, box5.mId);
         box6 = Mailbox.restoreMailboxWithId(mProviderContext, box6.mId);
 
-        assertEquals("box1", box1.mHierarchicalName);
-        assertEquals("box2", box2.mHierarchicalName);
+        // box1 and box don't need a hierarchy, so the column is null
+        assertNull(box1.mHierarchicalName);
+        assertNull(box2.mHierarchicalName);
+        // the others have various levels of depth
         assertEquals("box1/box3", box3.mHierarchicalName);
         assertEquals("box2/box4", box4.mHierarchicalName);
         assertEquals("box2/box4/box5", box5.mHierarchicalName);
