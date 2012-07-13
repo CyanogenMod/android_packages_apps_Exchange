@@ -38,6 +38,7 @@ import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.EmailServiceStatus;
@@ -49,7 +50,6 @@ import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.exchange.provider.MailboxUtilities;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;

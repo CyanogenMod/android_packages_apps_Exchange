@@ -32,13 +32,13 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
-import com.android.exchange.provider.MailboxUtilities;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;

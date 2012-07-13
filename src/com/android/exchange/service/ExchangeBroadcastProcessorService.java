@@ -23,7 +23,7 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.android.emailcommon.Logging;
-import com.android.emailsync.SyncServiceManager;
+import com.android.emailsync.SyncManager;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
 
@@ -72,7 +72,7 @@ public class ExchangeBroadcastProcessorService extends IntentService {
                 if (Eas.USER_LOG) {
                     Log.d(Logging.LOG_TAG, "Login accounts changed; reconciling...");
                 }
-                SyncServiceManager.reconcileAccounts(this);
+                SyncManager.reconcileAccounts(this);
             }
        }
     }
