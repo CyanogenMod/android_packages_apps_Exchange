@@ -21,12 +21,12 @@
     <string name="meeting_declined" msgid="6707617183246608552">"پذیرفته نشد: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
     <string name="meeting_tentative" msgid="8250995722130443785">"احتمالی: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
     <string name="meeting_canceled" msgid="3949893881872084244">"لغو شد: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_updated" msgid="8529675857361702860">"به روزرسانی شد: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_updated" msgid="8529675857361702860">"به‌روزرسانی شد: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
     <string name="meeting_when" msgid="2765696159697448656">"زمان: <xliff:g id="WHEN">%s</xliff:g>"</string>
     <string name="meeting_where" msgid="5992367535856553079">"مکان: <xliff:g id="WHERE">%s</xliff:g>"</string>
     <string name="meeting_recurring" msgid="3134262212606714023">"زمان: <xliff:g id="EVENTDATE">%s</xliff:g> (تکرار)"</string>
     <string name="meeting_allday" msgid="6696389765484663513">"زمان: <xliff:g id="EVENTDATE">%s</xliff:g> (در تمام طول روز)"</string>
-    <string name="meeting_allday_recurring" msgid="2320264182781062684">"زمان: <xliff:g id="EVENTDATE">%s</xliff:g> (در تمام طول روز، بصورت تکراری)"</string>
+    <string name="meeting_allday_recurring" msgid="2320264182781062684">"زمان: <xliff:g id="EVENTDATE">%s</xliff:g> (در تمام طول روز، به‌صورت تکراری)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"تقویم Exchange اضافه شد"</string>
     <string name="app_name" msgid="5316597712787122829">"سرویس‌های Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"این رویداد لغو شده است به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
