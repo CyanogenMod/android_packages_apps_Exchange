@@ -42,7 +42,7 @@
     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"مرورگرها مجاز نیستند"</string>
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ایمیل مصرف‌کننده مجاز نیست"</string>
     <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"اشتراک‌گذاری اینترنتی مجاز نیست"</string>
-    <string name="policy_require_smime" msgid="673557150920820590">"پیامهای SMIME لازم است"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"پیام‌های SMIME لازم است"</string>
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"استفاده از بلوتوث محدود است"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"برنامه‌های خاص مجاز نیستند"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"فقط برنامه‌های خاص مجاز هستند"</string>
