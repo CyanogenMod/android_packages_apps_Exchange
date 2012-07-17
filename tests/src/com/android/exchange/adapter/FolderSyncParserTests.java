@@ -19,10 +19,13 @@ package com.android.exchange.adapter;
 import android.content.ContentResolver;
 import android.content.res.AssetManager;
 import android.database.Cursor;
+import android.os.Debug;
 import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.EasSyncService;
@@ -48,70 +51,6 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
 
     public FolderSyncParserTests() {
         super();
-    }
-
-    public void testIsValidMailFolder() throws IOException {
-        EasSyncService service = getTestService();
-        EmailSyncAdapter adapter = new EmailSyncAdapter(service);
-        FolderSyncParser parser = new FolderSyncParser(getTestInputStream(), adapter);
-        HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
-        // The parser needs the mAccount set
-        parser.mAccount = mAccount;
-        mAccount.save(getContext());
-
-        // Don't save the box; just create it, and give it a server id
-        Mailbox boxMailType = EmailContentSetupUtils.setupMailbox("box1", mAccount.mId, false,
-                mProviderContext, Mailbox.TYPE_MAIL);
-        boxMailType.mServerId = "__1:1";
-        // Automatically valid since TYPE_MAIL
-        assertTrue(parser.isValidMailFolder(boxMailType, mailboxMap));
-
-        Mailbox boxCalendarType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
-                mProviderContext, Mailbox.TYPE_CALENDAR);
-        Mailbox boxContactsType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
-                mProviderContext, Mailbox.TYPE_CONTACTS);
-        Mailbox boxTasksType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
-                mProviderContext, Mailbox.TYPE_TASKS);
-        // Automatically invalid since TYPE_CALENDAR and TYPE_CONTACTS
-        assertFalse(parser.isValidMailFolder(boxCalendarType, mailboxMap));
-        assertFalse(parser.isValidMailFolder(boxContactsType, mailboxMap));
-        assertFalse(parser.isValidMailFolder(boxTasksType, mailboxMap));
-
-        // Unknown boxes are invalid unless they have a parent that's valid
-        Mailbox boxUnknownType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId, false,
-                mProviderContext, Mailbox.TYPE_UNKNOWN);
-        assertFalse(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-        boxUnknownType.mParentServerId = boxMailType.mServerId;
-        // We shouldn't find the parent yet
-        assertFalse(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-        // Put the mailbox in the map; the unknown box should now be valid
-        mailboxMap.put(boxMailType.mServerId, boxMailType);
-        assertTrue(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-
-        // Clear the map, but save away the parent box
-        mailboxMap.clear();
-        assertFalse(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-        boxMailType.save(mProviderContext);
-        // The box should now be valid
-        assertTrue(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-
-        // Somewhat harder case.  The parent will be in the map, but also unknown.  The parent's
-        // parent will be in the database.
-        Mailbox boxParentUnknownType = EmailContentSetupUtils.setupMailbox("box", mAccount.mId,
-                false, mProviderContext, Mailbox.TYPE_UNKNOWN);
-        assertFalse(parser.isValidMailFolder(boxParentUnknownType, mailboxMap));
-        // Give the unknown type parent a parent (boxMailType)
-        boxParentUnknownType.mServerId = "__1:2";
-        boxParentUnknownType.mParentServerId = boxMailType.mServerId;
-        // Give our unknown box an unknown parent
-        boxUnknownType.mParentServerId = boxParentUnknownType.mServerId;
-        // Confirm the box is still invalid
-        assertFalse(parser.isValidMailFolder(boxUnknownType, mailboxMap));
-        // Put the unknown type parent into the mailbox map
-        mailboxMap.put(boxParentUnknownType.mServerId, boxParentUnknownType);
-        // Our unknown box should now be valid, because 1) the parent is unknown, BUT 2) the
-        // parent's parent is a mail type
-        assertTrue(parser.isValidMailFolder(boxUnknownType, mailboxMap));
     }
 
     private Mailbox setupBoxSync(int interval, int lookback, String serverId) {
@@ -361,7 +300,7 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
      * @throws CommandStatusException
      */
     private void testComplexFolderListParse(String fileName) throws IOException,
-    CommandStatusException {
+            CommandStatusException {
         EasSyncService service = getTestService();
         EmailSyncAdapter adapter = new EmailSyncAdapter(service);
         FolderSyncParser parser = new MockFolderSyncParser(fileName, adapter);
@@ -414,5 +353,25 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
     // As above, with the order changed (putting children before parents; a more difficult case
     public void testComplexFolderListParse2() throws CommandStatusException, IOException {
         testComplexFolderListParse("FolderSyncParserTest2.txt");
+    }
+
+    // Much larger test (from user with issues related to Type 1 folders)
+    public void testComplexFolderListParse3() throws CommandStatusException, IOException {
+        EasSyncService service = getTestService();
+        EmailSyncAdapter adapter = new EmailSyncAdapter(service);
+        FolderSyncParser parser = new MockFolderSyncParser("FolderSyncParserTest3.txt", adapter);
+        mAccount.save(mProviderContext);
+        mMailboxQueryArgs[0] = Long.toString(mAccount.mId);
+        parser.mAccount = mAccount;
+        parser.mAccountId = mAccount.mId;
+        parser.mAccountIdAsString = Long.toString(mAccount.mId);
+        parser.mContext = mProviderContext;
+        parser.mContentResolver = mResolver;
+        parser.parse();
+
+        int cnt = EmailContent.count(mProviderContext, Mailbox.CONTENT_URI,
+                MailboxColumns.ACCOUNT_KEY + "=" + mAccount.mId, null);
+        // 270 in the file less 4 "conflicts" folders
+        assertEquals(266, cnt);
     }
 }

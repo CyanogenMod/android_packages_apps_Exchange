@@ -34,7 +34,6 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.AttachmentUtilities;
-import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
@@ -74,10 +73,12 @@ public class FolderSyncParser extends AbstractSyncParser {
     public static final int USER_MAILBOX_TYPE = 12;
 
     // Chunk size for our mailbox commits
-    public final static int MAILBOX_COMMIT_SIZE = 20;
+    private final static int MAILBOX_COMMIT_SIZE = 20;
+    // Max mailboxes per account
+    private final static int MAX_MAILBOXES_PER_ACCOUNT = 1000000;
 
     // EAS types that we are willing to consider valid folders for EAS sync
-    public static final List<Integer> VALID_EAS_FOLDER_TYPES = Arrays.asList(INBOX_TYPE,
+    private static final List<Integer> VALID_EAS_FOLDER_TYPES = Arrays.asList(INBOX_TYPE,
             DRAFTS_TYPE, DELETED_TYPE, SENT_TYPE, OUTBOX_TYPE, USER_MAILBOX_TYPE, CALENDAR_TYPE,
             CONTACTS_TYPE, USER_GENERIC_TYPE);
 
@@ -240,7 +241,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                 WHERE_SERVER_ID_AND_ACCOUNT, mBindArguments, null);
     }
 
-    public void deleteParser(ArrayList<ContentProviderOperation> ops) throws IOException {
+    private void deleteParser(ArrayList<ContentProviderOperation> ops) throws IOException {
         while (nextTag(Tags.FOLDER_DELETE) != END) {
             switch (tag) {
                 case Tags.FOLDER_SERVER_ID:
@@ -340,7 +341,7 @@ public class FolderSyncParser extends AbstractSyncParser {
         }
     }
 
-    public Mailbox addParser() throws IOException {
+    private Mailbox addParser() throws IOException {
         String name = null;
         String serverId = null;
         String parentId = null;
@@ -406,9 +407,6 @@ public class FolderSyncParser extends AbstractSyncParser {
                     mailbox.mType = Mailbox.TYPE_CALENDAR;
                     mailbox.mSyncInterval = mAccount.mSyncInterval;
                     break;
-                case USER_GENERIC_TYPE:
-                    mailbox.mType = Mailbox.TYPE_UNKNOWN;
-                    break;
             }
 
             // Make boxes like Contacts and Calendar invisible in the folder list
@@ -428,51 +426,7 @@ public class FolderSyncParser extends AbstractSyncParser {
         return null;
     }
 
-    /**
-     * Determine whether a given mailbox holds mail, rather than other data.  We do this by first
-     * checking the type of the mailbox (if it's a known good type, great; if it's a known bad
-     * type, return false).  If it's unknown, we check the parent, first by trying to find it in
-     * the current set of newly synced items, and then by looking it up in EmailProvider.  If
-     * we can find the parent, we use the same rules to determine if it holds mail; if it does,
-     * then its children do as well, so that's a go.
-     *
-     * @param mailbox the mailbox we're checking
-     * @param mailboxMap a HashMap relating server id's of mailboxes in the current sync set to
-     * the corresponding mailbox structures
-     * @return whether or not the mailbox contains email (rather than PIM or unknown data)
-     */
-    /*package*/ boolean isValidMailFolder(Mailbox mailbox, HashMap<String, Mailbox> mailboxMap) {
-        int folderType = mailbox.mType;
-        // Automatically accept our email types
-        if (folderType < Mailbox.TYPE_NOT_EMAIL) return true;
-        // Automatically reject everything else but "unknown"
-        if (folderType != Mailbox.TYPE_UNKNOWN) return false;
-        // If this is TYPE_UNKNOWN, check the parent
-        Mailbox parent = mailboxMap.get(mailbox.mParentServerId);
-        // If the parent is in the map, then check it out; if not, it could be an existing saved
-        // Mailbox, so we'll have to query the database
-        if (parent == null) {
-            mBindArguments[0] = Long.toString(mAccount.mId);
-            long parentId = -1;
-            if (mailbox.mParentServerId != null) {
-                mBindArguments[1] = mailbox.mParentServerId;
-                parentId = Utility.getFirstRowInt(mContext, Mailbox.CONTENT_URI,
-                        EmailContent.ID_PROJECTION,
-                        MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.SERVER_ID + "=?",
-                        mBindArguments, null, EmailContent.ID_PROJECTION_COLUMN, -1);
-            }
-            if (parentId != -1) {
-                // Get the parent from the database
-                parent = Mailbox.restoreMailboxWithId(mContext, parentId);
-                if (parent == null) return false;
-            } else {
-                return false;
-            }
-        }
-        return isValidMailFolder(parent, mailboxMap);
-    }
-
-    public void updateParser(ArrayList<ContentProviderOperation> ops) throws IOException {
+    private void updateParser(ArrayList<ContentProviderOperation> ops) throws IOException {
         String serverId = null;
         String displayName = null;
         String parentId = null;
@@ -529,27 +483,7 @@ public class FolderSyncParser extends AbstractSyncParser {
         }
     }
 
-    private boolean commitMailboxes(ArrayList<Mailbox> validMailboxes,
-            ArrayList<Mailbox> userMailboxes, HashMap<String, Mailbox> mailboxMap,
-            ArrayList<ContentProviderOperation> ops) {
-
-        // Go through the generic user mailboxes; we'll call them valid if any parent is valid
-        for (Mailbox m: userMailboxes) {
-            if (isValidMailFolder(m, mailboxMap)) {
-                m.mType = Mailbox.TYPE_MAIL;
-                validMailboxes.add(m);
-            } else {
-                userLog("Rejecting unknown type mailbox: " + m.mDisplayName);
-            }
-        }
-
-        // Add operations for all valid mailboxes
-        for (Mailbox m: validMailboxes) {
-            userLog("Adding mailbox: ", m.mDisplayName);
-            ops.add(ContentProviderOperation
-                    .newInsert(Mailbox.CONTENT_URI).withValues(m.toContentValues()).build());
-        }
-
+    private boolean commitMailboxes(ArrayList<ContentProviderOperation> ops) {
         // Commit the mailboxes
         userLog("Applying ", mOperations.size(), " mailbox operations.");
         // Execute the batch; throw IOExceptions if this fails, hoping the issue isn't repeatable
@@ -566,7 +500,7 @@ public class FolderSyncParser extends AbstractSyncParser {
         }
     }
 
-    public void changesParser(final ArrayList<ContentProviderOperation> ops,
+    private void changesParser(final ArrayList<ContentProviderOperation> ops,
             final boolean initialSync) throws IOException {
 
         // Array of added mailboxes
@@ -591,54 +525,106 @@ public class FolderSyncParser extends AbstractSyncParser {
                 skipTag();
         }
 
+        // Map folder serverId to mailbox (used to validate user mailboxes)
+        HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
+        for (Mailbox mailbox : addMailboxes) {
+            mailboxMap.put(mailbox.mServerId, mailbox);
+        }
+        userLog("Total of " + addMailboxes.size() + " mailboxes parsed");
+
         // Synchronize on the parser to prevent this being run concurrently
         // (an extremely unlikely event, but nonetheless possible)
-        synchronized (FolderSyncParser.this) {
-            // Mailboxes that we known contain email
-            ArrayList<Mailbox> validMailboxes = new ArrayList<Mailbox>();
-            // Mailboxes that we're unsure about
-            ArrayList<Mailbox> userMailboxes = new ArrayList<Mailbox>();
-
-            // Maps folder serverId to mailbox (used to validate user mailboxes)
-            HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
-            for (Mailbox mailbox : addMailboxes) {
-                mailboxMap.put(mailbox.mServerId, mailbox);
+        if (mInitialSync)  {
+            synchronized (FolderSyncParser.this) {
+                // Assign unique sequential ids and set appropriate mailbox flags; it's safe to
+                // assume that there won't be more than one million mailboxes defined for an
+                // account.  I use millions for ease in debugging (i.e. associating an int in
+                // the debugger with an account)
+                long mailboxId = (mAccount.mId * MAX_MAILBOXES_PER_ACCOUNT) + 1;
+                // Set basic flags
+                for (Mailbox mailbox : addMailboxes) {
+                    int type = mailbox.mType;
+                    if (type <= Mailbox.TYPE_NOT_EMAIL) {
+                        mailbox.mFlags |= Mailbox.FLAG_HOLDS_MAIL + Mailbox.FLAG_SUPPORTS_SETTINGS;
+                    }
+                    // Outbox, Drafts, and Sent don't allow mail to be moved to them
+                    if (type == Mailbox.TYPE_MAIL || type == Mailbox.TYPE_TRASH ||
+                            type == Mailbox.TYPE_JUNK || type == Mailbox.TYPE_INBOX) {
+                        mailbox.mFlags |= Mailbox.FLAG_ACCEPTS_MOVED_MAIL;
+                    }
+                    mailbox.mId = mailboxId++;
+                }
+                // Set parent mailbox key and hierarchical name; set parent flags on parents
+                for (Mailbox mailbox: addMailboxes) {
+                    String parentServerId = mailbox.mParentServerId;
+                    if (parentServerId == null || parentServerId.equals("0")) {
+                        mailbox.mParentKey = Mailbox.NO_MAILBOX;
+                    } else {
+                        Mailbox parentMailbox = mailboxMap.get(parentServerId);
+                        if (parentMailbox != null) {
+                            mailbox.mParentKey = parentMailbox.mId;
+                            parentMailbox.mFlags |=
+                                    Mailbox.FLAG_HAS_CHILDREN + Mailbox.FLAG_CHILDREN_VISIBLE;
+                            String hierarchicalName = mailbox.mDisplayName;
+                            while (parentMailbox != null) {
+                                hierarchicalName = parentMailbox.mDisplayName + "/" +
+                                        hierarchicalName;
+                                if (parentMailbox.mParentServerId != null &&
+                                        !parentMailbox.mParentServerId.equals("0")) {
+                                    parentMailbox = mailboxMap.get(parentMailbox.mParentServerId);
+                                } else {
+                                    break;
+                                }
+                            }
+                            mailbox.mHierarchicalName = hierarchicalName;
+                        } else {
+                            userLog("Parent not found with serverId = " + parentServerId);
+                        }
+                    }
+                }
             }
 
-            int mailboxCommitCount = 0;
-            for (Mailbox mailbox : addMailboxes) {
-                // And add the mailbox to the proper list
-                if (mailbox.mType == Mailbox.TYPE_UNKNOWN) {
-                    userMailboxes.add(mailbox);
-                } else {
-                    validMailboxes.add(mailbox);
+            // Save all the new mailboxes away in groups of 20
+            int batchCount = 0;
+            for (Mailbox mailbox: addMailboxes) {
+                if (mailbox.mId == Mailbox.NO_MAILBOX) {
+                    userLog("Skipping mailbox: ", mailbox.mDisplayName);
+                    continue;
                 }
-                // On initial sync, we commit what we have every 20 mailboxes
-                if (initialSync && (++mailboxCommitCount == MAILBOX_COMMIT_SIZE)) {
-                    if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap,
-                            ops)) {
+                if (++batchCount == MAILBOX_COMMIT_SIZE) {
+                    if (!commitMailboxes(ops)) {
                         mService.stop();
                         return;
                     }
-                    // Clear our arrays to prepare for more
-                    userMailboxes.clear();
-                    validMailboxes.clear();
                     ops.clear();
-                    mailboxCommitCount = 0;
+                    batchCount = 0;
                 }
+                userLog("Adding mailbox: ", mailbox.mDisplayName);
+                ContentValues initialValues = mailbox.toContentValues();
+                // We already have an id if this is the initial sync
+                if (mInitialSync) {
+                    initialValues.put(MailboxColumns.ID, mailbox.mId);
+                }
+                ops.add(ContentProviderOperation.newInsert(
+                        Mailbox.CONTENT_URI).withValues(initialValues).build());
             }
-            // Commit the sync key and mailboxes
+
+            // Save away the new sync key with the last batch
             ContentValues cv = new ContentValues();
             cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
             ops.add(ContentProviderOperation
                     .newUpdate(
                             ContentUris.withAppendedId(Account.CONTENT_URI,
                                     mAccount.mId))
-                            .withValues(cv).build());
-            if (!commitMailboxes(validMailboxes, userMailboxes, mailboxMap, ops)) {
+                                    .withValues(cv).build());
+            if (!commitMailboxes(ops)) {
                 mService.stop();
                 return;
             }
+        }
+
+        // If this isn't the initial sync, we need to fix up the hierarchy
+        if (!mInitialSync) {
             String accountSelector = Mailbox.ACCOUNT_KEY + "=" + mAccount.mId;
             // For new boxes, setup the parent key and flags
             if (mFixupUninitializedNeeded) {
@@ -661,10 +647,10 @@ public class FolderSyncParser extends AbstractSyncParser {
             }
 
             MailboxUtilities.setupHierarchicalNames(mContext, mAccount.mId);
-
-            // Signal completion of mailbox changes
-            MailboxUtilities.endMailboxChanges(mContext, mAccount.mId);
         }
+
+        // Signal completion of mailbox changes
+        MailboxUtilities.endMailboxChanges(mContext, mAccount.mId);
     }
 
     /**
