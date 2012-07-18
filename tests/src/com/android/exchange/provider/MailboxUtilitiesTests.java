@@ -19,6 +19,7 @@ package com.android.exchange.provider;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.exchange.utility.ExchangeTestCase;
 
 import android.content.ContentResolver;
