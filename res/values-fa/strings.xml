@@ -30,7 +30,7 @@
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"تقویم Exchange اضافه شد"</string>
     <string name="app_name" msgid="5316597712787122829">"سرویس‌های Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"این رویداد لغو شده است به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="exception_updated" msgid="3397583105901142050">"جزئیات این رویداد تغییر کرده اند به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_updated" msgid="3397583105901142050">"جزئیات این رویداد تغییر کرده‌اند به مدت: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"کارت‌های حافظه مجاز نیست"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"برنامه‌های امضا نشده مجاز نیستند"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"نصب کننده‌های برنامه امضا نشده مجاز نیستند"</string>
