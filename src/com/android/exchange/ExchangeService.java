@@ -42,8 +42,10 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.AccountServiceProxy;
+import com.android.emailcommon.service.EmailServiceCallback;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
@@ -51,11 +53,10 @@ import com.android.emailcommon.service.IEmailServiceCallback.Stub;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
-import com.android.emailsync.SyncServiceManager;
+import com.android.emailsync.SyncManager;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.Search;
-import com.android.exchange.provider.MailboxUtilities;
 import com.android.exchange.utility.FileLogger;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 
@@ -75,7 +76,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * order to maintain proper 2-way syncing of data.  (More documentation to follow)
  *
  */
-public class ExchangeService extends SyncServiceManager {
+public class ExchangeService extends SyncManager {
 
     private static final String TAG = "ExchangeService";
 
@@ -113,104 +114,14 @@ public class ExchangeService extends SyncServiceManager {
 
     // Concurrent because CalendarSyncAdapter can modify the map during a wipe
     private final ConcurrentHashMap<Long, CalendarObserver> mCalendarObservers =
-        new ConcurrentHashMap<Long, CalendarObserver>();
+            new ConcurrentHashMap<Long, CalendarObserver>();
 
     // Callbacks as set up via setCallback
-    private final RemoteCallbackList<IEmailServiceCallback> mCallbackList =
-        new RemoteCallbackList<IEmailServiceCallback>();
+    private static final RemoteCallbackList<IEmailServiceCallback> mCallbackList =
+            new RemoteCallbackList<IEmailServiceCallback>();
 
-    private interface ServiceCallbackWrapper {
-        public void call(IEmailServiceCallback cb) throws RemoteException;
-    }
-
-    /**
-     * Proxy that can be used by various sync adapters to tie into ExchangeService's callback system
-     * Used this way:  ExchangeService.callback().callbackMethod(args...);
-     * The proxy wraps checking for existence of a ExchangeService instance
-     * Failures of these callbacks can be safely ignored.
-     */
-    static private final IEmailServiceCallback.Stub sCallbackProxy =
-        new IEmailServiceCallback.Stub() {
-
-        /**
-         * Broadcast a callback to the everyone that's registered
-         *
-         * @param wrapper the ServiceCallbackWrapper used in the broadcast
-         */
-        private synchronized void broadcastCallback(ServiceCallbackWrapper wrapper) {
-            RemoteCallbackList<IEmailServiceCallback> callbackList =
-                (INSTANCE == null) ? null: ((ExchangeService)INSTANCE).mCallbackList;
-            if (callbackList != null) {
-                // Call everyone on our callback list
-                int count = callbackList.beginBroadcast();
-                try {
-                    for (int i = 0; i < count; i++) {
-                        try {
-                            wrapper.call(callbackList.getBroadcastItem(i));
-                        } catch (RemoteException e) {
-                            // Safe to ignore
-                        } catch (RuntimeException e) {
-                            // We don't want an exception in one call to prevent other calls, so
-                            // we'll just log this and continue
-                            Log.e(TAG, "Caught RuntimeException in broadcast", e);
-                        }
-                    }
-                } finally {
-                    // No matter what, we need to finish the broadcast
-                    callbackList.finishBroadcast();
-                }
-            }
-        }
-
-        @Override
-        public void loadAttachmentStatus(final long messageId, final long attachmentId,
-                final int status, final int progress) {
-            broadcastCallback(new ServiceCallbackWrapper() {
-                @Override
-                public void call(IEmailServiceCallback cb) throws RemoteException {
-                    cb.loadAttachmentStatus(messageId, attachmentId, status, progress);
-                }
-            });
-        }
-
-        @Override
-        public void sendMessageStatus(final long messageId, final String subject, final int status,
-                final int progress) {
-            broadcastCallback(new ServiceCallbackWrapper() {
-                @Override
-                public void call(IEmailServiceCallback cb) throws RemoteException {
-                    cb.sendMessageStatus(messageId, subject, status, progress);
-                }
-            });
-        }
-
-        @Override
-        public void syncMailboxListStatus(final long accountId, final int status,
-                final int progress) {
-            broadcastCallback(new ServiceCallbackWrapper() {
-                @Override
-                public void call(IEmailServiceCallback cb) throws RemoteException {
-                    cb.syncMailboxListStatus(accountId, status, progress);
-                }
-            });
-        }
-
-        @Override
-        public void syncMailboxStatus(final long mailboxId, final int status,
-                final int progress) {
-            broadcastCallback(new ServiceCallbackWrapper() {
-                @Override
-                public void call(IEmailServiceCallback cb) throws RemoteException {
-                    cb.syncMailboxStatus(mailboxId, status, progress);
-                }
-            });
-        }
-
-        @Override
-        public void loadMessageStatus(long messageId, int statusCode, int progress)
-                throws RemoteException {
-        }
-    };
+    static private final EmailServiceCallback sCallbackProxy =
+            new EmailServiceCallback(mCallbackList);
 
     /**
      * Create our EmailService implementation here.
@@ -235,7 +146,7 @@ public class ExchangeService extends SyncServiceManager {
 
         @Override
         public void startSync(long mailboxId, boolean userRequest) throws RemoteException {
-            SyncServiceManager exchangeService = INSTANCE;
+            SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return;
             checkExchangeServiceServiceRunning();
             Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
@@ -254,14 +165,11 @@ public class ExchangeService extends SyncServiceManager {
                     log("User requested sync of account in security hold; releasing");
                 }
                 if (sConnectivityHold) {
-                    try {
-                        // UI is expecting the callbacks....
-                        sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS,
-                                0);
-                        sCallbackProxy.syncMailboxStatus(mailboxId,
-                                EmailServiceStatus.CONNECTION_ERROR, 0);
-                    } catch (RemoteException ignore) {
-                    }
+                    // UI is expecting the callbacks....
+                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS,
+                            0);
+                    sCallbackProxy.syncMailboxStatus(mailboxId,
+                            EmailServiceStatus.CONNECTION_ERROR, 0);
                     return;
                 }
             }
@@ -279,13 +187,9 @@ public class ExchangeService extends SyncServiceManager {
                 // Outbox can't be synced in EAS
                 return;
             } else if (!isSyncable(m)) {
-                try {
-                    // UI may be expecting the callbacks, so send them
-                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
-                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.SUCCESS, 0);
-                } catch (RemoteException ignore) {
-                    // We tried
-                }
+                // UI may be expecting the callbacks, so send them
+                sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
+                sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.SUCCESS, 0);
                 return;
             }
             startManualSync(mailboxId, userRequest ? ExchangeService.SYNC_UI_REQUEST :
@@ -311,7 +215,7 @@ public class ExchangeService extends SyncServiceManager {
 
         @Override
         public void hostChanged(long accountId) throws RemoteException {
-            SyncServiceManager exchangeService = INSTANCE;
+            SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return;
             ConcurrentHashMap<Long, SyncError> syncErrorMap = exchangeService.mSyncErrorMap;
             // Go through the various error mailboxes
@@ -381,7 +285,7 @@ public class ExchangeService extends SyncServiceManager {
          */
         @Override
         public void deleteAccountPIMData(long accountId) throws RemoteException {
-            SyncServiceManager exchangeService = INSTANCE;
+            SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return;
             // Stop any running syncs
             ExchangeService.stopAccountSyncs(accountId);
@@ -403,7 +307,7 @@ public class ExchangeService extends SyncServiceManager {
 
         @Override
         public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
-            SyncServiceManager exchangeService = INSTANCE;
+            SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
             return Search.searchMessages(exchangeService, accountId, searchParams,
                     destMailboxId);
@@ -415,7 +319,7 @@ public class ExchangeService extends SyncServiceManager {
 
         @Override
         public int getCapabilities(long accountId) throws RemoteException {
-            SyncServiceManager exchangeService = INSTANCE;
+            SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
             Account account = Account.restoreAccountWithId(exchangeService, accountId);
             if (account == null) return 0;
@@ -487,7 +391,7 @@ public class ExchangeService extends SyncServiceManager {
     }
 
     public static void deleteAccountPIMData(long accountId) {
-        SyncServiceManager exchangeService = INSTANCE;
+        SyncManager exchangeService = INSTANCE;
         if (exchangeService == null) return;
         Mailbox mailbox =
             Mailbox.restoreMailboxOfType(exchangeService, accountId, Mailbox.TYPE_CONTACTS);
@@ -700,7 +604,7 @@ public class ExchangeService extends SyncServiceManager {
     }
 
     static public void reloadFolderList(Context context, long accountId, boolean force) {
-        SyncServiceManager exchangeService = INSTANCE;
+        SyncManager exchangeService = INSTANCE;
         if (exchangeService == null) return;
         Cursor c = context.getContentResolver().query(Mailbox.CONTENT_URI,
                 Mailbox.CONTENT_PROJECTION, MailboxColumns.ACCOUNT_KEY + "=? AND " +
@@ -765,7 +669,7 @@ public class ExchangeService extends SyncServiceManager {
      * @param acctId
      */
     static public void stopNonAccountMailboxSyncsForAccount(long acctId) {
-        SyncServiceManager exchangeService = INSTANCE;
+        SyncManager exchangeService = INSTANCE;
         if (exchangeService != null) {
             exchangeService.stopAccountSyncs(acctId, false);
             kick("reload folder list");
@@ -778,7 +682,7 @@ public class ExchangeService extends SyncServiceManager {
      * com.android.email) and hasn't been restarted. See the comment for onCreate for details
      */
     static void checkExchangeServiceServiceRunning() {
-        SyncServiceManager exchangeService = INSTANCE;
+        SyncManager exchangeService = INSTANCE;
         if (exchangeService == null) return;
         if (sServiceThread == null) {
             log("!!! checkExchangeServiceServiceRunning; starting service...");

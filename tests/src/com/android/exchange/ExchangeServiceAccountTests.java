@@ -22,7 +22,7 @@ import android.test.suitebuilder.annotation.MediumTest;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailsync.AbstractSyncService;
-import com.android.emailsync.SyncServiceManager.SyncError;
+import com.android.emailsync.SyncManager.SyncError;
 import com.android.exchange.provider.EmailContentSetupUtils;
 import com.android.exchange.utility.ExchangeTestCase;
 
