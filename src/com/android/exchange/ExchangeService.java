@@ -96,6 +96,7 @@ public class ExchangeService extends SyncManager {
 
     private static final int EAS_12_CAPABILITIES =
             AccountCapabilities.SYNCABLE_FOLDERS |
+            AccountCapabilities.SERVER_SEARCH |
             AccountCapabilities.FOLDER_SERVER_SEARCH |
             AccountCapabilities.SANITIZED_HTML |
             AccountCapabilities.SMART_REPLY |
@@ -318,12 +319,8 @@ public class ExchangeService extends SyncManager {
         }
 
         @Override
-        public int getCapabilities(long accountId) throws RemoteException {
-            SyncManager exchangeService = INSTANCE;
-            if (exchangeService == null) return 0;
-            Account account = Account.restoreAccountWithId(exchangeService, accountId);
-            if (account == null) return 0;
-            String easVersion = account.mProtocolVersion;
+        public int getCapabilities(Account acct) throws RemoteException {
+            String easVersion = acct.mProtocolVersion;
             Double easVersionDouble = 2.5D;
             if (easVersion != null) {
                 try {
