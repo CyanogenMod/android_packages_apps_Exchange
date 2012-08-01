@@ -166,6 +166,7 @@ public class EasSyncService extends AbstractSyncService {
     protected boolean mPostReset = false;
 
     // The parameters for the connection must be modified through setConnectionParameters
+    private HostAuth mHostAuth;
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     private String mClientCertAlias = null;
@@ -1219,6 +1220,7 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     protected void setConnectionParameters(HostAuth hostAuth) throws CertificateException {
+        mHostAuth = hostAuth;
         mSsl = hostAuth.shouldUseSsl();
         mTrustSsl = hostAuth.shouldTrustAllServerCerts();
         mClientCertAlias = hostAuth.mClientCertAlias;
@@ -1234,7 +1236,7 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     private EmailClientConnectionManager getClientConnectionManager() {
-        return ExchangeService.getClientConnectionManager(mSsl, mPort);
+        return ExchangeService.getClientConnectionManager(mContext, mHostAuth);
     }
 
     private HttpClient getHttpClient(int timeout) {
