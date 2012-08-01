@@ -679,10 +679,9 @@ public class EasSyncService extends AbstractSyncService {
      * @param password the user's password
      * @return a HostAuth ready to be saved in an Account or null (failure)
      */
-    public Bundle tryAutodiscover(String userName, String password) throws RemoteException {
+    public Bundle tryAutodiscover(Context context, HostAuth hostAuth) throws RemoteException {
         XmlSerializer s = Xml.newSerializer();
         ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
-        HostAuth hostAuth = new HostAuth();
         Bundle bundle = new Bundle();
         bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
                 MessagingException.NO_ERROR);
@@ -693,7 +692,7 @@ public class EasSyncService extends AbstractSyncService {
             s.startTag(null, "Autodiscover");
             s.attribute(null, "xmlns", AUTO_DISCOVER_SCHEMA_PREFIX + "requestschema/2006");
             s.startTag(null, "Request");
-            s.startTag(null, "EMailAddress").text(userName).endTag(null, "EMailAddress");
+            s.startTag(null, "EMailAddress").text(hostAuth.mLogin).endTag(null, "EMailAddress");
             s.startTag(null, "AcceptableResponseSchema");
             s.text(AUTO_DISCOVER_SCHEMA_PREFIX + "responseschema/2006");
             s.endTag(null, "AcceptableResponseSchema");
@@ -702,23 +701,24 @@ public class EasSyncService extends AbstractSyncService {
             s.endDocument();
             String req = os.toString();
 
-            // Initialize the user name and password
-            mUserName = userName;
-            mPassword = password;
-            // Port is always 443 and SSL is used
-            mPort = 443;
-            mSsl = true;
+            // Initialize user name, password, etc.
+            mContext = context;
+            mHostAuth = hostAuth;
+            mUserName = hostAuth.mLogin;
+            mPassword = hostAuth.mPassword;
+            mPort = hostAuth.mPort;
+            mSsl = hostAuth.shouldUseSsl();
 
             // Make sure the authentication string is recreated and cached
             cacheAuthUserAndBaseUriStrings();
 
             // Split out the domain name
-            int amp = userName.indexOf('@');
+            int amp = mUserName.indexOf('@');
             // The UI ensures that userName is a valid email address
             if (amp < 0) {
                 throw new RemoteException();
             }
-            String domain = userName.substring(amp + 1);
+            String domain = mUserName.substring(amp + 1);
 
             // There are up to four attempts here; the two URLs that we're supposed to try per the
             // specification, and up to one redirect for each (handled in postAutodiscover)

@@ -142,7 +142,12 @@ public class ExchangeService extends SyncManager {
 
         @Override
         public Bundle autoDiscover(String userName, String password) throws RemoteException {
-            return new EasSyncService().tryAutodiscover(userName, password);
+            HostAuth hostAuth = new HostAuth();
+            hostAuth.mLogin = userName;
+            hostAuth.mPassword = password;
+            hostAuth.mFlags = HostAuth.FLAG_AUTHENTICATE | HostAuth.FLAG_SSL;
+            hostAuth.mPort = 443;
+            return new EasSyncService().tryAutodiscover(ExchangeService.this, hostAuth);
         }
 
         @Override
