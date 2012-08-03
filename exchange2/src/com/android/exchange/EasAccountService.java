@@ -97,6 +97,7 @@ public class EasAccountService extends EasSyncService {
     static private final int PING_HEARTBEAT_INCREMENT = 3*PING_MINUTES;
 
     static private final int PROTOCOL_PING_STATUS_COMPLETED = 1;
+    static private final int PROTOCOL_PING_STATUS_CHANGES = 2;
     static private final int PROTOCOL_PING_STATUS_BAD_PARAMETERS = 3;
     static private final int PROTOCOL_PING_STATUS_RETRY = 8;
 
@@ -117,7 +118,7 @@ public class EasAccountService extends EasSyncService {
     // The minimum heartbeat we will send
     /*package*/ int mPingMinHeartbeat = (5*PING_MINUTES)-PING_FUDGE_LOW;
     // The maximum heartbeat we will send
-    /*package*/ int mPingMaxHeartbeat = (17*PING_MINUTES)-PING_FUDGE_LOW;
+    /*package*/ int mPingMaxHeartbeat = (30*PING_MINUTES)-PING_FUDGE_LOW;
     // The ping time (in seconds)
     /*package*/ int mPingHeartbeat = PING_STARTING_HEARTBEAT;
     // The longest successful ping heartbeat
@@ -685,9 +686,16 @@ public class EasAccountService extends EasSyncService {
                                 InputStream is = resp.getInputStream();
                                 int pingResult = parsePingResult(is, mContentResolver,
                                         pingErrorMap);
-                                // If our ping completed (status = 1), and wasn't forced and we're
-                                // not at the maximum, try increasing timeout by two minutes
-                                if (pingResult == PROTOCOL_PING_STATUS_COMPLETED && !forcePing) {
+                                long pingLength = (SystemClock.elapsedRealtime() - pingTime) / 1000;
+
+                                // if the ping wasn't forced and it was either (COMPLETED regardless
+                                // of time) or (CHANGED and the heartbeat time elapsed), then try to
+                                // increase the timeout by INCREMENT (up to the max)
+                                if (!forcePing &&
+                                    ((PROTOCOL_PING_STATUS_COMPLETED == pingResult) ||
+                                     ((PROTOCOL_PING_STATUS_CHANGES == pingResult) &&
+                                      (pingLength >= pingHeartbeat)))) {
+
                                     if (pingHeartbeat > mPingHighWaterMark) {
                                         mPingHighWaterMark = pingHeartbeat;
                                         userLog("Setting high water mark at: ", mPingHighWaterMark);
