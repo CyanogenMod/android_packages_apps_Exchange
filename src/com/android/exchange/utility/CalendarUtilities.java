@@ -35,8 +35,8 @@ import android.text.format.Time;
 import android.util.Base64;
 import android.util.Log;
 
-import com.android.calendarcommon.DateException;
-import com.android.calendarcommon.Duration;
+import com.android.calendarcommon2.DateException;
+import com.android.calendarcommon2.Duration;
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
