@@ -1515,6 +1515,50 @@ public class CalendarUtilities {
         return busyStatus;
     }
 
+    /** Get a busy status from event availability
+     * The default here is TENTATIVE
+     * @param availability from CalendarProvider2
+     * @return the corresponding value of busy status
+     */
+    static public int busyStatusFromAvailability(int availability) {
+        int busyStatus;
+        switch (availability) {
+            case Events.AVAILABILITY_BUSY:
+                busyStatus = BUSY_STATUS_BUSY;
+                break;
+            case Events.AVAILABILITY_FREE:
+                busyStatus = BUSY_STATUS_FREE;
+                break;
+            case Events.AVAILABILITY_TENTATIVE:
+            default:
+                busyStatus = BUSY_STATUS_TENTATIVE;
+                break;
+        }
+        return busyStatus;
+    }
+
+    /** Get an event availability from busy status
+     * The default here is TENTATIVE
+     * @param busyStatus from CalendarProvider2
+     * @return the corresponding availability value
+     */
+    static public int availabilityFromBusyStatus(int busyStatus) {
+        int availability;
+        switch (busyStatus) {
+            case BUSY_STATUS_BUSY:
+                availability = Events.AVAILABILITY_BUSY;
+                break;
+            case BUSY_STATUS_FREE:
+                availability = Events.AVAILABILITY_FREE;
+                break;
+            case BUSY_STATUS_TENTATIVE:
+            default:
+                availability = Events.AVAILABILITY_TENTATIVE;
+                break;
+        }
+        return availability;
+    }
+
     static public String buildMessageTextFromEntityValues(Context context,
             ContentValues entityValues, StringBuilder sb) {
         if (sb == null) {
