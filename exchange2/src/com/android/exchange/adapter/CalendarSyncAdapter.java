@@ -605,6 +605,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             // Enforce CalendarProvider required properties
             setTimeRelatedValues(cv, startTime, endTime, allDayEvent);
 
+            // Set user's availability
+            cv.put(Events.AVAILABILITY, CalendarUtilities.availabilityFromBusyStatus(busyStatus));
+
             // If we haven't added the organizer to attendees, do it now
             if (!organizerAdded) {
                 addOrganizerToAttendees(ops, eventId, organizerName, organizerEmail);
@@ -1712,24 +1715,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 s.end();  // Attendees
             }
 
-            // Get busy status from Attendees table
-            long eventId = entityValues.getAsLong(Events._ID);
-            int busyStatus = CalendarUtilities.BUSY_STATUS_TENTATIVE;
-            Cursor c = mService.mContentResolver.query(
-                    asSyncAdapter(Attendees.CONTENT_URI, mEmailAddress,
-                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                    ATTENDEE_STATUS_PROJECTION, EVENT_AND_EMAIL,
-                    new String[] {Long.toString(eventId), mEmailAddress}, null);
-            if (c != null) {
-                try {
-                    if (c.moveToFirst()) {
-                        busyStatus = CalendarUtilities.busyStatusFromAttendeeStatus(
-                                c.getInt(ATTENDEE_STATUS_COLUMN_STATUS));
-                    }
-                } finally {
-                    c.close();
-                }
-            }
+            // Get busy status from availability
+            int availability = entityValues.getAsInteger(Events.AVAILABILITY);
+            int busyStatus = CalendarUtilities.busyStatusFromAvailability(availability);
             s.data(Tags.CALENDAR_BUSY_STATUS, Integer.toString(busyStatus));
 
             // Meeting status, 0 = appointment, 1 = meeting, 3 = attendee
