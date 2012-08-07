@@ -16,6 +16,7 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="exchange_name">Vállalati</string>
     <string name="exchange_name_alternate" msgid="5772529644749041052">"Microsoft Exchange ActiveSync"</string>
     <string name="meeting_accepted" msgid="8796609373330400268">"Elfogadva: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
     <string name="meeting_declined" msgid="6707617183246608552">"Elutasítva: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
