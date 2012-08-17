@@ -411,7 +411,7 @@ public class ExchangeService extends SyncManager {
         }
     }
 
-    private boolean onSecurityHold(Account account) {
+    public static boolean onSecurityHold(Account account) {
         return (account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0;
     }
 
