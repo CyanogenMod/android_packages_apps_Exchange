@@ -767,4 +767,28 @@ public class ExchangeService extends SyncManager {
     public Stub getCallbackProxy() {
         return sCallbackProxy;
     }
+
+    /**
+     * Stop any ping in progress if required
+     *
+     * @param Mailbox whose service has started
+     */
+    @Override
+    public void onStartService(Mailbox mailbox) {
+        // If this is a ping mailbox, stop the ping
+        if (mailbox.mSyncInterval != Mailbox.CHECK_INTERVAL_PING) return;
+        long accountMailboxId = Mailbox.findMailboxOfType(this, mailbox.mAccountKey,
+                Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
+        // If our ping is running, stop it
+        final AbstractSyncService svc = getRunningService(accountMailboxId);
+        if (svc != null) {
+            log("Stopping ping due to sync of mailbox: " + mailbox.mDisplayName);
+            // Don't block; reset might perform network activity
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    svc.reset();
+                }}).start();
+        }
+    }
 }
