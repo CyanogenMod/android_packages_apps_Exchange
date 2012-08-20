@@ -30,6 +30,7 @@ import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.internet.Rfc822Output;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.BodyColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
@@ -56,6 +57,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 public class EasOutboxService extends EasSyncService {
 
@@ -227,14 +229,14 @@ public class EasOutboxService extends EasSyncService {
      * original message
      */
     protected static class OriginalMessageInfo {
+        final long mRefId;
         final String mItemId;
         final String mCollectionId;
-        final String mLongId;
 
-        OriginalMessageInfo(String itemId, String collectionId, String longId) {
+        OriginalMessageInfo(long refId, String itemId, String collectionId) {
+            mRefId = refId;
             mItemId = itemId;
             mCollectionId = collectionId;
-            mLongId = longId;
         }
     }
 
@@ -249,15 +251,10 @@ public class EasOutboxService extends EasSyncService {
     /*package*/ String generateSmartSendCmd(boolean reply, OriginalMessageInfo info) {
         StringBuilder sb = new StringBuilder();
         sb.append(reply ? "SmartReply" : "SmartForward");
-        if (!TextUtils.isEmpty(info.mLongId)) {
-            sb.append("&LongId=");
-            sb.append(Uri.encode(info.mLongId, ":"));
-        } else {
-            sb.append("&ItemId=");
-            sb.append(Uri.encode(info.mItemId, ":"));
-            sb.append("&CollectionId=");
-            sb.append(Uri.encode(info.mCollectionId, ":"));
-        }
+        sb.append("&ItemId=");
+        sb.append(Uri.encode(info.mItemId, ":"));
+        sb.append("&CollectionId=");
+        sb.append(Uri.encode(info.mCollectionId, ":"));
         return sb.toString();
     }
 
@@ -275,14 +272,14 @@ public class EasOutboxService extends EasSyncService {
         // mailboxId of a Message
         String itemId = null;
         String collectionId = null;
-        String longId = null;
 
         // First, we need to get the id of the reply/forward message
         String[] cols = Utility.getRowColumns(context, Body.CONTENT_URI,
                 BODY_SOURCE_PROJECTION, WHERE_MESSAGE_KEY,
                 new String[] {Long.toString(msgId)});
+        long refId = 0;
         if (cols != null) {
-            long refId = Long.parseLong(cols[0]);
+            refId = Long.parseLong(cols[0]);
             // Then, we need the serverId and mailboxKey of the message
             cols = Utility.getRowColumns(context, Message.CONTENT_URI, refId,
                     SyncColumns.SERVER_ID, MessageColumns.MAILBOX_KEY,
@@ -300,8 +297,8 @@ public class EasOutboxService extends EasSyncService {
         }
         // We need either a longId or both itemId (serverId) and collectionId (mailboxId) to process
         // a smart reply or a smart forward
-        if (longId != null || (itemId != null && collectionId != null)){
-            return new OriginalMessageInfo(itemId, collectionId, longId);
+        if (itemId != null && collectionId != null){
+            return new OriginalMessageInfo(refId, itemId, collectionId);
         }
         return null;
     }
@@ -311,6 +308,16 @@ public class EasOutboxService extends EasSyncService {
         cv.put(SyncColumns.SERVER_ID, SEND_FAILED);
         Message.update(mContext, Message.CONTENT_URI, msgId, cv);
         sendCallback(msgId, null, result);
+    }
+
+    private boolean amongAttachments(Attachment att, Attachment[] atts) {
+        if (att.mContentUri == null) return false;
+        for (Attachment a: atts) {
+            if (att.mContentUri.equals(a.mContentUri)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -357,9 +364,36 @@ public class EasOutboxService extends EasSyncService {
                 smartSend = false;
             }
 
+            ArrayList<Attachment> requiredAtts = new ArrayList<Attachment>();
+            if (smartSend && forward) {
+                // See if we can really smart forward (all reference attachments must be sent)
+                Attachment[] outAtts =
+                        Attachment.restoreAttachmentsWithMessageId(mContext, msg.mId);
+                Attachment[] refAtts =
+                        Attachment.restoreAttachmentsWithMessageId(mContext, referenceInfo.mRefId);
+                for (Attachment refAtt: refAtts) {
+                    // If an original attachment isn't among what's going out, we can't be "smart"
+                    if (!amongAttachments(refAtt, outAtts)) {
+                        smartSend = false;
+                        break;
+                    }
+                }
+                if (smartSend) {
+                    for (Attachment outAtt: outAtts) {
+                        // If an outgoing attachment isn't in original message, we must send it
+                        if (!amongAttachments(outAtt, refAtts)) {
+                            requiredAtts.add(outAtt);
+                        }
+                    }
+                }
+            }
+
             // Write the message to the temporary file
             FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-            Rfc822Output.writeTo(mContext, msgId, fileOutputStream, smartSend, true);
+            // If we're using smartSend, send along our required attachments (which will be empty
+            // if the user hasn't added new ones); otherwise, null to send everything in the msg
+            Rfc822Output.writeTo(mContext, msgId, fileOutputStream, smartSend, true,
+                    smartSend ? requiredAtts : null);
             fileOutputStream.close();
 
             // Sending via EAS14 is a whole 'nother kettle of fish
