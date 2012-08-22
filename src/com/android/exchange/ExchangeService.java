@@ -124,6 +124,8 @@ public class ExchangeService extends SyncManager {
     static private final EmailServiceCallback sCallbackProxy =
             new EmailServiceCallback(mCallbackList);
 
+    private final Intent mIntent = new Intent(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
+
     /**
      * Create our EmailService implementation here.
      */
@@ -759,8 +761,8 @@ public class ExchangeService extends SyncManager {
     }
 
     @Override
-    public String getServiceIntentAction() {
-        return Eas.EXCHANGE_SERVICE_INTENT_ACTION;
+    public Intent getServiceIntent() {
+        return mIntent;
     }
 
     @Override
