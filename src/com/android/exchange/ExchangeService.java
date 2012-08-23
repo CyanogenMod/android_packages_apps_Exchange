@@ -342,6 +342,11 @@ public class ExchangeService extends SyncManager {
                 return EAS_2_CAPABILITIES;
             }
         }
+
+        @Override
+        public void serviceUpdated(String emailAddress) throws RemoteException {
+            // Not required for EAS
+        }
     };
 
     /**
@@ -364,7 +369,7 @@ public class ExchangeService extends SyncManager {
                 long hostAuthId = c.getLong(Account.CONTENT_HOST_AUTH_KEY_RECV_COLUMN);
                 if (hostAuthId > 0) {
                     HostAuth ha = HostAuth.restoreHostAuthWithId(context, hostAuthId);
-                    if (ha != null && ha.mProtocol.equals("eas")) {
+                    if (ha != null && ha.mProtocol.equals(Eas.PROTOCOL)) {
                         Account account = new Account();
                         account.restore(c);
                         // Cache the HostAuth
