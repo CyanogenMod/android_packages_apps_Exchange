@@ -686,7 +686,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         break;
                     case Tags.EMAIL_ALL_DAY_EVENT:
                         if (getValueInt() == 1) {
-                            packedString.put(MeetingInfo.MEETING_ALL_DAY, getValue());
+                            packedString.put(MeetingInfo.MEETING_ALL_DAY, "1");
                         }
                         break;
                     default:
