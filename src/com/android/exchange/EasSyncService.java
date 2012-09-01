@@ -53,11 +53,11 @@ import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.PolicyServiceProxy;
+import com.android.emailcommon.utility.EmailClientConnectionManager;
+import com.android.emailcommon.utility.Utility;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.Request;
-import com.android.emailcommon.utility.EmailClientConnectionManager;
-import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
@@ -774,7 +774,7 @@ public class EasSyncService extends AbstractSyncService {
                                 // Note: there is no way we can auto-discover the proper client
                                 // SSL certificate to use, if one is needed.
                                 hostAuth.mPort = 443;
-                                hostAuth.mProtocol = "eas";
+                                hostAuth.mProtocol = Eas.PROTOCOL;
                                 hostAuth.mFlags =
                                     HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
                                 bundle.putParcelable(

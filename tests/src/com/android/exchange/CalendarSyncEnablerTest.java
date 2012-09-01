@@ -31,7 +31,6 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.android.emailcommon.AccountManagerTypes;
 import com.android.emailcommon.Logging;
 import com.android.exchange.utility.ExchangeTestCase;
 
@@ -49,7 +48,7 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
     private HashMap<Account, Boolean> origCalendarSyncStates = new HashMap<Account, Boolean>();
 
     // To make the rest of the code shorter thus more readable...
-    private static final String EAT = AccountManagerTypes.TYPE_EXCHANGE;
+    private static final String EAT = "com.android.exchange";
 
     @Override
     public void setUp() throws Exception {
@@ -207,12 +206,11 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
     }
 
     protected Account[] getExchangeAccounts() {
-        return AccountManager.get(getContext()).getAccountsByType(
-                AccountManagerTypes.TYPE_EXCHANGE);
+        return AccountManager.get(getContext()).getAccountsByType(EAT);
     }
 
     protected Account makeAccountManagerAccount(String username) {
-        return new Account(username, AccountManagerTypes.TYPE_EXCHANGE);
+        return new Account(username, EAT);
     }
 
     protected void createAccountManagerAccount(String username) {

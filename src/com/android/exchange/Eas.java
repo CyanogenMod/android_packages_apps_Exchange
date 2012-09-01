@@ -52,9 +52,11 @@ public class Eas {
     public static final double SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE = 14.1;
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
 
-    public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE = "com.android.exchange";
-    public static final String PROTOCOL = "eas";
-    public static final String EXCHANGE_SERVICE_INTENT_ACTION = "com.android.email.EXCHANGE_INTENT";
+    public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE =
+            Configuration.EXCHANGE_ACCOUNT_MANAGER_TYPE;
+    public static final String PROTOCOL = Configuration.EXCHANGE_PROTOCOL;
+    public static final String EXCHANGE_SERVICE_INTENT_ACTION =
+            Configuration.EXCHANGE_SERVICE_INTENT_ACTION;
 
     // From EAS spec
     //                Mail Cal

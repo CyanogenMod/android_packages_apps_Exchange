@@ -45,7 +45,6 @@ import android.util.Log;
 
 import com.android.calendarcommon2.DateException;
 import com.android.calendarcommon2.Duration;
-import com.android.emailcommon.AccountManagerTypes;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.Utility;
@@ -54,6 +53,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.EasOutboxService;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
+import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
 
 import java.io.IOException;
@@ -101,13 +101,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         new String[] {Events.ORIGINAL_ID, Events._ID};
     private static final String EVENT_ID_AND_NAME =
         ExtendedProperties.EVENT_ID + "=? AND " + ExtendedProperties.NAME + "=?";
-
-    // Note that we use LIKE below for its case insensitivity
-    private static final String EVENT_AND_EMAIL  =
-        Attendees.EVENT_ID + "=? AND "+ Attendees.ATTENDEE_EMAIL + " LIKE ?";
-    private static final int ATTENDEE_STATUS_COLUMN_STATUS = 0;
-    private static final String[] ATTENDEE_STATUS_PROJECTION =
-        new String[] {Attendees.ATTENDEE_STATUS};
 
     public static final String CALENDAR_SELECTION =
         Calendars.ACCOUNT_NAME + "=? AND " + Calendars.ACCOUNT_TYPE + "=?";
@@ -172,7 +165,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         super(service);
         mEmailAddress = mAccount.mEmailAddress;
 
-        String amType = Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE;
+        final String amType = Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE;
         mAsSyncAdapterAttendees =
                 asSyncAdapter(Attendees.CONTENT_URI, mEmailAddress, amType);
         mAsSyncAdapterEvents =
@@ -212,12 +205,13 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     public void wipe() {
         // Delete the calendar associated with this account
         // CalendarProvider2 does NOT handle selection arguments in deletions
+        String amType = mContext.getString(R.string.account_manager_type_exchange);
         mContentResolver.delete(
                 asSyncAdapter(Calendars.CONTENT_URI, mEmailAddress,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
                 Calendars.ACCOUNT_NAME + "=" + DatabaseUtils.sqlEscapeString(mEmailAddress)
                         + " AND " + Calendars.ACCOUNT_TYPE + "="
-                        + DatabaseUtils.sqlEscapeString(AccountManagerTypes.TYPE_EXCHANGE), null);
+                        + DatabaseUtils.sqlEscapeString(amType), null);
         // Invalidate our calendar observers
         ExchangeService.unregisterCalendarObservers();
     }
