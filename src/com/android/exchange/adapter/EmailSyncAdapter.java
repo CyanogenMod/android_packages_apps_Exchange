@@ -25,6 +25,7 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.os.TransactionTooLargeException;
 import android.provider.CalendarContract.Events;
 import android.text.Html;
 import android.text.SpannedString;
@@ -1111,9 +1112,23 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         @Override
         public void commit() {
+            commitImpl(0);
+        }
+
+        public void commitImpl(int tryCount) {
             // Use a batch operation to handle the changes
             ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
 
+            // Maximum size of message text per fetch
+            int numFetched = fetchedEmails.size();
+            int maxPerFetch = 0;
+            if (numFetched > 0 && tryCount > 0) {
+                // Educated guess that 450000 chars (900k) is ok; 600k is a killer
+                // Remember that when fetching, we're not getting any other data
+                // We'll keep trying, reducing the maximum each time
+                // Realistically, this will rarely exceed 1, and probably never 2
+                maxPerFetch = 450000 / numFetched / tryCount;
+            }
             for (Message msg: fetchedEmails) {
                 // Find the original message's id (by serverId and mailbox)
                 Cursor c = getServerIdCursor(msg.mServerId, EmailContent.ID_PROJECTION);
@@ -1138,6 +1153,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 if (id != null) {
                     userLog("Fetched body successfully for ", id);
                     mBindArgument[0] = id;
+                    if ((maxPerFetch > 0) && (msg.mText.length() > maxPerFetch)) {
+                        userLog("Truncating message to " + maxPerFetch);
+                        msg.mText = msg.mText.substring(0, maxPerFetch) + "...";
+                    }
                     ops.add(ContentProviderOperation.newUpdate(Body.CONTENT_URI)
                             .withSelection(Body.MESSAGE_KEY + "=?", mBindArgument)
                             .withValue(Body.TEXT_CONTENT, msg.mText)
@@ -1192,7 +1211,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 try {
                     mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
                     userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
-                } catch (RemoteException e) {
+                } catch (TransactionTooLargeException e) {
+                    Log.w(TAG, "Transaction failed on fetched message; retrying...");
+                    commitImpl(++tryCount);
+                 } catch (RemoteException e) {
                     // There is nothing to be done here; fail by returning null
                 } catch (OperationApplicationException e) {
                     // There is nothing to be done here; fail by returning null
