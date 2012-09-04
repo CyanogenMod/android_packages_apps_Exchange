@@ -20,6 +20,12 @@ include $(CLEAR_VARS)
 #
 LOCAL_MODULE_TAGS := optional
 
+res_dir := res build/res
+
+LOCAL_RESOURCE_DIR := $(addprefix $(LOCAL_PATH)/, $(res_dir))
+
+LOCAL_AAPT_FLAGS := --auto-add-overlay
+
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_SRC_FILES += $(call all-java-files-under, build/src)
 
