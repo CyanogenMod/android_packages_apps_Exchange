@@ -1753,6 +1753,8 @@ public class EasSyncService extends AbstractSyncService {
                     }
 
                     if (emptyStream) {
+                        // Make sure we get rid of updates/deletes
+                        target.cleanup();
                         // If this happens, exit cleanly, and change the interval from push to ping
                         // if necessary
                         userLog("Empty sync response; finishing");
