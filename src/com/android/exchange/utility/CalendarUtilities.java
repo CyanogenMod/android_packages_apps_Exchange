@@ -106,17 +106,19 @@ public class CalendarUtilities {
 
     // The following constants relate to Microsoft's TIME_ZONE_INFORMATION structure
     // For documentation, see http://msdn.microsoft.com/en-us/library/ms725481(VS.85).aspx
+    static final int MSFT_TIME_ZONE_STRING_SIZE = 32;
+
     static final int MSFT_TIME_ZONE_BIAS_OFFSET = 0;
     static final int MSFT_TIME_ZONE_STANDARD_NAME_OFFSET =
         MSFT_TIME_ZONE_BIAS_OFFSET + MSFT_LONG_SIZE;
     static final int MSFT_TIME_ZONE_STANDARD_DATE_OFFSET =
-        MSFT_TIME_ZONE_STANDARD_NAME_OFFSET + (MSFT_WCHAR_SIZE*32);
+        MSFT_TIME_ZONE_STANDARD_NAME_OFFSET + (MSFT_WCHAR_SIZE*MSFT_TIME_ZONE_STRING_SIZE);
     static final int MSFT_TIME_ZONE_STANDARD_BIAS_OFFSET =
         MSFT_TIME_ZONE_STANDARD_DATE_OFFSET + MSFT_SYSTEMTIME_SIZE;
     static final int MSFT_TIME_ZONE_DAYLIGHT_NAME_OFFSET =
         MSFT_TIME_ZONE_STANDARD_BIAS_OFFSET + MSFT_LONG_SIZE;
     static final int MSFT_TIME_ZONE_DAYLIGHT_DATE_OFFSET =
-        MSFT_TIME_ZONE_DAYLIGHT_NAME_OFFSET + (MSFT_WCHAR_SIZE*32);
+        MSFT_TIME_ZONE_DAYLIGHT_NAME_OFFSET + (MSFT_WCHAR_SIZE*MSFT_TIME_ZONE_STRING_SIZE);
     static final int MSFT_TIME_ZONE_DAYLIGHT_BIAS_OFFSET =
         MSFT_TIME_ZONE_DAYLIGHT_DATE_OFFSET + MSFT_SYSTEMTIME_SIZE;
     static final int MSFT_TIME_ZONE_SIZE =
@@ -213,6 +215,19 @@ public class CalendarUtilities {
     static void setWord(byte[] bytes, int offset, int value) {
         bytes[offset++] = (byte) (value & 0xFF);
         bytes[offset] = (byte) ((value >> 8) & 0xFF);
+    }
+
+    static String getString(byte[] bytes, int offset, int size) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < size; i++) {
+            int ch = bytes[offset + i];
+            if (ch == 0) {
+                break;
+            } else {
+                sb.append((char)ch);
+            }
+        }
+        return sb.toString();
     }
 
     // Internal structure for storing a time zone date from a SYSTEMTIME structure
@@ -869,19 +884,34 @@ public class CalendarUtilities {
                     if (dstSavings != timeZone.getDSTSavings()) continue;
                     return timeZone;
                 }
-                // In this case, there is no daylight savings time, so the only interesting data
-                // is the offset, and we know that all of the zoneId's match; we'll take the first
                 boolean lenient = false;
+                boolean name = false;
                 if ((dstStart.hour != dstEnd.hour) && (precision == STANDARD_DST_PRECISION)) {
                     timeZone = tziStringToTimeZoneImpl(timeZoneString, LENIENT_DST_PRECISION);
                     lenient = true;
                 } else {
-                    timeZone = TimeZone.getTimeZone(zoneIds[0]);
+                    // We can't find a time zone match, so our last attempt is to see if there's
+                    // a valid time zone name in the TZI; if not we'll just take the first TZ with
+                    // a matching offset (which is likely wrong, but ... what else is there to do)
+                    String tzName = getString(timeZoneBytes, MSFT_TIME_ZONE_STANDARD_NAME_OFFSET,
+                            MSFT_TIME_ZONE_STRING_SIZE);
+                    if (!tzName.isEmpty()) {
+                        TimeZone tz = TimeZone.getTimeZone(tzName);
+                        if (tz != null) {
+                            timeZone = tz;
+                            name = true;
+                        } else {
+                            timeZone = TimeZone.getTimeZone(zoneIds[0]);
+                        }
+                    } else {
+                        timeZone = TimeZone.getTimeZone(zoneIds[0]);
+                    }
                 }
                 if (Eas.USER_LOG) {
                     ExchangeService.log(TAG,
                             "No TimeZone with correct DST settings; using " +
-                            (lenient ? "lenient" : "first") + ": " + timeZone.getID());
+                            (name ? "name" : (lenient ? "lenient" : "first")) + ": " +
+                                    timeZone.getID());
                 }
                 return timeZone;
             }
