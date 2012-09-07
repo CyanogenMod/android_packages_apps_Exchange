@@ -110,6 +110,13 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         "AAAAAAAAAAsAAAABAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAACAAAAAAAAAAAAxP///w==";
 
+    // This string specifies "Europe/London" in the name, but otherwise is somewhat bogus
+    // in that it has unknown time zone dates with a 0 bias (GMT). (From a Zimbra server user)
+    private static final String EUROPE_LONDON_TIME_BY_NAME =
+        "AAAAAEV1cm9wZS9Mb25kb24AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+        "AAAAAAAAAAoAAQAFAAIAAAAAAAAAAAAAAEV1cm9wZS9Mb25kb24AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAQAFAAEAAAAAAAAAxP///w==";
+
     private static final String ORGANIZER = "organizer@server.com";
     private static final String ATTENDEE = "attendee@server.com";
 
@@ -139,6 +146,9 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
         assertEquals("Asia/Calcutta", tz.getID());
         tz = CalendarUtilities.tziStringToTimeZone(AUSTRALIA_ACT_TIME);
         assertEquals("Australia/ACT", tz.getID());
+
+        tz = CalendarUtilities.tziStringToTimeZone(EUROPE_LONDON_TIME_BY_NAME);
+        assertEquals("Europe/London", tz.getID());
 
         // Test peculiar MS sent EST data with and without lenient precision; send standard
         // precision + 1 (i.e. 1ms) to make sure the code doesn't automatically flip to lenient
