@@ -311,9 +311,10 @@ public class EasOutboxService extends EasSyncService {
     }
 
     private boolean amongAttachments(Attachment att, Attachment[] atts) {
-        if (att.mContentUri == null) return false;
+        String contentUri = att.getContentUri();
+        if (contentUri == null) return false;
         for (Attachment a: atts) {
-            if (att.mContentUri.equals(a.mContentUri)) {
+            if (contentUri.equals(a.getContentUri())) {
                 return true;
             }
         }
