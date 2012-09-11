@@ -27,4 +27,10 @@ public abstract class AbstractSyncAdapterService extends Service {
         // Make sure EmailContent is initialized in Exchange app
         EmailContent.init(this);
     }
+
+    public void onCreate() {
+        super.onCreate();
+        // Make sure EmailContent is initialized in Exchange app
+        EmailContent.init(this);
+    }
 }
