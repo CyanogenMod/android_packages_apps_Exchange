@@ -43,8 +43,8 @@ import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.android.calendarcommon.DateException;
-import com.android.calendarcommon.Duration;
+import com.android.calendarcommon2.DateException;
+import com.android.calendarcommon2.Duration;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.Utility;
