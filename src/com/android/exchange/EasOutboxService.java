@@ -310,11 +310,21 @@ public class EasOutboxService extends EasSyncService {
         sendCallback(msgId, null, result);
     }
 
+    /**
+     * See if a given attachment is among an array of attachments; it is if the locations of both
+     * are the same (we're looking to see if they represent the same attachment on the server. Note
+     * that an attachment that isn't on the server (e.g. an outbound attachment picked from the
+     * gallery) won't have a location, so the result will always be false
+     *
+     * @param att the attachment to test
+     * @param atts the array of attachments to look in
+     * @return whether the test attachment is among the array of attachments
+     */
     private boolean amongAttachments(Attachment att, Attachment[] atts) {
-        String contentUri = att.getContentUri();
-        if (contentUri == null) return false;
+        String location = att.mLocation;
+        if (location == null) return false;
         for (Attachment a: atts) {
-            if (contentUri.equals(a.getContentUri())) {
+            if (location.equals(a.mLocation)) {
                 return true;
             }
         }
