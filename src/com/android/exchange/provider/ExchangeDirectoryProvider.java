@@ -16,18 +16,6 @@
 
 package com.android.exchange.provider;
 
-import com.android.emailcommon.Configuration;
-import com.android.emailcommon.mail.PackedString;
-import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.service.AccountServiceProxy;
-import com.android.emailcommon.utility.Utility;
-import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
-import com.android.exchange.R;
-import com.android.exchange.provider.GalResult.GalData;
-
 import android.accounts.AccountManager;
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -48,6 +36,18 @@ import android.provider.ContactsContract.Contacts.Data;
 import android.provider.ContactsContract.Directory;
 import android.provider.ContactsContract.RawContacts;
 import android.text.TextUtils;
+
+import com.android.emailcommon.Configuration;
+import com.android.emailcommon.mail.PackedString;
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.service.AccountServiceProxy;
+import com.android.emailcommon.utility.Utility;
+import com.android.exchange.Eas;
+import com.android.exchange.EasSyncService;
+import com.android.exchange.R;
+import com.android.exchange.provider.GalResult.GalData;
 
 import java.util.HashMap;
 import java.util.List;
@@ -70,20 +70,20 @@ public class ExchangeDirectoryProvider extends ContentProvider {
     private static final int GAL_CONTACT_WITH_ID = GAL_BASE + 3;
     private static final int GAL_EMAIL_FILTER = GAL_BASE + 4;
 
-    private static final UriMatcher sURIMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+    private static UriMatcher sURIMatcher ;
     /*package*/ final HashMap<String, Long> mAccountIdMap = new HashMap<String, Long>();
-
-    static {
-        sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "directories", GAL_DIRECTORIES);
-        sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "contacts/filter/*", GAL_FILTER);
-        sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "contacts/lookup/*/entities", GAL_CONTACT);
-        sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "contacts/lookup/*/#/entities",
-                GAL_CONTACT_WITH_ID);
-        sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "data/emails/filter/*", GAL_EMAIL_FILTER);
-    }
 
     @Override
     public boolean onCreate() {
+        if (sURIMatcher == null) {
+            sURIMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+            sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "directories", GAL_DIRECTORIES);
+            sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "contacts/filter/*", GAL_FILTER);
+            sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "contacts/lookup/*/entities", GAL_CONTACT);
+            sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "contacts/lookup/*/#/entities",
+                    GAL_CONTACT_WITH_ID);
+            sURIMatcher.addURI(EXCHANGE_GAL_AUTHORITY, "data/emails/filter/*", GAL_EMAIL_FILTER);
+        }
         return true;
     }
 
