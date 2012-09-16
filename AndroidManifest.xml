@@ -147,6 +147,7 @@
             android:authorities="com.android.exchange.directory.provider"
             android:readPermission="android.permission.READ_CONTACTS"
             android:multiprocess="false"
+            android:exported="true"
             >
           <meta-data
               android:name="android.content.ContactDirectory"
