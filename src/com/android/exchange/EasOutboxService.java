@@ -24,7 +24,6 @@ import android.database.Cursor;
 import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.RemoteException;
-import android.text.TextUtils;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.internet.Rfc822Output;
@@ -375,7 +374,7 @@ public class EasOutboxService extends EasSyncService {
                 smartSend = false;
             }
 
-            ArrayList<Attachment> requiredAtts = new ArrayList<Attachment>();
+            ArrayList<Attachment> requiredAtts = null;
             if (smartSend && forward) {
                 // See if we can really smart forward (all reference attachments must be sent)
                 Attachment[] outAtts =
@@ -390,6 +389,7 @@ public class EasOutboxService extends EasSyncService {
                     }
                 }
                 if (smartSend) {
+                    requiredAtts = new ArrayList<Attachment>();
                     for (Attachment outAtt: outAtts) {
                         // If an outgoing attachment isn't in original message, we must send it
                         if (!amongAttachments(outAtt, refAtts)) {
