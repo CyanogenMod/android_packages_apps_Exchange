@@ -17,8 +17,8 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.exchange"
-    android:versionCode="500013"
-    android:versionName="4.2-013"
+    android:versionCode="500014"
+    android:versionName="4.2-014"
      >
 
     <uses-permission
