@@ -18,8 +18,7 @@ include $(CLEAR_VARS)
 # We only want this apk build for tests.
 LOCAL_MODULE_TAGS := tests
 
-#LOCAL_JAVA_LIBRARIES := android.test.runner
-LOCAL_SDK_VERSION := current
+LOCAL_JAVA_LIBRARIES := android.test.runner
 
 # Include all test java files.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
@@ -28,8 +27,8 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 # running the tests using an instrumentation targeting Exchange, we
 # automatically get all of its classes loaded into our environment.
 
-LOCAL_PACKAGE_NAME := Exchange2Tests
+LOCAL_PACKAGE_NAME := ExchangeTests
 
-LOCAL_INSTRUMENTATION_FOR := Exchange2
+LOCAL_INSTRUMENTATION_FOR := Exchange
 
-include $(BUILD_PACKAGE)
+# include $(BUILD_PACKAGE)
