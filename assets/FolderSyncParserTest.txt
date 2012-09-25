@@ -23,7 +23,7 @@
 [14:02:28] EAS Parser| </FolderSyncKey>
 [14:02:28] EAS Parser| <Changes>
 [14:02:28] EAS Parser| <Count>
-[14:02:28] EAS Parser| Count: 279
+[14:02:28] EAS Parser| Count: 60
 [14:02:28] EAS Parser| </Count>
 [14:02:29] EAS Parser| <FolderAdd>
 [14:02:29] EAS Parser| <FolderServerId>
