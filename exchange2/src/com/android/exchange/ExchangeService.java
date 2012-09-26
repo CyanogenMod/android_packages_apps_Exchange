@@ -52,7 +52,6 @@ import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.BodyColumns;
@@ -857,8 +856,7 @@ public class ExchangeService extends Service implements Runnable {
         }
 
         private void addAccountMailbox(long acctId) {
-            Context context = getContext();
-            Account acct = Account.restoreAccountWithId(context, acctId);
+            Account acct = Account.restoreAccountWithId(getContext(), acctId);
             Mailbox main = new Mailbox();
             main.mDisplayName = Eas.ACCOUNT_MAILBOX_PREFIX;
             main.mServerId = Eas.ACCOUNT_MAILBOX_PREFIX + System.nanoTime();
@@ -866,13 +864,10 @@ public class ExchangeService extends Service implements Runnable {
             main.mType = Mailbox.TYPE_EAS_ACCOUNT_MAILBOX;
             main.mSyncInterval = Mailbox.CHECK_INTERVAL_PUSH;
             main.mFlagVisible = false;
-            main.save(context);
-            // Set sync key to "0" for the account
-            ContentValues cv = new ContentValues();
-            cv.put(AccountColumns.SYNC_KEY, "0");
-            acct.update(context, cv);
+            main.save(getContext());
             log("Initializing account: " + acct.mDisplayName);
         }
+
     }
 
     /**
