@@ -207,8 +207,13 @@ public class FolderSyncParser extends AbstractSyncParser {
                     }
                 }
             } else if (tag == Tags.FOLDER_SYNC_KEY) {
-                mAccount.mSyncKey = getValue();
-                userLog("New Account SyncKey: ", mAccount.mSyncKey);
+                String newKey = getValue();
+                if (!resetFolders) {
+                    mAccount.mSyncKey = newKey;
+                    userLog("New syncKey: ", newKey);
+                } else {
+                    userLog("Ignoring new syncKey: ", newKey);
+                }
             } else if (tag == Tags.FOLDER_CHANGES) {
                 if (mStatusOnly) return res;
                 changesParser(mOperations, mInitialSync);
