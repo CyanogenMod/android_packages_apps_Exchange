@@ -24,7 +24,9 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.os.RemoteException;
 import android.text.TextUtils;
+import android.util.Log;
 
+import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
@@ -150,6 +152,20 @@ public class FolderSyncParser extends AbstractSyncParser {
         while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
             if (tag == Tags.FOLDER_STATUS) {
                 status = getValueInt();
+                // Do a sanity check on the account here; if we have any duplicated folders, we'll
+                // act as though we have a bad folder sync key (wipe/reload mailboxes)
+                // Note: The ContentValues isn't used, but no point creating a new one
+                int dupes =  mContentResolver.update(
+                        ContentUris.withAppendedId(EmailContent.ACCOUNT_CHECK_URI, mAccountId),
+                        UNINITIALIZED_PARENT_KEY, null, null);
+                if (dupes > 0) {
+                    String e = "Duplicate mailboxes found for account " + mAccountId + ": " + dupes;
+                    // For verbose logging, make sure this is in emaillog.txt
+                    userLog(e);
+                    // Worthy of logging, regardless
+                    Log.w(Logging.LOG_TAG, e);
+                    status = Eas.FOLDER_STATUS_INVALID_KEY;
+                }
                 if (status != Eas.FOLDER_STATUS_OK) {
                     mService.errorLog("FolderSync failed: " + CommandStatus.toString(status));
                     // If the account hasn't been saved, this is a validation attempt, so we don't
@@ -163,23 +179,26 @@ public class FolderSyncParser extends AbstractSyncParser {
                     } else if (status == Eas.FOLDER_STATUS_INVALID_KEY ||
                             CommandStatus.isBadSyncKey(status)) {
                         mService.errorLog("Bad sync key; RESET and delete all folders");
-                        // Reset the sync key and save
-                        mAccount.mSyncKey = "0";
-                        ContentValues cv = new ContentValues();
-                        cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
-                        mContentResolver.update(ContentUris.withAppendedId(Account.CONTENT_URI,
-                                mAccount.mId), cv, null, null);
                         // Delete PIM data
                         ExchangeService.deleteAccountPIMData(mAccountId);
                         // Save away any mailbox sync information that is NOT default
                         saveMailboxSyncOptions();
                         // And only then, delete mailboxes
-                        mContentResolver.delete(Mailbox.CONTENT_URI, ALL_BUT_ACCOUNT_MAILBOX,
+                        mContentResolver.delete(Mailbox.CONTENT_URI,
+                                MailboxColumns.ACCOUNT_KEY + "=?",
                                 new String[] {Long.toString(mAccountId)});
                         // Stop existing syncs and reconstruct _main
                         ExchangeService.stopNonAccountMailboxSyncsForAccount(mAccountId);
                         res = true;
                         resetFolders = true;
+                        // Reset the sync key and save (this should trigger the AccountObserver
+                        // in ExchangeService, which will recreate the account mailbox, which
+                        // will then start syncing folders, etc.)
+                        mAccount.mSyncKey = "0";
+                        ContentValues cv = new ContentValues();
+                        cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
+                        mContentResolver.update(ContentUris.withAppendedId(Account.CONTENT_URI,
+                                mAccount.mId), cv, null, null);
                     } else {
                         // Other errors are at the server, so let's throw an error that will
                         // cause this sync to be retried at a later time
