@@ -75,7 +75,7 @@ public class Search {
         ContentValues statusValues = new ContentValues();
         try {
             // Set the status of this mailbox to indicate query
-            statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.USER_QUERY);
+            statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.LIVE_QUERY);
             searchMailbox.update(context, statusValues);
 
             svc.mMailbox = searchMailbox;
