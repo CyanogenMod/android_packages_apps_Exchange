@@ -1721,6 +1721,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             s.data(Tags.CALENDAR_BUSY_STATUS, Integer.toString(busyStatus));
 
             // Meeting status, 0 = appointment, 1 = meeting, 3 = attendee
+            // In JB, organizer won't be an attendee
+            if (organizerEmail == null && entityValues.containsKey(Events.ORGANIZER)) {
+                organizerEmail = entityValues.getAsString(Events.ORGANIZER);
+            }
             if (mEmailAddress.equalsIgnoreCase(organizerEmail)) {
                 s.data(Tags.CALENDAR_MEETING_STATUS, hasAttendees ? "1" : "0");
             } else {
