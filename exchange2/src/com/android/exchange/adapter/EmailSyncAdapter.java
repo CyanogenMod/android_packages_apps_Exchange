@@ -1152,11 +1152,16 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 // If we find one, we do two things atomically: 1) set the body text for the
                 // message, and 2) mark the message loaded (i.e. completely loaded)
                 if (id != null) {
-                    userLog("Fetched body successfully for ", id);
                     mBindArgument[0] = id;
-                    if ((maxPerFetch > 0) && (msg.mText.length() > maxPerFetch)) {
-                        userLog("Truncating message to " + maxPerFetch);
+                    if (msg.mText != null && (maxPerFetch > 0) &&
+                            (msg.mText.length() > maxPerFetch)) {
+                        userLog("Truncating TEXT to " + maxPerFetch);
                         msg.mText = msg.mText.substring(0, maxPerFetch) + "...";
+                    }
+                    if (msg.mHtml != null && (maxPerFetch > 0) &&
+                            (msg.mHtml.length() > maxPerFetch)) {
+                        userLog("Truncating HTML to " + maxPerFetch);
+                        msg.mHtml = msg.mHtml.substring(0, maxPerFetch) + "...";
                     }
                     ops.add(ContentProviderOperation.newUpdate(Body.CONTENT_URI)
                             .withSelection(Body.MESSAGE_KEY + "=?", mBindArgument)
@@ -1182,7 +1187,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             if (!changedEmails.isEmpty()) {
                 // Server wins in a conflict...
                 for (ServerChange change : changedEmails) {
-                     ContentValues cv = new ContentValues();
+                    ContentValues cv = new ContentValues();
                     if (change.read != null) {
                         cv.put(MessageColumns.FLAG_READ, change.read);
                     }
@@ -1194,8 +1199,8 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     }
                     ops.add(ContentProviderOperation.newUpdate(
                             ContentUris.withAppendedId(Message.CONTENT_URI, change.id))
-                                .withValues(cv)
-                                .build());
+                            .withValues(cv)
+                            .build());
                 }
             }
 
@@ -1204,7 +1209,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             mailboxValues.put(Mailbox.SYNC_KEY, mMailbox.mSyncKey);
             ops.add(ContentProviderOperation.newUpdate(
                     ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailbox.mId))
-                        .withValues(mailboxValues).build());
+                    .withValues(mailboxValues).build());
 
             // No commits if we're stopped
             synchronized (mService.getSynchronizer()) {
@@ -1215,7 +1220,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 } catch (TransactionTooLargeException e) {
                     Log.w(TAG, "Transaction failed on fetched message; retrying...");
                     commitImpl(++tryCount);
-                 } catch (RemoteException e) {
+                } catch (RemoteException e) {
                     // There is nothing to be done here; fail by returning null
                 } catch (OperationApplicationException e) {
                     // There is nothing to be done here; fail by returning null
