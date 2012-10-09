@@ -1115,10 +1115,10 @@ public class ExchangeService extends Service implements Runnable {
         }
 
         /**
-         * We double the holdDelay from 15 seconds through 4 mins
+         * We double the holdDelay from 15 seconds through 8 mins
          */
         void escalate() {
-            if (holdDelay < HOLD_DELAY_MAXIMUM) {
+            if (holdDelay <= HOLD_DELAY_MAXIMUM) {
                 holdDelay *= 2;
             }
             holdEndTime = System.currentTimeMillis() + holdDelay;
@@ -2628,6 +2628,7 @@ public class ExchangeService extends Service implements Runnable {
                         if (syncError != null) {
                             syncError.escalate();
                             log(m.mDisplayName + " held for " + syncError.holdDelay + "ms");
+                            return;
                         } else {
                             log(m.mDisplayName + " added to syncErrorMap, hold for 15s");
                         }
