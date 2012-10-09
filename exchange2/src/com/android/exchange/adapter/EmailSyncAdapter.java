@@ -76,6 +76,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.TimeZone;
 
 /**
@@ -109,6 +110,8 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int FETCH_REQUEST_SERVER_ID = 1;
 
     private static final String EMAIL_WINDOW_SIZE = "5";
+
+    private static final int MAX_NUM_FETCH_SIZE_REDUCTIONS = 5;
 
     @VisibleForTesting
     static final int LAST_VERB_REPLY = 1;
@@ -1116,9 +1119,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             commitImpl(0);
         }
 
-        public void commitImpl(int tryCount) {
+        public void commitImpl(final int tryCount) {
             // Use a batch operation to handle the changes
-            ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+            final ArrayList<ContentProviderOperation> ops =
+                    new ArrayList<ContentProviderOperation>();
 
             // Maximum size of message text per fetch
             int numFetched = fetchedEmails.size();
@@ -1166,6 +1170,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     ops.add(ContentProviderOperation.newUpdate(Body.CONTENT_URI)
                             .withSelection(Body.MESSAGE_KEY + "=?", mBindArgument)
                             .withValue(Body.TEXT_CONTENT, msg.mText)
+                            .build());
+                    ops.add(ContentProviderOperation.newUpdate(Body.CONTENT_URI)
+                            .withSelection(Body.MESSAGE_KEY + "=?", mBindArgument)
+                            .withValue(Body.HTML_CONTENT, msg.mHtml)
                             .build());
                     ops.add(ContentProviderOperation.newUpdate(Message.CONTENT_URI)
                             .withSelection(EmailContent.RECORD_ID + "=?", mBindArgument)
@@ -1219,13 +1227,73 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
                 } catch (TransactionTooLargeException e) {
                     Log.w(TAG, "Transaction failed on fetched message; retrying...");
-                    commitImpl(++tryCount);
+
+                    if (tryCount <= MAX_NUM_FETCH_SIZE_REDUCTIONS || ops.size() == 1) {
+                        // We haven't tried reducing the message body size enough yet. Try this
+                        // commit again.
+                        commitImpl(tryCount + 1);
+                    } else {
+                        // We have tried too many time to with just reducing the fetch size.
+                        // Try applying the batch operations in smaller chunks
+                        applyBatchOperations(ops);
+                    }
                 } catch (RemoteException e) {
                     // There is nothing to be done here; fail by returning null
                 } catch (OperationApplicationException e) {
                     // There is nothing to be done here; fail by returning null
                 }
             }
+        }
+    }
+
+    private void applyBatchOperations(List<ContentProviderOperation> operations) {
+        // Assume that since this method is being called, we want to break this batch up in chunks
+        // First assume that we want to take the list and do it in two chunks
+        int numberOfBatches = 2;
+
+        // Make a copy of the operation list
+        final List<ContentProviderOperation> remainingOperations = new ArrayList(operations);
+
+        // determin the batch size
+        int batchSize = remainingOperations.size() / numberOfBatches;
+        try {
+            while (remainingOperations.size() > 0) {
+                // Ensure that batch size is smaller than the list size
+                if (batchSize > remainingOperations.size()) {
+                    batchSize = remainingOperations.size();
+                }
+
+                final List<ContentProviderOperation> workingBatch;
+                // If the batch size and the list size is the same, just use the whole list
+                if (batchSize == remainingOperations.size()) {
+                    workingBatch = remainingOperations;
+                } else {
+                    // Get the sublist of of the remaining batch that contains only the batch size
+                    workingBatch = remainingOperations.subList(0, batchSize - 1);
+                }
+
+                try {
+                    // This is a waste, but ContentResolver#applyBatch requies an ArrayList, but
+                    // List#subList retuns only a List
+                    final ArrayList<ContentProviderOperation> batch = new ArrayList(workingBatch);
+                    mContentResolver.applyBatch(EmailContent.AUTHORITY, batch);
+
+                    // We successfully applied that batch.  Remove it from the remaining work
+                    workingBatch.clear();
+                } catch (TransactionTooLargeException e) {
+                    if (batchSize == 1) {
+                        Log.w(TAG, "Transaction failed applying batch. smallest possible batch.");
+                        throw e;
+                    }
+                    Log.w(TAG, "Transaction failed applying batch. trying smaller size...");
+                    numberOfBatches++;
+                    batchSize = remainingOperations.size() / numberOfBatches;
+                }
+            }
+        } catch (RemoteException e) {
+            // There is nothing to be done here; fail by returning null
+        } catch (OperationApplicationException e) {
+            // There is nothing to be done here; fail by returning null
         }
     }
 
