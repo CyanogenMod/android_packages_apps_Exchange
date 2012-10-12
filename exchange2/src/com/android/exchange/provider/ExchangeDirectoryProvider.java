@@ -330,8 +330,8 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                         displayName, displayName, Phone.TYPE_WORK, ps.get(GalData.WORK_PHONE));
                 GalContactRow.addPhoneRow(cursor, galProjection, contactId, accountName,
                         displayName, displayName, Phone.TYPE_MOBILE, ps.get(GalData.MOBILE_PHONE));
-                GalContactRow.addNameRow(cursor, galProjection, contactId, accountName, displayName,
-                        ps.get(GalData.FIRST_NAME), ps.get(GalData.LAST_NAME), displayName);
+                GalContactRow.addNameRow(cursor, galProjection, contactId, displayName, accountName,
+                        displayName, ps.get(GalData.FIRST_NAME), ps.get(GalData.LAST_NAME));
                 return cursor;
             }
         }
