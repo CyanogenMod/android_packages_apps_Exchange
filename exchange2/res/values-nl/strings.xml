@@ -43,7 +43,7 @@
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Consumenten-e-mail niet toestaan"</string>
     <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Internet delen niet toestaan"</string>
     <string name="policy_require_smime" msgid="673557150920820590">"SMIME-berichten vereisen"</string>
-    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Het gebruik van Bluetooth beperken"</string>
+    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Het gebruik van bluetooth beperken"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Opgegeven apps niet toestaan"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Alleen opgegeven apps toestaan"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"Tekstgrootte van e-mail beperken"</string>
