@@ -43,8 +43,8 @@ import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.android.calendarcommon.DateException;
-import com.android.calendarcommon.Duration;
+import com.android.calendarcommon2.DateException;
+import com.android.calendarcommon2.Duration;
 import com.android.emailcommon.AccountManagerTypes;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -1721,6 +1721,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             s.data(Tags.CALENDAR_BUSY_STATUS, Integer.toString(busyStatus));
 
             // Meeting status, 0 = appointment, 1 = meeting, 3 = attendee
+            // In JB, organizer won't be an attendee
+            if (organizerEmail == null && entityValues.containsKey(Events.ORGANIZER)) {
+                organizerEmail = entityValues.getAsString(Events.ORGANIZER);
+            }
             if (mEmailAddress.equalsIgnoreCase(organizerEmail)) {
                 s.data(Tags.CALENDAR_MEETING_STATUS, hasAttendees ? "1" : "0");
             } else {
