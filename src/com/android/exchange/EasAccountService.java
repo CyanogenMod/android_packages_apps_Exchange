@@ -696,8 +696,6 @@ public class EasAccountService extends EasSyncService {
                         }
 
                         if (code == HttpStatus.SC_OK) {
-                            // Make sure to clear out any pending sync errors
-                            ExchangeService.removeFromSyncErrorMap(mMailboxId);
                             if (!resp.isEmpty()) {
                                 InputStream is = resp.getInputStream();
                                 int pingResult = parsePingResult(is, mContentResolver,
@@ -725,6 +723,8 @@ public class EasAccountService extends EasSyncService {
                                     // Act as if we have an IOException (backoff, etc.)
                                     throw new IOException();
                                 }
+                                // Make sure to clear out any pending sync errors
+                                ExchangeService.removeFromSyncErrorMap(mMailboxId);
                             } else {
                                 userLog("Ping returned empty result; throwing IOException");
                                 // Act as if we have an IOException (backoff, etc.)
