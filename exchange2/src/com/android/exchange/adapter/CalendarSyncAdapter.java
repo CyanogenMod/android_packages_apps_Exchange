@@ -46,8 +46,11 @@ import android.util.Log;
 import com.android.calendarcommon2.DateException;
 import com.android.calendarcommon2.Duration;
 import com.android.emailcommon.AccountManagerTypes;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.SyncWindow;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
@@ -222,11 +225,39 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         ExchangeService.unregisterCalendarObservers();
     }
 
+    // Create a string getCalFilter() which uses the same Eas.FILTER as Email.
+    // Not all sync windows allowed for calendar, so limited to 2 weeks, 1 month, and all
+    private String getCalFilter() {
+        int syncLookback = mMailbox.mSyncLookback;
+        if (syncLookback == SyncWindow.SYNC_WINDOW_UNKNOWN
+                || mMailbox.mType == Mailbox.TYPE_INBOX) {
+            syncLookback = mAccount.mSyncLookback;
+        }
+        switch (syncLookback) {
+            case SyncWindow.SYNC_WINDOW_AUTO:
+                return Eas.FILTER_2_WEEKS;
+            case SyncWindow.SYNC_WINDOW_1_DAY:
+                return Eas.FILTER_2_WEEKS;
+            case SyncWindow.SYNC_WINDOW_3_DAYS:
+                return Eas.FILTER_2_WEEKS;
+            case SyncWindow.SYNC_WINDOW_1_WEEK:
+                return Eas.FILTER_2_WEEKS;
+            case SyncWindow.SYNC_WINDOW_2_WEEKS:
+                return Eas.FILTER_2_WEEKS;
+            case SyncWindow.SYNC_WINDOW_1_MONTH:
+                return Eas.FILTER_1_MONTH;
+            case SyncWindow.SYNC_WINDOW_ALL:
+                return Eas.FILTER_ALL;
+            default:
+                return Eas.FILTER_2_WEEKS;
+        }
+    }
+
     @Override
     public void sendSyncOptions(Double protocolVersion, Serializer s, boolean initialSync)
             throws IOException  {
         if (!initialSync) {
-            setPimSyncOptions(protocolVersion, Eas.FILTER_2_WEEKS, s);
+            setPimSyncOptions(protocolVersion, getCalFilter(), s);
         }
     }
 
