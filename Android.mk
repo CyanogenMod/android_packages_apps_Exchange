@@ -20,16 +20,19 @@ include $(CLEAR_VARS)
 #
 LOCAL_MODULE_TAGS := optional
 
-res_dir := res build/res
+# Include res dir from emailcommon
+emailcommon_dir := ../Email/emailcommon
+res_dir := res $(emailcommon_dir)/res build/res
 
 LOCAL_RESOURCE_DIR := $(addprefix $(LOCAL_PATH)/, $(res_dir))
 
 LOCAL_AAPT_FLAGS := --auto-add-overlay
+LOCAL_AAPT_FLAGS += --extra-packages com.android.emailcommon
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_SRC_FILES += $(call all-java-files-under, build/src)
 
-LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon2 com.android.emailsync
+LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon com.android.emailsync
 LOCAL_STATIC_JAVA_LIBRARIES += calendar-common
 
 LOCAL_PACKAGE_NAME := Exchange2
