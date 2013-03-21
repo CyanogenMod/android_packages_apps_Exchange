@@ -706,6 +706,11 @@ public class ExchangeService extends SyncManager {
             @Override
             public void newAccount(long acctId) {
                 Account acct = Account.restoreAccountWithId(getContext(), acctId);
+                if (acct == null) {
+                    // This account is in a bad state; don't create the mailbox.
+                    Log.e(TAG, "Cannot initialize bad acctId: " + acctId);
+                    return;
+                }
                 Mailbox main = new Mailbox();
                 main.mDisplayName = Eas.ACCOUNT_MAILBOX_PREFIX;
                 main.mServerId = Eas.ACCOUNT_MAILBOX_PREFIX + System.nanoTime();
@@ -738,7 +743,7 @@ public class ExchangeService extends SyncManager {
                 return new EasSyncService(context, m);
         }
     }
-    
+
     @Override
     public String getAccountsSelector() {
         if (mEasAccountSelector == null) {
