@@ -128,14 +128,19 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         // Find the (EmailProvider) account associated with this email address
-        Cursor accountCursor =
+        final Cursor accountCursor =
             cr.query(com.android.emailcommon.provider.Account.CONTENT_URI, ID_PROJECTION,
                 AccountColumns.EMAIL_ADDRESS + "=?", new String[] {account.name}, null);
+        if (accountCursor == null) {
+            Log.e(TAG, "null account cursor in ContactsSyncAdapterService");
+            return;
+        }
+
         try {
             if (accountCursor.moveToFirst()) {
-                long accountId = accountCursor.getLong(0);
+                final long accountId = accountCursor.getLong(0);
                 // Now, find the contacts mailbox associated with the account
-                Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_PROJECTION,
+                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_PROJECTION,
                         ACCOUNT_AND_TYPE_CONTACTS, new String[] {Long.toString(accountId)}, null);
                 try {
                      if (mailboxCursor.moveToFirst()) {

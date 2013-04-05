@@ -116,22 +116,27 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         // Find the (EmailProvider) account associated with this email address
-        Cursor accountCursor =
+        final Cursor accountCursor =
             cr.query(com.android.emailcommon.provider.Account.CONTENT_URI,
                     EmailContent.ID_PROJECTION, AccountColumns.EMAIL_ADDRESS + "=?",
                     new String[] {account.name}, null);
+        if (accountCursor == null) {
+            Log.e(TAG, "Null account cursor in CalendarSyncAdapterService");
+            return;
+        }
+
         try {
             if (accountCursor.moveToFirst()) {
-                long accountId = accountCursor.getLong(0);
+                final long accountId = accountCursor.getLong(0);
                 // Now, find the calendar mailbox associated with the account
-                Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_SYNC_KEY_PROJECTION,
+                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_SYNC_KEY_PROJECTION,
                         ACCOUNT_AND_TYPE_CALENDAR, new String[] {Long.toString(accountId)}, null);
                 try {
                      if (mailboxCursor.moveToFirst()) {
                         if (logging) {
                             Log.d(TAG, "Upload sync requested for " + account.name);
                         }
-                        String syncKey = mailboxCursor.getString(ID_SYNC_KEY_SYNC_KEY);
+                        final String syncKey = mailboxCursor.getString(ID_SYNC_KEY_SYNC_KEY);
                         if ((syncKey == null) || (syncKey.equals("0"))) {
                             if (logging) {
                                 Log.d(TAG, "Can't sync; mailbox in initial state");
