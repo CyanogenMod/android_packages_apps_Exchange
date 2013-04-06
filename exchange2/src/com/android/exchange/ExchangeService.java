@@ -356,7 +356,10 @@ public class ExchangeService extends Service implements Runnable {
 
         @Override
         public Bundle autoDiscover(String userName, String password) throws RemoteException {
-            return new EasSyncService().tryAutodiscover(userName, password);
+            EasSyncService service = new EasSyncService();
+            // Must init the mContext that is used in getHttpClient.
+            service.mContext = ExchangeService.this;
+            return service.tryAutodiscover(userName, password);
         }
 
         @Override
