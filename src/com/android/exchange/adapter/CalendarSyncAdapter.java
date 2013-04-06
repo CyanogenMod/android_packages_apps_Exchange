@@ -382,7 +382,9 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 Integer ade = cv.getAsInteger(Events.ORIGINAL_ALL_DAY);
                 if (ade != null && ade != 0) {
                     long exceptionTime = cv.getAsLong(Events.ORIGINAL_INSTANCE_TIME);
-                    GregorianCalendar cal = new GregorianCalendar(UTC_TIMEZONE);
+                    final GregorianCalendar cal = new GregorianCalendar(UTC_TIMEZONE);
+                    exceptionTime = CalendarUtilities.getUtcAllDayCalendarTime(exceptionTime,
+                            mLocalTimeZone);
                     cal.setTimeInMillis(exceptionTime);
                     cal.set(GregorianCalendar.HOUR_OF_DAY, 0);
                     cal.set(GregorianCalendar.MINUTE, 0);
