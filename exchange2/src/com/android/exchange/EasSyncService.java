@@ -23,6 +23,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
 import android.database.Cursor;
+import android.net.Proxy;
 import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.Build;
@@ -77,12 +78,14 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.conn.params.ConnRouteParams;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -1239,6 +1242,17 @@ public class EasSyncService extends AbstractSyncService {
         HttpConnectionParams.setSoTimeout(params, timeout);
         HttpConnectionParams.setSocketBufferSize(params, 8192);
         HttpClient client = new DefaultHttpClient(getClientConnectionManager(), params);
+
+        if (mTrustSsl) {
+            HttpHost httpHost = Proxy.getPreferredHttpHost(mContext, "httpts://" + mHostAddress);
+            if (httpHost != null) {
+                if (Eas.USER_LOG) {
+                    userLog("Using proxy:" + httpHost.toString());
+                }
+                ConnRouteParams.setDefaultProxy(client.getParams(), httpHost);
+            }
+        }
+
         return client;
     }
 
