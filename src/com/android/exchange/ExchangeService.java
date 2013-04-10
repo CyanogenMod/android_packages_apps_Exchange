@@ -153,7 +153,8 @@ public class ExchangeService extends SyncManager {
         }
 
         @Override
-        public void startSync(long mailboxId, boolean userRequest) throws RemoteException {
+        public void startSync(long mailboxId, boolean userRequest, int deltaMessageCount)
+                throws RemoteException {
             SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return;
             checkExchangeServiceServiceRunning();
