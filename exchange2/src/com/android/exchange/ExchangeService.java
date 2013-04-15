@@ -645,7 +645,7 @@ public class ExchangeService extends Service implements Runnable {
         }
     }
 
-    private boolean onSecurityHold(Account account) {
+    static boolean onSecurityHold(Account account) {
         return (account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0;
     }
 
@@ -693,7 +693,7 @@ public class ExchangeService extends Service implements Runnable {
                                     PolicyServiceProxy.setAccountHoldFlag(ExchangeService.this,
                                             account, false);
                                     log("isActive true; release hold for " + account.mDisplayName);
-                                }
+				}
                             }
                         }
                     }
@@ -2165,7 +2165,11 @@ public class ExchangeService extends Service implements Runnable {
             if (policy == null) {
                 policy = Policy.restorePolicyWithId(INSTANCE, policyKey);
                 account.mPolicy = policy;
-                if (!PolicyServiceProxy.isActive(exchangeService, policy)) return false;
+                if (!PolicyServiceProxy.isActive(exchangeService, policy)) {
+                    PolicyServiceProxy.setAccountHoldFlag(exchangeService, account, true);
+                    log("canAutoSync; policies not active, set hold flag");
+                    return false;
+                }
             }
             if (policy != null && policy.mRequireManualSyncWhenRoaming && networkInfo.isRoaming()) {
                 return false;
@@ -2283,7 +2287,7 @@ public class ExchangeService extends Service implements Runnable {
         if (c == null) throw new ProviderUnavailableException();
         try {
             while (c.moveToNext()) {
-                long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
+                final long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
                 AbstractSyncService service = null;
                 synchronized (sSyncLock) {
                     service = mServiceMap.get(mailboxId);
@@ -2292,12 +2296,6 @@ public class ExchangeService extends Service implements Runnable {
                     // Get the cached account
                     Account account = getAccountById(c.getInt(Mailbox.CONTENT_ACCOUNT_KEY_COLUMN));
                     if (account == null) continue;
-
-                    // We handle a few types of mailboxes specially
-                    int mailboxType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
-                    if (!isMailboxSyncable(account, mailboxType)) {
-                        continue;
-                    }
 
                     // Check whether we're in a hold (temporary or permanent)
                     SyncError syncError = mSyncErrorMap.get(mailboxId);
@@ -2316,6 +2314,18 @@ public class ExchangeService extends Service implements Runnable {
                             // Keep the error around, but clear the end time
                             syncError.holdEndTime = 0;
                         }
+                    }
+
+                    // We handle a few types of mailboxes specially
+                    final int mailboxType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
+                    if (!isMailboxSyncable(account, mailboxType)) {
+                        // If there isn't an entry in the sync error map, in case of a security
+                        // hold, add one to allow the next sync to be deferred
+                        if (syncError == null && onSecurityHold(account)) {
+                            mSyncErrorMap.put(mailboxId,
+                                    new SyncError(AbstractSyncService.EXIT_SECURITY_FAILURE, true));
+                        }
+                        continue;
                     }
 
                     // Otherwise, we use the sync interval
