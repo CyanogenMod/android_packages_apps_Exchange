@@ -310,7 +310,15 @@ public class EasAccountService extends EasSyncService {
 
             while (!isStopped()) {
                 // If we're not allowed to sync (e.g. roaming policy), leave now
-                if (!ExchangeService.canAutoSync(mAccount)) return;
+                if (!ExchangeService.canAutoSync(mAccount)) {
+                    if (ExchangeService.onSecurityHold(mAccount)) {
+                        mExitStatus = EasSyncService.EXIT_SECURITY_FAILURE;
+                    } else {
+                        // Use backoff rules, etc.
+                        mExitStatus = EasSyncService.EXIT_IO_ERROR;
+                    }
+                    return;
+                }
                 userLog("Sending Account syncKey: ", mAccount.mSyncKey);
                 Serializer s = new Serializer();
                 s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
