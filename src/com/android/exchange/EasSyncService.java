@@ -1278,12 +1278,17 @@ public class EasSyncService extends AbstractSyncService {
      * @return the HttpResponse
      * @throws IOException
      */
-    protected EasResponse executePostWithTimeout(HttpClient client, HttpPost method, int timeout,
-            boolean isPingCommand) throws IOException {
+    protected EasResponse executePostWithTimeout(HttpClient client, HttpPost method,
+            final int timeout, final boolean isPingCommand) throws IOException {
+        final boolean hasWakeLock;
         synchronized(getSynchronizer()) {
+            hasWakeLock = ExchangeService.isHoldingWakeLock(mMailboxId);
+            if (isPingCommand && !hasWakeLock) {
+                Log.e(TAG, "executePostWithTimeout (ping) without holding wakelock");
+            }
             mPendingPost = method;
             long alarmTime = timeout + WATCHDOG_TIMEOUT_ALLOWANCE;
-            if (isPingCommand) {
+            if (isPingCommand && hasWakeLock) {
                 ExchangeService.runAsleep(mMailboxId, alarmTime);
             } else {
                 ExchangeService.setWatchdogAlarm(mMailboxId, alarmTime);
@@ -1293,7 +1298,7 @@ public class EasSyncService extends AbstractSyncService {
             return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
         } finally {
             synchronized(getSynchronizer()) {
-                if (isPingCommand) {
+                if (isPingCommand && hasWakeLock) {
                     ExchangeService.runAwake(mMailboxId);
                 } else {
                     ExchangeService.clearWatchdogAlarm(mMailboxId);
