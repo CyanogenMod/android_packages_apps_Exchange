@@ -152,6 +152,11 @@ public class ExchangeService extends SyncManager {
             return new EasSyncService().tryAutodiscover(ExchangeService.this, hostAuth);
         }
 
+        /**
+         * This is the remote call from the Email app, currently unused.
+         * TODO: remove this when it's been deleted from IEmailService.aidl.
+         */
+        @Deprecated
         @Override
         public void startSync(long mailboxId, boolean userRequest, int deltaMessageCount)
                 throws RemoteException {

@@ -20,6 +20,9 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailsync.AbstractSyncService;
+import com.android.emailsync.SyncManager;
+import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 
 import android.accounts.Account;
@@ -85,37 +88,62 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     /**
      * Partial integration with system SyncManager; we tell our EAS ExchangeService to start an
      * inbox sync when we get the signal from the system SyncManager.
+     * This is the path for all syncs other than push.
+     * TODO: Make push use this as well.
      */
     private static void performSync(Context context, Account account, Bundle extras,
             String authority, ContentProviderClient provider, SyncResult syncResult)
             throws OperationCanceledException {
-        ContentResolver cr = context.getContentResolver();
         Log.i(TAG, "performSync");
 
-        // Find the (EmailProvider) account associated with this email address
-        Cursor accountCursor =
-            cr.query(com.android.emailcommon.provider.Account.CONTENT_URI,
-                    ID_PROJECTION, AccountColumns.EMAIL_ADDRESS + "=?", new String[] {account.name},
-                    null);
-        try {
-            if (accountCursor.moveToFirst()) {
-                long accountId = accountCursor.getLong(0);
-                // Now, find the inbox associated with the account
-                Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_PROJECTION,
-                        ACCOUNT_AND_TYPE_INBOX, new String[] {Long.toString(accountId)}, null);
-                try {
-                     if (mailboxCursor.moveToFirst()) {
-                        Log.i(TAG, "Mail sync requested for " + account.name);
-                        // Ask for a sync from our sync manager
-                        ExchangeService.serviceRequest(mailboxCursor.getLong(0),
-                                ExchangeService.SYNC_KICK);
+        Mailbox mailbox = null;
+        final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, Mailbox.NO_MAILBOX);
+        if (mailboxId != Mailbox.NO_MAILBOX) {
+            mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
+        } else {
+            // No mailbox id means we should sync the inbox.
+            // TODO: Or the account?
+            // Find the (EmailProvider) account associated with this email address
+            ContentResolver cr = context.getContentResolver();
+            final Cursor accountCursor =
+                    cr.query(com.android.emailcommon.provider.Account.CONTENT_URI, ID_PROJECTION,
+                            AccountColumns.EMAIL_ADDRESS + "=?", new String[] {account.name}, null);
+            try {
+                if (accountCursor.moveToFirst()) {
+                    final long accountId = accountCursor.getLong(0);
+                    // Now, find the inbox associated with the account
+                    final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_PROJECTION,
+                            ACCOUNT_AND_TYPE_INBOX, new String[] {Long.toString(accountId)}, null);
+                    try {
+                         if (mailboxCursor.moveToFirst()) {
+                            Log.i(TAG, "Mail sync requested for " + account.name);
+                            mailbox = Mailbox.restoreMailboxOfType(context, accountId,
+                                    Mailbox.TYPE_INBOX);
+                        }
+                    } finally {
+                        mailboxCursor.close();
                     }
-                } finally {
-                    mailboxCursor.close();
                 }
+            } finally {
+                accountCursor.close();
             }
-        } finally {
-            accountCursor.close();
         }
+        if (mailbox == null) {
+            // TODO: Better error handling?
+            return;
+        }
+        // TODO: This currently excludes Outbox, but that's still being included in the push
+        // mailbox loop (SyncManager.checkMailboxes). So this works for now, but eventually it
+        // won't.
+        if (!SyncManager.isSyncable(mailbox)) {
+            // TODO: fix the UI callbacks.
+            //sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
+            //sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.SUCCESS, 0);
+            return;
+        }
+        // TODO: Clean this up further.
+        final AbstractSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
+        service.mSyncReason = SyncManager.SYNC_KICK;
+        service.run();
     }
 }
