@@ -363,6 +363,7 @@ public class ExchangeService extends SyncManager {
      * @return the list of Accounts
      * @throws ProviderUnavailableException if the list of Accounts cannot be guaranteed valid
      */
+    @Override
     public AccountList collectAccounts(Context context, AccountList accounts) {
         ContentResolver resolver = context.getContentResolver();
         Cursor c = resolver.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION, null, null,
@@ -562,6 +563,7 @@ public class ExchangeService extends SyncManager {
     /**
      * Blocking call to the account reconciler
      */
+    @Override
     public void runAccountReconcilerSync(Context context) {
         alwaysLog("Reconciling accounts...");
         new AccountServiceProxy(context).reconcileAccounts(
@@ -596,7 +598,7 @@ public class ExchangeService extends SyncManager {
      * This would work on a real device as well, but it would be better to use the "real" id if
      * it's available
      */
-    static public String getDeviceId(Context context) throws IOException {
+    static public String getDeviceId(Context context) {
         if (sDeviceId == null) {
             sDeviceId = new AccountServiceProxy(context).getDeviceId();
             alwaysLog("Received deviceId from Email app: " + sDeviceId);

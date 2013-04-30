@@ -534,7 +534,6 @@ public class EasAccountService extends EasSyncService {
         }
     }
 
-    @Override
     protected EasResponse sendPing(byte[] bytes, int heartbeat) throws IOException {
        Thread.currentThread().setName(mAccount.mDisplayName + ": Ping");
        if (Eas.USER_LOG) {

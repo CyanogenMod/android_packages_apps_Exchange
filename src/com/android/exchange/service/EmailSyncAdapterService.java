@@ -23,10 +23,8 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.SyncManager;
 import com.android.exchange.EasSyncService;
-import com.android.exchange.ExchangeService;
 
 import android.accounts.Account;
-import android.accounts.OperationCanceledException;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
@@ -40,49 +38,38 @@ import android.util.Log;
 
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private static final String TAG = "EAS EmailSyncAdapterService";
-    private static SyncAdapterImpl sSyncAdapter = null;
-    private static final Object sSyncAdapterLock = new Object();
-
     private static final String[] ID_PROJECTION = new String[] {EmailContent.RECORD_ID};
     private static final String ACCOUNT_AND_TYPE_INBOX =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_INBOX;
+
+    private SyncAdapterImpl mSyncAdapter = null;
 
     public EmailSyncAdapterService() {
         super();
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
-        private Context mContext;
-
         public SyncAdapterImpl(Context context) {
             super(context, true /* autoInitialize */);
-            mContext = context;
         }
 
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            try {
-                EmailSyncAdapterService.performSync(mContext, account, extras,
-                        authority, provider, syncResult);
-            } catch (OperationCanceledException e) {
-            }
+            EmailSyncAdapterService.performSync(getContext(), account, extras, authority,
+                    provider, syncResult);
         }
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        synchronized (sSyncAdapterLock) {
-            if (sSyncAdapter == null) {
-                sSyncAdapter = new SyncAdapterImpl(getApplicationContext());
-            }
-        }
+        mSyncAdapter = new SyncAdapterImpl(getApplicationContext());
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        return sSyncAdapter.getSyncAdapterBinder();
+        return mSyncAdapter.getSyncAdapterBinder();
     }
 
     /**
@@ -92,8 +79,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
      * TODO: Make push use this as well.
      */
     private static void performSync(Context context, Account account, Bundle extras,
-            String authority, ContentProviderClient provider, SyncResult syncResult)
-            throws OperationCanceledException {
+            String authority, ContentProviderClient provider, SyncResult syncResult) {
         Log.i(TAG, "performSync");
 
         Mailbox mailbox = null;

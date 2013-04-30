@@ -395,8 +395,6 @@ public class EasSyncService extends AbstractSyncService {
         try {
             svc.setConnectionParameters(ha);
             svc.mDeviceId = ExchangeService.getDeviceId(context);
-        } catch (IOException e) {
-            return null;
         } catch (CertificateException e) {
             return null;
         }
@@ -1250,15 +1248,6 @@ public class EasSyncService extends AbstractSyncService {
 
     public EasResponse sendHttpClientPost(String cmd, byte[] bytes) throws IOException {
         return sendHttpClientPost(cmd, new ByteArrayEntity(bytes), COMMAND_TIMEOUT);
-    }
-
-    protected EasResponse sendHttpClientPost(String cmd, HttpEntity entity) throws IOException {
-        return sendHttpClientPost(cmd, entity, COMMAND_TIMEOUT);
-    }
-
-    protected EasResponse sendPing(byte[] bytes, int heartbeat) throws IOException {
-       Thread.currentThread().setName(mAccount.mDisplayName + ": Ping");
-       return sendHttpClientPost(PING_COMMAND, new ByteArrayEntity(bytes), (heartbeat+5)*SECONDS);
     }
 
     /**

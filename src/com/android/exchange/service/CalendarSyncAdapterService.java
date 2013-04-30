@@ -17,7 +17,6 @@
 package com.android.exchange.service;
 
 import android.accounts.Account;
-import android.accounts.OperationCanceledException;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
@@ -39,9 +38,6 @@ import com.android.exchange.ExchangeService;
 
 public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
     private static final String TAG = "EAS CalendarSyncAdapterService";
-    private static SyncAdapterImpl sSyncAdapter = null;
-    private static final Object sSyncAdapterLock = new Object();
-
     private static final String ACCOUNT_AND_TYPE_CALENDAR =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CALENDAR;
     private static final String DIRTY_IN_ACCOUNT =
@@ -51,42 +47,34 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
     private static final int ID_SYNC_KEY_MAILBOX_ID = 0;
     private static final int ID_SYNC_KEY_SYNC_KEY = 1;
 
+    private SyncAdapterImpl mSyncAdapter = null;
+
     public CalendarSyncAdapterService() {
         super();
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
-        private Context mContext;
-
         public SyncAdapterImpl(Context context) {
             super(context, true /* autoInitialize */);
-            mContext = context;
         }
 
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            try {
-                CalendarSyncAdapterService.performSync(mContext, account, extras,
-                        authority, provider, syncResult);
-            } catch (OperationCanceledException e) {
-            }
+            CalendarSyncAdapterService.performSync(getContext(), account, extras, authority,
+                    provider, syncResult);
         }
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        synchronized (sSyncAdapterLock) {
-            if (sSyncAdapter == null) {
-                sSyncAdapter = new SyncAdapterImpl(getApplicationContext());
-            }
-        }
+        mSyncAdapter = new SyncAdapterImpl(this);
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        return sSyncAdapter.getSyncAdapterBinder();
+        return mSyncAdapter.getSyncAdapterBinder();
     }
 
     /**
@@ -96,8 +84,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
      * be put in place at a later time.
      */
     private static void performSync(Context context, Account account, Bundle extras,
-            String authority, ContentProviderClient provider, SyncResult syncResult)
-            throws OperationCanceledException {
+            String authority, ContentProviderClient provider, SyncResult syncResult) {
         ContentResolver cr = context.getContentResolver();
         boolean logging = Eas.USER_LOG;
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
