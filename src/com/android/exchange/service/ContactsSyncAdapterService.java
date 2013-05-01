@@ -27,12 +27,10 @@ import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
@@ -43,10 +41,13 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
     private static final String ACCOUNT_AND_TYPE_CONTACTS =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CONTACTS;
 
-    private SyncAdapterImpl mSyncAdapter = null;
-
     public ContactsSyncAdapterService() {
         super();
+    }
+
+    @Override
+    protected AbstractThreadedSyncAdapter newSyncAdapter() {
+        return new SyncAdapterImpl(this);
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
@@ -60,17 +61,6 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
             ContactsSyncAdapterService.performSync(getContext(), account, extras, authority,
                     provider, syncResult);
         }
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        mSyncAdapter = new SyncAdapterImpl(this);
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return mSyncAdapter.getSyncAdapterBinder();
     }
 
     private static boolean hasDirtyRows(ContentResolver resolver, Uri uri, String dirtyColumn) {

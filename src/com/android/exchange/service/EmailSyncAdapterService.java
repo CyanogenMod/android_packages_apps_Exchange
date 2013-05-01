@@ -29,11 +29,9 @@ import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
 
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
@@ -42,10 +40,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private static final String ACCOUNT_AND_TYPE_INBOX =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_INBOX;
 
-    private SyncAdapterImpl mSyncAdapter = null;
-
     public EmailSyncAdapterService() {
         super();
+    }
+
+    @Override
+    protected AbstractThreadedSyncAdapter newSyncAdapter() {
+        return new SyncAdapterImpl(this);
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
@@ -59,17 +60,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             EmailSyncAdapterService.performSync(getContext(), account, extras, authority,
                     provider, syncResult);
         }
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        mSyncAdapter = new SyncAdapterImpl(getApplicationContext());
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return mSyncAdapter.getSyncAdapterBinder();
     }
 
     /**

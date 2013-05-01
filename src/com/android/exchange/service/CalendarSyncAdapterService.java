@@ -21,11 +21,9 @@ import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.provider.CalendarContract.Events;
 import android.util.Log;
 
@@ -47,10 +45,13 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
     private static final int ID_SYNC_KEY_MAILBOX_ID = 0;
     private static final int ID_SYNC_KEY_SYNC_KEY = 1;
 
-    private SyncAdapterImpl mSyncAdapter = null;
-
     public CalendarSyncAdapterService() {
         super();
+    }
+
+    @Override
+    protected AbstractThreadedSyncAdapter newSyncAdapter() {
+        return new SyncAdapterImpl(this);
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
@@ -64,17 +65,6 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             CalendarSyncAdapterService.performSync(getContext(), account, extras, authority,
                     provider, syncResult);
         }
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        mSyncAdapter = new SyncAdapterImpl(this);
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return mSyncAdapter.getSyncAdapterBinder();
     }
 
     /**
