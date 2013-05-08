@@ -1189,13 +1189,10 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             while (nextTag(Tags.SYNC_COMMANDS) != END) {
                 if (tag == Tags.SYNC_ADD) {
                     addParser(mOps);
-                    incrementChangeCount();
                 } else if (tag == Tags.SYNC_DELETE) {
                     deleteParser(mOps);
-                    incrementChangeCount();
                 } else if (tag == Tags.SYNC_CHANGE) {
                     changeParser(mOps);
-                    incrementChangeCount();
                 } else
                     skipTag();
             }

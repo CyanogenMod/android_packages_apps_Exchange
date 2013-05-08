@@ -304,7 +304,7 @@ public class ExchangeService extends SyncManager {
             // Stop any running syncs
             ExchangeService.stopAccountSyncs(accountId);
             // Delete the data
-            ExchangeService.deleteAccountPIMData(accountId);
+            ExchangeService.deleteAccountPIMData(ExchangeService.this, accountId);
             long accountMailboxId = Mailbox.findMailboxOfType(exchangeService, accountId,
                     Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
             if (accountMailboxId != Mailbox.NO_MAILBOX) {
@@ -406,20 +406,18 @@ public class ExchangeService extends SyncManager {
         return sCallbackProxy;
     }
 
-    public static void deleteAccountPIMData(long accountId) {
-        SyncManager exchangeService = INSTANCE;
-        if (exchangeService == null) return;
+    public static void deleteAccountPIMData(final Context context, final long accountId) {
         Mailbox mailbox =
-            Mailbox.restoreMailboxOfType(exchangeService, accountId, Mailbox.TYPE_CONTACTS);
+            Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CONTACTS);
         if (mailbox != null) {
-            EasSyncService service = EasSyncService.getServiceForMailbox(exchangeService, mailbox);
+            EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
             ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
             adapter.wipe();
         }
         mailbox =
-            Mailbox.restoreMailboxOfType(exchangeService, accountId, Mailbox.TYPE_CALENDAR);
+            Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CALENDAR);
         if (mailbox != null) {
-            EasSyncService service = EasSyncService.getServiceForMailbox(exchangeService, mailbox);
+            EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
             CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
             adapter.wipe();
         }

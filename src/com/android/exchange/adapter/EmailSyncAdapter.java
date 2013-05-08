@@ -21,6 +21,7 @@ import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.net.Uri;
@@ -117,30 +118,17 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     @VisibleForTesting
     static final int LAST_VERB_FORWARD = 3;
 
-    private final String[] mBindArguments = new String[2];
-    private final String[] mBindArgument = new String[1];
-
     @VisibleForTesting
     ArrayList<Long> mDeletedIdList = new ArrayList<Long>();
     @VisibleForTesting
     ArrayList<Long> mUpdatedIdList = new ArrayList<Long>();
     private final ArrayList<FetchRequest> mFetchRequestList = new ArrayList<FetchRequest>();
-    private boolean mFetchNeeded = false;
 
     // Holds the parser's value for isLooping()
     private boolean mIsLooping = false;
 
-    // The policy (if any) for this adapter's Account
-    private final Policy mPolicy;
-
     public EmailSyncAdapter(EasSyncService service) {
         super(service);
-        // If we've got an account with a policy, cache it now
-        if (mAccount.mPolicyKey != 0) {
-            mPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
-        } else {
-            mPolicy = null;
-        }
     }
 
     @Override
@@ -272,12 +260,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     @Override
     public boolean parse(InputStream is) throws IOException, CommandStatusException {
         EasEmailSyncParser p = new EasEmailSyncParser(is, this);
-        mFetchNeeded = false;
         boolean res = p.parse();
         // Hold on to the parser's value for isLooping() to pass back to the service
         mIsLooping = p.isLooping();
         // If we've need a body fetch, or we've just finished one, return true in order to continue
-        if (mFetchNeeded || !mFetchRequestList.isEmpty()) {
+        if (p.fetchNeeded() || !mFetchRequestList.isEmpty()) {
             return true;
         }
 
@@ -482,7 +469,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         return true;
     }
 
-    public class EasEmailSyncParser extends AbstractSyncParser {
+    public static class EasEmailSyncParser extends AbstractSyncParser {
 
         private static final String WHERE_SERVER_ID_AND_MAILBOX_KEY =
             SyncColumns.SERVER_ID + "=? and " + MessageColumns.MAILBOX_KEY + "=?";
@@ -494,14 +481,43 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         private final ArrayList<Long> deletedEmails = new ArrayList<Long>();
         private final ArrayList<ServerChange> changedEmails = new ArrayList<ServerChange>();
 
+        private final Policy mPolicy;
+        private boolean mFetchNeeded = false;
+
         public EasEmailSyncParser(InputStream in, EmailSyncAdapter adapter) throws IOException {
             super(in, adapter);
             mMailboxIdAsString = Long.toString(mMailbox.mId);
+            if (mAccount.mPolicyKey != 0) {
+                mPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+            } else {
+                mPolicy = null;
+            }
+        }
+
+        public EasEmailSyncParser(final Context context, final ContentResolver resolver,
+                final InputStream in, final Mailbox mailbox, final Account account)
+                        throws IOException {
+            super(context, resolver, in, mailbox, account);
+            mMailboxIdAsString = Long.toString(mMailbox.mId);
+            if (mAccount.mPolicyKey != 0) {
+                mPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+            } else {
+                mPolicy = null;
+            }
         }
 
         public EasEmailSyncParser(Parser parser, EmailSyncAdapter adapter) throws IOException {
             super(parser, adapter);
             mMailboxIdAsString = Long.toString(mMailbox.mId);
+            if (mAccount.mPolicyKey != 0) {
+                mPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+            } else {
+                mPolicy = null;
+            }
+        }
+
+        public boolean fetchNeeded() {
+            return mFetchNeeded;
         }
 
         public void addData (Message msg, int endingTag) throws IOException {
@@ -866,7 +882,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 att.mFileName = fileName;
                 att.mLocation = location;
                 att.mMimeType = getMimeTypeFromFileName(fileName);
-                att.mAccountKey = mService.mAccount.mId;
+                att.mAccountKey = mAccount.mId;
                 // Save away the contentId, if we've got one (for inline images); note that the
                 // EAS docs appear to be wrong about the tags used; inline images come with
                 // contentId rather than contentLocation, when sent from Ex03, Ex07, and Ex10
@@ -915,10 +931,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         }
 
         private Cursor getServerIdCursor(String serverId, String[] projection) {
-            mBindArguments[0] = serverId;
-            mBindArguments[1] = mMailboxIdAsString;
             Cursor c = mContentResolver.query(Message.CONTENT_URI, projection,
-                    WHERE_SERVER_ID_AND_MAILBOX_KEY, mBindArguments, null);
+                    WHERE_SERVER_ID_AND_MAILBOX_KEY, new String[] {serverId, mMailboxIdAsString},
+                    null);
             if (c == null) throw new ProviderUnavailableException();
             if (c.getCount() > 1) {
                 userLog("Multiple messages with the same serverId/mailbox: " + serverId);
@@ -1043,13 +1058,10 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             while (nextTag(Tags.SYNC_COMMANDS) != END) {
                 if (tag == Tags.SYNC_ADD) {
                     newEmails.add(addParser());
-                    incrementChangeCount();
                 } else if (tag == Tags.SYNC_DELETE || tag == Tags.SYNC_SOFT_DELETE) {
                     deleteParser(deletedEmails, tag);
-                    incrementChangeCount();
                 } else if (tag == Tags.SYNC_CHANGE) {
                     changeParser(changedEmails);
-                    incrementChangeCount();
                 } else
                     skipTag();
             }
@@ -1071,9 +1083,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         try {
                             if (c.moveToFirst()) {
                                 Long id = c.getLong(Message.ID_PROJECTION_COLUMN);
-                                mService.userLog("Update of " + serverId + " failed; will retry");
-                                mUpdatedIdList.remove(id);
-                                mService.mUpsyncFailed = true;
+                                userLog("Update of " + serverId + " failed; will retry");
+                                //mUpdatedIdList.remove(id);
+                                //mService.mUpsyncFailed = true;
                             }
                         } finally {
                             c.close();
@@ -1100,10 +1112,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                             // 8 = object not found; delete the message from EmailProvider
                             // No other status should be seen in a fetch response, except, perhaps,
                             // for some temporary server failure
-                            mBindArguments[0] = sse.mItemId;
-                            mBindArguments[1] = mMailboxIdAsString;
                             mContentResolver.delete(Message.CONTENT_URI,
-                                    WHERE_SERVER_ID_AND_MAILBOX_KEY, mBindArguments);
+                                    WHERE_SERVER_ID_AND_MAILBOX_KEY,
+                                    new String[] {sse.mItemId, mMailboxIdAsString});
                         }
                     }
                 }
@@ -1152,17 +1163,17 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 // message, and 2) mark the message loaded (i.e. completely loaded)
                 if (id != null) {
                     userLog("Fetched body successfully for ", id);
-                    mBindArgument[0] = id;
+                    final String[] bindArgument = new String[] {id};
                     if ((maxPerFetch > 0) && (msg.mText.length() > maxPerFetch)) {
                         userLog("Truncating message to " + maxPerFetch);
                         msg.mText = msg.mText.substring(0, maxPerFetch) + "...";
                     }
                     ops.add(ContentProviderOperation.newUpdate(Body.CONTENT_URI)
-                            .withSelection(Body.MESSAGE_KEY + "=?", mBindArgument)
+                            .withSelection(Body.MESSAGE_KEY + "=?", bindArgument)
                             .withValue(Body.TEXT_CONTENT, msg.mText)
                             .build());
                     ops.add(ContentProviderOperation.newUpdate(Message.CONTENT_URI)
-                            .withSelection(EmailContent.RECORD_ID + "=?", mBindArgument)
+                            .withSelection(EmailContent.RECORD_ID + "=?", bindArgument)
                             .withValue(Message.FLAG_LOADED, Message.FLAG_LOADED_COMPLETE)
                             .build());
                 }
@@ -1205,20 +1216,16 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailbox.mId))
                         .withValues(mailboxValues).build());
 
-            // No commits if we're stopped
-            synchronized (mService.getSynchronizer()) {
-                if (mService.isStopped()) return;
-                try {
-                    mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
-                    userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
-                } catch (TransactionTooLargeException e) {
-                    Log.w(TAG, "Transaction failed on fetched message; retrying...");
-                    commitImpl(++tryCount);
-                 } catch (RemoteException e) {
-                    // There is nothing to be done here; fail by returning null
-                } catch (OperationApplicationException e) {
-                    // There is nothing to be done here; fail by returning null
-                }
+            try {
+                mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
+                userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
+            } catch (TransactionTooLargeException e) {
+                Log.w(TAG, "Transaction failed on fetched message; retrying...");
+                commitImpl(++tryCount);
+             } catch (RemoteException e) {
+                // There is nothing to be done here; fail by returning null
+            } catch (OperationApplicationException e) {
+                // There is nothing to be done here; fail by returning null
             }
         }
     }
@@ -1246,9 +1253,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
         // Delete any moved messages (since we've just synced the mailbox, and no longer need the
         // placeholder message); this prevents duplicates from appearing in the mailbox.
-        mBindArgument[0] = Long.toString(mMailbox.mId);
         ops.add(ContentProviderOperation.newDelete(Message.CONTENT_URI)
-                .withSelection(WHERE_MAILBOX_KEY_AND_MOVED, mBindArgument).build());
+                .withSelection(WHERE_MAILBOX_KEY_AND_MOVED,
+                        new String[] {Long.toString(mMailbox.mId)}).build());
         // If we've done deletions/updates, clean up the deleted/updated tables
         if (!mDeletedIdList.isEmpty() || !mUpdatedIdList.isEmpty()) {
             addCleanupOps(ops);
@@ -1299,10 +1306,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
      * point is in the Body table; it is when sending messages via SmartForward and SmartReply
      */
     private boolean messageReferenced(ContentResolver cr, long id) {
-        mBindArgument[0] = Long.toString(id);
         // See if this id is referenced in a body
         Cursor c = cr.query(Body.CONTENT_URI, Body.ID_PROJECTION, WHERE_BODY_SOURCE_MESSAGE_KEY,
-                mBindArgument, null);
+                new String[] {Long.toString(id)}, null);
         try {
             return c.moveToFirst();
         } finally {

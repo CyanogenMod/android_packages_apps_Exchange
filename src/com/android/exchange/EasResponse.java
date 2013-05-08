@@ -17,6 +17,8 @@
 
 package com.android.exchange;
 
+import android.net.Uri;
+
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 
 import org.apache.http.Header;
@@ -36,6 +38,10 @@ import java.util.zip.GZIPInputStream;
 public class EasResponse {
     // MSFT's custom HTTP result code indicating the need to provision
     static private final int HTTP_NEED_PROVISIONING = 449;
+
+    // Microsoft-defined HTTP response indicating a redirect to a "better" server.
+    // Why is this a 4xx instead of 3xx? Because EAS considers this a "Device misconfigured" error.
+    static private final int HTTP_REDIRECT = 451;
 
     final HttpResponse mResponse;
     private final HttpEntity mEntity;
@@ -91,6 +97,27 @@ public class EasResponse {
      */
     public static boolean isProvisionError(int code) {
         return (code == HTTP_NEED_PROVISIONING) || (code == HttpStatus.SC_FORBIDDEN);
+    }
+
+    /**
+     * Determine whether an HTTP code represents a redirect error.
+     * @param code the HTTP code returned by the server
+     * @return whether or not the code represents a redirect error
+     */
+    public static boolean isRedirectError(final int code) {
+        return (code == HTTP_REDIRECT);
+    }
+
+    /**
+     * Read the redirect address from this response, if it's present.
+     * @return The new host address, or null if it's not there.
+     */
+    public String getRedirectAddress() {
+        final Header locHeader = getHeader("X-MS-Location");
+        if (locHeader != null) {
+            return Uri.parse(locHeader.getValue()).getHost();
+        }
+        return null;
     }
 
     /**

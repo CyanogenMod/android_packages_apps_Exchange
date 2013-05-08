@@ -96,10 +96,6 @@ public abstract class AbstractSyncAdapter {
         mService.userLog(strings);
     }
 
-    public void incrementChangeCount() {
-        mService.mChangeCount++;
-    }
-
     /**
      * Set sync options common to PIM's (contacts and calendar)
      * @param protocolVersion the protocol version under which we're syncing

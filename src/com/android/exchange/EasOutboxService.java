@@ -404,7 +404,7 @@ public class EasOutboxService extends EasSyncService {
             FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
             // If we're using smartSend, send along our required attachments (which will be empty
             // if the user hasn't added new ones); otherwise, null to send everything in the msg
-            Rfc822Output.writeTo(mContext, msgId, fileOutputStream, smartSend, true,
+            Rfc822Output.writeTo(mContext, msg, fileOutputStream, smartSend, true,
                     smartSend ? requiredAtts : null);
             fileOutputStream.close();
 

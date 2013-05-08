@@ -850,13 +850,10 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             while (nextTag(Tags.SYNC_COMMANDS) != END) {
                 if (tag == Tags.SYNC_ADD) {
                     addParser(ops);
-                    incrementChangeCount();
                 } else if (tag == Tags.SYNC_DELETE) {
                     deleteParser(ops);
-                    incrementChangeCount();
                 } else if (tag == Tags.SYNC_CHANGE) {
                     changeParser(ops);
-                    incrementChangeCount();
                 } else
                     skipTag();
             }

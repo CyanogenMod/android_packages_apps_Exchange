@@ -18,8 +18,10 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentProviderOperation;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.os.RemoteException;
@@ -123,6 +125,14 @@ public class FolderSyncParser extends AbstractSyncParser {
         UNINITIALIZED_PARENT_KEY.put(MailboxColumns.PARENT_KEY, Mailbox.PARENT_KEY_UNINITIALIZED);
     }
 
+    public FolderSyncParser(final Context context, final ContentResolver resolver,
+            final InputStream in, final Account account, final Mailbox mailbox) throws IOException {
+        super(context, resolver, in, mailbox, account);
+        mAccountId = mAccount.mId;
+        mAccountIdAsString = Long.toString(mAccountId);
+        mStatusOnly = false;
+    }
+
     public FolderSyncParser(InputStream in, AbstractSyncAdapter adapter) throws IOException {
         this(in, adapter, false);
     }
@@ -171,7 +181,6 @@ public class FolderSyncParser extends AbstractSyncParser {
                     status = Eas.FOLDER_STATUS_INVALID_KEY;
                 }
                 if (status != Eas.FOLDER_STATUS_OK) {
-                    mService.errorLog("FolderSync failed: " + CommandStatus.toString(status));
                     // If the account hasn't been saved, this is a validation attempt, so we don't
                     // try reloading the folder list...
                     if (CommandStatus.isDeniedAccess(status) ||
@@ -182,17 +191,15 @@ public class FolderSyncParser extends AbstractSyncParser {
                     // and EAS 14 style command status
                     } else if (status == Eas.FOLDER_STATUS_INVALID_KEY ||
                             CommandStatus.isBadSyncKey(status)) {
-                        mService.errorLog("Bad sync key; RESET and delete all folders");
                         // Delete PIM data
-                        ExchangeService.deleteAccountPIMData(mAccountId);
+                        ExchangeService.deleteAccountPIMData(mContext, mAccountId);
                         // Save away any mailbox sync information that is NOT default
                         saveMailboxSyncOptions();
                         // And only then, delete mailboxes
                         mContentResolver.delete(Mailbox.CONTENT_URI,
                                 MailboxColumns.ACCOUNT_KEY + "=?",
                                 new String[] {Long.toString(mAccountId)});
-                        // Stop existing syncs and reconstruct _main
-                        ExchangeService.stopNonAccountMailboxSyncsForAccount(mAccountId);
+                        // Reconstruct _main
                         res = true;
                         resetFolders = true;
                         // Reset the sync key and save (this should trigger the AccountObserver
@@ -206,7 +213,6 @@ public class FolderSyncParser extends AbstractSyncParser {
                     } else {
                         // Other errors are at the server, so let's throw an error that will
                         // cause this sync to be retried at a later time
-                        mService.errorLog("Throwing IOException; will retry later");
                         throw new EasParserException("Folder status error");
                     }
                 }
@@ -214,9 +220,6 @@ public class FolderSyncParser extends AbstractSyncParser {
                 String newKey = getValue();
                 if (!resetFolders) {
                     mAccount.mSyncKey = newKey;
-                    userLog("New syncKey: ", newKey);
-                } else {
-                    userLog("Ignoring new syncKey: ", newKey);
                 }
             } else if (tag == Tags.FOLDER_CHANGES) {
                 if (mStatusOnly) return res;
@@ -224,12 +227,8 @@ public class FolderSyncParser extends AbstractSyncParser {
             } else
                 skipTag();
         }
-        if (mStatusOnly) return res;
-        synchronized (mService.getSynchronizer()) {
-            if (!mService.isStopped() || resetFolders) {
-                commit();
-                userLog("Leaving FolderSyncParser with Account syncKey=", mAccount.mSyncKey);
-            }
+        if (!mStatusOnly) {
+            commit();
         }
         return res;
     }
@@ -593,7 +592,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                 }
                 if (++batchCount == MAILBOX_COMMIT_SIZE) {
                     if (!commitMailboxes(ops)) {
-                        mService.stop();
+                        //mService.stop();
                         return;
                     }
                     ops.clear();
@@ -618,7 +617,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                                     mAccount.mId))
                                     .withValues(cv).build());
             if (!commitMailboxes(ops)) {
-                mService.stop();
+                //mService.stop();
                 return;
             }
         }

@@ -198,7 +198,7 @@ public class Search {
 
         private boolean parseStore() throws IOException {
             EmailSyncAdapter adapter = new EmailSyncAdapter(mService);
-            EasEmailSyncParser parser = adapter.new EasEmailSyncParser(this, adapter);
+            EasEmailSyncParser parser = new EasEmailSyncParser(this, adapter);
             ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
             boolean res = false;
 
