@@ -24,6 +24,7 @@ import android.database.Cursor;
 import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.text.format.DateUtils;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.internet.Rfc822Output;
@@ -79,7 +80,7 @@ public class EasOutboxService extends EasSyncService {
     // as to effectively "hang" sending of mail.  The standard 30 second timeout isn't long enough
     // for pictures and the like.  For now, we'll use 15 minutes, in the knowledge that any socket
     // failure would probably generate an Exception before timing out anyway
-    public static final int SEND_MAIL_TIMEOUT = 15*MINUTES;
+    public static final int SEND_MAIL_TIMEOUT = (int)(15 * DateUtils.MINUTE_IN_MILLIS);
 
     protected EasOutboxService(Context _context, Mailbox _mailbox) {
         super(_context, _mailbox);

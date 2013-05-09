@@ -27,6 +27,7 @@ import android.os.SystemClock;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.util.Log;
 
 import com.android.emailcommon.TrafficFlags;
@@ -112,9 +113,9 @@ public class EasAccountService extends EasSyncService {
     // The amount of time the account mailbox will sleep if there are no pingable mailboxes
     // This could happen if the sync time is set to "never"; we always want to check in from time
     // to time, however, for folder list/policy changes
-    static private final int ACCOUNT_MAILBOX_SLEEP_TIME = 20*MINUTES;
-    static private final String ACCOUNT_MAILBOX_SLEEP_TEXT =
-        "Account mailbox sleeping for " + (ACCOUNT_MAILBOX_SLEEP_TIME / MINUTES) + "m";
+    static private final int ACCOUNT_MAILBOX_SLEEP_TIME = (int)(20 * DateUtils.MINUTE_IN_MILLIS);
+    static private final String ACCOUNT_MAILBOX_SLEEP_TEXT = "Account mailbox sleeping for " +
+            (ACCOUNT_MAILBOX_SLEEP_TIME / DateUtils.MINUTE_IN_MILLIS) + "m";
 
     // Our heartbeat when we are waiting for ping boxes to be ready
     /*package*/ int mPingForceHeartbeat = 2*PING_MINUTES;
@@ -255,7 +256,7 @@ public class EasAccountService extends EasSyncService {
             // Determine our protocol version, if we haven't already and save it in the Account
             // Also re-check protocol version at least once a day (in case of upgrade)
             if (mAccount.mProtocolVersion == null || firstSync ||
-                   ((System.currentTimeMillis() - mMailbox.mSyncTime) > DAYS)) {
+                   ((System.currentTimeMillis() - mMailbox.mSyncTime) > DateUtils.DAY_IN_MILLIS)) {
                 userLog("Determine EAS protocol version");
                 EasResponse resp = sendHttpClientOptions();
                 try {
@@ -521,7 +522,7 @@ public class EasAccountService extends EasSyncService {
 
     private void sleep(long ms, boolean runAsleep) {
         if (runAsleep) {
-            ExchangeService.runAsleep(mMailboxId, ms+(5*SECONDS));
+            ExchangeService.runAsleep(mMailboxId, ms + (5 * DateUtils.SECOND_IN_MILLIS));
         }
         try {
             Thread.sleep(ms);
@@ -540,7 +541,7 @@ public class EasAccountService extends EasSyncService {
            userLog("Send ping, timeout: " + heartbeat + "s, high: " + mPingHighWaterMark + 's');
        }
        return sendHttpClientPost(EasSyncService.PING_COMMAND, new ByteArrayEntity(bytes),
-               (heartbeat+5)*SECONDS);
+               (int)((heartbeat + 5) * DateUtils.SECOND_IN_MILLIS));
     }
 
     private void runPingLoop() throws IOException, StaleFolderListException,
@@ -548,7 +549,7 @@ public class EasAccountService extends EasSyncService {
         int pingHeartbeat = mPingHeartbeat;
         userLog("runPingLoop");
         // Do push for all sync services here
-        long endTime = System.currentTimeMillis() + (30*MINUTES);
+        long endTime = System.currentTimeMillis() + (30 * DateUtils.MINUTE_IN_MILLIS);
         HashMap<String, Integer> pingErrorMap = new HashMap<String, Integer>();
         ArrayList<String> readyMailboxes = new ArrayList<String>();
         ArrayList<String> notReadyMailboxes = new ArrayList<String>();
@@ -781,11 +782,11 @@ public class EasAccountService extends EasSyncService {
                 // In this case, there aren't any boxes that are pingable, but there are boxes
                 // waiting (for IOExceptions)
                 userLog("pingLoop waiting 60s for any pingable boxes");
-                sleep(60*SECONDS, true);
+                sleep(60 * DateUtils.SECOND_IN_MILLIS, true);
             } else if (pushCount > 0) {
                 // If we want to Ping, but can't just yet, wait a little bit
                 // TODO Change sleep to wait and use notify from ExchangeService when a sync ends
-                sleep(2*SECONDS, false);
+                sleep(2 * DateUtils.SECOND_IN_MILLIS, false);
                 pingWaitCount++;
                 //userLog("pingLoop waited 2s for: ", (pushCount - canPushCount), " box(es)");
             } else if (uninitCount > 0) {
@@ -793,10 +794,10 @@ public class EasAccountService extends EasSyncService {
                 // is typically a one-time case, I'm ok with trying again every 10 seconds until
                 // we're in one of the other possible states.
                 userLog("pingLoop waiting for initial sync of ", uninitCount, " box(es)");
-                sleep(10*SECONDS, true);
+                sleep(10 * DateUtils.SECOND_IN_MILLIS, true);
             } else if (inboxId == -1) {
                 // In this case, we're still syncing mailboxes, so sleep for only a short time
-                sleep(45*SECONDS, true);
+                sleep(45 * DateUtils.SECOND_IN_MILLIS, true);
             } else {
                 // We've got nothing to do, so we'll check again in 20 minutes at which time
                 // we'll update the folder list, check for policy changes and/or remote wipe, etc.

@@ -31,6 +31,7 @@ import android.os.RemoteException;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Events;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Xml;
@@ -112,11 +113,11 @@ public class EasSyncService extends AbstractSyncService {
     // Command timeout is the the time allowed for reading data from an open connection before an
     // IOException is thrown.  After a small added allowance, our watchdog alarm goes off (allowing
     // us to detect a silently dropped connection).  The allowance is defined below.
-    static public final int COMMAND_TIMEOUT = 30*SECONDS;
+    static public final int COMMAND_TIMEOUT = (int)(30 * DateUtils.SECOND_IN_MILLIS);
     // Connection timeout is the time given to connect to the server before reporting an IOException
-    static private final int CONNECTION_TIMEOUT = 20*SECONDS;
+    static private final int CONNECTION_TIMEOUT = (int)(20 * DateUtils.SECOND_IN_MILLIS);
     // The extra time allowed beyond the COMMAND_TIMEOUT before which our watchdog alarm triggers
-    static private final int WATCHDOG_TIMEOUT_ALLOWANCE = 30*SECONDS;
+    static private final int WATCHDOG_TIMEOUT_ALLOWANCE = (int)(30 * DateUtils.SECOND_IN_MILLIS);
 
     static private final String AUTO_DISCOVER_SCHEMA_PREFIX =
         "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
@@ -130,7 +131,7 @@ public class EasSyncService extends AbstractSyncService {
 
     static public final int MESSAGE_FLAG_MOVED_MESSAGE = 1 << Message.FLAG_SYNC_ADAPTER_SHIFT;
     // The amount of time we allow for a thread to release its post lock after receiving an alert
-    static private final int POST_LOCK_TIMEOUT = 10*SECONDS;
+    static private final int POST_LOCK_TIMEOUT = (int)(10 * DateUtils.SECOND_IN_MILLIS);
 
     // The EAS protocol Provision status for "we implement all of the policies"
     static private final String PROVISION_STATUS_OK = "1";
@@ -214,6 +215,7 @@ public class EasSyncService extends AbstractSyncService {
         }
     }
 
+    @Override
     public void resetCalendarSyncKey() {
         CalendarSyncAdapter adapter = new CalendarSyncAdapter(this);
             try {
@@ -1513,7 +1515,6 @@ public class EasSyncService extends AbstractSyncService {
      * Acknowledge that we support the policies provided by the server, and that these policies
      * are in force.
      * @param tempKey the initial (temporary) policy key sent by the server
-     * @return the final policy key, which can be used for syncing
      * @throws IOException
      */
     private static void acknowledgeRemoteWipe(EasSyncService svc, String tempKey)
@@ -1673,7 +1674,7 @@ public class EasSyncService extends AbstractSyncService {
             target.sendSyncOptions(mProtocolVersionDouble, s, initialSync);
             if (initialSync) {
                 // Use enormous timeout for initial sync, which empirically can take a while longer
-                timeout = 120*SECONDS;
+                timeout = (int)(120 * DateUtils.SECOND_IN_MILLIS);
             }
             // Send our changes up to the server
             if (mUpsyncFailed) {
