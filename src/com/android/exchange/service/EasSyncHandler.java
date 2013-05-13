@@ -10,10 +10,10 @@ import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Base64;
 
+import com.android.emailcommon.Device;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
-import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.exchange.Eas;
@@ -54,6 +54,12 @@ public abstract class EasSyncHandler {
     protected final Bundle mSyncExtras;
     protected final SyncResult mSyncResult;
 
+    // Bookkeeping for interrupting a sync. This is primarily for use by Ping (there's currently
+    // no mechanism for stopping a sync).
+    // Access to these variables should be synchronized on this.
+    protected HttpPost mPendingPost = null;
+    protected boolean mStopped = false;
+
     /**
      * Status values to indicate success or manner of failure when sending a single Message.
      */
@@ -70,13 +76,6 @@ public abstract class EasSyncHandler {
         FAILURE_MESSAGE,
         FAILURE_OTHER
     }
-
-    /**
-     * Cached value of the device id. The app should return the same value each time it's requested
-     * so instead of always waiting on the RPC we keep a copy here.
-     * TODO: Why *is* this an RPC -- wouldn't it make sense to just compute locally?
-     */
-    public static String sDeviceId = null;
 
     protected EasSyncHandler(final Context context, final ContentResolver contentResolver,
             final Account account, final Mailbox mailbox, final Bundle syncExtras,
@@ -175,8 +174,16 @@ public abstract class EasSyncHandler {
     }
 
     private String makeUserString() {
+        String deviceId = "";
+        try {
+            deviceId = Device.getDeviceId(mContext);
+        } catch (final IOException e) {
+            // TODO: Make Device.getDeviceId not throw IOException, if possible.
+            // Otherwise use a better deviceId default.
+            deviceId = "0";
+        }
         return "&User=" + Uri.encode(mHostAuth.mLogin) + "&DeviceId=" +
-                getDeviceId(mContext) + "&DeviceType=" + DEVICE_TYPE;
+                deviceId + "&DeviceType=" + DEVICE_TYPE;
     }
 
     private String makeBaseUriString() {
@@ -197,7 +204,7 @@ public abstract class EasSyncHandler {
     }
 
     protected String getProtocolVersion() {
-        if (mAccount.mProtocolVersion != null) {
+        if (mAccount != null && mAccount.mProtocolVersion != null) {
             return mAccount.mProtocolVersion;
         }
         return Eas.DEFAULT_PROTOCOL_VERSION;
@@ -276,25 +283,28 @@ public abstract class EasSyncHandler {
 
     private EasResponse executePostWithTimeout(final HttpClient client, final HttpPost method)
             throws IOException {
-        // TODO: The first argument below is probably bad.
-        return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
+        synchronized (this) {
+            if (mStopped) {
+                mStopped = false;
+                // If this gets stopped after the post actually starts, it throws an IOException.
+                // Therefore if we get stopped here, let's throw the same sort of exception, so
+                // callers can just equate IOException with the "this POST got killed for some
+                // reason".
+                throw new IOException("Sync was stopped before POST");
+            }
+           mPendingPost = method;
+        }
+        try {
+            // TODO: The first argument below is probably bad.
+            return EasResponse.fromHttpRequest(getClientConnectionManager(), client, method);
+        } finally {
+            synchronized (this) {
+                mPendingPost = null;
+            }
+        }
     }
 
     // Communication with the application.
-
-    /**
-     * EAS requires a unique device id, so that sync is possible from a variety of different
-     * devices (e.g. the syncKey is specific to a device)  If we're on an emulator or some other
-     * device that doesn't provide one, we can create it as "device".
-     * This would work on a real device as well, but it would be better to use the "real" id if
-     * it's available
-     */
-    public static String getDeviceId(final Context context) {
-        if (sDeviceId == null) {
-            sDeviceId = new AccountServiceProxy(context).getDeviceId();
-        }
-        return sDeviceId;
-    }
 
     // TODO: Consider bringing the EmailServiceStatus functions here?
     /**

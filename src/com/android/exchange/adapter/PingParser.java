@@ -16,9 +16,9 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.EasSyncService;
 import com.android.exchange.IllegalHeartbeatException;
 import com.android.exchange.StaleFolderListException;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,8 +32,9 @@ import java.util.ArrayList;
  * by the sync server, which will sync the updated folder list.
  */
 public class PingParser extends Parser {
+    private static final String TAG = "PingParser";
+
     private ArrayList<String> syncList = new ArrayList<String>();
-    private EasSyncService mService;
     private int mSyncStatus = 0;
 
     public ArrayList<String> getSyncList() {
@@ -44,9 +45,8 @@ public class PingParser extends Parser {
         return mSyncStatus;
     }
 
-    public PingParser(InputStream in, EasSyncService service) throws IOException {
+    public PingParser(InputStream in) throws IOException {
         super(in);
-        mService = service;
     }
 
     public void parsePingFolders(ArrayList<String> syncList) throws IOException {
@@ -55,7 +55,7 @@ public class PingParser extends Parser {
                 // Here we'll keep track of which mailboxes need syncing
                 String serverId = getValue();
                 syncList.add(serverId);
-                mService.userLog("Changes found in: ", serverId);
+                LogUtils.i(TAG, "Changes found in: %s", serverId);
             } else {
                 skipTag();
             }
@@ -72,7 +72,7 @@ public class PingParser extends Parser {
             if (tag == Tags.PING_STATUS) {
                 int status = getValueInt();
                 mSyncStatus = status;
-                mService.userLog("Ping completed, status = ", status);
+                LogUtils.i(TAG, "Ping complete, status = %d", status);
                 if (status == 2) {
                     res = true;
                 } else if (status == 7 || status == 4) {

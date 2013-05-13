@@ -815,7 +815,7 @@ public class EasAccountService extends EasSyncService {
             HashMap<String, Integer> errorMap)
             throws IOException, StaleFolderListException, IllegalHeartbeatException,
                 CommandStatusException {
-        PingParser pp = new PingParser(is, this);
+        PingParser pp = new PingParser(is);
         if (pp.parse()) {
             // True indicates some mailboxes need syncing...
             // syncList has the serverId's of the mailboxes...

@@ -101,6 +101,8 @@
             <intent-filter>
                 <action
                     android:name="android.content.SyncAdapter" />
+                <action
+                    android:name="com.android.email.EXCHANGE_INTENT" />
             </intent-filter>
             <meta-data android:name="android.content.SyncAdapter"
                        android:resource="@xml/syncadapter_email" />
@@ -128,18 +130,6 @@
             </intent-filter>
             <meta-data android:name="android.content.SyncAdapter"
                        android:resource="@xml/syncadapter_calendar" />
-        </service>
-
-        <!-- Add android:process=":remote" below to enable ExchangeService as a separate process -->
-        <service
-            android:name="com.android.exchange.ExchangeService"
-            android:enabled="true"
-            android:permission="com.android.email.permission.ACCESS_PROVIDER"
-            >
-            <intent-filter>
-                <action
-                    android:name="com.android.email.EXCHANGE_INTENT" />
-            </intent-filter>
         </service>
 
         <provider
