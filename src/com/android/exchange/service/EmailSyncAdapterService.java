@@ -161,9 +161,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     // ping or sync might start first. It only works for startSync because sync is
                     // higher priority than ping (i.e. a ping can't start while a sync is pending)
                     // and only one ping can run at a time.
-                    EasPingSyncHandler pingHandler = new EasPingSyncHandler(context,
-                            context.getContentResolver(), account, null, null, this);
-                    pingHandler.performSync();
+                    EasPingSyncHandler pingHandler = new EasPingSyncHandler(context, account, this);
                     // TODO: error handling for pings that never took flight?
                     mPingHandlers.put(accountId, pingHandler);
                     // Whenever we have a running ping, make sure this service stays running.

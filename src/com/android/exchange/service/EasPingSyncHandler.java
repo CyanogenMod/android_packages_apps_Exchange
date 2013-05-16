@@ -2,7 +2,6 @@ package com.android.exchange.service;
 
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -24,26 +23,18 @@ import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 
 import org.apache.http.HttpStatus;
-import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
 /**
  * Performs an Exchange Ping, which is the command for receiving push notifications.
- * That this extends EasSyncHandler is a bit wonky -- it's not really intended to handle SyncManager
- * requests, which is what that base class is primarily set up for. However, it also is the home
- * of all the functions that actually talk to the EAS server, so for now, this is where it lives.
- *
- * There are two parts to Pinging:
- * 1) Altering an account's ping (start, stop, and changing which folders are pinged). This is
- *    done in performSync. It's odd that performSync just sets the ping up, and doesn't run it,
- *    but since performSync is one and only external call into this class, that's got to be how it
- *    works.
- * 2) Actually waiting on the hanging POST. This is run in a separate thread that is triggered in
- *    performSync.
+ * TODO: Rename this, now that it's no longer a subclass of EasSyncHandler.
  */
-public class EasPingSyncHandler extends EasSyncHandler {
+public class EasPingSyncHandler extends EasServerConnection {
+    private final ContentResolver mContentResolver;
+    private final Account mAccount;
+    private final HostAuth mHostAuth;
     private final PingTask mPingTask;
 
     private class PingTask extends AsyncTask<Void, Void, Void> {
@@ -96,8 +87,8 @@ public class EasPingSyncHandler extends EasSyncHandler {
                         // in handleOneMailbox when the Serializer is first created.
                         // If either side changes, the other must be kept in sync.
                         s.end().end().done();
-                        final EasResponse resp = sendHttpClientPost("Ping",
-                                new ByteArrayEntity(s.toByteArray()), PING_HEARTBEAT);
+                        final EasResponse resp = sendHttpClientPost(mAccount, mHostAuth, "Ping",
+                                s.toByteArray(), PING_HEARTBEAT);
                         try {
                             continuePing = handleResponse(resp, amAccount);
                         } finally {
@@ -296,30 +287,20 @@ public class EasPingSyncHandler extends EasSyncHandler {
 
     }
 
-    public EasPingSyncHandler(final Context context, final ContentResolver contentResolver,
-            final Account account, final Bundle syncExtras, final SyncResult syncResult,
+    public EasPingSyncHandler(final Context context, final Account account,
             final EmailSyncAdapterService.SyncHandlerSychronizer syncHandlerMap) {
-        super(context, contentResolver, account, null, syncExtras, syncResult);
+        super(context);
+        mContentResolver = context.getContentResolver();
+        mAccount = account;
+        mHostAuth = HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv);
         mPingTask = new PingTask(syncHandlerMap);
+        mPingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     @Override
-    public SyncStatus performSync() {
-        // Create and start the task.
-        mPingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-        return SyncStatus.SUCCESS;
-    }
-
     public synchronized void stop() {
-        if (mPendingPost != null) {
-            mPendingPost.abort();
-        } else {
-            // TODO: Improve handing if stop() is called after the POST returns.
-            // For now, this works because it will interrupt the following loop. It's sub-optimal
-            // for refresh, though.
-            mStopped = true;
-        }
-        // TODO: Consider also interrupting mPingTask in the non-refresh case (or alter refresh
-        // to restart the task).
+        // TODO: Consider also interrupting mPingTask in the non-refresh case, or alter refresh
+        // to restart the task. (Yes, this override currently exists purely for this comment.)
+        super.stop();
     }
 }
