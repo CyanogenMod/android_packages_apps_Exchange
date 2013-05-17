@@ -84,7 +84,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
                     return new EasOutboxSyncHandler(context, contentResolver, account, mailbox,
                             syncExtras, syncResult);
                 case Mailbox.TYPE_EAS_ACCOUNT_MAILBOX:
-                    return new EasAccountSyncHandler(context, contentResolver, account, mailbox,
+                    return new EasAccountSyncHandler(context, contentResolver, account,
                             syncExtras, syncResult);
             }
         }

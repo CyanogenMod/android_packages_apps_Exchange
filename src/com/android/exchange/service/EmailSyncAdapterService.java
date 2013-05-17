@@ -17,7 +17,9 @@
 package com.android.exchange.service;
 
 import com.android.emailcommon.Api;
+import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
@@ -25,6 +27,7 @@ import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 
@@ -231,7 +234,14 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void updateFolderList(final long accountId) {
             Log.d(TAG, "IEmailService.updateFolderList");
-            //reloadFolderList(ExchangeService.this, accountId, false);
+            final String emailAddress = Utility.getFirstRowString(EmailSyncAdapterService.this,
+                    Account.CONTENT_URI, new String[] {AccountColumns.EMAIL_ADDRESS},
+                    Account.ID_SELECTION, new String[] {Long.toString(accountId)}, null, 0);
+            if (emailAddress != null) {
+                ContentResolver.requestSync(new android.accounts.Account(
+                        emailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                        EmailContent.AUTHORITY, new Bundle());
+            }
         }
 
         @Override
@@ -415,6 +425,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public void onPerformSync(android.accounts.Account acct, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
 
+            TempDirectory.setTempDirectory(EmailSyncAdapterService.this);
+
             // TODO: Perform any connectivity checks, bail early if we don't have proper network
             // for this sync operation.
 
@@ -454,8 +466,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 // If no mailbox is specified, this is an account sync. This means we should both
                 // sync the account (to get folders, etc.) as well as the inbox.
                 // TODO: Why does the "account mailbox" even exist?
-                final Mailbox accountMailbox = Mailbox.restoreMailboxOfType(context, account.mId,
+                Mailbox accountMailbox = Mailbox.restoreMailboxOfType(context, account.mId,
                         Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
+                if (accountMailbox == null) {
+                    // TODO: This is a hack to work around the lack of an account observer.
+                    accountMailbox = new Mailbox();
+                    accountMailbox.mType = Mailbox.TYPE_EAS_ACCOUNT_MAILBOX;
+                }
                 final EasSyncHandler accountSyncHandler = EasSyncHandler.getEasSyncHandler(
                         context, cr, account, accountMailbox, extras, syncResult);
 
@@ -466,7 +483,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     final Mailbox inbox = Mailbox.restoreMailboxOfType(context, account.mId,
                             Mailbox.TYPE_INBOX);
                     final EasSyncHandler inboxSyncHandler = EasSyncHandler.getEasSyncHandler(
-                            context, cr, account, accountMailbox, extras, syncResult);
+                            context, cr, account, inbox, extras, syncResult);
                     if (inboxSyncHandler == null) {
                         // TODO: Inbox does not exist for this account, add proper error handling.
                     } else {

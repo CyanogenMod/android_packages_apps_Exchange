@@ -192,7 +192,7 @@ public class EasAccountValidator extends EasServerConnection {
                     // seeing if a CommandStatusException is thrown (indicating a
                     // provisioning failure)
                     new FolderSyncParser(mContext, mContext.getContentResolver(),
-                            resp.getInputStream(), account, null, true).parse();
+                            resp.getInputStream(), account, true).parse();
                 }
                 resultCode = MessagingException.NO_ERROR;
             } else if (code == HttpStatus.SC_FORBIDDEN) {

@@ -8,7 +8,6 @@ import android.os.Bundle;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
-import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.EasResponse;
@@ -28,9 +27,9 @@ public class EasAccountSyncHandler extends EasSyncHandler {
 
 
     public EasAccountSyncHandler(final Context context, final ContentResolver contentResolver,
-            final Account account, final Mailbox mailbox, final Bundle syncExtras,
+            final Account account, final Bundle syncExtras,
             final SyncResult syncResult) {
-        super(context, contentResolver, account, mailbox, syncExtras, syncResult);
+        super(context, contentResolver, account, null, syncExtras, syncResult);
     }
 
     @Override
@@ -40,9 +39,10 @@ public class EasAccountSyncHandler extends EasSyncHandler {
             needsResync = false;
             final EasResponse resp;
             try {
+                final String syncKey = (mAccount.mSyncKey != null) ? mAccount.mSyncKey : "0";
                 final Serializer s = new Serializer();
                 s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY)
-                    .text(mAccount.mSyncKey).end().end().done();
+                    .text(syncKey).end().end().done();
                 resp = sendHttpClientPost("FolderSync", s.toByteArray());
             } catch (final IOException e) {
                 return SyncStatus.FAILURE_IO;
@@ -54,10 +54,8 @@ public class EasAccountSyncHandler extends EasSyncHandler {
                         final InputStream is = resp.getInputStream();
                         try {
                             // Returns true if we need to sync again
-                            // TODO: FolderSyncParser needs to be cleaned up to remove dependency
-                            // on AbstractSyncAdapter.
                             if (new FolderSyncParser(mContext, mContentResolver, is, mAccount,
-                                    mMailbox, false).parse()) {
+                                    false).parse()) {
                                 needsResync = true;
                             }
                         } catch (final IOException e) {

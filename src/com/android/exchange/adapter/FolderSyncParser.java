@@ -126,9 +126,9 @@ public class FolderSyncParser extends AbstractSyncParser {
     }
 
     public FolderSyncParser(final Context context, final ContentResolver resolver,
-            final InputStream in, final Account account, final Mailbox mailbox,
-            final boolean statusOnly) throws IOException {
-        super(context, resolver, in, mailbox, account);
+            final InputStream in, final Account account, final boolean statusOnly)
+                    throws IOException {
+        super(context, resolver, in, null, account);
         mAccountId = mAccount.mId;
         mAccountIdAsString = Long.toString(mAccountId);
         mStatusOnly = statusOnly;
@@ -245,17 +245,18 @@ public class FolderSyncParser extends AbstractSyncParser {
         while (nextTag(Tags.FOLDER_DELETE) != END) {
             switch (tag) {
                 case Tags.FOLDER_SERVER_ID:
-                    String serverId = getValue();
+                    final String serverId = getValue();
                     // Find the mailbox in this account with the given serverId
-                    Cursor c = getServerIdCursor(serverId);
+                    final Cursor c = getServerIdCursor(serverId);
                     try {
                         if (c.moveToFirst()) {
                             userLog("Deleting ", serverId);
+                            final long mailboxId = c.getLong(MAILBOX_ID_COLUMNS_ID);
                             ops.add(ContentProviderOperation.newDelete(
                                     ContentUris.withAppendedId(Mailbox.CONTENT_URI,
-                                            c.getLong(MAILBOX_ID_COLUMNS_ID))).build());
+                                            mailboxId)).build());
                             AttachmentUtilities.deleteAllMailboxAttachmentFiles(mContext,
-                                    mAccountId, mMailbox.mId);
+                                    mAccountId, mailboxId);
                             if (!mInitialSync) {
                                 String parentId = c.getString(MAILBOX_ID_COLUMNS_PARENT_SERVER_ID);
                                 if (!TextUtils.isEmpty(parentId)) {
@@ -511,7 +512,7 @@ public class FolderSyncParser extends AbstractSyncParser {
 
         while (nextTag(Tags.FOLDER_CHANGES) != END) {
             if (tag == Tags.FOLDER_ADD) {
-                Mailbox mailbox = addParser();
+                final Mailbox mailbox = addParser();
                 if (mailbox != null) {
                     addMailboxes.add(mailbox);
                 }
@@ -526,8 +527,8 @@ public class FolderSyncParser extends AbstractSyncParser {
         }
 
         // Map folder serverId to mailbox (used to validate user mailboxes)
-        HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
-        for (Mailbox mailbox : addMailboxes) {
+        final HashMap<String, Mailbox> mailboxMap = new HashMap<String, Mailbox>();
+        for (final Mailbox mailbox : addMailboxes) {
             mailboxMap.put(mailbox.mServerId, mailbox);
         }
         userLog("Total of " + addMailboxes.size() + " mailboxes parsed");
