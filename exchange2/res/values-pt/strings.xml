@@ -34,7 +34,7 @@
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"Não permitir cartões de armazenamento"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Não permitir aplicativos não assinados"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Não permitir instal. aplic. não assinado"</string>
-    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Não permitir Wi-FI"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Não permitir Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Não permitir mensagens de texto"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Não permitir contas POP3 ou IMAP"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Não permitir comunic. via infravermelho"</string>

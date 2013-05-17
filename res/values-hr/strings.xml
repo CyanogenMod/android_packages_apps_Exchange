@@ -34,7 +34,7 @@
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"Ne dopusti memorijske kartice"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Ne dopusti nepotpisane aplikacije"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Ne dopusti instal. prog. nepotpis. apl."</string>
-    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Ne dopusti WiFi"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Ne dopusti Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Ne dopusti slanje SMS poruka"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Ne dopusti POP3 ili IMAP račune"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Ne dopusti infracrvenu komunikaciju"</string>
