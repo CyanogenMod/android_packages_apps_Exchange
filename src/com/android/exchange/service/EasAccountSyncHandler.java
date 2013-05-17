@@ -57,7 +57,7 @@ public class EasAccountSyncHandler extends EasSyncHandler {
                             // TODO: FolderSyncParser needs to be cleaned up to remove dependency
                             // on AbstractSyncAdapter.
                             if (new FolderSyncParser(mContext, mContentResolver, is, mAccount,
-                                    mMailbox).parse()) {
+                                    mMailbox, false).parse()) {
                                 needsResync = true;
                             }
                         } catch (final IOException e) {

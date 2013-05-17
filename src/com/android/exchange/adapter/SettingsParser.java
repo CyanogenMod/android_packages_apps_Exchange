@@ -15,7 +15,7 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.EasSyncService;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,11 +28,11 @@ import java.io.InputStream;
  * to the actual settings (e.g. if a particular device type isn't allowed by the server)
  */
 public class SettingsParser extends Parser {
-    private final EasSyncService mService;
 
-    public SettingsParser(InputStream in, EasSyncService service) throws IOException {
+    private static final String TAG = "SettingsParser";
+
+    public SettingsParser(InputStream in) throws IOException {
         super(in);
-        mService = service;
     }
 
     @Override
@@ -44,7 +44,7 @@ public class SettingsParser extends Parser {
         while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
             if (tag == Tags.SETTINGS_STATUS) {
                 int status = getValueInt();
-                mService.userLog("Settings status = ", status);
+                LogUtils.i(TAG, "Settings status = %d", status);
                 if (status == 1) {
                     res = true;
                 } else {
@@ -73,7 +73,7 @@ public class SettingsParser extends Parser {
     public void parseSet() throws IOException {
         while (nextTag(Tags.SETTINGS_SET) != END) {
             if (tag == Tags.SETTINGS_STATUS) {
-                mService.userLog("Set status = ", getValueInt());
+                LogUtils.i(TAG, "Set status = %d", getValueInt());
             } else {
                 skipTag();
             }

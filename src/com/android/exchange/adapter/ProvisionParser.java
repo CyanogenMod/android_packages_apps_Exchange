@@ -23,6 +23,8 @@ import android.os.storage.StorageManager;
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.R;
+import com.android.exchange.service.EasAccountValidator;
+import com.android.mail.utils.LogUtils;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -39,7 +41,9 @@ import java.util.ArrayList;
  * Parse the result of the Provision command
  */
 public class ProvisionParser extends Parser {
-    private final EasSyncService mService;
+    private static final String TAG = "ProvisionParser";
+
+    private final Context mContext;
     private Policy mPolicy = null;
     private String mSecuritySyncKey = null;
     private boolean mRemoteWipe = false;
@@ -47,10 +51,10 @@ public class ProvisionParser extends Parser {
     private boolean smimeRequired = false;
     private final Resources mResources;
 
-    public ProvisionParser(InputStream in, EasSyncService service) throws IOException {
+    public ProvisionParser(final Context context, final InputStream in) throws IOException {
         super(in);
-        mService = service;
-        mResources = service.mContext.getResources();
+        mContext = context;
+        mResources = context.getResources();
     }
 
     public Policy getPolicy() {
@@ -103,8 +107,8 @@ public class ProvisionParser extends Parser {
     }
 
     private boolean deviceSupportsEncryption() {
-        DevicePolicyManager dpm = (DevicePolicyManager)
-                mService.mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+        DevicePolicyManager dpm =
+                (DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
         int status = dpm.getStorageEncryptionStatus();
         return status != DevicePolicyManager.ENCRYPTION_STATUS_UNSUPPORTED;
     }
@@ -531,16 +535,16 @@ public class ProvisionParser extends Parser {
             switch (tag) {
                 case Tags.PROVISION_POLICY_TYPE:
                     policyType = getValue();
-                    mService.userLog("Policy type: ", policyType);
+                    LogUtils.i(TAG, "Policy type: %s", policyType);
                     break;
                 case Tags.PROVISION_POLICY_KEY:
                     mSecuritySyncKey = getValue();
                     break;
                 case Tags.PROVISION_STATUS:
-                    mService.userLog("Policy status: ", getValue());
+                    LogUtils.i(TAG, "Policy status: %s", getValue());
                     break;
                 case Tags.PROVISION_DATA:
-                    if (policyType.equalsIgnoreCase(EasSyncService.EAS_2_POLICY_TYPE)) {
+                    if (policyType.equalsIgnoreCase(EasAccountValidator.EAS_2_POLICY_TYPE)) {
                         // Parse the old style XML document
                         parseProvisionDocXml(getValue());
                     } else {
@@ -567,7 +571,7 @@ public class ProvisionParser extends Parser {
     private void parseDeviceInformation() throws IOException {
         while (nextTag(Tags.SETTINGS_DEVICE_INFORMATION) != END) {
             if (tag == Tags.SETTINGS_STATUS) {
-                mService.userLog("DeviceInformation status: " + getValue());
+                LogUtils.i(TAG, "DeviceInformation status: %s", getValue());
             } else {
                 skipTag();
             }
@@ -584,7 +588,7 @@ public class ProvisionParser extends Parser {
             switch (tag) {
                 case Tags.PROVISION_STATUS:
                     int status = getValueInt();
-                    mService.userLog("Provision status: ", status);
+                    LogUtils.i(TAG, "Provision status: %d", status);
                     res = (status == 1);
                     break;
                 case Tags.SETTINGS_DEVICE_INFORMATION:
@@ -613,8 +617,7 @@ public class ProvisionParser extends Parser {
      */
     private boolean hasRemovableStorage() {
         try {
-            StorageManager sm = (StorageManager)mService.mContext.getSystemService(
-                    Context.STORAGE_SERVICE);
+            StorageManager sm = (StorageManager)mContext.getSystemService(Context.STORAGE_SERVICE);
             Class<?> svClass = Class.forName("android.os.storage.StorageVolume");
             Class<?> svManager = Class.forName("android.os.storage.StorageManager");
             Method gvl = svManager.getDeclaredMethod("getVolumeList");

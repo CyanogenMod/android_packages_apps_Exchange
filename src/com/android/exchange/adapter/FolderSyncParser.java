@@ -126,11 +126,12 @@ public class FolderSyncParser extends AbstractSyncParser {
     }
 
     public FolderSyncParser(final Context context, final ContentResolver resolver,
-            final InputStream in, final Account account, final Mailbox mailbox) throws IOException {
+            final InputStream in, final Account account, final Mailbox mailbox,
+            final boolean statusOnly) throws IOException {
         super(context, resolver, in, mailbox, account);
         mAccountId = mAccount.mId;
         mAccountIdAsString = Long.toString(mAccountId);
-        mStatusOnly = false;
+        mStatusOnly = statusOnly;
     }
 
     public FolderSyncParser(InputStream in, AbstractSyncAdapter adapter) throws IOException {

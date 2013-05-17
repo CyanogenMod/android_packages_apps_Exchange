@@ -16,6 +16,7 @@ import com.android.exchange.EasResponse;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.conn.params.ConnManagerPNames;
@@ -46,7 +47,7 @@ public abstract class EasServerConnection {
     protected static final long COMMAND_TIMEOUT = 30 * DateUtils.SECOND_IN_MILLIS;
 
     private static final String DEVICE_TYPE = "Android";
-    private static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
+    protected static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
 
 
@@ -70,7 +71,7 @@ public abstract class EasServerConnection {
     }
 
     // TODO: Don't make a new one each time.
-    private EmailClientConnectionManager getClientConnectionManager(final HostAuth hostAuth) {
+    protected EmailClientConnectionManager getClientConnectionManager(final HostAuth hostAuth) {
         final HttpParams params = new BasicHttpParams();
         params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
         params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
@@ -164,7 +165,30 @@ public abstract class EasServerConnection {
     }
 
     /**
+     * Send an http OPTIONS request to server.
+     * @param connectionManager The {@link EmailClientConnectionManager} to use for this request.
+     * @param hostAuth The {@link HostAuth} for the server we're getting options for.
+     * @return The {@link EasResponse} from the Exchange server.
+     * @throws IOException
+     */
+    protected EasResponse sendHttpClientOptions(
+            final EmailClientConnectionManager connectionManager,
+            final HostAuth hostAuth) throws IOException {
+        // For OPTIONS, just use the base string and the single header
+        final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString(hostAuth)));
+        method.setHeader("Authorization", makeAuthString(hostAuth));
+        method.setHeader("User-Agent", USER_AGENT);
+        final HttpClient client = getHttpClient(connectionManager, COMMAND_TIMEOUT);
+        return EasResponse.fromHttpRequest(connectionManager, client, method);
+    }
+
+    protected EasResponse sendHttpClientOptions(final HostAuth hostAuth) throws IOException {
+        return sendHttpClientOptions(getClientConnectionManager(hostAuth), hostAuth);
+    }
+
+    /**
      * Send a POST request to the server.
+     * @param connectionManager The {@link EmailClientConnectionManager} to use for this request.
      * @param account The {@link Account} for which we're sending the POST.
      * @param hostAuth The {@link HostAuth} for account.
      * @param cmd The command we're sending to the server.
@@ -173,9 +197,9 @@ public abstract class EasServerConnection {
      * @return The response from the Exchange server.
      * @throws IOException
      */
-    protected EasResponse sendHttpClientPost(final Account account, final HostAuth hostAuth,
-            String cmd, final HttpEntity entity, final long timeout) throws IOException {
-        final EmailClientConnectionManager connectionManager = getClientConnectionManager(hostAuth);
+    protected EasResponse sendHttpClientPost(final EmailClientConnectionManager connectionManager,
+            final Account account, final HostAuth hostAuth, String cmd, final HttpEntity entity,
+            final long timeout) throws IOException {
         final HttpClient client = getHttpClient(connectionManager, timeout);
         final boolean isPingCommand = cmd.equals("Ping");
 
@@ -233,14 +257,22 @@ public abstract class EasServerConnection {
         }
     }
 
-    protected EasResponse sendHttpClientPost(final Account account, final HostAuth hostAuth,
-            final String cmd, final byte[] bytes, final long timeout) throws IOException {
-        return sendHttpClientPost(account, hostAuth, cmd, new ByteArrayEntity(bytes), timeout);
+    protected EasResponse sendHttpClientPost(final EmailClientConnectionManager connectionManager,
+            final Account account, final HostAuth hostAuth, final String cmd, final byte[] bytes)
+                    throws IOException {
+        return sendHttpClientPost(connectionManager, account, hostAuth, cmd,
+                new ByteArrayEntity(bytes), COMMAND_TIMEOUT);
     }
 
     protected EasResponse sendHttpClientPost(final Account account, final HostAuth hostAuth,
-            final String cmd, final byte[] bytes) throws IOException {
-        return sendHttpClientPost(account, hostAuth, cmd, bytes, COMMAND_TIMEOUT);
+            String cmd, final HttpEntity entity, final long timeout) throws IOException {
+        return sendHttpClientPost(getClientConnectionManager(hostAuth), account, hostAuth, cmd,
+                entity, timeout);
+    }
+
+    protected EasResponse sendHttpClientPost(final Account account, final HostAuth hostAuth,
+            final String cmd, final byte[] bytes, final long timeout) throws IOException {
+        return sendHttpClientPost(account, hostAuth, cmd, new ByteArrayEntity(bytes), timeout);
     }
 
     /**

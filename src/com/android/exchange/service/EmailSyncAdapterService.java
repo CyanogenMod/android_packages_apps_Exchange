@@ -213,8 +213,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public Bundle validate(final HostAuth hostAuth) {
             Log.d(TAG, "IEmailService.validate");
-            final Bundle bundle = new Bundle();
-            return bundle;
+            return new EasAccountValidator(EmailSyncAdapterService.this, hostAuth).validate();
         }
 
         @Override

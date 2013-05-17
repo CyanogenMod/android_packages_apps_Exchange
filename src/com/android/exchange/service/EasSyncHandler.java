@@ -116,7 +116,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
 
     protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)
             throws IOException {
-        return sendHttpClientPost(mAccount, mHostAuth, cmd, bytes);
+        return sendHttpClientPost(mAccount, mHostAuth, cmd, bytes, COMMAND_TIMEOUT);
     }
 
     // Communication with the application.

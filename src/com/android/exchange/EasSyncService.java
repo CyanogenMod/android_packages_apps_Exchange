@@ -1475,7 +1475,7 @@ public class EasSyncService extends AbstractSyncService {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                ProvisionParser pp = new ProvisionParser(is, svc);
+                ProvisionParser pp = new ProvisionParser(svc.mContext, is);
                 if (pp.parse()) {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
                     // policies.  If others are required, hasSupportablePolicySet will be false
@@ -1550,7 +1550,7 @@ public class EasSyncService extends AbstractSyncService {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                ProvisionParser pp = new ProvisionParser(is, svc);
+                ProvisionParser pp = new ProvisionParser(svc.mContext, is);
                 if (pp.parse()) {
                     // Return the final policy key from the ProvisionParser
                     String result = (pp.getSecuritySyncKey() == null) ? "failed" : "confirmed";
@@ -1581,7 +1581,7 @@ public class EasSyncService extends AbstractSyncService {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 InputStream is = resp.getInputStream();
-                SettingsParser sp = new SettingsParser(is, this);
+                SettingsParser sp = new SettingsParser(is);
                 return sp.parse();
             }
         } finally {
