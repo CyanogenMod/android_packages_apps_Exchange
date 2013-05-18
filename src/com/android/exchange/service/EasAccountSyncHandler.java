@@ -32,6 +32,16 @@ public class EasAccountSyncHandler extends EasSyncHandler {
         super(context, contentResolver, account, null, syncExtras, syncResult);
     }
 
+    private boolean tryProvision() {
+        try {
+            final EasAccountValidator validator = new EasAccountValidator(mContext, mHostAuth);
+            return validator.tryProvision(getClientConnectionManager(mHostAuth), mAccount);
+        } catch (final IOException e) {
+
+        }
+        return false;
+    }
+
     @Override
     public SyncStatus performSync() {
         boolean needsResync;
@@ -63,15 +73,21 @@ public class EasAccountSyncHandler extends EasSyncHandler {
                         } catch (final CommandStatusException e) {
                             final int status = e.mStatus;
                             if (CommandStatus.isNeedsProvisioning(status)) {
-                                // TODO: Attempt provisioning.
-                                return SyncStatus.FAILURE_SECURITY;
+                                if (!tryProvision()) {
+                                    return SyncStatus.FAILURE_SECURITY;
+                                } else {
+                                    return SyncStatus.SUCCESS;
+                                }
                             }
                             return SyncStatus.FAILURE_OTHER;
                         }
                     }
                 } else if (EasResponse.isProvisionError(code)) {
-                    // TODO: Attempt provisioning.
-                    return SyncStatus.FAILURE_SECURITY;
+                    if (!tryProvision()) {
+                        return SyncStatus.FAILURE_SECURITY;
+                    } else {
+                        return SyncStatus.SUCCESS;
+                    }
                 } else if (EasResponse.isAuthError(code)) {
                     return SyncStatus.FAILURE_LOGIN;
                 } else if (EasResponse.isRedirectError(code)) {

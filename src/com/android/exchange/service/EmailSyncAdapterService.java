@@ -45,6 +45,13 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
+/**
+ * Service for communicating with Exchange servers. There are three main parts of this class:
+ * TODO: Flesh out these comments.
+ * 1) An {@link AbstractThreadedSyncAdapter} to handle actually performing syncs.
+ * 2) Bookkeeping for running Ping requests, which handles push notifications.
+ * 3) An {@link IEmailService} Stub to handle RPC from the UI.
+ */
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     private static final String TAG = "EAS EmailSyncAdapterService";
@@ -165,10 +172,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     // higher priority than ping (i.e. a ping can't start while a sync is pending)
                     // and only one ping can run at a time.
                     EasPingSyncHandler pingHandler = new EasPingSyncHandler(context, account, this);
-                    // TODO: error handling for pings that never took flight?
                     mPingHandlers.put(accountId, pingHandler);
                     // Whenever we have a running ping, make sure this service stays running.
-                    // TODO: make sure this is the right way to do this.
                     final EmailSyncAdapterService service = EmailSyncAdapterService.this;
                     service.startService(new Intent(service, EmailSyncAdapterService.class));
                 }

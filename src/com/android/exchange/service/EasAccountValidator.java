@@ -9,7 +9,9 @@ import android.os.Bundle;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
+import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceProxy;
+import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -247,6 +249,12 @@ public class EasAccountValidator extends EasServerConnection {
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
+    private void acknowledgeRemoteWipe(final EmailClientConnectionManager connectionManager,
+            final Account account, final String tempKey)
+            throws IOException {
+        acknowledgeProvisionImpl(connectionManager, account, tempKey, PROVISION_STATUS_OK, true);
+    }
+
     private String acknowledgeProvision(final EmailClientConnectionManager connectionManager,
             final Account account, final String tempKey, final String result)
             throws IOException {
@@ -358,6 +366,73 @@ public class EasAccountValidator extends EasServerConnection {
         return null;
     }
 
+
+    public boolean tryProvision(final EmailClientConnectionManager connectionManager,
+            final Account account) throws IOException {
+        mProtocolVersion = account.mProtocolVersion;
+        mProtocolVersionDouble = Eas.getProtocolVersionDouble(mProtocolVersion);
+        // First, see if provisioning is even possible, i.e. do we support the policies required
+        // by the server
+        ProvisionParser pp = canProvision(connectionManager, account);
+        if (pp == null) return false;
+        // Get the policies from ProvisionParser
+        Policy policy = pp.getPolicy();
+        Policy oldPolicy = null;
+        // Grab the old policy (if any)
+        if (account.mPolicyKey > 0) {
+            oldPolicy = Policy.restorePolicyWithId(mContext, account.mPolicyKey);
+        }
+        // Update the account with a null policyKey (the key we've gotten is
+        // temporary and cannot be used for syncing)
+        PolicyServiceProxy.setAccountPolicy(mContext, account.mId, policy, null);
+        // Make sure mAccount is current (with latest policy key)
+        account.refresh(mContext);
+        if (pp.getRemoteWipe()) {
+            // We've gotten a remote wipe command
+            LogUtils.i(TAG, "!!! Remote wipe request received");
+            // Start by setting the account to security hold
+            PolicyServiceProxy.setAccountHoldFlag(mContext, account, true);
+
+            // First, we've got to acknowledge it, but wrap the wipe in try/catch so that
+            // we wipe the device regardless of any errors in acknowledgment
+            try {
+                LogUtils.i(TAG, "!!! Acknowledging remote wipe to server");
+                acknowledgeRemoteWipe(connectionManager, account, pp.getSecuritySyncKey());
+            } catch (Exception e) {
+                // Because remote wipe is such a high priority task, we don't want to
+                // circumvent it if there's an exception in acknowledgment
+            }
+            // Then, tell SecurityPolicy to wipe the device
+            LogUtils.i(TAG, "!!! Executing remote wipe");
+            PolicyServiceProxy.remoteWipe(mContext);
+            return false;
+        } else if (pp.hasSupportablePolicySet() && PolicyServiceProxy.isActive(mContext, policy)) {
+            // See if the required policies are in force; if they are, acknowledge the policies
+            // to the server and get the final policy key
+            // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
+            String securitySyncKey;
+            if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                securitySyncKey = pp.getSecuritySyncKey();
+            } else {
+                securitySyncKey = acknowledgeProvision(connectionManager, account,
+                        pp.getSecuritySyncKey(), PROVISION_STATUS_OK);
+            }
+            if (securitySyncKey != null) {
+                // If attachment policies have changed, fix up any affected attachment records
+                if (oldPolicy != null) {
+                    if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
+                            (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
+                        Policy.setAttachmentFlagsForNewPolicy(mContext, account, policy);
+                    }
+                }
+                // Write the final policy key to the Account and say we've been successful
+                PolicyServiceProxy.setAccountPolicy(mContext, account.mId, policy, securitySyncKey);
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Perform the actual validation.
      * @return The validation response.
@@ -391,6 +466,8 @@ public class EasAccountValidator extends EasServerConnection {
                     return bundle;
                 }
                 account.mProtocolVersion = mProtocolVersion;
+                bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION,
+                        mProtocolVersion);
                 resultCode = doFolderSync(connectionManager, account);
             } catch (final CommandStatusException e) {
                 final int status = e.mStatus;
