@@ -30,6 +30,7 @@ import org.apache.http.params.HttpParams;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 
 /**
  * Base class for communicating with an EAS server. Anything that needs to send messages to the
@@ -66,18 +67,63 @@ public abstract class EasServerConnection {
     private HttpPost mPendingPost = null;
     private boolean mStopped = false;
 
+    /**
+     * We want to reuse {@link EmailClientConnectionManager} across different requests to the same
+     * {@link HostAuth}. Since HostAuths have unique ids, we can use that as the cache key.
+     * All access to the cache must be synchronized in theory, although in practice since we don't
+     * have concurrent requests to the same account it should never come up.
+     */
+    private static class ConnectionManagerCache {
+        private final HashMap<Long, EmailClientConnectionManager> mMap =
+                new HashMap<Long, EmailClientConnectionManager>();
+
+        /**
+         * Get a connection manager from the cache, or create one and add it if needed.
+         * @param context The {@link Context}.
+         * @param hostAuth The {@link HostAuth} to which we want to connect.
+         * @return The connection manager for hostAuth.
+         */
+        public synchronized EmailClientConnectionManager getConnectionManager(
+                final Context context, final HostAuth hostAuth) {
+            EmailClientConnectionManager connectionManager = mMap.get(hostAuth.mId);
+            if (connectionManager == null) {
+                final HttpParams params = new BasicHttpParams();
+                params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
+                params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
+                final boolean ssl = hostAuth.shouldUseSsl();
+                final int port = hostAuth.mPort;
+                connectionManager =
+                        EmailClientConnectionManager.newInstance(context, params, hostAuth);
+                // We don't save managers for validation/autodiscover
+                if (hostAuth.mId != HostAuth.NOT_SAVED) {
+                    mMap.put(hostAuth.mId, connectionManager);
+                }
+            }
+            return connectionManager;
+        }
+
+        /**
+         * Remove a connection manager from the cache. This is necessary when a {@link HostAuth} is
+         * redirected or otherwise altered.
+         * TODO: We should uncache when we delete accounts.
+         * @param hostAuth The {@link HostAuth} whose connection manager should be deleted.
+         */
+        public synchronized void uncacheConnectionManager(final HostAuth hostAuth) {
+            mMap.remove(hostAuth.mId);
+        }
+    }
+    private static final ConnectionManagerCache sConnectionManagers = new ConnectionManagerCache();
+
     protected EasServerConnection(final Context context) {
         mContext = context;
     }
 
-    // TODO: Don't make a new one each time.
     protected EmailClientConnectionManager getClientConnectionManager(final HostAuth hostAuth) {
-        final HttpParams params = new BasicHttpParams();
-        params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
-        params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
-        final boolean ssl = hostAuth.shouldUseSsl();
-        final int port = hostAuth.mPort;
-        return EmailClientConnectionManager.newInstance(mContext, params, hostAuth);
+        return sConnectionManagers.getConnectionManager(mContext, hostAuth);
+    }
+
+    protected void uncacheConnectionManager(final HostAuth hostAuth) {
+        sConnectionManagers.uncacheConnectionManager(hostAuth);
     }
 
     private HttpClient getHttpClient(final EmailClientConnectionManager connectionManager,

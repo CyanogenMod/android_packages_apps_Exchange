@@ -508,6 +508,7 @@ public class EasAccountValidator extends EasServerConnection {
                 if (mRedirectCount < MAX_REDIRECTS && e.mRedirectAddress != null) {
                     ++mRedirectCount;
                     mHostAuth.mAddress = e.mRedirectAddress;
+                    uncacheConnectionManager(mHostAuth);
                     return validate();
                 } else {
                     resultCode = MessagingException.UNSPECIFIED_EXCEPTION;
