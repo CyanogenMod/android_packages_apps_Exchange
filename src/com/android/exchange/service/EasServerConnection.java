@@ -60,6 +60,7 @@ public abstract class EasServerConnection {
     };
 
     protected final Context mContext;
+    protected final HostAuth mHostAuth;
 
     // Bookkeeping for interrupting a POST. This is primarily for use by Ping (there's currently
     // no mechanism for stopping a sync).
@@ -114,16 +115,18 @@ public abstract class EasServerConnection {
     }
     private static final ConnectionManagerCache sConnectionManagers = new ConnectionManagerCache();
 
-    protected EasServerConnection(final Context context) {
+    protected EasServerConnection(final Context context, final HostAuth hostAuth) {
         mContext = context;
+        mHostAuth = hostAuth;
     }
 
-    protected EmailClientConnectionManager getClientConnectionManager(final HostAuth hostAuth) {
-        return sConnectionManagers.getConnectionManager(mContext, hostAuth);
+    protected EmailClientConnectionManager getClientConnectionManager() {
+        return sConnectionManagers.getConnectionManager(mContext, mHostAuth);
     }
 
-    protected void uncacheConnectionManager(final HostAuth hostAuth) {
-        sConnectionManagers.uncacheConnectionManager(hostAuth);
+    protected void redirectHostAuth(final String newAddress) {
+        mHostAuth.mAddress = newAddress;
+        sConnectionManagers.uncacheConnectionManager(mHostAuth);
     }
 
     private HttpClient getHttpClient(final EmailClientConnectionManager connectionManager,
@@ -135,12 +138,12 @@ public abstract class EasServerConnection {
         return new DefaultHttpClient(connectionManager, params);
     }
 
-    private String makeAuthString(final HostAuth hostAuth) {
-        final String cs = hostAuth.mLogin + ":" + hostAuth.mPassword;
+    private String makeAuthString() {
+        final String cs = mHostAuth.mLogin + ":" + mHostAuth.mPassword;
         return "Basic " + Base64.encodeToString(cs.getBytes(), Base64.NO_WRAP);
     }
 
-    private String makeUserString(final HostAuth hostAuth) {
+    private String makeUserString() {
         String deviceId = "";
         try {
             deviceId = Device.getDeviceId(mContext);
@@ -149,20 +152,20 @@ public abstract class EasServerConnection {
             // Otherwise use a better deviceId default.
             deviceId = "0";
         }
-        return "&User=" + Uri.encode(hostAuth.mLogin) + "&DeviceId=" +
+        return "&User=" + Uri.encode(mHostAuth.mLogin) + "&DeviceId=" +
                 deviceId + "&DeviceType=" + DEVICE_TYPE;
     }
 
-    private String makeBaseUriString(final HostAuth hostAuth) {
-        return EmailClientConnectionManager.makeScheme(hostAuth.shouldUseSsl(),
-                hostAuth.shouldTrustAllServerCerts(), hostAuth.mClientCertAlias) +
-                "://" + hostAuth.mAddress + "/Microsoft-Server-ActiveSync";
+    private String makeBaseUriString() {
+        return EmailClientConnectionManager.makeScheme(mHostAuth.shouldUseSsl(),
+                mHostAuth.shouldTrustAllServerCerts(), mHostAuth.mClientCertAlias) +
+                "://" + mHostAuth.mAddress + "/Microsoft-Server-ActiveSync";
     }
 
-    private String makeUriString(final HostAuth hostAuth, final String cmd, final String extra) {
-        String uriString = makeBaseUriString(hostAuth);
+    private String makeUriString(final String cmd, final String extra) {
+        String uriString = makeBaseUriString();
         if (cmd != null) {
-            uriString += "?Cmd=" + cmd + makeUserString(hostAuth);
+            uriString += "?Cmd=" + cmd + makeUserString();
         }
         if (extra != null) {
             uriString += extra;
@@ -185,13 +188,12 @@ public abstract class EasServerConnection {
     /**
      * Set standard HTTP headers, using a policy key if required
      * @param account The Account for which we are communicating.
-     * @param hostAuth the HostAuth for account.
      * @param method the method we are going to send
      * @param usePolicyKey whether or not a policy key should be sent in the headers
      */
-    private void setHeaders(final Account account, final HostAuth hostAuth,
-            final HttpRequestBase method, final boolean usePolicyKey) {
-        method.setHeader("Authorization", makeAuthString(hostAuth));
+    private void setHeaders(final Account account, final HttpRequestBase method,
+            final boolean usePolicyKey) {
+        method.setHeader("Authorization", makeAuthString());
         method.setHeader("MS-ASProtocolVersion", getProtocolVersion(account));
         method.setHeader("User-Agent", USER_AGENT);
         method.setHeader("Accept-Encoding", "gzip");
@@ -212,40 +214,31 @@ public abstract class EasServerConnection {
 
     /**
      * Send an http OPTIONS request to server.
-     * @param connectionManager The {@link EmailClientConnectionManager} to use for this request.
-     * @param hostAuth The {@link HostAuth} for the server we're getting options for.
      * @return The {@link EasResponse} from the Exchange server.
      * @throws IOException
      */
-    protected EasResponse sendHttpClientOptions(
-            final EmailClientConnectionManager connectionManager,
-            final HostAuth hostAuth) throws IOException {
+    protected EasResponse sendHttpClientOptions() throws IOException {
+        final EmailClientConnectionManager connectionManager = getClientConnectionManager();
         // For OPTIONS, just use the base string and the single header
-        final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString(hostAuth)));
-        method.setHeader("Authorization", makeAuthString(hostAuth));
+        final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString()));
+        method.setHeader("Authorization", makeAuthString());
         method.setHeader("User-Agent", USER_AGENT);
         final HttpClient client = getHttpClient(connectionManager, COMMAND_TIMEOUT);
         return EasResponse.fromHttpRequest(connectionManager, client, method);
     }
 
-    protected EasResponse sendHttpClientOptions(final HostAuth hostAuth) throws IOException {
-        return sendHttpClientOptions(getClientConnectionManager(hostAuth), hostAuth);
-    }
-
     /**
      * Send a POST request to the server.
-     * @param connectionManager The {@link EmailClientConnectionManager} to use for this request.
      * @param account The {@link Account} for which we're sending the POST.
-     * @param hostAuth The {@link HostAuth} for account.
      * @param cmd The command we're sending to the server.
      * @param entity The {@link HttpEntity} containing the payload of the message.
      * @param timeout The timeout for this POST.
      * @return The response from the Exchange server.
      * @throws IOException
      */
-    protected EasResponse sendHttpClientPost(final EmailClientConnectionManager connectionManager,
-            final Account account, final HostAuth hostAuth, String cmd, final HttpEntity entity,
-            final long timeout) throws IOException {
+    protected EasResponse sendHttpClientPost(final Account account,
+            String cmd, final HttpEntity entity, final long timeout) throws IOException {
+        final EmailClientConnectionManager connectionManager = getClientConnectionManager();
         final HttpClient client = getHttpClient(connectionManager, timeout);
         final boolean isPingCommand = cmd.equals("Ping");
 
@@ -261,7 +254,7 @@ public abstract class EasServerConnection {
             msg = true;
         }
 
-        final String us = makeUriString(hostAuth, cmd, extra);
+        final String us = makeUriString(cmd, extra);
         final HttpPost method = new HttpPost(URI.create(us));
         // Send the proper Content-Type header; it's always wbxml except for messages when
         // the EAS protocol version is < 14.0
@@ -273,7 +266,7 @@ public abstract class EasServerConnection {
         } else if (entity != null) {
             method.setHeader("Content-Type", "application/vnd.ms-sync.wbxml");
         }
-        setHeaders(account, hostAuth, method, !isPingCommand);
+        setHeaders(account, method, !isPingCommand);
         // NOTE
         // The next lines are added at the insistence of $VENDOR, who is seeing inappropriate
         // network activity related to the Ping command on some networks with some servers.
@@ -303,22 +296,14 @@ public abstract class EasServerConnection {
         }
     }
 
-    protected EasResponse sendHttpClientPost(final EmailClientConnectionManager connectionManager,
-            final Account account, final HostAuth hostAuth, final String cmd, final byte[] bytes)
-                    throws IOException {
-        return sendHttpClientPost(connectionManager, account, hostAuth, cmd,
-                new ByteArrayEntity(bytes), COMMAND_TIMEOUT);
+    protected EasResponse sendHttpClientPost(final Account account, final String cmd,
+            final byte[] bytes, final long timeout) throws IOException {
+        return sendHttpClientPost(account, cmd, new ByteArrayEntity(bytes), timeout);
     }
 
-    protected EasResponse sendHttpClientPost(final Account account, final HostAuth hostAuth,
-            String cmd, final HttpEntity entity, final long timeout) throws IOException {
-        return sendHttpClientPost(getClientConnectionManager(hostAuth), account, hostAuth, cmd,
-                entity, timeout);
-    }
-
-    protected EasResponse sendHttpClientPost(final Account account, final HostAuth hostAuth,
-            final String cmd, final byte[] bytes, final long timeout) throws IOException {
-        return sendHttpClientPost(account, hostAuth, cmd, new ByteArrayEntity(bytes), timeout);
+    protected EasResponse sendHttpClientPost(final Account account, final String cmd,
+            final byte[] bytes) throws IOException {
+        return sendHttpClientPost(account, cmd, bytes, COMMAND_TIMEOUT);
     }
 
     /**

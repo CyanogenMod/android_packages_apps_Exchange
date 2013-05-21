@@ -35,7 +35,7 @@ public class EasAccountSyncHandler extends EasSyncHandler {
     private boolean tryProvision() {
         try {
             final EasAccountValidator validator = new EasAccountValidator(mContext, mHostAuth);
-            return validator.tryProvision(getClientConnectionManager(mHostAuth), mAccount);
+            return validator.tryProvision(mAccount);
         } catch (final IOException e) {
 
         }
@@ -91,7 +91,12 @@ public class EasAccountSyncHandler extends EasSyncHandler {
                 } else if (EasResponse.isAuthError(code)) {
                     return SyncStatus.FAILURE_LOGIN;
                 } else if (EasResponse.isRedirectError(code)) {
-                    if (redirectHostAuth(resp.getRedirectAddress())) {
+                    final String newAddress = resp.getRedirectAddress();
+                    if (newAddress != null) {
+                        redirectHostAuth(newAddress);
+                        final ContentValues haValues = new ContentValues(1);
+                        haValues.put(HostAuthColumns.ADDRESS, newAddress);
+                        mHostAuth.update(mContext, haValues);
                         needsResync = true;
                     } else {
                         // TODO: Perhaps a more severe error here?
@@ -104,22 +109,6 @@ public class EasAccountSyncHandler extends EasSyncHandler {
         } while (needsResync);
 
         return SyncStatus.SUCCESS;
-    }
-
-    /**
-     * Reset our local HostAuth's address and save the change to the DB.
-     * @param newAddress The new address for the HostAuth.
-     * @return Whether the redirect was processed.
-     */
-    private boolean redirectHostAuth(final String newAddress) {
-        if (newAddress != null) {
-            mHostAuth.mAddress = newAddress;
-            final ContentValues haValues = new ContentValues(1);
-            haValues.put(HostAuthColumns.ADDRESS, newAddress);
-            mHostAuth.update(mContext, haValues);
-            // TODO: When we start caching connections, make sure to uncache here.
-        }
-        return newAddress != null;
     }
 
 }

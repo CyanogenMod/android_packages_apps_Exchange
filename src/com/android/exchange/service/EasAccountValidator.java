@@ -12,7 +12,6 @@ import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.PolicyServiceProxy;
-import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
@@ -47,12 +46,11 @@ public class EasAccountValidator extends EasServerConnection {
     private static final String PROVISION_STATUS_PARTIAL = "2";
 
     // Set of Exchange protocol versions we understand.
-    private static HashSet<String> SUPPORTED_PROTOCOL_VERSIONS = Sets.newHashSet(
+    private static final HashSet<String> SUPPORTED_PROTOCOL_VERSIONS = Sets.newHashSet(
             Eas.SUPPORTED_PROTOCOL_EX2003,
             Eas.SUPPORTED_PROTOCOL_EX2007, Eas.SUPPORTED_PROTOCOL_EX2007_SP1,
             Eas.SUPPORTED_PROTOCOL_EX2010, Eas.SUPPORTED_PROTOCOL_EX2010_SP1);
 
-    private final HostAuth mHostAuth;
     private String mProtocolVersion;
     private Double mProtocolVersionDouble;
     private int mRedirectCount;
@@ -65,9 +63,9 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
     public EasAccountValidator(final Context context, final HostAuth hostAuth) {
-        super(context);
-        mHostAuth = hostAuth;
+        super(context, hostAuth);
         mProtocolVersion = null;
+        mProtocolVersionDouble = null;
         mRedirectCount = 0;
     }
 
@@ -119,9 +117,8 @@ public class EasAccountValidator extends EasServerConnection {
      * @return A status code for getting the protocol version. If NO_ERROR, then mProtocolVersion
      *     will be set correctly.
      */
-    private int doHttpOptions(final EmailClientConnectionManager connectionManager)
-            throws IOException, RedirectException {
-        final EasResponse resp = sendHttpClientOptions(connectionManager, mHostAuth);
+    private int doHttpOptions() throws IOException, RedirectException {
+        final EasResponse resp = sendHttpClientOptions();
         final int resultCode;
         try {
             final int code = resp.getStatus();
@@ -163,15 +160,14 @@ public class EasAccountValidator extends EasServerConnection {
     /**
      * Send a FolderSync request to the server to verify the response -- we aren't actually
      * syncing the account at this point, just want to make sure we get valid output.
-     * @param connectionManager The connection for this request.
      * @param account The account we're verifying.
      * @return A status code indicating the result of this check.
      * @throws IOException
      * @throws CommandStatusException
      * @throws RedirectException
      */
-    private int doFolderSync(final EmailClientConnectionManager connectionManager,
-            final Account account) throws IOException, CommandStatusException, RedirectException {
+    private int doFolderSync(final Account account)
+            throws IOException, CommandStatusException, RedirectException {
         LogUtils.i(TAG, "Try FolderSync for %s, %s, ssl = %s", mHostAuth.mAddress, mHostAuth.mLogin,
                 mHostAuth.shouldUseSsl() ? "1" : "0");
 
@@ -180,8 +176,7 @@ public class EasAccountValidator extends EasServerConnection {
         final Serializer s = new Serializer();
         s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY).text(syncKey)
             .end().end().done();
-        final EasResponse resp = sendHttpClientPost(connectionManager, account, mHostAuth,
-                "FolderSync", s.toByteArray());
+        final EasResponse resp = sendHttpClientPost(account, "FolderSync", s.toByteArray());
         final int resultCode;
         try {
             final int code = resp.getStatus();
@@ -222,8 +217,7 @@ public class EasAccountValidator extends EasServerConnection {
         return resultCode;
     }
 
-    private boolean sendSettings(final EmailClientConnectionManager connectionManager,
-            final Account account) throws IOException {
+    private boolean sendSettings(final Account account) throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.SETTINGS_SETTINGS);
         s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
@@ -231,8 +225,7 @@ public class EasAccountValidator extends EasServerConnection {
         s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
         s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
         s.end().end().end().done(); // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION, SETTINGS_SETTINGS
-        final EasResponse resp = sendHttpClientPost(connectionManager, account, mHostAuth,
-                "Settings", s.toByteArray());
+        final EasResponse resp = sendHttpClientPost(account, "Settings", s.toByteArray());
         try {
             if (resp.getStatus() == HttpStatus.SC_OK) {
                 return new SettingsParser(resp.getInputStream()).parse();
@@ -249,21 +242,18 @@ public class EasAccountValidator extends EasServerConnection {
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
-    private void acknowledgeRemoteWipe(final EmailClientConnectionManager connectionManager,
-            final Account account, final String tempKey)
+    private void acknowledgeRemoteWipe(final Account account, final String tempKey)
             throws IOException {
-        acknowledgeProvisionImpl(connectionManager, account, tempKey, PROVISION_STATUS_OK, true);
+        acknowledgeProvisionImpl(account, tempKey, PROVISION_STATUS_OK, true);
     }
 
-    private String acknowledgeProvision(final EmailClientConnectionManager connectionManager,
-            final Account account, final String tempKey, final String result)
-            throws IOException {
-        return acknowledgeProvisionImpl(connectionManager, account, tempKey, result, false);
+    private String acknowledgeProvision(final Account account, final String tempKey,
+            final String result) throws IOException {
+        return acknowledgeProvisionImpl(account, tempKey, result, false);
     }
 
-    private String acknowledgeProvisionImpl(final EmailClientConnectionManager connectionManager,
-            final Account account, final String tempKey, final String status,
-            final boolean remoteWipe) throws IOException {
+    private String acknowledgeProvisionImpl(final Account account, final String tempKey,
+            final String status, final boolean remoteWipe) throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION).start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY);
@@ -280,8 +270,7 @@ public class EasAccountValidator extends EasServerConnection {
             s.end();
         }
         s.end().done(); // PROVISION_PROVISION
-        EasResponse resp = sendHttpClientPost(connectionManager, account, mHostAuth, "Provision",
-                s.toByteArray());
+        EasResponse resp = sendHttpClientPost(account, "Provision", s.toByteArray());
         try {
             if (resp.getStatus() == HttpStatus.SC_OK) {
                 final ProvisionParser pp = new ProvisionParser(mContext, resp.getInputStream());
@@ -303,8 +292,7 @@ public class EasAccountValidator extends EasServerConnection {
         return null;
     }
 
-    public ProvisionParser canProvision(final EmailClientConnectionManager connectionManager,
-            final Account account) throws IOException {
+    public ProvisionParser canProvision(final Account account) throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION);
         if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
@@ -324,8 +312,7 @@ public class EasAccountValidator extends EasServerConnection {
         s.start(Tags.PROVISION_POLICY);
         s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(mProtocolVersionDouble));
         s.end().end().end().done(); // PROVISION_POLICY, PROVISION_POLICIES, PROVISION_PROVISION
-        final EasResponse resp = sendHttpClientPost(connectionManager, account, mHostAuth,
-                "Provision", s.toByteArray());
+        final EasResponse resp = sendHttpClientPost(account, "Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
@@ -338,8 +325,8 @@ public class EasAccountValidator extends EasServerConnection {
                         // In EAS 14.0, we need the final security key in order to use the settings
                         // command
                         final String policyKey =
-                                acknowledgeProvision(connectionManager, account,
-                                        pp.getSecuritySyncKey(), PROVISION_STATUS_OK);
+                                acknowledgeProvision(account, pp.getSecuritySyncKey(),
+                                        PROVISION_STATUS_OK);
                         if (policyKey != null) {
                             pp.setSecuritySyncKey(policyKey);
                         }
@@ -348,8 +335,8 @@ public class EasAccountValidator extends EasServerConnection {
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
                         LogUtils.i(TAG, "PolicySet is NOT fully supportable");
-                        if (acknowledgeProvision(connectionManager, account,
-                                pp.getSecuritySyncKey(), PROVISION_STATUS_PARTIAL) != null) {
+                        if (acknowledgeProvision(account, pp.getSecuritySyncKey(),
+                                PROVISION_STATUS_PARTIAL) != null) {
                             // The server's ok with our inability to support policies, so we'll
                             // clear them
                             pp.clearUnsupportablePolicies();
@@ -367,13 +354,12 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
 
-    public boolean tryProvision(final EmailClientConnectionManager connectionManager,
-            final Account account) throws IOException {
+    public boolean tryProvision(final Account account) throws IOException {
         mProtocolVersion = account.mProtocolVersion;
         mProtocolVersionDouble = Eas.getProtocolVersionDouble(mProtocolVersion);
         // First, see if provisioning is even possible, i.e. do we support the policies required
         // by the server
-        ProvisionParser pp = canProvision(connectionManager, account);
+        ProvisionParser pp = canProvision(account);
         if (pp == null) return false;
         // Get the policies from ProvisionParser
         Policy policy = pp.getPolicy();
@@ -397,7 +383,7 @@ public class EasAccountValidator extends EasServerConnection {
             // we wipe the device regardless of any errors in acknowledgment
             try {
                 LogUtils.i(TAG, "!!! Acknowledging remote wipe to server");
-                acknowledgeRemoteWipe(connectionManager, account, pp.getSecuritySyncKey());
+                acknowledgeRemoteWipe(account, pp.getSecuritySyncKey());
             } catch (Exception e) {
                 // Because remote wipe is such a high priority task, we don't want to
                 // circumvent it if there's an exception in acknowledgment
@@ -414,8 +400,8 @@ public class EasAccountValidator extends EasServerConnection {
             if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                 securitySyncKey = pp.getSecuritySyncKey();
             } else {
-                securitySyncKey = acknowledgeProvision(connectionManager, account,
-                        pp.getSecuritySyncKey(), PROVISION_STATUS_OK);
+                securitySyncKey = acknowledgeProvision(account, pp.getSecuritySyncKey(),
+                        PROVISION_STATUS_OK);
             }
             if (securitySyncKey != null) {
                 // If attachment policies have changed, fix up any affected attachment records
@@ -440,12 +426,10 @@ public class EasAccountValidator extends EasServerConnection {
     public Bundle validate() {
         LogUtils.i(TAG, "Testing EAS: %s, %s, ssl = %s", mHostAuth.mAddress, mHostAuth.mLogin,
                 mHostAuth.shouldUseSsl() ? "1" : "0");
-        EmailClientConnectionManager connectionManager = getClientConnectionManager(mHostAuth);
-
         final Bundle bundle = new Bundle();
         if (mHostAuth.mClientCertAlias != null) {
             try {
-                connectionManager.registerClientCert(mContext, mHostAuth);
+                getClientConnectionManager().registerClientCert(mContext, mHostAuth);
             } catch (final CertificateException e) {
                 // The client certificate the user specified is invalid/inaccessible.
                 bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
@@ -460,7 +444,7 @@ public class EasAccountValidator extends EasServerConnection {
         // Need a nested try here because the provisioning exception handler can throw IOException.
         try {
             try {
-                final int optionsResult = doHttpOptions(connectionManager);
+                final int optionsResult = doHttpOptions();
                 if (optionsResult != MessagingException.NO_ERROR) {
                     bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, optionsResult);
                     return bundle;
@@ -468,12 +452,12 @@ public class EasAccountValidator extends EasServerConnection {
                 account.mProtocolVersion = mProtocolVersion;
                 bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION,
                         mProtocolVersion);
-                resultCode = doFolderSync(connectionManager, account);
+                resultCode = doFolderSync(account);
             } catch (final CommandStatusException e) {
                 final int status = e.mStatus;
                 if (CommandStatus.isNeedsProvisioning(status)) {
                     // Get the policies and see if we are able to support them
-                    final ProvisionParser pp = canProvision(connectionManager, account);
+                    final ProvisionParser pp = canProvision(account);
                     if (pp != null && pp.hasSupportablePolicySet()) {
                         // Set the proper result code and save the PolicySet in our Bundle
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
@@ -481,7 +465,7 @@ public class EasAccountValidator extends EasServerConnection {
                                 pp.getPolicy());
                         if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                             account.mSecuritySyncKey = pp.getSecuritySyncKey();
-                            if (!sendSettings(connectionManager, account)) {
+                            if (!sendSettings(account)) {
                                 LogUtils.i(TAG, "Denied access: %s",
                                         CommandStatus.toString(status));
                                 resultCode = MessagingException.ACCESS_DENIED;
@@ -507,8 +491,7 @@ public class EasAccountValidator extends EasServerConnection {
                 // We handle a limited number of redirects by recursively calling ourself.
                 if (mRedirectCount < MAX_REDIRECTS && e.mRedirectAddress != null) {
                     ++mRedirectCount;
-                    mHostAuth.mAddress = e.mRedirectAddress;
-                    uncacheConnectionManager(mHostAuth);
+                    redirectHostAuth(e.mRedirectAddress);
                     return validate();
                 } else {
                     resultCode = MessagingException.UNSPECIFIED_EXCEPTION;

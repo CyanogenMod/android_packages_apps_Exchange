@@ -24,7 +24,6 @@ import java.io.IOException;
 public abstract class EasSyncHandler extends EasServerConnection {
     protected final ContentResolver mContentResolver;
     protected final Account mAccount;
-    protected final HostAuth mHostAuth;
     protected final Mailbox mMailbox;
     protected final Bundle mSyncExtras;
     protected final SyncResult mSyncResult;
@@ -50,10 +49,9 @@ public abstract class EasSyncHandler extends EasServerConnection {
     protected EasSyncHandler(final Context context, final ContentResolver contentResolver,
             final Account account, final Mailbox mailbox, final Bundle syncExtras,
             final SyncResult syncResult) {
-        super(context);
+        super(context, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
         mContentResolver = contentResolver;
         mAccount = account;
-        mHostAuth = HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv);
         mMailbox = mailbox;
         mSyncExtras = syncExtras;
         mSyncResult = syncResult;
@@ -111,12 +109,12 @@ public abstract class EasSyncHandler extends EasServerConnection {
 
     protected EasResponse sendHttpClientPost(final String cmd, final HttpEntity entity,
             final long timeout) throws IOException {
-        return sendHttpClientPost(mAccount, mHostAuth, cmd, entity, timeout);
+        return sendHttpClientPost(mAccount, cmd, entity, timeout);
     }
 
     protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)
             throws IOException {
-        return sendHttpClientPost(mAccount, mHostAuth, cmd, bytes, COMMAND_TIMEOUT);
+        return sendHttpClientPost(mAccount, cmd, bytes, COMMAND_TIMEOUT);
     }
 
     // Communication with the application.
