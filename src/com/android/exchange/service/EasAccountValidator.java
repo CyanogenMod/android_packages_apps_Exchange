@@ -2,12 +2,14 @@ package com.android.exchange.service;
 
 import com.google.common.collect.Sets;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
 
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceProxy;
@@ -51,8 +53,7 @@ public class EasAccountValidator extends EasServerConnection {
             Eas.SUPPORTED_PROTOCOL_EX2007, Eas.SUPPORTED_PROTOCOL_EX2007_SP1,
             Eas.SUPPORTED_PROTOCOL_EX2010, Eas.SUPPORTED_PROTOCOL_EX2010_SP1);
 
-    private String mProtocolVersion;
-    private Double mProtocolVersionDouble;
+    private double mProtocolVersionDouble;
     private int mRedirectCount;
 
     private static class RedirectException extends Exception {
@@ -62,60 +63,83 @@ public class EasAccountValidator extends EasServerConnection {
         }
     }
 
-    public EasAccountValidator(final Context context, final HostAuth hostAuth) {
-        super(context, hostAuth);
-        mProtocolVersion = null;
-        mProtocolVersionDouble = null;
+    public EasAccountValidator(final Context context, final Account account,
+            final HostAuth hostAuth) {
+        super(context, account, hostAuth);
+        if (account.mProtocolVersion != null) {
+            mProtocolVersionDouble = Eas.getProtocolVersionDouble(account.mProtocolVersion);
+        } else {
+            mProtocolVersionDouble = 0.0d;
+        }
         mRedirectCount = 0;
     }
 
+    public EasAccountValidator(final Context context, final HostAuth hostAuth) {
+        this(context, new Account(), hostAuth);
+        mAccount.mEmailAddress = mHostAuth.mLogin;
+    }
+
     /**
-     * Get the protocol version to use, based on the server's supported versions.
+     * Get the protocol version to use, based on the server's supported versions, and update our
+     * account with this information.
      * @param versionHeader The {@link Header} for the server's supported versions.
+     * @return Whether we found a suitable protocol version.
      */
-    private void setProtocolVersion(final Header versionHeader) {
+    private boolean setProtocolVersion(final Header versionHeader) {
         // The string is a comma separated list of EAS versions in ascending order
         // e.g. 1.0,2.0,2.5,12.0,12.1,14.0,14.1
         final String supportedVersions = versionHeader.getValue();
         LogUtils.i(TAG, "Server supports versions: %s", supportedVersions);
         final String[] supportedVersionsArray = supportedVersions.split(",");
-        mProtocolVersion = null;
         // Find the most recent version we support
+        String newProtocolVersion = null;
         for (final String version: supportedVersionsArray) {
             if (SUPPORTED_PROTOCOL_VERSIONS.contains(version)) {
-                mProtocolVersion = version;
+                newProtocolVersion = version;
             }
         }
-        if (mProtocolVersion == null) {
+        if (newProtocolVersion == null) {
             LogUtils.w(TAG, "No supported EAS versions: %s", supportedVersions);
+            // TODO: if mAccount.isSaved(), we should delete the account.
+            mProtocolVersionDouble = 0.0d;
+            return false;
         } else {
-            mProtocolVersionDouble = Eas.getProtocolVersionDouble(mProtocolVersion);
+            mProtocolVersionDouble = Eas.getProtocolVersionDouble(newProtocolVersion);
         }
 
-        /*
-        // TODO: This code may be relevant when I unify EasAccountSyncHandler with this class.
-        Account account = service.mAccount;
-        if (account != null) {
-            account.mProtocolVersion = ourVersion;
-            // Fixup search flags, if they're not set
-            if (service.mProtocolVersionDouble >= 12.0 &&
-                    (account.mFlags & Account.FLAGS_SUPPORTS_SEARCH) == 0) {
-                if (account.isSaved()) {
-                    ContentValues cv = new ContentValues();
-                    account.mFlags |=
-                        Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
-                    cv.put(AccountColumns.FLAGS, account.mFlags);
-                    account.update(service.mContext, cv);
-                }
-            }
+        // Update our account with the new protocol version.
+        final boolean protocolChanged = !newProtocolVersion.equals(mAccount.mProtocolVersion);
+        mAccount.mProtocolVersion = newProtocolVersion;
+
+        // Fixup search flags, if they're not set.
+        final boolean flagsChanged;
+        if (mProtocolVersionDouble >= 12.0) {
+            int oldFlags = mAccount.mFlags;
+            mAccount.mFlags |= Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
+            flagsChanged = (oldFlags != mAccount.mFlags);
+        } else {
+            flagsChanged = false;
         }
-        */
+
+        // Write account back to DB if needed.
+        if ((protocolChanged || flagsChanged) && mAccount.isSaved()) {
+            final ContentValues cv = new ContentValues();
+            if (protocolChanged) {
+                cv.put(AccountColumns.PROTOCOL_VERSION, mAccount.mProtocolVersion);
+            }
+            if (flagsChanged) {
+                cv.put(AccountColumns.FLAGS, mAccount.mFlags);
+            }
+            mAccount.update(mContext, cv);
+        }
+        return true;
     }
 
     /**
-     * Make an OPTIONS request to determine the protocol version to use.
-     * @return A status code for getting the protocol version. If NO_ERROR, then mProtocolVersion
-     *     will be set correctly.
+     * Make an OPTIONS request to determine the protocol version to use, and update our account to
+     * use the most recent protocol that both we and the server understand.
+     * @return A status code for getting the protocol version. If NO_ERROR, then mAccount will be
+     *     updated to the best version we mutually understand.
      */
     private int doHttpOptions() throws IOException, RedirectException {
         final EasResponse resp = sendHttpClientOptions();
@@ -127,13 +151,14 @@ public class EasAccountValidator extends EasServerConnection {
                 // No exception means successful validation
                 final Header commands = resp.getHeader("MS-ASProtocolCommands");
                 final Header versions = resp.getHeader("ms-asprotocolversions");
+                final boolean hasProtocolVersion;
                 if (commands == null || versions == null) {
                     LogUtils.e(TAG, "OPTIONS response without commands or versions");
-                    mProtocolVersion = null;
+                    hasProtocolVersion = false;
                 } else {
-                    setProtocolVersion(versions);
+                    hasProtocolVersion = setProtocolVersion(versions);
                 }
-                if (mProtocolVersion == null) {
+                if (!hasProtocolVersion) {
                     return MessagingException.PROTOCOL_VERSION_UNSUPPORTED;
                 }
                 return MessagingException.NO_ERROR;
@@ -160,14 +185,12 @@ public class EasAccountValidator extends EasServerConnection {
     /**
      * Send a FolderSync request to the server to verify the response -- we aren't actually
      * syncing the account at this point, just want to make sure we get valid output.
-     * @param account The account we're verifying.
      * @return A status code indicating the result of this check.
      * @throws IOException
      * @throws CommandStatusException
      * @throws RedirectException
      */
-    private int doFolderSync(final Account account)
-            throws IOException, CommandStatusException, RedirectException {
+    private int doFolderSync() throws IOException, CommandStatusException, RedirectException {
         LogUtils.i(TAG, "Try FolderSync for %s, %s, ssl = %s", mHostAuth.mAddress, mHostAuth.mLogin,
                 mHostAuth.shouldUseSsl() ? "1" : "0");
 
@@ -176,7 +199,7 @@ public class EasAccountValidator extends EasServerConnection {
         final Serializer s = new Serializer();
         s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY).text(syncKey)
             .end().end().done();
-        final EasResponse resp = sendHttpClientPost(account, "FolderSync", s.toByteArray());
+        final EasResponse resp = sendHttpClientPost("FolderSync", s.toByteArray());
         final int resultCode;
         try {
             final int code = resp.getStatus();
@@ -189,7 +212,7 @@ public class EasAccountValidator extends EasServerConnection {
                     // seeing if a CommandStatusException is thrown (indicating a
                     // provisioning failure)
                     new FolderSyncParser(mContext, mContext.getContentResolver(),
-                            resp.getInputStream(), account, true).parse();
+                            resp.getInputStream(), mAccount, true).parse();
                 }
                 resultCode = MessagingException.NO_ERROR;
             } else if (code == HttpStatus.SC_FORBIDDEN) {
@@ -217,7 +240,12 @@ public class EasAccountValidator extends EasServerConnection {
         return resultCode;
     }
 
-    private boolean sendSettings(final Account account) throws IOException {
+    /**
+     * Send a Settings request to the server and process the response.
+     * @return Whether the request succeeded.
+     * @throws IOException
+     */
+    private boolean sendSettings() throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.SETTINGS_SETTINGS);
         s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
@@ -225,7 +253,7 @@ public class EasAccountValidator extends EasServerConnection {
         s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
         s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
         s.end().end().end().done(); // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION, SETTINGS_SETTINGS
-        final EasResponse resp = sendHttpClientPost(account, "Settings", s.toByteArray());
+        final EasResponse resp = sendHttpClientPost("Settings", s.toByteArray());
         try {
             if (resp.getStatus() == HttpStatus.SC_OK) {
                 return new SettingsParser(resp.getInputStream()).parse();
@@ -237,29 +265,29 @@ public class EasAccountValidator extends EasServerConnection {
         return false;
     }
 
-    private String getPolicyType(Double protocolVersion) {
-        return (protocolVersion >=
+    private String getPolicyType() {
+        return (mProtocolVersionDouble >=
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
-    private void acknowledgeRemoteWipe(final Account account, final String tempKey)
+    private void acknowledgeRemoteWipe(final String tempKey)
             throws IOException {
-        acknowledgeProvisionImpl(account, tempKey, PROVISION_STATUS_OK, true);
+        acknowledgeProvisionImpl(tempKey, PROVISION_STATUS_OK, true);
     }
 
-    private String acknowledgeProvision(final Account account, final String tempKey,
-            final String result) throws IOException {
-        return acknowledgeProvisionImpl(account, tempKey, result, false);
+    private String acknowledgeProvision(final String tempKey, final String result)
+            throws IOException {
+        return acknowledgeProvisionImpl(tempKey, result, false);
     }
 
-    private String acknowledgeProvisionImpl(final Account account, final String tempKey,
-            final String status, final boolean remoteWipe) throws IOException {
+    private String acknowledgeProvisionImpl(final String tempKey, final String status,
+            final boolean remoteWipe) throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION).start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY);
 
         // Use the proper policy type, depending on EAS version
-        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(mProtocolVersionDouble));
+        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType());
 
         s.data(Tags.PROVISION_POLICY_KEY, tempKey);
         s.data(Tags.PROVISION_STATUS, status);
@@ -270,7 +298,7 @@ public class EasAccountValidator extends EasServerConnection {
             s.end();
         }
         s.end().done(); // PROVISION_PROVISION
-        EasResponse resp = sendHttpClientPost(account, "Provision", s.toByteArray());
+        EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
             if (resp.getStatus() == HttpStatus.SC_OK) {
                 final ProvisionParser pp = new ProvisionParser(mContext, resp.getInputStream());
@@ -292,7 +320,7 @@ public class EasAccountValidator extends EasServerConnection {
         return null;
     }
 
-    public ProvisionParser canProvision(final Account account) throws IOException {
+    public ProvisionParser canProvision() throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION);
         if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
@@ -310,9 +338,9 @@ public class EasAccountValidator extends EasServerConnection {
         }
         s.start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY);
-        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType(mProtocolVersionDouble));
+        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType());
         s.end().end().end().done(); // PROVISION_POLICY, PROVISION_POLICIES, PROVISION_PROVISION
-        final EasResponse resp = sendHttpClientPost(account, "Provision", s.toByteArray());
+        final EasResponse resp = sendHttpClientPost("Provision", s.toByteArray());
         try {
             int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
@@ -324,9 +352,8 @@ public class EasAccountValidator extends EasServerConnection {
                             mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                         // In EAS 14.0, we need the final security key in order to use the settings
                         // command
-                        final String policyKey =
-                                acknowledgeProvision(account, pp.getSecuritySyncKey(),
-                                        PROVISION_STATUS_OK);
+                        final String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
+                                PROVISION_STATUS_OK);
                         if (policyKey != null) {
                             pp.setSecuritySyncKey(policyKey);
                         }
@@ -335,7 +362,7 @@ public class EasAccountValidator extends EasServerConnection {
                         // accommodate the required policies).  The server will agree to this if the
                         // "allow non-provisionable devices" setting is enabled on the server
                         LogUtils.i(TAG, "PolicySet is NOT fully supportable");
-                        if (acknowledgeProvision(account, pp.getSecuritySyncKey(),
+                        if (acknowledgeProvision(pp.getSecuritySyncKey(),
                                 PROVISION_STATUS_PARTIAL) != null) {
                             // The server's ok with our inability to support policies, so we'll
                             // clear them
@@ -354,36 +381,34 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
 
-    public boolean tryProvision(final Account account) throws IOException {
-        mProtocolVersion = account.mProtocolVersion;
-        mProtocolVersionDouble = Eas.getProtocolVersionDouble(mProtocolVersion);
+    public boolean tryProvision() throws IOException {
         // First, see if provisioning is even possible, i.e. do we support the policies required
         // by the server
-        ProvisionParser pp = canProvision(account);
+        ProvisionParser pp = canProvision();
         if (pp == null) return false;
         // Get the policies from ProvisionParser
         Policy policy = pp.getPolicy();
         Policy oldPolicy = null;
         // Grab the old policy (if any)
-        if (account.mPolicyKey > 0) {
-            oldPolicy = Policy.restorePolicyWithId(mContext, account.mPolicyKey);
+        if (mAccount.mPolicyKey > 0) {
+            oldPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
         }
         // Update the account with a null policyKey (the key we've gotten is
         // temporary and cannot be used for syncing)
-        PolicyServiceProxy.setAccountPolicy(mContext, account.mId, policy, null);
+        PolicyServiceProxy.setAccountPolicy(mContext, mAccount.mId, policy, null);
         // Make sure mAccount is current (with latest policy key)
-        account.refresh(mContext);
+        mAccount.refresh(mContext);
         if (pp.getRemoteWipe()) {
             // We've gotten a remote wipe command
             LogUtils.i(TAG, "!!! Remote wipe request received");
             // Start by setting the account to security hold
-            PolicyServiceProxy.setAccountHoldFlag(mContext, account, true);
+            PolicyServiceProxy.setAccountHoldFlag(mContext, mAccount, true);
 
             // First, we've got to acknowledge it, but wrap the wipe in try/catch so that
             // we wipe the device regardless of any errors in acknowledgment
             try {
                 LogUtils.i(TAG, "!!! Acknowledging remote wipe to server");
-                acknowledgeRemoteWipe(account, pp.getSecuritySyncKey());
+                acknowledgeRemoteWipe(pp.getSecuritySyncKey());
             } catch (Exception e) {
                 // Because remote wipe is such a high priority task, we don't want to
                 // circumvent it if there's an exception in acknowledgment
@@ -400,7 +425,7 @@ public class EasAccountValidator extends EasServerConnection {
             if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                 securitySyncKey = pp.getSecuritySyncKey();
             } else {
-                securitySyncKey = acknowledgeProvision(account, pp.getSecuritySyncKey(),
+                securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
                         PROVISION_STATUS_OK);
             }
             if (securitySyncKey != null) {
@@ -408,11 +433,11 @@ public class EasAccountValidator extends EasServerConnection {
                 if (oldPolicy != null) {
                     if ((oldPolicy.mDontAllowAttachments != policy.mDontAllowAttachments) ||
                             (oldPolicy.mMaxAttachmentSize != policy.mMaxAttachmentSize)) {
-                        Policy.setAttachmentFlagsForNewPolicy(mContext, account, policy);
+                        Policy.setAttachmentFlagsForNewPolicy(mContext, mAccount, policy);
                     }
                 }
                 // Write the final policy key to the Account and say we've been successful
-                PolicyServiceProxy.setAccountPolicy(mContext, account.mId, policy, securitySyncKey);
+                PolicyServiceProxy.setAccountPolicy(mContext, mAccount.mId, policy, securitySyncKey);
                 return true;
             }
         }
@@ -439,8 +464,7 @@ public class EasAccountValidator extends EasServerConnection {
         }
 
         int resultCode;
-        final Account account = new Account();
-        account.mEmailAddress = mHostAuth.mLogin;
+
         // Need a nested try here because the provisioning exception handler can throw IOException.
         try {
             try {
@@ -449,23 +473,22 @@ public class EasAccountValidator extends EasServerConnection {
                     bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, optionsResult);
                     return bundle;
                 }
-                account.mProtocolVersion = mProtocolVersion;
                 bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION,
-                        mProtocolVersion);
-                resultCode = doFolderSync(account);
+                        mAccount.mProtocolVersion);
+                resultCode = doFolderSync();
             } catch (final CommandStatusException e) {
                 final int status = e.mStatus;
                 if (CommandStatus.isNeedsProvisioning(status)) {
                     // Get the policies and see if we are able to support them
-                    final ProvisionParser pp = canProvision(account);
+                    final ProvisionParser pp = canProvision();
                     if (pp != null && pp.hasSupportablePolicySet()) {
                         // Set the proper result code and save the PolicySet in our Bundle
                         resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
                         bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
                                 pp.getPolicy());
                         if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
-                            account.mSecuritySyncKey = pp.getSecuritySyncKey();
-                            if (!sendSettings(account)) {
+                            mAccount.mSecuritySyncKey = pp.getSecuritySyncKey();
+                            if (!sendSettings()) {
                                 LogUtils.i(TAG, "Denied access: %s",
                                         CommandStatus.toString(status));
                                 resultCode = MessagingException.ACCESS_DENIED;

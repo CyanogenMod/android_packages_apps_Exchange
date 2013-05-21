@@ -9,11 +9,6 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.exchange.EasResponse;
-
-import org.apache.http.HttpEntity;
-
-import java.io.IOException;
 
 /**
  * Base class for performing a single sync action. It holds the state needed for all sync actions
@@ -23,7 +18,6 @@ import java.io.IOException;
  */
 public abstract class EasSyncHandler extends EasServerConnection {
     protected final ContentResolver mContentResolver;
-    protected final Account mAccount;
     protected final Mailbox mMailbox;
     protected final Bundle mSyncExtras;
     protected final SyncResult mSyncResult;
@@ -49,9 +43,8 @@ public abstract class EasSyncHandler extends EasServerConnection {
     protected EasSyncHandler(final Context context, final ContentResolver contentResolver,
             final Account account, final Mailbox mailbox, final Bundle syncExtras,
             final SyncResult syncResult) {
-        super(context, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
         mContentResolver = contentResolver;
-        mAccount = account;
         mMailbox = mailbox;
         mSyncExtras = syncExtras;
         mSyncResult = syncResult;
@@ -100,22 +93,6 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * TODO: Do we really need a return value, or should we just use the SyncResult for this?
      */
     public abstract SyncStatus performSync();
-
-    // Convenience versions of EasServerConnection functions, using our member variables.
-
-    protected String getProtocolVersion() {
-        return getProtocolVersion(mAccount);
-    }
-
-    protected EasResponse sendHttpClientPost(final String cmd, final HttpEntity entity,
-            final long timeout) throws IOException {
-        return sendHttpClientPost(mAccount, cmd, entity, timeout);
-    }
-
-    protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)
-            throws IOException {
-        return sendHttpClientPost(mAccount, cmd, bytes, COMMAND_TIMEOUT);
-    }
 
     // Communication with the application.
 

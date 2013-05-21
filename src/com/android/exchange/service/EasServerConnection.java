@@ -60,7 +60,10 @@ public abstract class EasServerConnection {
     };
 
     protected final Context mContext;
+    // TODO: Make this private if possible. Subclasses must be careful about altering the HostAuth
+    // to not screw up any connection caching (use redirectHostAuth).
     protected final HostAuth mHostAuth;
+    protected final Account mAccount;
 
     // Bookkeeping for interrupting a POST. This is primarily for use by Ping (there's currently
     // no mechanism for stopping a sync).
@@ -115,9 +118,11 @@ public abstract class EasServerConnection {
     }
     private static final ConnectionManagerCache sConnectionManagers = new ConnectionManagerCache();
 
-    protected EasServerConnection(final Context context, final HostAuth hostAuth) {
+    protected EasServerConnection(final Context context, final Account account,
+            final HostAuth hostAuth) {
         mContext = context;
         mHostAuth = hostAuth;
+        mAccount = account;
     }
 
     protected EmailClientConnectionManager getClientConnectionManager() {
@@ -175,38 +180,35 @@ public abstract class EasServerConnection {
 
     /**
      * Get the protocol version for an account, or a default if we can't determine it.
-     * @param account The account whose protocol version we want to get.
      * @return The protocol version for account, as a String.
      */
-    protected String getProtocolVersion(final Account account) {
-        if (account != null && account.mProtocolVersion != null) {
-            return account.mProtocolVersion;
+    protected String getProtocolVersion() {
+        if (mAccount.mProtocolVersion != null) {
+            return mAccount.mProtocolVersion;
         }
         return Eas.DEFAULT_PROTOCOL_VERSION;
     }
 
     /**
      * Set standard HTTP headers, using a policy key if required
-     * @param account The Account for which we are communicating.
      * @param method the method we are going to send
      * @param usePolicyKey whether or not a policy key should be sent in the headers
      */
-    private void setHeaders(final Account account, final HttpRequestBase method,
-            final boolean usePolicyKey) {
+    private void setHeaders(final HttpRequestBase method, final boolean usePolicyKey) {
         method.setHeader("Authorization", makeAuthString());
-        method.setHeader("MS-ASProtocolVersion", getProtocolVersion(account));
+        method.setHeader("MS-ASProtocolVersion", getProtocolVersion());
         method.setHeader("User-Agent", USER_AGENT);
         method.setHeader("Accept-Encoding", "gzip");
         if (usePolicyKey) {
             // If there's an account in existence, use its key; otherwise (we're creating the
             // account), send "0".  The server will respond with code 449 if there are policies
             // to be enforced
-            String key = "0";
-            if (account != null) {
-                final String accountKey = account.mSecuritySyncKey;
-                if (!TextUtils.isEmpty(accountKey)) {
-                    key = accountKey;
-                }
+            final String key;
+            final String accountKey = mAccount.mSecuritySyncKey;
+            if (!TextUtils.isEmpty(accountKey)) {
+                key = accountKey;
+            } else {
+                key = "0";
             }
             method.setHeader("X-MS-PolicyKey", key);
         }
@@ -229,15 +231,14 @@ public abstract class EasServerConnection {
 
     /**
      * Send a POST request to the server.
-     * @param account The {@link Account} for which we're sending the POST.
      * @param cmd The command we're sending to the server.
      * @param entity The {@link HttpEntity} containing the payload of the message.
      * @param timeout The timeout for this POST.
      * @return The response from the Exchange server.
      * @throws IOException
      */
-    protected EasResponse sendHttpClientPost(final Account account,
-            String cmd, final HttpEntity entity, final long timeout) throws IOException {
+    protected EasResponse sendHttpClientPost(String cmd, final HttpEntity entity,
+            final long timeout) throws IOException {
         final EmailClientConnectionManager connectionManager = getClientConnectionManager();
         final HttpClient client = getHttpClient(connectionManager, timeout);
         final boolean isPingCommand = cmd.equals("Ping");
@@ -259,14 +260,14 @@ public abstract class EasServerConnection {
         // Send the proper Content-Type header; it's always wbxml except for messages when
         // the EAS protocol version is < 14.0
         // If entity is null (e.g. for attachments), don't set this header
-        final String protocolVersion = getProtocolVersion(account);
+        final String protocolVersion = getProtocolVersion();
         final Double protocolVersionDouble = Eas.getProtocolVersionDouble(protocolVersion);
         if (msg && (protocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE)) {
             method.setHeader("Content-Type", "message/rfc822");
         } else if (entity != null) {
             method.setHeader("Content-Type", "application/vnd.ms-sync.wbxml");
         }
-        setHeaders(account, method, !isPingCommand);
+        setHeaders(method, !isPingCommand);
         // NOTE
         // The next lines are added at the insistence of $VENDOR, who is seeing inappropriate
         // network activity related to the Ping command on some networks with some servers.
@@ -296,14 +297,14 @@ public abstract class EasServerConnection {
         }
     }
 
-    protected EasResponse sendHttpClientPost(final Account account, final String cmd,
-            final byte[] bytes, final long timeout) throws IOException {
-        return sendHttpClientPost(account, cmd, new ByteArrayEntity(bytes), timeout);
+    protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
+            final long timeout) throws IOException {
+        return sendHttpClientPost(cmd, new ByteArrayEntity(bytes), timeout);
     }
 
-    protected EasResponse sendHttpClientPost(final Account account, final String cmd,
-            final byte[] bytes) throws IOException {
-        return sendHttpClientPost(account, cmd, bytes, COMMAND_TIMEOUT);
+    protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)
+            throws IOException {
+        return sendHttpClientPost(cmd, bytes, COMMAND_TIMEOUT);
     }
 
     /**

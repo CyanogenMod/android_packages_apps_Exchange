@@ -33,7 +33,6 @@ import java.util.ArrayList;
  */
 public class EasPingSyncHandler extends EasServerConnection {
     private final ContentResolver mContentResolver;
-    private final Account mAccount;
     private final PingTask mPingTask;
 
     private class PingTask extends AsyncTask<Void, Void, Void> {
@@ -86,8 +85,8 @@ public class EasPingSyncHandler extends EasServerConnection {
                         // in handleOneMailbox when the Serializer is first created.
                         // If either side changes, the other must be kept in sync.
                         s.end().end().done();
-                        final EasResponse resp = sendHttpClientPost(mAccount, "Ping",
-                                s.toByteArray(), PING_HEARTBEAT);
+                        final EasResponse resp = sendHttpClientPost("Ping", s.toByteArray(),
+                                PING_HEARTBEAT);
                         try {
                             continuePing = handleResponse(resp, amAccount);
                         } finally {
@@ -288,9 +287,8 @@ public class EasPingSyncHandler extends EasServerConnection {
 
     public EasPingSyncHandler(final Context context, final Account account,
             final EmailSyncAdapterService.SyncHandlerSychronizer syncHandlerMap) {
-        super(context, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
         mContentResolver = context.getContentResolver();
-        mAccount = account;
         mPingTask = new PingTask(syncHandlerMap);
         mPingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }

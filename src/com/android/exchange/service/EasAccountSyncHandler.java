@@ -34,8 +34,9 @@ public class EasAccountSyncHandler extends EasSyncHandler {
 
     private boolean tryProvision() {
         try {
-            final EasAccountValidator validator = new EasAccountValidator(mContext, mHostAuth);
-            return validator.tryProvision(mAccount);
+            final EasAccountValidator validator =
+                    new EasAccountValidator(mContext, mAccount, mHostAuth);
+            return validator.tryProvision();
         } catch (final IOException e) {
 
         }
