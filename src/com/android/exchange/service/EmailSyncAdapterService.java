@@ -468,32 +468,20 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID,
                     Mailbox.NO_MAILBOX);
             if (mailboxId == Mailbox.NO_MAILBOX) {
-                // If no mailbox is specified, this is an account sync. This means we should both
-                // sync the account (to get folders, etc.) as well as the inbox.
-                // TODO: Why does the "account mailbox" even exist?
-                Mailbox accountMailbox = Mailbox.restoreMailboxOfType(context, account.mId,
-                        Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
-                if (accountMailbox == null) {
-                    // TODO: This is a hack to work around the lack of an account observer.
-                    accountMailbox = new Mailbox();
-                    accountMailbox.mType = Mailbox.TYPE_EAS_ACCOUNT_MAILBOX;
-                }
-                final EasSyncHandler accountSyncHandler = EasSyncHandler.getEasSyncHandler(
-                        context, cr, account, accountMailbox, extras, syncResult);
+                // If no mailbox is specified, this is an account sync.
+                final EasAccountSyncHandler accountSyncHandler =
+                        new EasAccountSyncHandler(context, account);
+                accountSyncHandler.performSync();
 
-                if (accountSyncHandler == null) {
-                    // TODO: Account box does not exist, add proper error handling.
+                // Account sync also does an inbox sync.
+                final Mailbox inbox = Mailbox.restoreMailboxOfType(context, account.mId,
+                        Mailbox.TYPE_INBOX);
+                final EasSyncHandler inboxSyncHandler = EasSyncHandler.getEasSyncHandler(
+                        context, cr, account, inbox, extras, syncResult);
+                if (inboxSyncHandler == null) {
+                    // TODO: Inbox does not exist for this account, add proper error handling.
                 } else {
-                    accountSyncHandler.performSync();
-                    final Mailbox inbox = Mailbox.restoreMailboxOfType(context, account.mId,
-                            Mailbox.TYPE_INBOX);
-                    final EasSyncHandler inboxSyncHandler = EasSyncHandler.getEasSyncHandler(
-                            context, cr, account, inbox, extras, syncResult);
-                    if (inboxSyncHandler == null) {
-                        // TODO: Inbox does not exist for this account, add proper error handling.
-                    } else {
-                        inboxSyncHandler.performSync();
-                    }
+                    inboxSyncHandler.performSync();
                 }
             } else {
                 // Sync the mailbox that was explicitly requested.

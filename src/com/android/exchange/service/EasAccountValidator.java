@@ -33,29 +33,44 @@ import java.security.cert.CertificateException;
 import java.util.HashSet;
 
 /**
- * Performs account validation.
+ * Base class to perform the various requests needed to validate or sync an account.
+ * "Account sync" consists primarily of syncing all folders for this account, but also includes
+ * handling the protocol version, security policies, and other authentication issues.
  */
 public class EasAccountValidator extends EasServerConnection {
+    /** Logging tag. */
     private static final String TAG = "EasAccountValidator";
+
+    /**
+     * The maximum number of redirects we permit before giving up. Ideally the server should not
+     * send us on a chase like this, so this is here to prevent infinite recursion in a bad case.
+     */
     private static final int MAX_REDIRECTS = 3;
 
     public static final String EAS_12_POLICY_TYPE = "MS-EAS-Provisioning-WBXML";
     public static final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";
 
-    // The EAS protocol Provision status for "we implement all of the policies"
+    /** The EAS protocol Provision status for "we implement all of the policies" */
     private static final String PROVISION_STATUS_OK = "1";
-    // The EAS protocol Provision status meaning "we partially implement the policies"
+    /** The EAS protocol Provision status meaning "we partially implement the policies" */
     private static final String PROVISION_STATUS_PARTIAL = "2";
 
-    // Set of Exchange protocol versions we understand.
+    /** Set of Exchange protocol versions we understand. */
     private static final HashSet<String> SUPPORTED_PROTOCOL_VERSIONS = Sets.newHashSet(
             Eas.SUPPORTED_PROTOCOL_EX2003,
             Eas.SUPPORTED_PROTOCOL_EX2007, Eas.SUPPORTED_PROTOCOL_EX2007_SP1,
             Eas.SUPPORTED_PROTOCOL_EX2010, Eas.SUPPORTED_PROTOCOL_EX2010_SP1);
 
+    /** mAccount.mProtocolVersion, as a double. If the version is unknown, this will be 0.0. */
     private double mProtocolVersionDouble;
+    /** The number of times we've been redirected so far. */
     private int mRedirectCount;
 
+    /**
+     * An exception type used exclusively within this class -- some sub-functions throw this to
+     * signal that a response from the Exchange server indicated that we should be using a different
+     * host. This exception is caught
+     */
     private static class RedirectException extends Exception {
         public final String mRedirectAddress;
         public RedirectException(final EasResponse resp) {
@@ -80,8 +95,7 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
     /**
-     * Get the protocol version to use, based on the server's supported versions, and update our
-     * account with this information.
+     * Update our account's protocol version based on the server's supported versions.
      * @param versionHeader The {@link Header} for the server's supported versions.
      * @return Whether we found a suitable protocol version.
      */
@@ -141,9 +155,8 @@ public class EasAccountValidator extends EasServerConnection {
      * @return A status code for getting the protocol version. If NO_ERROR, then mAccount will be
      *     updated to the best version we mutually understand.
      */
-    private int doHttpOptions() throws IOException, RedirectException {
+    private int getServerProtocolVersion() throws IOException, RedirectException {
         final EasResponse resp = sendHttpClientOptions();
-        final int resultCode;
         try {
             final int code = resp.getStatus();
             LogUtils.d(TAG, "Validation (OPTIONS) response: %d", code);
@@ -183,19 +196,21 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
     /**
-     * Send a FolderSync request to the server to verify the response -- we aren't actually
-     * syncing the account at this point, just want to make sure we get valid output.
+     * Send a FolderSync request and handle the response. Depending on isStatusOnly, this either
+     * simply verifies that the response is valid, or it will also actually sync the folders.
+     * @param isStatusOnly If true, this is only a validation, otherwise it's a full sync.
      * @return A status code indicating the result of this check.
      * @throws IOException
      * @throws CommandStatusException
      * @throws RedirectException
      */
-    private int doFolderSync() throws IOException, CommandStatusException, RedirectException {
-        LogUtils.i(TAG, "Try FolderSync for %s, %s, ssl = %s", mHostAuth.mAddress, mHostAuth.mLogin,
-                mHostAuth.shouldUseSsl() ? "1" : "0");
+    private int doFolderSync(final boolean isStatusOnly)
+            throws IOException, CommandStatusException, RedirectException {
+        LogUtils.i(TAG, "FolderSync (%s) for %s, %s, ssl = %s", isStatusOnly ? "validate" : "sync",
+                mHostAuth.mAddress, mHostAuth.mLogin, mHostAuth.shouldUseSsl() ? "1" : "0");
 
         // Send "0" as the sync key for new accounts; otherwise, use the current key
-        final String syncKey = "0";
+        final String syncKey = mAccount.mSyncKey != null ? mAccount.mSyncKey : "0";
         final Serializer s = new Serializer();
         s.start(Tags.FOLDER_FOLDER_SYNC).start(Tags.FOLDER_SYNC_KEY).text(syncKey)
             .end().end().done();
@@ -203,18 +218,16 @@ public class EasAccountValidator extends EasServerConnection {
         final int resultCode;
         try {
             final int code = resp.getStatus();
-            LogUtils.d(TAG, "Validations (FolderSync) response: %d", code);
+            LogUtils.d(TAG, "FolderSync response: %d", code);
             if (code == HttpStatus.SC_OK) {
                 // We need to parse the result to see if we've got a provisioning issue
                 // (EAS 14.0 only)
                 if (!resp.isEmpty()) {
-                    // Create the parser with statusOnly set to true; we only care about
-                    // seeing if a CommandStatusException is thrown (indicating a
-                    // provisioning failure)
                     new FolderSyncParser(mContext, mContext.getContentResolver(),
-                            resp.getInputStream(), mAccount, true).parse();
+                            resp.getInputStream(), mAccount, isStatusOnly).parse();
                 }
                 resultCode = MessagingException.NO_ERROR;
+                // TODO: Save mAccount (at least syncKey should be different).
             } else if (code == HttpStatus.SC_FORBIDDEN) {
                 // For validation only, we take 403 as ACCESS_DENIED (the account isn't
                 // authorized, possibly due to device type)
@@ -270,16 +283,38 @@ public class EasAccountValidator extends EasServerConnection {
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
+    /**
+     * Acknowledge a remote wipe command from the server.
+     * @param tempKey The security key of our current (temporary) policy.
+     * @throws IOException
+     */
     private void acknowledgeRemoteWipe(final String tempKey)
             throws IOException {
         acknowledgeProvisionImpl(tempKey, PROVISION_STATUS_OK, true);
     }
 
+    /**
+     * Acknowledge that we've set the required policy.
+     * @param tempKey The security key of our current (temporary) policy.
+     * @param result One of {@link #PROVISION_STATUS_OK} or {@link #PROVISION_STATUS_PARTIAL}
+     *               indicating how well we enforce the policy.
+     * @return A new security sync key, or null on failure.
+     * @throws IOException
+     */
     private String acknowledgeProvision(final String tempKey, final String result)
             throws IOException {
         return acknowledgeProvisionImpl(tempKey, result, false);
     }
 
+    /**
+     * Common function doing the work for acknowledging remote wipes or provisioning.
+     * @param tempKey The security key of our current (temporary) policy.
+     * @param status One of {@link #PROVISION_STATUS_OK} or {@link #PROVISION_STATUS_PARTIAL}
+     *               indicating how well we enforce the policy.
+     * @param remoteWipe Whether this is a remote wipe.
+     * @return A new security sync key, or null on failure.
+     * @throws IOException
+     */
     private String acknowledgeProvisionImpl(final String tempKey, final String status,
             final boolean remoteWipe) throws IOException {
         final Serializer s = new Serializer();
@@ -320,7 +355,13 @@ public class EasAccountValidator extends EasServerConnection {
         return null;
     }
 
-    public ProvisionParser canProvision() throws IOException {
+    /**
+     * Send an Exchange Provision request, and process the response to see if we can handle the
+     * provisioning requirements returned by the server.
+     * @return A {@link ProvisionParser} for the response, or null if we can't handle it.
+     * @throws IOException
+     */
+    private ProvisionParser canProvision() throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION);
         if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
@@ -380,18 +421,23 @@ public class EasAccountValidator extends EasServerConnection {
         return null;
     }
 
-
-    public boolean tryProvision() throws IOException {
-        // First, see if provisioning is even possible, i.e. do we support the policies required
-        // by the server
-        ProvisionParser pp = canProvision();
+    /**
+     * Process the provisioning requirements that's returned by the server in response to a
+     * Provision request.
+     * @param pp  A {@link ProvisionParser} for the server response to the Provision request.
+     * @return Whether we successfully handled the provisioning requirements.
+     * @throws IOException
+     */
+    private boolean tryProvision(final ProvisionParser pp) throws IOException {
         if (pp == null) return false;
         // Get the policies from ProvisionParser
-        Policy policy = pp.getPolicy();
-        Policy oldPolicy = null;
+        final Policy policy = pp.getPolicy();
+        final Policy oldPolicy;
         // Grab the old policy (if any)
         if (mAccount.mPolicyKey > 0) {
             oldPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+        } else {
+            oldPolicy = null;
         }
         // Update the account with a null policyKey (the key we've gotten is
         // temporary and cannot be used for syncing)
@@ -437,7 +483,8 @@ public class EasAccountValidator extends EasServerConnection {
                     }
                 }
                 // Write the final policy key to the Account and say we've been successful
-                PolicyServiceProxy.setAccountPolicy(mContext, mAccount.mId, policy, securitySyncKey);
+                PolicyServiceProxy.setAccountPolicy(mContext, mAccount.mId, policy,
+                        securitySyncKey);
                 return true;
             }
         }
@@ -445,21 +492,39 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
     /**
-     * Perform the actual validation.
-     * @return The validation response.
+     * Do the heavy lifting for validation and sync:
+     * - HTTP OPTIONS request to get protocol version from the server, if we don't already have it.
+     * - Exchange FolderSync request to get the folder info.
+     * (And exception handling for those operations.)
+     * Validation differs from sync in four ways:
+     * - Validation registers the client cert.
+     * - Validation doesn't save the FolderSync results.
+     * - Validation doesn't attempt to set device policies.
+     * - Validation must populate a bundle with the results of the validation.
+     * @param bundle If this is a validation call, this will be non-null, and this function will
+     *               write the results to it (specifically it writes
+     *               {@link EmailServiceProxy#VALIDATE_BUNDLE_RESULT_CODE},
+     *               {@link EmailServiceProxy#VALIDATE_BUNDLE_PROTOCOL_VERSION}, and
+     *               {@link EmailServiceProxy#VALIDATE_BUNDLE_POLICY_SET} (when there's a policy to
+     *               be had).
+     *               If this is a sync call, bundle will be null.
+     *               This function also uses the null/not null status to differentiate behavior in
+     *               the few places where validation and sync don't do the same thing.
      */
-    public Bundle validate() {
-        LogUtils.i(TAG, "Testing EAS: %s, %s, ssl = %s", mHostAuth.mAddress, mHostAuth.mLogin,
-                mHostAuth.shouldUseSsl() ? "1" : "0");
-        final Bundle bundle = new Bundle();
-        if (mHostAuth.mClientCertAlias != null) {
-            try {
-                getClientConnectionManager().registerClientCert(mContext, mHostAuth);
-            } catch (final CertificateException e) {
-                // The client certificate the user specified is invalid/inaccessible.
-                bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
-                        MessagingException.CLIENT_CERTIFICATE_ERROR);
-                return bundle;
+    protected void doValidationOrSync(final Bundle bundle) {
+        LogUtils.i(TAG, "Performing %s: %s, %s, ssl = %s", bundle != null ? "validation" : "sync",
+                mHostAuth.mAddress, mHostAuth.mLogin, mHostAuth.shouldUseSsl() ? "1" : "0");
+
+        if (bundle != null) {
+            if (mHostAuth.mClientCertAlias != null) {
+                try {
+                    getClientConnectionManager().registerClientCert(mContext, mHostAuth);
+                } catch (final CertificateException e) {
+                    // The client certificate the user specified is invalid/inaccessible.
+                    bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
+                            MessagingException.CLIENT_CERTIFICATE_ERROR);
+                    return;
+                }
             }
         }
 
@@ -468,14 +533,22 @@ public class EasAccountValidator extends EasServerConnection {
         // Need a nested try here because the provisioning exception handler can throw IOException.
         try {
             try {
-                final int optionsResult = doHttpOptions();
-                if (optionsResult != MessagingException.NO_ERROR) {
-                    bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, optionsResult);
-                    return bundle;
+                // TODO: also want to check protocol version at least once in a while after setup.
+                if (mAccount.mProtocolVersion == null) {
+                    final int optionsResult = getServerProtocolVersion();
+                    if (optionsResult != MessagingException.NO_ERROR) {
+                        if (bundle != null) {
+                            bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
+                                    optionsResult);
+                        }
+                        return;
+                    }
+                    if (bundle != null) {
+                        bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION,
+                                mAccount.mProtocolVersion);
+                    }
                 }
-                bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION,
-                        mAccount.mProtocolVersion);
-                resultCode = doFolderSync();
+                resultCode = doFolderSync(bundle != null);
             } catch (final CommandStatusException e) {
                 final int status = e.mStatus;
                 if (CommandStatus.isNeedsProvisioning(status)) {
@@ -483,22 +556,30 @@ public class EasAccountValidator extends EasServerConnection {
                     final ProvisionParser pp = canProvision();
                     if (pp != null && pp.hasSupportablePolicySet()) {
                         // Set the proper result code and save the PolicySet in our Bundle
-                        resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
-                        bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
-                                pp.getPolicy());
-                        if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
-                            mAccount.mSecuritySyncKey = pp.getSecuritySyncKey();
-                            if (!sendSettings()) {
-                                LogUtils.i(TAG, "Denied access: %s",
-                                        CommandStatus.toString(status));
-                                resultCode = MessagingException.ACCESS_DENIED;
+                        if (bundle != null) {
+                            resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
+                            bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
+                                    pp.getPolicy());
+                            if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                                mAccount.mSecuritySyncKey = pp.getSecuritySyncKey();
+                                if (!sendSettings()) {
+                                    LogUtils.i(TAG, "Denied access: %s",
+                                            CommandStatus.toString(status));
+                                    resultCode = MessagingException.ACCESS_DENIED;
+                                }
                             }
+                        } else if (tryProvision(pp)) {
+                            resultCode = MessagingException.NO_ERROR;
+                        } else {
+                            resultCode = MessagingException.GENERAL_SECURITY;
                         }
                     } else {
                         // If not, set the proper code (the account will not be created)
                         resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
-                        bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
-                                pp.getPolicy());
+                        if (bundle != null) {
+                            bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
+                                    pp.getPolicy());
+                        }
                     }
                 } else if (CommandStatus.isDeniedAccess(status)) {
                     LogUtils.i(TAG, "Denied access: %s", CommandStatus.toString(status));
@@ -511,11 +592,12 @@ public class EasAccountValidator extends EasServerConnection {
                     resultCode = MessagingException.UNSPECIFIED_EXCEPTION;
                 }
             } catch (final RedirectException e) {
-                // We handle a limited number of redirects by recursively calling ourself.
+                // We handle a limited number of redirects by recursion.
                 if (mRedirectCount < MAX_REDIRECTS && e.mRedirectAddress != null) {
                     ++mRedirectCount;
                     redirectHostAuth(e.mRedirectAddress);
-                    return validate();
+                    doValidationOrSync(bundle);
+                    return;
                 } else {
                     resultCode = MessagingException.UNSPECIFIED_EXCEPTION;
                 }
@@ -530,7 +612,19 @@ public class EasAccountValidator extends EasServerConnection {
             }
         }
 
-        bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, resultCode);
+        if (bundle != null) {
+            bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, resultCode);
+        }
+    }
+
+
+    /**
+     * Perform the actual validation.
+     * @return The validation response.
+     */
+    public Bundle validate() {
+        final Bundle bundle = new Bundle();
+        doValidationOrSync(bundle);
         return bundle;
     }
 }
