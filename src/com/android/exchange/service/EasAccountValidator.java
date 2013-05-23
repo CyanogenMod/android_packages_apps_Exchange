@@ -596,6 +596,10 @@ public class EasAccountValidator extends EasServerConnection {
                 if (mRedirectCount < MAX_REDIRECTS && e.mRedirectAddress != null) {
                     ++mRedirectCount;
                     redirectHostAuth(e.mRedirectAddress);
+                    if (bundle != null) {
+                        bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_REDIRECT_ADDRESS,
+                                e.mRedirectAddress);
+                    }
                     doValidationOrSync(bundle);
                     return;
                 } else {

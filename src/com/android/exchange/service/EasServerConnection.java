@@ -1,5 +1,6 @@
 package com.android.exchange.service;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
@@ -9,10 +10,12 @@ import android.util.Base64;
 
 import com.android.emailcommon.Device;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
+import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
@@ -37,6 +40,9 @@ import java.util.HashMap;
  * server can subclass this to get access to the {@link #sendHttpClientPost} family of functions.
  */
 public abstract class EasServerConnection {
+    /** Logging tag. */
+    private static final String TAG = "EasServerConnection";
+
     /**
      * Timeout for establishing a connection to the server.
      */
@@ -96,6 +102,8 @@ public abstract class EasServerConnection {
                 params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
                 final boolean ssl = hostAuth.shouldUseSsl();
                 final int port = hostAuth.mPort;
+                LogUtils.i(TAG, "Creating connection manager for port %d (%s)", port,
+                        ssl ? "uses ssl" : "no ssl");
                 connectionManager =
                         EmailClientConnectionManager.newInstance(context, params, hostAuth);
                 // We don't save managers for validation/autodiscover
@@ -132,6 +140,11 @@ public abstract class EasServerConnection {
     protected void redirectHostAuth(final String newAddress) {
         mHostAuth.mAddress = newAddress;
         sConnectionManagers.uncacheConnectionManager(mHostAuth);
+        if (mHostAuth.isSaved()) {
+            final ContentValues cv = new ContentValues(1);
+            cv.put(EmailContent.HostAuthColumns.ADDRESS, newAddress);
+            mHostAuth.update(mContext, cv);
+        }
     }
 
     private HttpClient getHttpClient(final EmailClientConnectionManager connectionManager,
