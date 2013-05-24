@@ -43,14 +43,14 @@ public class EasPingSyncHandler extends EasServerConnection {
         private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
                 MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
 
-        private final EmailSyncAdapterService.SyncHandlerSychronizer mSyncHandlerMap;
+        private final EmailSyncAdapterService.SyncHandlerSynchronizer mSyncHandlerMap;
 
         // TODO: The old code used to increase the heartbeat time after successful pings. Is there
         // a good reason to not just start at the high value? If there's a problem, it'll just fail
         // early anyway...
         private static final long PING_HEARTBEAT = 8 * DateUtils.MINUTE_IN_MILLIS;
 
-        private PingTask(final EmailSyncAdapterService.SyncHandlerSychronizer syncHandlerMap) {
+        private PingTask(final EmailSyncAdapterService.SyncHandlerSynchronizer syncHandlerMap) {
             mSyncHandlerMap = syncHandlerMap;
         }
 
@@ -286,7 +286,7 @@ public class EasPingSyncHandler extends EasServerConnection {
     }
 
     public EasPingSyncHandler(final Context context, final Account account,
-            final EmailSyncAdapterService.SyncHandlerSychronizer syncHandlerMap) {
+            final EmailSyncAdapterService.SyncHandlerSynchronizer syncHandlerMap) {
         super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
         mContentResolver = context.getContentResolver();
         mPingTask = new PingTask(syncHandlerMap);

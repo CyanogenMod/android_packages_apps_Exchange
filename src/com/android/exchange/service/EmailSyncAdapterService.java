@@ -80,7 +80,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
      * - As an optimization, while a ping request is waiting to run, subsequent ping requests are
      *   ignored (the pending ping will pick up the latest ping parameters at the time it runs).
      */
-    public class SyncHandlerSychronizer {
+    public class SyncHandlerSynchronizer {
         /**
          * Map of account id -> ping handler.
          * For a given account id, there are three possible states:
@@ -126,6 +126,15 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             return (mPingHandlers.containsKey(accountId) && mPingHandlers.get(accountId) == null);
         }
 
+        private void stopServiceIfNoPings() {
+            for (final EasPingSyncHandler pingHandler : mPingHandlers.values()) {
+                if (pingHandler != null) {
+                    return;
+                }
+            }
+            EmailSyncAdapterService.this.stopSelf();
+        }
+
         /**
          * Called prior to starting a sync to update our state.
          * @param accountId The account on which we are running a sync.
@@ -165,7 +174,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 // No ping or sync running. Figure out whether a ping is needed, and if so with
                 // what params.
                 final Account account = Account.restoreAccountWithId(context, accountId);
-                if (account.mSyncInterval == Account.CHECK_INTERVAL_PUSH) {
+                if (account == null || account.mSyncInterval != Account.CHECK_INTERVAL_PUSH) {
+                    // A ping that was running is no longer running, or something happened to the
+                    // account.
+                    stopServiceIfNoPings();
+                } else {
                     // Note: unlike startSync, we CANNOT allow the caller to do the actual work.
                     // If we return before the ping starts, there's a race condition where another
                     // ping or sync might start first. It only works for startSync because sync is
@@ -203,6 +216,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // block.
             if (wasSync) {
                 modifyPing(accountId);
+            } else {
+                // A ping stopped, so check if we should stop the service.
+                stopServiceIfNoPings();
             }
 
             // Similarly, it's ok to notify after we restart the ping, because we know the ping
@@ -212,7 +228,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             }
         }
     }
-    private final SyncHandlerSychronizer mSyncHandlerMap = new SyncHandlerSychronizer();
+    private final SyncHandlerSynchronizer mSyncHandlerMap = new SyncHandlerSynchronizer();
 
     /**
      * The binder for IEmailService.
