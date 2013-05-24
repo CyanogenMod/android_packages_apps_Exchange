@@ -22,7 +22,7 @@ LOCAL_MODULE_TAGS := optional
 
 # Include res dir from emailcommon
 emailcommon_dir := ../Email/emailcommon
-res_dir := res $(emailcommon_dir)/res build/res
+res_dir := res $(emailcommon_dir)/res
 
 LOCAL_RESOURCE_DIR := $(addprefix $(LOCAL_PATH)/, $(res_dir))
 

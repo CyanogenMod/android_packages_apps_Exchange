@@ -195,4 +195,7 @@
     <string name="account_setup_options_mail_window_1month">One month</string>
     <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
     <string name="account_setup_options_mail_window_all">All</string>
+
+    <string name="account_manager_type_exchange" translatable="false">com.android.exchange</string>
+    <string name="authority_email_provider" translatable="false">com.android.email.provider</string>
 </resources>
