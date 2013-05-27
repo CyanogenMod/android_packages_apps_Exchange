@@ -28,13 +28,13 @@
     <string name="meeting_allday" msgid="6696389765484663513">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (o dia todo)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (o dia todo, recorrente)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Agenda do Exchange adicionada"</string>
-    <string name="app_name" msgid="5316597712787122829">"Trocar serviços"</string>
+    <string name="app_name" msgid="5316597712787122829">"Serviços Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"Este evento foi cancelado para: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"Os detalhes deste evento foram alterados para: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"Não permitir cartões de armazenamento"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Não permitir aplicativos não assinados"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Não permitir instal. aplic. não assinado"</string>
-    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Não permitir Wi-FI"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Não permitir Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Não permitir mensagens de texto"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Não permitir contas POP3 ou IMAP"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Não permitir comunic. via infravermelho"</string>

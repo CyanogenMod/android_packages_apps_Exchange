@@ -28,7 +28,7 @@
     <string name="meeting_allday" msgid="6696389765484663513">"เมื่อ: <xliff:g id="EVENTDATE">%s</xliff:g> (ตลอดวัน)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"เมื่อ: <xliff:g id="EVENTDATE">%s</xliff:g> (ตลอดวัน เกิดซ้ำ)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"เพิ่มปฏิทิน Exchange แล้ว"</string>
-    <string name="app_name" msgid="5316597712787122829">"บริการแลกเปลี่ยน"</string>
+    <string name="app_name" msgid="5316597712787122829">"บริการอีเมล Exchange"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"กิจกรรมถูกยกเลิกแล้วในวันที่: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"วันที่ของกิจกรรมนี้ถูกเปลี่ยนเป็น: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"ไม่อนุญาตให้มีการ์ดบันทึกข้อมูล"</string>
