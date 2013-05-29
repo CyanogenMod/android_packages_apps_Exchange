@@ -161,6 +161,7 @@ public abstract class AbstractSyncParser extends Parser {
                         // we sync folders"...
                         throw new IOException();
                     } else if (status == 7) {
+                        // TODO: Fix this.
                         //mService.mUpsyncFailed = true;
                         moreAvailable = true;
                     } else {

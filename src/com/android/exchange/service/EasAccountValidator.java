@@ -272,8 +272,8 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
     private String getPolicyType() {
-        return (getProtocolVersion() >=
-            Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
+        return (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ?
+                EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
     /**

@@ -17,13 +17,6 @@
 
 package com.android.exchange.adapter;
 
-import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.Mailbox;
-import com.android.exchange.CommandStatusException;
-import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
-import com.google.common.annotations.VisibleForTesting;
-
 import android.content.ContentProviderOperation;
 import android.content.ContentProviderResult;
 import android.content.ContentResolver;
@@ -33,6 +26,13 @@ import android.content.OperationApplicationException;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.os.TransactionTooLargeException;
+
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.exchange.CommandStatusException;
+import com.android.exchange.Eas;
+import com.android.exchange.EasSyncService;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,7 +99,7 @@ public abstract class AbstractSyncAdapter {
     /**
      * Set sync options common to PIM's (contacts and calendar)
      * @param protocolVersion the protocol version under which we're syncing
-     * @param the filter to use (or null)
+     * @param filter the filter to use (or null)
      * @param s the Serializer
      * @throws IOException
      */
@@ -209,17 +209,13 @@ public abstract class AbstractSyncAdapter {
      * We apply the batch of CPO's here.  We synchronize on the service to avoid thread-nasties,
      * and we just return quickly if the service has already been stopped.
      */
-    private ContentProviderResult[] execute(String authority,
-            ArrayList<ContentProviderOperation> ops)
+    private static ContentProviderResult[] execute(final ContentResolver contentResolver,
+            final String authority, final ArrayList<ContentProviderOperation> ops)
             throws RemoteException, OperationApplicationException {
-        synchronized (mService.getSynchronizer()) {
-            if (!mService.isStopped()) {
-                if (!ops.isEmpty()) {
-                    ContentProviderResult[] result = mContentResolver.applyBatch(authority, ops);
-                    mService.userLog("Results: " + result.length);
-                    return result;
-                }
-            }
+        if (!ops.isEmpty()) {
+            ContentProviderResult[] result = contentResolver.applyBatch(authority, ops);
+            //mService.userLog("Results: " + result.length);
+            return result;
         }
         return new ContentProviderResult[0];
     }
@@ -245,8 +241,9 @@ public abstract class AbstractSyncAdapter {
     /**
      * Create a list of CPOs from a list of Operations, and then apply them in a batch
      */
-    private ContentProviderResult[] applyBatch(String authority, ArrayList<Operation> ops,
-            int offset) throws RemoteException, OperationApplicationException {
+    private static ContentProviderResult[] applyBatch(final ContentResolver contentResolver,
+            final String authority, final ArrayList<Operation> ops, final int offset)
+            throws RemoteException, OperationApplicationException {
         // Handle the empty case
         if (ops.isEmpty()) {
             return new ContentProviderResult[0];
@@ -255,18 +252,20 @@ public abstract class AbstractSyncAdapter {
         for (Operation op: ops) {
             cpos.add(operationToContentProviderOperation(op, offset));
         }
-        return execute(authority, cpos);
+        return execute(contentResolver, authority, cpos);
     }
 
     /**
      * Apply the list of CPO's in the provider and copy the "mini" result into our full result array
      */
-    private void applyAndCopyResults(String authority, ArrayList<Operation> mini,
-            ContentProviderResult[] result, int offset) throws RemoteException {
+    private static void applyAndCopyResults(final ContentResolver contentResolver,
+            final String authority, final ArrayList<Operation> mini,
+            final ContentProviderResult[] result, final int offset) throws RemoteException {
         // Empty lists are ok; we just ignore them
         if (mini.isEmpty()) return;
         try {
-            ContentProviderResult[] miniResult = applyBatch(authority, mini, offset);
+            ContentProviderResult[] miniResult = applyBatch(contentResolver, authority, mini,
+                    offset);
             // Copy the results from this mini-batch into our results array
             System.arraycopy(miniResult, 0, result, offset, miniResult.length);
         } catch (OperationApplicationException e) {
@@ -286,16 +285,16 @@ public abstract class AbstractSyncAdapter {
      * Callers MAY leave a dangling separator at the end of the list; note that the separators
      * themselves are only markers and are not sent to the provider.
      */
-    protected ContentProviderResult[] safeExecute(String authority, ArrayList<Operation> ops)
-            throws RemoteException {
-        mService.userLog("Try to execute ", ops.size(), " CPO's for " + authority);
+    protected static ContentProviderResult[] safeExecute(final ContentResolver contentResolver,
+            final String authority, final ArrayList<Operation> ops) throws RemoteException {
+        //mService.userLog("Try to execute ", ops.size(), " CPO's for " + authority);
         ContentProviderResult[] result = null;
         try {
             // Try to execute the whole thing
-            return applyBatch(authority, ops, 0);
+            return applyBatch(contentResolver, authority, ops, 0);
         } catch (TransactionTooLargeException e) {
             // Nope; split into smaller chunks, demarcated by the separator operation
-            mService.userLog("Transaction too large; spliting!");
+            //mService.userLog("Transaction too large; spliting!");
             ArrayList<Operation> mini = new ArrayList<Operation>();
             // Build a result array with the total size we're sending
             result = new ContentProviderResult[ops.size()];
@@ -304,8 +303,8 @@ public abstract class AbstractSyncAdapter {
             for (Operation op: ops) {
                 if (op.mSeparator) {
                     try {
-                        mService.userLog("Try mini-batch of ", mini.size(), " CPO's");
-                        applyAndCopyResults(authority, mini, result, offset);
+                        //mService.userLog("Try mini-batch of ", mini.size(), " CPO's");
+                        applyAndCopyResults(contentResolver, authority, mini, result, offset);
                         mini.clear();
                         // Save away the offset here; this will need to be subtracted out of the
                         // value originally set by the adapter
@@ -323,7 +322,7 @@ public abstract class AbstractSyncAdapter {
             // Check out what's left; if it's more than just a separator, apply the batch
             int miniSize = mini.size();
             if ((miniSize > 0) && !(miniSize == 1 && mini.get(0).mSeparator)) {
-                applyAndCopyResults(authority, mini, result, offset);
+                applyAndCopyResults(contentResolver, authority, mini, result, offset);
             }
         } catch (RemoteException e) {
             throw e;
@@ -336,11 +335,10 @@ public abstract class AbstractSyncAdapter {
     /**
      * Called by a sync adapter to indicate a relatively safe place to split a batch of CPO's
      */
-    protected void addSeparatorOperation(ArrayList<Operation> ops, Uri uri) {
+    protected static void addSeparatorOperation(ArrayList<Operation> ops, Uri uri) {
         Operation op = new Operation(
                 ContentProviderOperation.newDelete(ContentUris.withAppendedId(uri, SEPARATOR_ID)));
         op.mSeparator = true;
         ops.add(op);
     }
 }
-

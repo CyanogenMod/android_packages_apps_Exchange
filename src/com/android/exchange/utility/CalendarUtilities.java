@@ -1386,12 +1386,14 @@ public class CalendarUtilities {
 
     /**
      * Create a Calendar in CalendarProvider to which synced Events will be linked
-     * @param service the sync service requesting Calendar creation
+     * @param context
+     * @param contentResolver
      * @param account the account being synced
      * @param mailbox the Exchange mailbox for the calendar
      * @return the unique id of the Calendar
      */
-    static public long createCalendar(EasSyncService service, Account account, Mailbox mailbox) {
+    static public long createCalendar(final Context context, final ContentResolver contentResolver,
+            final Account account, final Mailbox mailbox) {
         // Create a Calendar object
         ContentValues cv = new ContentValues();
         // TODO How will this change if the user changes his account display name?
@@ -1409,14 +1411,13 @@ public class CalendarUtilities {
         cv.put(Calendars.ALLOWED_AVAILABILITY, ALLOWED_AVAILABILITIES);
 
         // TODO Coordinate account colors w/ Calendar, if possible
-        int color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
+        int color = new AccountServiceProxy(context).getAccountColor(account.mId);
         cv.put(Calendars.CALENDAR_COLOR, color);
         cv.put(Calendars.CALENDAR_TIME_ZONE, Time.getCurrentTimezone());
         cv.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER);
         cv.put(Calendars.OWNER_ACCOUNT, account.mEmailAddress);
 
-        Uri uri = service.mContentResolver.insert(
-                asSyncAdapter(Calendars.CONTENT_URI, account.mEmailAddress,
+        Uri uri = contentResolver.insert(asSyncAdapter(Calendars.CONTENT_URI, account.mEmailAddress,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv);
         // We save the id of the calendar into mSyncStatus
         if (uri != null) {
