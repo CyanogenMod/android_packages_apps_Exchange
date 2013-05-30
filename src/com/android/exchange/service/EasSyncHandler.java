@@ -14,7 +14,7 @@ import com.android.emailcommon.service.EmailServiceStatus;
  * Base class for performing a single sync action. It holds the state needed for all sync actions
  * (e.g. account and auth info, sync extras and results) and functions to communicate to with the
  * app UI.
- * Sublclasses must implement {@link #performSync}, but otherwise have no other requirements.
+ * Subclasses must implement {@link #performSync}, but otherwise have no other requirements.
  */
 public abstract class EasSyncHandler extends EasServerConnection {
     protected final ContentResolver mContentResolver;
@@ -70,9 +70,6 @@ public abstract class EasSyncHandler extends EasServerConnection {
                 case Mailbox.TYPE_INBOX:
                 case Mailbox.TYPE_MAIL:
                     return new EasMailboxSyncHandler(context, contentResolver, account, mailbox,
-                            syncExtras, syncResult);
-                case Mailbox.TYPE_OUTBOX:
-                    return new EasOutboxSyncHandler(context, contentResolver, account, mailbox,
                             syncExtras, syncResult);
             }
         }
