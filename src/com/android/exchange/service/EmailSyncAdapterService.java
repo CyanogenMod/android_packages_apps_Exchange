@@ -29,6 +29,7 @@ import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
+import com.android.exchange.adapter.Search;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 
 import java.util.HashMap;
@@ -44,6 +45,7 @@ import android.database.Cursor;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import com.android.mail.utils.LogUtils;
 
 /**
  * Service for communicating with Exchange servers. There are three main parts of this class:
@@ -54,7 +56,7 @@ import android.util.Log;
  */
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
-    private static final String TAG = "EAS EmailSyncAdapterService";
+    private static final String TAG = "EAS EmailSyncAdaptSvc";
 
     /**
      * Bookkeeping for handling synchronization between pings and syncs.
@@ -332,13 +334,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public int searchMessages(final long accountId, final SearchParams searchParams,
                 final long destMailboxId) {
-            Log.d(TAG, "IEmailService.searchMessages");
-            return 0;
-            // TODO: Implement correctly.
-            /*
-            return Search.searchMessages(exchangeService, accountId, searchParams,
+            LogUtils.d(TAG, "IEmailService.searchMessages");
+            return Search.searchMessages(EmailSyncAdapterService.this, accountId, searchParams,
                     destMailboxId);
-                    */
+
         }
 
         @Override
