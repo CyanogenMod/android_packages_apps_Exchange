@@ -61,8 +61,6 @@ public class EasAccountValidator extends EasServerConnection {
             Eas.SUPPORTED_PROTOCOL_EX2007, Eas.SUPPORTED_PROTOCOL_EX2007_SP1,
             Eas.SUPPORTED_PROTOCOL_EX2010, Eas.SUPPORTED_PROTOCOL_EX2010_SP1);
 
-    /** mAccount.mProtocolVersion, as a double. If the version is unknown, this will be 0.0. */
-    private double mProtocolVersionDouble;
     /** The number of times we've been redirected so far. */
     private int mRedirectCount;
 
@@ -81,11 +79,6 @@ public class EasAccountValidator extends EasServerConnection {
     public EasAccountValidator(final Context context, final Account account,
             final HostAuth hostAuth) {
         super(context, account, hostAuth);
-        if (account.mProtocolVersion != null) {
-            mProtocolVersionDouble = Eas.getProtocolVersionDouble(account.mProtocolVersion);
-        } else {
-            mProtocolVersionDouble = 0.0d;
-        }
         mRedirectCount = 0;
     }
 
@@ -115,19 +108,19 @@ public class EasAccountValidator extends EasServerConnection {
         if (newProtocolVersion == null) {
             LogUtils.w(TAG, "No supported EAS versions: %s", supportedVersions);
             // TODO: if mAccount.isSaved(), we should delete the account.
-            mProtocolVersionDouble = 0.0d;
             return false;
-        } else {
-            mProtocolVersionDouble = Eas.getProtocolVersionDouble(newProtocolVersion);
         }
 
         // Update our account with the new protocol version.
         final boolean protocolChanged = !newProtocolVersion.equals(mAccount.mProtocolVersion);
-        mAccount.mProtocolVersion = newProtocolVersion;
+        if (protocolChanged) {
+            mAccount.mProtocolVersion = newProtocolVersion;
+            uncacheProtocolVersion();
+        }
 
         // Fixup search flags, if they're not set.
         final boolean flagsChanged;
-        if (mProtocolVersionDouble >= 12.0) {
+        if (getProtocolVersion() >= 12.0) {
             int oldFlags = mAccount.mFlags;
             mAccount.mFlags |= Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
             flagsChanged = (oldFlags != mAccount.mFlags);
@@ -279,7 +272,7 @@ public class EasAccountValidator extends EasServerConnection {
     }
 
     private String getPolicyType() {
-        return (mProtocolVersionDouble >=
+        return (getProtocolVersion() >=
             Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ? EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
     }
 
@@ -364,7 +357,7 @@ public class EasAccountValidator extends EasServerConnection {
     private ProvisionParser canProvision() throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION);
-        if (mProtocolVersionDouble >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
+        if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
             // Send settings information in 14.1 and greater
             s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
             s.data(Tags.SETTINGS_MODEL, Build.MODEL);
@@ -390,7 +383,7 @@ public class EasAccountValidator extends EasServerConnection {
                     // The PolicySet in the ProvisionParser will have the requirements for all KNOWN
                     // policies.  If others are required, hasSupportablePolicySet will be false
                     if (pp.hasSupportablePolicySet() &&
-                            mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                            getProtocolVersion() == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                         // In EAS 14.0, we need the final security key in order to use the settings
                         // command
                         final String policyKey = acknowledgeProvision(pp.getSecuritySyncKey(),
@@ -468,7 +461,7 @@ public class EasAccountValidator extends EasServerConnection {
             // to the server and get the final policy key
             // NOTE: For EAS 14.0, we already have the acknowledgment in the ProvisionParser
             String securitySyncKey;
-            if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+            if (getProtocolVersion() == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                 securitySyncKey = pp.getSecuritySyncKey();
             } else {
                 securitySyncKey = acknowledgeProvision(pp.getSecuritySyncKey(),
@@ -560,7 +553,7 @@ public class EasAccountValidator extends EasServerConnection {
                             resultCode = MessagingException.SECURITY_POLICIES_REQUIRED;
                             bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
                                     pp.getPolicy());
-                            if (mProtocolVersionDouble == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+                            if (getProtocolVersion() == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
                                 mAccount.mSecuritySyncKey = pp.getSecuritySyncKey();
                                 if (!sendSettings()) {
                                     LogUtils.i(TAG, "Denied access: %s",
