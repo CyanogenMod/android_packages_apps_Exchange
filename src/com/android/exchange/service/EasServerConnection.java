@@ -78,6 +78,14 @@ public abstract class EasServerConnection {
     private boolean mStopped = false;
 
     /**
+     * The protocol version to use, as a double. This is a cached value based on the protocol
+     * version in {@link #mAccount}, so whenever that value is changed,
+     * {@link #uncacheProtocolVersion()} must be called.
+     */
+    private double mProtocolVersionDouble = 0.0d;
+
+
+    /**
      * We want to reuse {@link EmailClientConnectionManager} across different requests to the same
      * {@link HostAuth}. Since HostAuths have unique ids, we can use that as the cache key.
      * All access to the cache must be synchronized in theory, although in practice since we don't
@@ -192,14 +200,34 @@ public abstract class EasServerConnection {
     }
 
     /**
-     * Get the protocol version for an account, or a default if we can't determine it.
-     * @return The protocol version for account, as a String.
+     * Get the protocol version for {@link #mAccount}, or a default if we can't determine it.
+     * @return The protocol version for {@link #mAccount}, as a String.
      */
-    protected String getProtocolVersion() {
+    private String getProtocolVersionString() {
         if (mAccount.mProtocolVersion != null) {
             return mAccount.mProtocolVersion;
         }
         return Eas.DEFAULT_PROTOCOL_VERSION;
+    }
+
+    /**
+     * If a sync causes us to update our protocol version, this function must be called so that
+     * subsequent calls to {@link #getProtocolVersion()} will do the right thing.
+     */
+    protected void uncacheProtocolVersion() {
+        mProtocolVersionDouble = 0.0d;
+    }
+
+    /**
+     * Get the protocol version for {@link #mAccount}, as a double. This function caches the result
+     * of looking up the value so that subsequent calls do not have to repeat that.
+     * @return The protocol version for {@link #mAccount}, as a double.
+     */
+    protected double getProtocolVersion() {
+        if (mProtocolVersionDouble == 0.0d) {
+            mProtocolVersionDouble = Eas.getProtocolVersionDouble(getProtocolVersionString());
+        }
+        return mProtocolVersionDouble;
     }
 
     /**
@@ -209,7 +237,7 @@ public abstract class EasServerConnection {
      */
     private void setHeaders(final HttpRequestBase method, final boolean usePolicyKey) {
         method.setHeader("Authorization", makeAuthString());
-        method.setHeader("MS-ASProtocolVersion", getProtocolVersion());
+        method.setHeader("MS-ASProtocolVersion", getProtocolVersionString());
         method.setHeader("User-Agent", USER_AGENT);
         method.setHeader("Accept-Encoding", "gzip");
         if (usePolicyKey) {
@@ -273,9 +301,7 @@ public abstract class EasServerConnection {
         // Send the proper Content-Type header; it's always wbxml except for messages when
         // the EAS protocol version is < 14.0
         // If entity is null (e.g. for attachments), don't set this header
-        final String protocolVersion = getProtocolVersion();
-        final Double protocolVersionDouble = Eas.getProtocolVersionDouble(protocolVersion);
-        if (msg && (protocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE)) {
+        if (msg && (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE)) {
             method.setHeader("Content-Type", "message/rfc822");
         } else if (entity != null) {
             method.setHeader("Content-Type", "application/vnd.ms-sync.wbxml");

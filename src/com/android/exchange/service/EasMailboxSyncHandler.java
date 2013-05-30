@@ -71,10 +71,8 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
                 s.start(Tags.SYNC_COLLECTIONS);
                 s.start(Tags.SYNC_COLLECTION);
 
-                final Double protocolVersionDouble =
-                        Eas.getProtocolVersionDouble(getProtocolVersion());
                 // The "Class" element is removed in EAS 12.1 and later versions
-                if (protocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE) {
+                if (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE) {
                     s.data(Tags.SYNC_CLASS, "Email");
                 }
                 s.data(Tags.SYNC_SYNC_KEY, mMailbox.mSyncKey);
@@ -93,7 +91,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
                 // Therefore, we don't send any options with the initial sync.
                 // Set the truncation amount, body preference, lookback, etc.
                 if (!initialSync) {
-                    sendSyncOptions(protocolVersionDouble, s, !fetchRequestList.isEmpty());
+                    sendSyncOptions(getProtocolVersion(), s, !fetchRequestList.isEmpty());
                     // TODO: Fix.
                     //EmailSyncAdapter.upsync(resolver, mailbox, s);
                 }

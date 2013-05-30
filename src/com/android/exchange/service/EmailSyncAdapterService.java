@@ -499,20 +499,28 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 } else {
                     inboxSyncHandler.performSync();
                 }
+
+                // TODO: Do an outbox sync as well?
             } else {
                 // Sync the mailbox that was explicitly requested.
                 final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
-                final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
-                        account, mailbox, extras, syncResult);
-
-                if (syncHandler != null) {
-                    syncHandler.performSync();
+                if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
+                    final EasOutboxSyncHandler outboxSyncHandler =
+                            new EasOutboxSyncHandler(context, account, mailbox);
+                    outboxSyncHandler.performSync();
                 } else {
-                    // We can't sync this mailbox, so just send the expected UI callbacks.
-                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                            EmailServiceStatus.IN_PROGRESS, 0);
-                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                            EmailServiceStatus.SUCCESS, 0);
+                    final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
+                            account, mailbox, extras, syncResult);
+
+                    if (syncHandler != null) {
+                        syncHandler.performSync();
+                    } else {
+                        // We can't sync this mailbox, so just send the expected UI callbacks.
+                        EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
+                                EmailServiceStatus.IN_PROGRESS, 0);
+                        EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
+                                EmailServiceStatus.SUCCESS, 0);
+                    }
                 }
             }
 
