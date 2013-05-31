@@ -492,7 +492,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 final Mailbox inbox = Mailbox.restoreMailboxOfType(context, account.mId,
                         Mailbox.TYPE_INBOX);
                 final EasSyncHandler inboxSyncHandler = EasSyncHandler.getEasSyncHandler(
-                        context, cr, account, inbox, extras, syncResult);
+                        context, cr, acct, account, inbox, extras, syncResult);
                 if (inboxSyncHandler == null) {
                     // TODO: Inbox does not exist for this account, add proper error handling.
                 } else {
@@ -509,7 +509,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     outboxSyncHandler.performSync();
                 } else {
                     final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
-                            account, mailbox, extras, syncResult);
+                            acct, account, mailbox, extras, syncResult);
 
                     if (syncHandler != null) {
                         syncHandler.performSync();

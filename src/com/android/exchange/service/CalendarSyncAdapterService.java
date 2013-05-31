@@ -40,10 +40,6 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CALENDAR;
     private static final String DIRTY_IN_ACCOUNT =
         Events.DIRTY + "=1 AND " + Events.ACCOUNT_NAME + "=?";
-    private static final String[] ID_SYNC_KEY_PROJECTION =
-        new String[] {MailboxColumns.ID, MailboxColumns.SYNC_KEY};
-    private static final int ID_SYNC_KEY_MAILBOX_ID = 0;
-    private static final int ID_SYNC_KEY_SYNC_KEY = 1;
 
     public CalendarSyncAdapterService() {
         super();
@@ -106,23 +102,22 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             if (accountCursor.moveToFirst()) {
                 final long accountId = accountCursor.getLong(0);
                 // Now, find the calendar mailbox associated with the account
-                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_SYNC_KEY_PROJECTION,
+                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, Mailbox.ID_PROJECTION,
                         ACCOUNT_AND_TYPE_CALENDAR, new String[] {Long.toString(accountId)}, null);
                 try {
-                     if (mailboxCursor.moveToFirst()) {
+                    if (mailboxCursor.moveToFirst()) {
                         if (logging) {
                             Log.d(TAG, "Upload sync requested for " + account.name);
                         }
-                        final String syncKey = mailboxCursor.getString(ID_SYNC_KEY_SYNC_KEY);
-                        if ((syncKey == null) || (syncKey.equals("0"))) {
-                            if (logging) {
-                                Log.d(TAG, "Can't sync; mailbox in initial state");
-                            }
-                            return;
-                        }
-                        // Ask for a sync from our sync manager
-                        ExchangeService.serviceRequest(mailboxCursor.getLong(
-                                ID_SYNC_KEY_MAILBOX_ID), ExchangeService.SYNC_UPSYNC);
+                        // TODO: Currently just bouncing this to Email sync; eventually streamline.
+                        final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
+                        // TODO: Should we be using the existing extras and just adding our bits?
+                        final Bundle mailboxExtras = new Bundle(4);
+                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
+                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+                        mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
+                        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
                     }
                 } finally {
                     mailboxCursor.close();

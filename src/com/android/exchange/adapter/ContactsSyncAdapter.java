@@ -24,6 +24,7 @@ import android.content.ContentProviderResult;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Entity;
 import android.content.Entity.NamedContentValues;
 import android.content.EntityIterator;
@@ -58,6 +59,8 @@ import android.text.util.Rfc822Tokenizer;
 import android.util.Base64;
 import android.util.Log;
 
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
@@ -137,7 +140,8 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
 
     public ContactsSyncAdapter(EasSyncService service) {
         super(service);
-        mAccountUri = uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI);
+        mAccountUri = uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI,
+                mAccount.mEmailAddress);
         mContentResolver = mContext.getContentResolver();
     }
 
@@ -346,7 +350,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    class EmailRow implements UntypedRow {
+    static class EmailRow implements UntypedRow {
         String email;
         String displayName;
 
@@ -375,7 +379,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    class ImRow implements UntypedRow {
+    static class ImRow implements UntypedRow {
         String im;
 
         public ImRow(String _im) {
@@ -393,7 +397,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    class PhoneRow implements UntypedRow {
+    static class PhoneRow implements UntypedRow {
         String phone;
         int type;
 
@@ -414,15 +418,27 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-   class EasContactsSyncParser extends AbstractSyncParser {
-
+    public static class EasContactsSyncParser extends AbstractSyncParser {
         String[] mBindArgument = new String[1];
-        String mMailboxIdAsString;
         ContactOperations ops = new ContactOperations();
+        private final android.accounts.Account mAccountManagerAccount;
+        private final Uri mAccountUri;
+
+        public EasContactsSyncParser(final Context context, final ContentResolver resolver,
+                final InputStream in, final Mailbox mailbox, final Account account,
+                final android.accounts.Account accountManagerAccount) throws IOException {
+            super(context, resolver, in, mailbox, account);
+            mAccountManagerAccount = accountManagerAccount;
+            mAccountUri = uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI,
+                    mAccount.mEmailAddress);
+        }
 
         public EasContactsSyncParser(InputStream in, ContactsSyncAdapter adapter)
                 throws IOException {
             super(in, adapter);
+            mAccountManagerAccount = adapter.mAccountManagerAccount;
+            mAccountUri = uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI,
+                    mAccount.mEmailAddress);
         }
 
         public void addData(String serverId, ContactOperations ops, Entity entity)
@@ -450,7 +466,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             ArrayList<UntypedRow> homePhones = new ArrayList<UntypedRow>();
             ArrayList<UntypedRow> workPhones = new ArrayList<UntypedRow>();
             if (entity == null) {
-                ops.newContact(serverId);
+                ops.newContact(serverId, mAccount.mEmailAddress);
             }
 
             while (nextTag(Tags.SYNC_APPLICATION_DATA) != END) {
@@ -635,7 +651,8 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                         break;
 
                     case Tags.CONTACTS_CATEGORIES:
-                        mGroupsUsed = true;
+                        // TODO: FIXME
+                        //mGroupsUsed = true;
                         categoriesParser(ops, entity);
                         break;
 
@@ -867,7 +884,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                     mAccountManagerAccount, mMailbox.mSyncKey.getBytes()));
 
             // Execute these all at once...
-            ops.execute();
+            ops.execute(mContext);
 
             if (ops.mResults != null) {
                 ContentValues cv = new ContentValues();
@@ -962,9 +979,9 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
     }
 
 
-    private Uri uriWithAccountAndIsSyncAdapter(Uri uri) {
+    private static Uri uriWithAccountAndIsSyncAdapter(final Uri uri, final String emailAddress) {
         return uri.buildUpon()
-            .appendQueryParameter(RawContacts.ACCOUNT_NAME, mAccount.mEmailAddress)
+            .appendQueryParameter(RawContacts.ACCOUNT_NAME, emailAddress)
             .appendQueryParameter(RawContacts.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)
             .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
             .build();
@@ -977,7 +994,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
      * see whether an update is even necessary.  The methods on SmartBuilder are delegated to
      * the Builder.
      */
-    private class RowBuilder {
+    private static class RowBuilder {
         Builder builder;
         ContentValues cv;
 
@@ -1005,7 +1022,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private class ContactOperations extends ArrayList<ContentProviderOperation> {
+    private static class ContactOperations extends ArrayList<ContentProviderOperation> {
         private static final long serialVersionUID = 1L;
         private int mCount = 0;
         private int mContactBackValue = mCount;
@@ -1022,9 +1039,9 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             return true;
         }
 
-        public void newContact(String serverId) {
-            Builder builder = ContentProviderOperation
-                .newInsert(uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI));
+        public void newContact(final String serverId, final String emailAddress) {
+            Builder builder = ContentProviderOperation.newInsert(
+                    uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI, emailAddress));
             ContentValues values = new ContentValues();
             values.put(RawContacts.SOURCE_ID, serverId);
             builder.withValues(values);
@@ -1042,23 +1059,18 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                     .build());
         }
 
-        public void execute() {
-            synchronized (mService.getSynchronizer()) {
-                if (!mService.isStopped()) {
-                    try {
-                        if (!isEmpty()) {
-                            mService.userLog("Executing ", size(), " CPO's");
-                            mResults = mContext.getContentResolver().applyBatch(
-                                    ContactsContract.AUTHORITY, this);
-                        }
-                    } catch (RemoteException e) {
-                        // There is nothing sensible to be done here
-                        Log.e(TAG, "problem inserting contact during server update", e);
-                    } catch (OperationApplicationException e) {
-                        // There is nothing sensible to be done here
-                        Log.e(TAG, "problem inserting contact during server update", e);
-                    }
+        public void execute(final Context context) {
+            try {
+                if (!isEmpty()) {
+                    mResults = context.getContentResolver().applyBatch(
+                            ContactsContract.AUTHORITY, this);
                 }
+            } catch (RemoteException e) {
+                // There is nothing sensible to be done here
+                Log.e(TAG, "problem inserting contact during server update", e);
+            } catch (OperationApplicationException e) {
+                // There is nothing sensible to be done here
+                Log.e(TAG, "problem inserting contact during server update", e);
             }
         }
 
@@ -1527,7 +1539,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
      * @param ncv the NamedContentValues object
      * @return a uri that can be used to refer to this row
      */
-    public Uri dataUriFromNamedContentValues(NamedContentValues ncv) {
+    public static Uri dataUriFromNamedContentValues(NamedContentValues ncv) {
         long id = ncv.values.getAsLong(RawContacts._ID);
         Uri dataUri = ContentUris.withAppendedId(ncv.uri, id);
         return dataUri;
@@ -1554,14 +1566,15 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                             .build())
                     .build());
         }
-        ops.execute();
+        ops.execute(mContext);
         ContentResolver cr = mContext.getContentResolver();
         if (mGroupsUsed) {
             // Make sure the title column is set for all of our groups
             // And that all of our groups are visible
             // TODO Perhaps the visible part should only happen when the group is created, but
             // this is fine for now.
-            Uri groupsUri = uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI);
+            Uri groupsUri = uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI,
+                    mAccount.mEmailAddress);
             Cursor c = cr.query(groupsUri, new String[] {Groups.SOURCE_ID, Groups.TITLE},
                     Groups.TITLE + " IS NULL", null, null);
             ContentValues values = new ContentValues();
@@ -1570,8 +1583,8 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                 while (c.moveToNext()) {
                     String sourceId = c.getString(0);
                     values.put(Groups.TITLE, sourceId);
-                    cr.update(uriWithAccountAndIsSyncAdapter(groupsUri), values,
-                            Groups.SOURCE_ID + "=?", new String[] {sourceId});
+                    cr.update(uriWithAccountAndIsSyncAdapter(groupsUri, mAccount.mEmailAddress),
+                            values, Groups.SOURCE_ID + "=?", new String[] {sourceId});
                 }
             } finally {
                 c.close();
@@ -1810,7 +1823,8 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
 
     private void dirtyContactsWithinDirtyGroups() {
         ContentResolver cr = mService.mContentResolver;
-        Cursor c = cr.query(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI),
+        final String emailAddress = mAccount.mEmailAddress;
+        Cursor c = cr.query(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
                 GROUPS_ID_PROJECTION, Groups.DIRTY + "=1", null, null);
         try {
             if (c.getCount() > 0) {
@@ -1827,13 +1841,13 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                             MIMETYPE_GROUP_MEMBERSHIP_AND_ID_EQUALS, updateArgs);
                 }
                 // Really delete groups that are marked deleted
-                cr.delete(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI), Groups.DELETED + "=1",
-                        null);
+                cr.delete(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
+                        Groups.DELETED + "=1", null);
                 // Clear the dirty flag for all of our groups
                 updateValues.clear();
                 updateValues.put(Groups.DIRTY, 0);
-                cr.update(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI), updateValues, null,
-                        null);
+                cr.update(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
+                        updateValues, null, null);
             }
         } finally {
             c.close();
@@ -1848,7 +1862,8 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         dirtyContactsWithinDirtyGroups();
 
         // First, let's find Contacts that have changed.
-        Uri uri = uriWithAccountAndIsSyncAdapter(RawContactsEntity.CONTENT_URI);
+        Uri uri = uriWithAccountAndIsSyncAdapter(RawContactsEntity.CONTENT_URI,
+                mAccount.mEmailAddress);
         if (getSyncKey().equals("0")) {
             return false;
         }
