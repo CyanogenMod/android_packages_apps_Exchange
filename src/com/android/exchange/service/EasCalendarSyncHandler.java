@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- *
+ * Performs an Exchange Sync for a Calendar collection.
  */
 public class EasCalendarSyncHandler extends EasSyncHandler {
 
@@ -121,4 +121,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
     }
 
+    @Override
+    protected void cleanup(final int syncResult) {
+        // Nothing to do.
+    }
 }

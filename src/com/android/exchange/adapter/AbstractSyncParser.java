@@ -161,8 +161,8 @@ public abstract class AbstractSyncParser extends Parser {
                         // we sync folders"...
                         throw new IOException();
                     } else if (status == 7) {
-                        // TODO: Fix this.
-                        //mService.mUpsyncFailed = true;
+                        // TODO: Fix this. The handling here used to be pretty bogus, and it's not
+                        // obvious that simply forcing another resync makes sense here.
                         moreAvailable = true;
                     } else {
                         // Access, provisioning, transient, etc.
