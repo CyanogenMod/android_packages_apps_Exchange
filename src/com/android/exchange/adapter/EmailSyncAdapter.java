@@ -818,11 +818,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 ArrayList<Part> attachments = new ArrayList<Part>();
                 MimeUtility.collectParts(mimeMessage, viewables, attachments);
                 Body tempBody = new Body();
-                // updateBodyFields fills in the content fields of the Body
-                ConversionUtilities.updateBodyFields(tempBody, msg, viewables);
+                // parseBodyFields fills in the content fields of the Body
+                ConversionUtilities.BodyFieldData data =
+                        ConversionUtilities.parseBodyFields(viewables);
                 // But we need them in the message itself for handling during commit()
-                msg.mHtml = tempBody.mHtmlContent;
-                msg.mText = tempBody.mTextContent;
+                msg.setFlags(data.isQuotedReply, data.isQuotedForward);
+                msg.mSnippet = data.snippet;
+                msg.mHtml = data.htmlContent;
+                msg.mText = data.textContent;
             } catch (MessagingException e) {
                 // This would most likely indicate a broken stream
                 throw new IOException(e);
