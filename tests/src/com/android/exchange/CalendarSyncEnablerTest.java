@@ -29,16 +29,17 @@ import android.provider.CalendarContract;
 import android.test.MoreAsserts;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.android.emailcommon.Logging;
 import com.android.exchange.utility.ExchangeTestCase;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+
 @MediumTest
 public class CalendarSyncEnablerTest extends ExchangeTestCase {
 
@@ -178,7 +179,7 @@ public class CalendarSyncEnablerTest extends ExchangeTestCase {
         // set up on the device.  Otherwise there'll be no difference from
         // testEnableEasCalendarSync.
         if (AccountManager.get(getContext()).getAccountsByType(EAT).length > 0) {
-            Log.w(Logging.LOG_TAG, "testEnableEasCalendarSyncWithNoExchangeAccounts skipped:"
+            LogUtils.w(Logging.LOG_TAG, "testEnableEasCalendarSyncWithNoExchangeAccounts skipped:"
                     + " It only runs when there's no Exchange account on the device.");
             return;
         }

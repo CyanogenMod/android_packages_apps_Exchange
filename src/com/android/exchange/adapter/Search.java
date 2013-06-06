@@ -21,7 +21,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
 import android.os.RemoteException;
-import android.util.Log;
 
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.Account;
@@ -37,6 +36,7 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
 import com.android.mail.providers.UIProvider;
+import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpStatus;
 
@@ -173,7 +173,7 @@ public class Search {
                 if (tag == Tags.SEARCH_STATUS) {
                     String status = getValue();
                     if (Eas.USER_LOG) {
-                        Log.d(Logging.LOG_TAG, "Search status: " + status);
+                        LogUtils.d(Logging.LOG_TAG, "Search status: " + status);
                     }
                 } else if (tag == Tags.SEARCH_RESPONSE) {
                     parseResponse();
@@ -220,7 +220,7 @@ public class Search {
                     mService.userLog("Saved " + ops.size() + " search results");
                 }
             } catch (RemoteException e) {
-                Log.d(Logging.LOG_TAG, "RemoteException while saving search results.");
+                LogUtils.d(Logging.LOG_TAG, "RemoteException while saving search results.");
             } catch (OperationApplicationException e) {
             }
 

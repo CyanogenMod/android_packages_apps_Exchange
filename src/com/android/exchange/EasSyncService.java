@@ -33,7 +33,6 @@ import android.provider.CalendarContract.Events;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.util.Xml;
 
 import com.android.emailcommon.TrafficFlags;
@@ -77,6 +76,7 @@ import com.android.exchange.adapter.SettingsParser;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.utility.CalendarUtilities;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
@@ -340,13 +340,13 @@ public class EasSyncService extends AbstractSyncService {
         // If we don't support any of the servers supported versions, throw an exception here
         // This will cause validation to fail
         if (ourVersion == null) {
-            Log.w(TAG, "No supported EAS versions: " + supportedVersions);
+            LogUtils.w(TAG, "No supported EAS versions: " + supportedVersions);
             throw new MessagingException(MessagingException.PROTOCOL_VERSION_UNSUPPORTED);
         } else {
             // Debug code for testing EAS 14.0; disables support for EAS 14.1
             // "adb shell setprop log.tag.Exchange14 VERBOSE"
             if (ourVersion.equals(Eas.SUPPORTED_PROTOCOL_EX2010_SP1) &&
-                    Log.isLoggable("Exchange14", Log.VERBOSE)) {
+                    LogUtils.isLoggable("Exchange14", LogUtils.VERBOSE)) {
                 ourVersion = Eas.SUPPORTED_PROTOCOL_EX2010;
             }
             service.mProtocolVersion = ourVersion;
@@ -599,7 +599,7 @@ public class EasSyncService extends AbstractSyncService {
      * @param post the HttpPost that was originally sent to the server
      * @return the HttpPost, updated with the redirect location
      */
-    private HttpPost getRedirect(HttpResponse resp, HttpPost post) {
+    private static HttpPost getRedirect(HttpResponse resp, HttpPost post) {
         Header locHeader = resp.getFirstHeader("X-MS-Location");
         if (locHeader != null) {
             String loc = locHeader.getValue();
@@ -862,7 +862,7 @@ public class EasSyncService extends AbstractSyncService {
                 if (name.equals("Error")) {
                     // Should parse the error
                 } else if (name.equals("Redirect")) {
-                    Log.d(TAG, "Redirect: " + parser.nextText());
+                    LogUtils.d(TAG, "Redirect: " + parser.nextText());
                 } else if (name.equals("Settings")) {
                     parseSettings(parser, hostAuth);
                 }
@@ -1275,7 +1275,7 @@ public class EasSyncService extends AbstractSyncService {
         synchronized(getSynchronizer()) {
             hasWakeLock = ExchangeService.isHoldingWakeLock(mMailboxId);
             if (isPingCommand && !hasWakeLock) {
-                Log.e(TAG, "executePostWithTimeout (ping) without holding wakelock");
+                LogUtils.e(TAG, "executePostWithTimeout (ping) without holding wakelock");
             }
             mPendingPost = method;
             long alarmTime = timeout + WATCHDOG_TIMEOUT_ALLOWANCE;
@@ -1679,7 +1679,7 @@ public class EasSyncService extends AbstractSyncService {
             // Send our changes up to the server
             if (mUpsyncFailed) {
                 if (Eas.USER_LOG) {
-                    Log.d(TAG, "Inhibiting upsync this cycle");
+                    LogUtils.d(TAG, "Inhibiting upsync this cycle");
                 }
             } else {
                 target.sendLocalChanges(s);
@@ -1965,7 +1965,7 @@ public class EasSyncService extends AbstractSyncService {
                 ExchangeService.kick("sync finished");
             }
         } catch (ProviderUnavailableException e) {
-            Log.e(TAG, "EmailProvider unavailable; sync ended prematurely");
+            LogUtils.e(TAG, "EmailProvider unavailable; sync ended prematurely");
         }
     }
 }

@@ -32,7 +32,6 @@ import android.text.Html;
 import android.text.SpannedString;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import com.android.emailcommon.internet.MimeMessage;
@@ -66,6 +65,7 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
@@ -336,7 +336,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         CharSequence[] windowEntries = mContext.getResources().getTextArray(
                 R.array.account_settings_mail_window_entries);
-        Log.d(TAG, "Auto lookback: " + windowEntries[lookback]);
+        LogUtils.d(TAG, "Auto lookback: " + windowEntries[lookback]);
     }
 
     private static class GetItemEstimateParser extends Parser {
@@ -373,7 +373,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         public void parseResponse() throws IOException {
             while (nextTag(Tags.GIE_RESPONSE) != END) {
                 if (tag == Tags.GIE_STATUS) {
-                    Log.d(TAG, "GIE status: " + getValue());
+                    LogUtils.d(TAG, "GIE status: " + getValue());
                 } else if (tag == Tags.GIE_COLLECTION) {
                     parseCollection();
                 } else {
@@ -385,12 +385,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         public void parseCollection() throws IOException {
             while (nextTag(Tags.GIE_COLLECTION) != END) {
                 if (tag == Tags.GIE_CLASS) {
-                    Log.d(TAG, "GIE class: " + getValue());
+                    LogUtils.d(TAG, "GIE class: " + getValue());
                 } else if (tag == Tags.GIE_COLLECTION_ID) {
-                    Log.d(TAG, "GIE collectionId: " + getValue());
+                    LogUtils.d(TAG, "GIE collectionId: " + getValue());
                 } else if (tag == Tags.GIE_ESTIMATE) {
                     mEstimate = getValueInt();
-                    Log.d(TAG, "GIE estimate: " + mEstimate);
+                    LogUtils.d(TAG, "GIE estimate: " + mEstimate);
                 } else {
                     skipTag();
                 }
@@ -654,7 +654,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private void putFromMeeting(PackedString ps, String field, ContentValues values,
+        private static void putFromMeeting(PackedString ps, String field, ContentValues values,
                 String column) {
             String val = ps.get(field);
             if (!TextUtils.isEmpty(val)) {
@@ -807,7 +807,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
          * @param mimeData the MIME data we've received from the server
          * @throws IOException
          */
-        private void mimeBodyParser(Message msg, String mimeData) throws IOException {
+        private static void mimeBodyParser(Message msg, String mimeData) throws IOException {
             try {
                 ByteArrayInputStream in = new ByteArrayInputStream(mimeData.getBytes());
                 // The constructor parses the message
@@ -1223,7 +1223,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
                 userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
             } catch (TransactionTooLargeException e) {
-                Log.w(TAG, "Transaction failed on fetched message; retrying...");
+                LogUtils.w(TAG, "Transaction failed on fetched message; retrying...");
                 commitImpl(++tryCount);
              } catch (RemoteException e) {
                 // There is nothing to be done here; fail by returning null
@@ -1273,7 +1273,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private String formatTwo(int num) {
+    private static String formatTwo(int num) {
         if (num < 10) {
             return "0" + (char)('0' + num);
         } else
@@ -1308,7 +1308,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
      * can utilize this id to find references to the message.  The only reference situation at this
      * point is in the Body table; it is when sending messages via SmartForward and SmartReply
      */
-    private boolean messageReferenced(ContentResolver cr, long id) {
+    private static boolean messageReferenced(ContentResolver cr, long id) {
         // See if this id is referenced in a body
         Cursor c = cr.query(Body.CONTENT_URI, Body.ID_PROJECTION, WHERE_BODY_SOURCE_MESSAGE_KEY,
                 new String[] {Long.toString(id)}, null);

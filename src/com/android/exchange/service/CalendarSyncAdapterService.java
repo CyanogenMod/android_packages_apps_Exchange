@@ -25,14 +25,13 @@ import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.CalendarContract.Events;
-import android.util.Log;
 
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
-import com.android.exchange.ExchangeService;
+import com.android.mail.utils.LogUtils;
 
 public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
     private static final String TAG = "EAS CalendarSyncAdapterService";
@@ -79,7 +78,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             try {
                 if (!c.moveToFirst()) {
                     if (logging) {
-                        Log.d(TAG, "No changes for " + account.name);
+                        LogUtils.d(TAG, "No changes for " + account.name);
                     }
                     return;
                 }
@@ -94,7 +93,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                     EmailContent.ID_PROJECTION, AccountColumns.EMAIL_ADDRESS + "=?",
                     new String[] {account.name}, null);
         if (accountCursor == null) {
-            Log.e(TAG, "Null account cursor in CalendarSyncAdapterService");
+            LogUtils.e(TAG, "Null account cursor in CalendarSyncAdapterService");
             return;
         }
 
@@ -107,7 +106,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                 try {
                     if (mailboxCursor.moveToFirst()) {
                         if (logging) {
-                            Log.d(TAG, "Upload sync requested for " + account.name);
+                            LogUtils.d(TAG, "Upload sync requested for " + account.name);
                         }
                         // TODO: Currently just bouncing this to Email sync; eventually streamline.
                         final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);

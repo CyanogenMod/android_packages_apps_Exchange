@@ -31,6 +31,7 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.Search;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
+import com.android.mail.utils.LogUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,8 +45,6 @@ import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
-import com.android.mail.utils.LogUtils;
 
 /**
  * Service for communicating with Exchange servers. There are three main parts of this class:
@@ -238,13 +237,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
         @Override
         public Bundle validate(final HostAuth hostAuth) {
-            Log.d(TAG, "IEmailService.validate");
+            LogUtils.d(TAG, "IEmailService.validate");
             return new EasAccountValidator(EmailSyncAdapterService.this, hostAuth).validate();
         }
 
         @Override
         public Bundle autoDiscover(final String userName, final String password) {
-            Log.d(TAG, "IEmailService.autoDiscover");
+            LogUtils.d(TAG, "IEmailService.autoDiscover");
             HostAuth hostAuth = new HostAuth();
             hostAuth.mLogin = userName;
             hostAuth.mPassword = password;
@@ -256,7 +255,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void updateFolderList(final long accountId) {
-            Log.d(TAG, "IEmailService.updateFolderList");
+            LogUtils.d(TAG, "IEmailService.updateFolderList");
             final String emailAddress = Utility.getFirstRowString(EmailSyncAdapterService.this,
                     Account.CONTENT_URI, new String[] {AccountColumns.EMAIL_ADDRESS},
                     Account.ID_SELECTION, new String[] {Long.toString(accountId)}, null, 0);
@@ -284,7 +283,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void loadAttachment(final long attachmentId, final boolean background) {
-            Log.d(TAG, "IEmailService.loadAttachment");
+            LogUtils.d(TAG, "IEmailService.loadAttachment");
             // TODO: Implement.
             /*
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
@@ -295,7 +294,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void sendMeetingResponse(final long messageId, final int response) {
-            Log.d(TAG, "IEmailService.sendMeetingResponse");
+            LogUtils.d(TAG, "IEmailService.sendMeetingResponse");
             // TODO: Implement.
             //sendMessageRequest(new MeetingResponseRequest(messageId, response));
         }
@@ -307,7 +306,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          */
         @Override
         public void deleteAccountPIMData(final long accountId) {
-            Log.d(TAG, "IEmailService.deleteAccountPIMData");
+            LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
             // TODO: Implement
             /*
             SyncManager exchangeService = INSTANCE;
@@ -451,7 +450,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // for this sync operation.
 
             final Context context = getContext();
-            Log.i(TAG, "performSync");
+            LogUtils.i(TAG, "performSync");
             final ContentResolver cr = context.getContentResolver();
 
             // Get the EmailContent Account

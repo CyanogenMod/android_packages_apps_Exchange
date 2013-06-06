@@ -33,7 +33,6 @@ import android.provider.CalendarContract.EventsEntity;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Base64;
-import android.util.Log;
 
 import com.android.calendarcommon2.DateException;
 import com.android.calendarcommon2.Duration;
@@ -47,11 +46,11 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
@@ -1379,7 +1378,7 @@ public class CalendarUtilities {
         }
 
         if (Eas.USER_LOG) {
-            Log.d(Logging.LOG_TAG, "Created rrule: " + rrule);
+            LogUtils.d(Logging.LOG_TAG, "Created rrule: " + rrule);
         }
         return rrule.toString();
     }
@@ -1983,7 +1982,7 @@ public class CalendarUtilities {
             msg.mAttachments = new ArrayList<Attachment>();
             msg.mAttachments.add(att);
         } catch (IOException e) {
-            Log.w(TAG, "IOException in createMessageForEntity");
+            LogUtils.w(TAG, "IOException in createMessageForEntity");
             return null;
         }
 

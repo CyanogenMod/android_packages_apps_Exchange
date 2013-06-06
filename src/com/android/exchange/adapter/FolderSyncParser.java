@@ -26,7 +26,6 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.os.RemoteException;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.Account;
@@ -41,6 +40,7 @@ import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
@@ -178,7 +178,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                     // For verbose logging, make sure this is in emaillog.txt
                     userLog(e);
                     // Worthy of logging, regardless
-                    Log.w(Logging.LOG_TAG, e);
+                    LogUtils.w(Logging.LOG_TAG, e);
                     status = Eas.FOLDER_STATUS_INVALID_KEY;
                 }
                 if (status != Eas.FOLDER_STATUS_OK) {

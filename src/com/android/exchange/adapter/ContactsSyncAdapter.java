@@ -57,7 +57,6 @@ import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Base64;
-import android.util.Log;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
@@ -66,6 +65,7 @@ import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.utility.CalendarUtilities;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -1067,10 +1067,10 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                 }
             } catch (RemoteException e) {
                 // There is nothing sensible to be done here
-                Log.e(TAG, "problem inserting contact during server update", e);
+                LogUtils.e(TAG, "problem inserting contact during server update", e);
             } catch (OperationApplicationException e) {
                 // There is nothing sensible to be done here
-                Log.e(TAG, "problem inserting contact during server update", e);
+                LogUtils.e(TAG, "problem inserting contact during server update", e);
             }
         }
 
@@ -1082,7 +1082,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
          * @param type the subtype (e.g. HOME, WORK, etc.)
          * @return the matching NCV or null if not found
          */
-        private NamedContentValues findTypedData(ArrayList<NamedContentValues> list,
+        private static NamedContentValues findTypedData(ArrayList<NamedContentValues> list,
                 String contentItemType, int type, String stringType) {
             NamedContentValues result = null;
 
@@ -1127,8 +1127,8 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
          * @param type the subtype (e.g. HOME, WORK, etc.)
          * @return the matching NCVs
          */
-        private ArrayList<NamedContentValues> findUntypedData(ArrayList<NamedContentValues> list,
-                int type, String contentItemType) {
+        private static ArrayList<NamedContentValues> findUntypedData(
+                ArrayList<NamedContentValues> list, int type, String contentItemType) {
             ArrayList<NamedContentValues> result = new ArrayList<NamedContentValues>();
 
             // Loop through the ncv's, looking for an existing row
@@ -1238,7 +1238,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
          * @param oldValue an old value (or null) to check against
          * @return whether the column's value in the ContentValues matches oldValue
          */
-        private boolean cvCompareString(ContentValues cv, String column, String oldValue) {
+        private static boolean cvCompareString(ContentValues cv, String column, String oldValue) {
             if (cv.containsKey(column)) {
                 if (oldValue != null && cv.getAsString(column).equals(oldValue)) {
                     return true;
@@ -1625,7 +1625,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendIm(Serializer s, ContentValues cv, int count) throws IOException {
+    private static void sendIm(Serializer s, ContentValues cv, int count) throws IOException {
         String value = cv.getAsString(Im.DATA);
         if (value == null) return;
         if (count < MAX_IM_ROWS) {
@@ -1633,7 +1633,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendOnePostal(Serializer s, ContentValues cv, int[] fieldNames)
+    private static void sendOnePostal(Serializer s, ContentValues cv, int[] fieldNames)
             throws IOException{
         sendStringData(s, cv, StructuredPostal.CITY, fieldNames[0]);
         sendStringData(s, cv, StructuredPostal.COUNTRY, fieldNames[1]);
@@ -1642,7 +1642,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         sendStringData(s, cv, StructuredPostal.STREET, fieldNames[4]);
     }
 
-    private void sendStructuredPostal(Serializer s, ContentValues cv) throws IOException {
+    private static void sendStructuredPostal(Serializer s, ContentValues cv) throws IOException {
         switch (cv.getAsInteger(StructuredPostal.TYPE)) {
             case StructuredPostal.TYPE_HOME:
                 sendOnePostal(s, cv, HOME_ADDRESS_TAGS);
@@ -1658,7 +1658,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendStringData(Serializer s, ContentValues cv, String column, int tag)
+    private static void sendStringData(Serializer s, ContentValues cv, String column, int tag)
             throws IOException {
         if (cv.containsKey(column)) {
             String value = cv.getAsString(column);
@@ -1668,7 +1668,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private String sendStructuredName(Serializer s, ContentValues cv) throws IOException {
+    private static String sendStructuredName(Serializer s, ContentValues cv) throws IOException {
         String displayName = null;
         sendStringData(s, cv, StructuredName.FAMILY_NAME, Tags.CONTACTS_LAST_NAME);
         sendStringData(s, cv, StructuredName.GIVEN_NAME, Tags.CONTACTS_FIRST_NAME);
@@ -1680,22 +1680,22 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         return displayName;
     }
 
-    private void sendBusiness(Serializer s, ContentValues cv) throws IOException {
+    private static void sendBusiness(Serializer s, ContentValues cv) throws IOException {
         sendStringData(s, cv, EasBusiness.ACCOUNT_NAME, Tags.CONTACTS2_ACCOUNT_NAME);
         sendStringData(s, cv, EasBusiness.CUSTOMER_ID, Tags.CONTACTS2_CUSTOMER_ID);
         sendStringData(s, cv, EasBusiness.GOVERNMENT_ID, Tags.CONTACTS2_GOVERNMENT_ID);
     }
 
-    private void sendPersonal(Serializer s, ContentValues cv) throws IOException {
+    private static void sendPersonal(Serializer s, ContentValues cv) throws IOException {
         sendStringData(s, cv, EasPersonal.ANNIVERSARY, Tags.CONTACTS_ANNIVERSARY);
         sendStringData(s, cv, EasPersonal.FILE_AS, Tags.CONTACTS_FILE_AS);
     }
 
-    private void sendBirthday(Serializer s, ContentValues cv) throws IOException {
+    private static void sendBirthday(Serializer s, ContentValues cv) throws IOException {
         sendStringData(s, cv, Event.START_DATE, Tags.CONTACTS_BIRTHDAY);
     }
 
-    private void sendPhoto(Serializer s, ContentValues cv) throws IOException {
+    private static void sendPhoto(Serializer s, ContentValues cv) throws IOException {
         if (cv.containsKey(Photo.PHOTO)) {
             byte[] bytes = cv.getAsByteArray(Photo.PHOTO);
             String pic = Base64.encodeToString(bytes, Base64.NO_WRAP);
@@ -1706,18 +1706,18 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendOrganization(Serializer s, ContentValues cv) throws IOException {
+    private static void sendOrganization(Serializer s, ContentValues cv) throws IOException {
         sendStringData(s, cv, Organization.TITLE, Tags.CONTACTS_JOB_TITLE);
         sendStringData(s, cv, Organization.COMPANY, Tags.CONTACTS_COMPANY_NAME);
         sendStringData(s, cv, Organization.DEPARTMENT, Tags.CONTACTS_DEPARTMENT);
         sendStringData(s, cv, Organization.OFFICE_LOCATION, Tags.CONTACTS_OFFICE_LOCATION);
     }
 
-    private void sendNickname(Serializer s, ContentValues cv) throws IOException {
+    private static void sendNickname(Serializer s, ContentValues cv) throws IOException {
         sendStringData(s, cv, Nickname.NAME, Tags.CONTACTS2_NICKNAME);
     }
 
-    private void sendWebpage(Serializer s, ContentValues cv) throws IOException {
+    private static void sendWebpage(Serializer s, ContentValues cv) throws IOException {
         sendStringData(s, cv, Website.URL, Tags.CONTACTS_WEBPAGE);
     }
 
@@ -1739,7 +1739,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendChildren(Serializer s, ContentValues cv) throws IOException {
+    private static void sendChildren(Serializer s, ContentValues cv) throws IOException {
         boolean first = true;
         for (int i = 0; i < EasChildren.MAX_CHILDREN; i++) {
             String row = EasChildren.ROWS[i];
@@ -1756,7 +1756,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendPhone(Serializer s, ContentValues cv, int workCount, int homeCount)
+    private static void sendPhone(Serializer s, ContentValues cv, int workCount, int homeCount)
             throws IOException {
         String value = cv.getAsString(Phone.NUMBER);
         if (value == null) return;
@@ -1803,7 +1803,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private void sendRelation(Serializer s, ContentValues cv) throws IOException {
+    private static void sendRelation(Serializer s, ContentValues cv) throws IOException {
         String value = cv.getAsString(Relation.DATA);
         if (value == null) return;
         switch (cv.getAsInteger(Relation.TYPE)) {
