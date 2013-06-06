@@ -18,11 +18,11 @@
 package com.android.exchange.adapter;
 
 import android.content.Context;
-import android.util.Log;
 
 import com.android.exchange.Eas;
 import com.android.exchange.EasException;
 import com.android.exchange.utility.FileLogger;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.ByteArrayOutputStream;
@@ -176,8 +176,8 @@ public abstract class Parser {
     }
 
     /**
-     * Set the debug state of the parser.  When debugging is on, every token is logged (Log.v) to
-     * the console.
+     * Set the debug state of the parser.  When debugging is on, every token is logged (LogUtils.v)
+     * to the console.
      *
      * @param val the desired state for debug output
      */
@@ -190,7 +190,7 @@ public abstract class Parser {
     }
 
     /**
-     * Set the tag used for logging.  When debugging is on, every token is logged (Log.v) to
+     * Set the tag used for logging.  When debugging is on, every token is logged (LogUtils.v) to
      * the console.
      *
      * @param val the logging tag
@@ -390,7 +390,7 @@ public abstract class Parser {
         if (cr > 0) {
             str = str.substring(0, cr);
         }
-        Log.v(logTag, str);
+        LogUtils.v(logTag, str);
         if (Eas.FILE_LOG) {
             FileLogger.log(logTag, str);
         }

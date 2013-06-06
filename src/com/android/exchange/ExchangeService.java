@@ -32,7 +32,6 @@ import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
-import android.util.Log;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.provider.Account;
@@ -59,6 +58,7 @@ import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.utility.FileLogger;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -427,7 +427,7 @@ public class ExchangeService extends SyncManager {
         return (account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0;
     }
 
-    private boolean onSyncDisabledHold(Account account) {
+    private static boolean onSyncDisabledHold(Account account) {
         return (account.mFlags & Account.FLAGS_SYNC_DISABLED) != 0;
     }
 
@@ -551,7 +551,7 @@ public class ExchangeService extends SyncManager {
                                 c.close();
                             }
                         } catch (ProviderUnavailableException e) {
-                            Log.w(TAG, "Observer failed; provider unavailable");
+                            LogUtils.w(TAG, "Observer failed; provider unavailable");
                         }
                     }}, "Calendar Observer").start();
             }
@@ -574,7 +574,7 @@ public class ExchangeService extends SyncManager {
 
     public static void log(String tag, String str) {
         if (Eas.USER_LOG) {
-            Log.d(tag, str);
+            LogUtils.d(tag, str);
             if (Eas.FILE_LOG) {
                 FileLogger.log(tag, str);
             }
@@ -583,7 +583,7 @@ public class ExchangeService extends SyncManager {
 
     public static void alwaysLog(String str) {
         if (!Eas.USER_LOG) {
-            Log.d(TAG, str);
+            LogUtils.d(TAG, str);
         } else {
             log(str);
         }
@@ -714,7 +714,7 @@ public class ExchangeService extends SyncManager {
                 Account acct = Account.restoreAccountWithId(getContext(), acctId);
                 if (acct == null) {
                     // This account is in a bad state; don't create the mailbox.
-                    Log.e(TAG, "Cannot initialize bad acctId: " + acctId);
+                    LogUtils.e(TAG, "Cannot initialize bad acctId: " + acctId);
                     return;
                 }
                 Mailbox main = new Mailbox();

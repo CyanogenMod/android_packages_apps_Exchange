@@ -17,10 +17,9 @@
 
 package com.android.exchange;
 
-import android.util.Log;
-
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.SyncWindow;
+import com.android.mail.utils.LogUtils;
 
 /**
  * Constants used throughout the EAS implementation are stored here.
@@ -105,7 +104,7 @@ public class Eas {
             if (FILE_LOG || PARSER_LOG) {
                 USER_LOG = true;
             }
-            Log.d("Eas Debug", "Logging: " + (USER_LOG ? "User " : "") +
+            LogUtils.d("Eas Debug", "Logging: " + (USER_LOG ? "User " : "") +
                     (PARSER_LOG ? "Parser " : "") + (FILE_LOG ? "File" : ""));
         }
     }

@@ -21,7 +21,7 @@ import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
-import com.android.exchange.ExchangeService;
+import com.android.mail.utils.LogUtils;
 
 import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
@@ -34,7 +34,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
-import android.util.Log;
 
 public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
     private static final String TAG = "EAS ContactsSyncAdapterService";
@@ -99,7 +98,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                 changed = hasDirtyRows(cr, uri, Groups.DIRTY);
             }
             if (!changed) {
-                Log.i(TAG, "Upload sync; no changes");
+                LogUtils.i(TAG, "Upload sync; no changes");
                 return;
             }
         }
@@ -111,7 +110,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                     AccountColumns.EMAIL_ADDRESS + "=?",
                     new String[] {account.name}, null);
         if (accountCursor == null) {
-            Log.e(TAG, "null account cursor in ContactsSyncAdapterService");
+            LogUtils.e(TAG, "null account cursor in ContactsSyncAdapterService");
             return;
         }
 
@@ -124,7 +123,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                         ACCOUNT_AND_TYPE_CONTACTS, new String[] {Long.toString(accountId)}, null);
                 try {
                      if (mailboxCursor.moveToFirst()) {
-                        Log.i(TAG, "Contact sync requested for " + account.name);
+                         LogUtils.i(TAG, "Contact sync requested for " + account.name);
                          // TODO: Currently just bouncing this to Email sync; eventually streamline.
                         final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
                          // TODO: Should we be using the existing extras and just adding our bits?

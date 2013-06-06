@@ -22,7 +22,6 @@ import android.content.res.Resources;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Events;
 import android.test.suitebuilder.annotation.MediumTest;
-import android.util.Log;
 
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
@@ -36,6 +35,7 @@ import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SyncAdapterTestCase;
 import com.android.exchange.adapter.Tags;
+import com.android.mail.utils.LogUtils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -880,10 +880,10 @@ public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdap
                 nodst++;
             }
         }
-        Log.d("TimeZoneGeneration",
+        LogUtils.d("TimeZoneGeneration",
                 "Rule: " + rule + ", No DST: " + nodst + ", No rule: " + norule);
         for (String nr: norulelist) {
-            Log.d("TimeZoneGeneration", "No rule: " + nr);
+            LogUtils.d("TimeZoneGeneration", "No rule: " + nr);
         }
         // This is an empirical sanity test; we shouldn't have too many time zones with DST and
         // without a rule.

@@ -20,13 +20,12 @@ import android.accounts.AccountManager;
 import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.service.AccountServiceProxy;
-import com.android.emailsync.SyncManager;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
+import com.android.mail.utils.LogUtils;
 
 /**
  * The service that really handles broadcast intents on a worker thread.
@@ -71,7 +70,7 @@ public class ExchangeBroadcastProcessorService extends IntentService {
                 onBootCompleted();
             } else if (AccountManager.LOGIN_ACCOUNTS_CHANGED_ACTION.equals(broadcastAction)) {
                 if (Eas.USER_LOG) {
-                    Log.d(Logging.LOG_TAG, "Login accounts changed; reconciling...");
+                    LogUtils.d(Logging.LOG_TAG, "Login accounts changed; reconciling...");
                 }
                 new AccountServiceProxy(this).reconcileAccounts(Eas.PROTOCOL,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);

@@ -24,10 +24,10 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentValues;
-import android.util.Log;
 
 import com.android.exchange.Eas;
 import com.android.exchange.utility.FileLogger;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.ByteArrayOutputStream;
@@ -45,7 +45,7 @@ public class Serializer {
     private int mDepth;
     private String[] mNameStack = new String[20];
     private int mTagPage = 0;
-    private boolean mLogging = Log.isLoggable(TAG, Log.VERBOSE);
+    private boolean mLogging = LogUtils.isLoggable(TAG, LogUtils.VERBOSE);
 
     public Serializer() throws IOException {
         this(new ByteArrayOutputStream(), true);
@@ -82,7 +82,7 @@ public class Serializer {
         if (cr > 0) {
             str = str.substring(0, cr);
         }
-        Log.v(TAG, str);
+        LogUtils.v(TAG, str);
         if (Eas.FILE_LOG) {
             FileLogger.log(TAG, str);
         }
@@ -151,7 +151,7 @@ public class Serializer {
 
     public Serializer data(int tag, String value) throws IOException {
         if (value == null) {
-            Log.e(TAG, "Writing null data for tag: " + tag);
+            LogUtils.e(TAG, "Writing null data for tag: " + tag);
         }
         start(tag);
         text(value);
@@ -161,7 +161,7 @@ public class Serializer {
 
     public Serializer text(String text) throws IOException {
         if (text == null) {
-            Log.e(TAG, "Writing null text for pending tag: " + mPendingTag);
+            LogUtils.e(TAG, "Writing null text for pending tag: " + mPendingTag);
         }
         checkPendingTag(false);
         mOutput.write(Wbxml.STR_I);

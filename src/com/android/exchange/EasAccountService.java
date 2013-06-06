@@ -28,7 +28,6 @@ import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
-import android.util.Log;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.mail.MessagingException;
@@ -51,6 +50,7 @@ import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
@@ -190,7 +190,7 @@ public class EasAccountService extends EasSyncService {
                 ExchangeService.kick("sync finished");
             }
         } catch (ProviderUnavailableException e) {
-            Log.e(TAG, "EmailProvider unavailable; sync ended prematurely");
+            LogUtils.e(TAG, "EmailProvider unavailable; sync ended prematurely");
         }
     }
 
@@ -512,7 +512,7 @@ public class EasAccountService extends EasSyncService {
      * @param message
      * @return whether this message is likely associated with a NAT failure
      */
-    private boolean isLikelyNatFailure(String message) {
+    private static boolean isLikelyNatFailure(String message) {
         if (message == null) return false;
         if (message.contains("reset by peer")) {
             return true;
@@ -887,7 +887,7 @@ public class EasAccountService extends EasSyncService {
      * @param exitStatus the service's exit status
      * @return the corresponding service status
      */
-    private int exitStatusToServiceStatus(int exitStatus) {
+    private static int exitStatusToServiceStatus(int exitStatus) {
         switch(exitStatus) {
             case EasSyncService.EXIT_SECURITY_FAILURE:
                 return EmailServiceStatus.SECURITY_FAILURE;

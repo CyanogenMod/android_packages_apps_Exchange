@@ -42,7 +42,6 @@ import android.provider.CalendarContract.SyncState;
 import android.provider.ContactsContract.RawContacts;
 import android.provider.SyncStateContract;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.android.calendarcommon2.DateException;
 import com.android.calendarcommon2.Duration;
@@ -332,7 +331,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     adapter.mAccountManagerAccount, adapter.mCalendarId);
         }
 
-        private void addOrganizerToAttendees(CalendarOperations ops, long eventId,
+        private static void addOrganizerToAttendees(CalendarOperations ops, long eventId,
                 String organizerName, String organizerEmail) {
             // Handle the organizer (who IS an attendee on device, but NOT in EAS)
             if (organizerName != null || organizerEmail != null) {
@@ -973,7 +972,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private int encodeVisibility(int easVisibility) {
+        private static int encodeVisibility(int easVisibility) {
             int visibility = 0;
             switch(easVisibility) {
                 case 0:
@@ -1484,7 +1483,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private String decodeVisibility(int visibility) {
+    private static String decodeVisibility(int visibility) {
         int easVisibility = 0;
         switch(visibility) {
             case Events.ACCESS_DEFAULT:
@@ -1503,7 +1502,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         return Integer.toString(easVisibility);
     }
 
-    private int getInt(ContentValues cv, String column) {
+    private static int getInt(ContentValues cv, String column) {
         Integer i = cv.getAsInteger(column);
         if (i == null) return 0;
         return i;
@@ -2177,7 +2176,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                 eventIterator.close();
             }
         } catch (RemoteException e) {
-            Log.e(TAG, "Could not read dirty events.");
+            LogUtils.e(TAG, "Could not read dirty events.");
         }
 
         return false;
