@@ -27,12 +27,37 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Base class for performing a sync from an Exchange server (i.e. retrieving collection data from
- * the server). A single sync request from the app will result in one or more Sync POST messages to
- * the server, but that's all encapsulated in this class as a single "sync".
+ * Base class for syncing a single collection from an Exchange server. A "collection" is a single
+ * mailbox, or contacts for an account, or calendar for an account. (Tasks is part of the protocol
+ * but not implemented.)
+ * A single {@link ContentResolver#requestSync} for a single collection corresponds to a single
+ * object (of the appropriate subclass) being created and {@link #performSync} being called on it.
+ * This in turn will result in one or more Sync POST requests being sent to the Exchange server;
+ * from the client's point of view, these multiple Exchange Sync requests are all part of the same
+ * "sync" (i.e. the fact that there are multiple requests to the server is a detail of the Exchange
+ * protocol).
  * Different collection types (e.g. mail, contacts, calendar) should subclass this class and
  * implement the various abstract functions. The majority of how the sync flow is common to all,
  * aside from a few details and the {@link Parser} used.
+ * Details on how this class (and Exchange Sync) works:
+ * - Overview MSDN link: http://msdn.microsoft.com/en-us/library/ee159766(v=exchg.80).aspx
+ * - Sync MSDN link: http://msdn.microsoft.com/en-us/library/gg675638(v=exchg.80).aspx
+ * - The very first time, the client sends a Sync request with SyncKey = 0 and no other parameters.
+ *   This initial Sync request simply gets us a real SyncKey.
+ *   TODO: We should add the initial Sync to {@link EasAccountSyncHandler}.
+ * - Non-initial Sync requests can be for one or more collections; this implementation does one at
+ *   a time. TODO: allow sync for multiple collections to be aggregated?
+ * - For each collection, we send SyncKey, ServerId, other modifiers, Options, and Commands. The
+ *   protocol has a specific order in which these elements must appear in the request.
+ * - {@link #buildEasRequest} forms the XML for the request, using {@link #setInitialSyncOptions},
+ *   {@link #setNonInitialSyncOptions}, and {@link #setUpsyncCommands} to fill in the details
+ *   specific for each collection type.
+ * - The Sync response may specify that there's more data available on the server, in which case
+ *   we keep sending Sync requests to get that data.
+ * - The ordering constraints and other details may require subclasses to have member variables to
+ *   store state between the various calls while performing a single Sync request. These may need
+ *   to be reset between Sync requests to the Exchange server. Additionally, there are possibly
+ *   other necessary cleanups after parsing a Sync response. These are handled in {@link #cleanup}.
  */
 public abstract class EasSyncHandler extends EasServerConnection {
     private static final String TAG = "EasSyncHandler";
@@ -41,9 +66,9 @@ public abstract class EasSyncHandler extends EasServerConnection {
     protected static final String PIM_WINDOW_SIZE = "4";
 
     // TODO: For each type of failure, provide info about why.
-    private static final int SYNC_RESULT_FAILED = -1;
-    private static final int SYNC_RESULT_DONE = 0;
-    private static final int SYNC_RESULT_MORE_AVAILABLE = 1;
+    protected static final int SYNC_RESULT_FAILED = -1;
+    protected static final int SYNC_RESULT_DONE = 0;
+    protected static final int SYNC_RESULT_MORE_AVAILABLE = 1;
 
     /** Maximum number of Sync requests we'll send to the Exchange server in one sync attempt. */
     private static final int MAX_LOOPING_COUNT = 100;
@@ -132,22 +157,35 @@ public abstract class EasSyncHandler extends EasServerConnection {
     protected abstract AbstractSyncParser getParser(final InputStream is) throws IOException;
 
     /**
-     * Add sync options to the {@link Serializer} for this sync, if it's the first sync on this
-     * mailbox.
+     * Add to the {@link Serializer} for this sync the child elements of a Collection needed for an
+     * initial sync for this collection.
      * @param s The {@link Serializer} for this sync.
      * @throws IOException
      */
     protected abstract void setInitialSyncOptions(final Serializer s) throws IOException;
 
     /**
-     * Add sync options to the {@link Serializer} for this sync, if it's not the first sync on this
-     * mailbox.
+     * Add to the {@link Serializer} for this sync the child elements of a Collection needed for a
+     * non-initial sync for this collection, OTHER THAN Commands (which are written by
+     * {@link #setUpsyncCommands}.
      * @param s The {@link Serializer} for this sync.
      * @throws IOException
      */
     protected abstract void setNonInitialSyncOptions(final Serializer s) throws IOException;
 
+    /**
+     * Add all Commands to the {@link Serializer} for this Sync request. Strictly speaking, it's
+     * not all Upsync requests since Fetch is also a command, but largely that's what this section
+     * is used for.
+     * @param s The {@link Serializer} for this sync.
+     * @throws IOException
+     */
     protected abstract void setUpsyncCommands(final Serializer s) throws IOException;
+
+    /**
+     * Perform any necessary cleanup after processing a Sync response.
+     */
+    protected abstract void cleanup(final int syncResult);
 
     // End of abstract functions.
 
@@ -207,7 +245,6 @@ public abstract class EasSyncHandler extends EasServerConnection {
             setInitialSyncOptions(s);
         } else {
             setNonInitialSyncOptions(s);
-            // TODO: handle when previous iteration's upsync failed.
             setUpsyncCommands(s);
         }
         s.end().end().end().done();
@@ -223,7 +260,9 @@ public abstract class EasSyncHandler extends EasServerConnection {
      */
     private int parse(final EasResponse resp) {
         try {
-            if (getParser(resp.getInputStream()).parse()) {
+            final AbstractSyncParser parser = getParser(resp.getInputStream());
+            final boolean moreAvailable = parser.parse();
+            if (moreAvailable) {
                 return SYNC_RESULT_MORE_AVAILABLE;
             }
         } catch (final Parser.EmptyStreamException e) {
@@ -280,9 +319,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
             resp.close();
         }
 
-        if (result == SYNC_RESULT_DONE) {
-            // TODO: target.cleanup() or equivalent
-        }
+        cleanup(result);
 
         if (initialSync && result != SYNC_RESULT_FAILED) {
             // TODO: Handle Automatic Lookback
