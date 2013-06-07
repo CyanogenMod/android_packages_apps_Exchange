@@ -229,10 +229,11 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
 
     @Override
     public boolean parse(InputStream is) throws IOException, CommandStatusException {
-        EasContactsSyncParser p = new EasContactsSyncParser(is, this);
-        return p.parse();
+        final EasContactsSyncParser p = new EasContactsSyncParser(is, this);
+        final boolean returnValue = p.parse();
+        mGroupsUsed = p.isGroupsUsed();
+        return returnValue;
     }
-
 
     @Override
     public void wipe() {
@@ -423,6 +424,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         ContactOperations ops = new ContactOperations();
         private final android.accounts.Account mAccountManagerAccount;
         private final Uri mAccountUri;
+        private boolean mGroupsUsed = false;
 
         public EasContactsSyncParser(final Context context, final ContentResolver resolver,
                 final InputStream in, final Mailbox mailbox, final Account account,
@@ -431,6 +433,10 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
             mAccountManagerAccount = accountManagerAccount;
             mAccountUri = uriWithAccountAndIsSyncAdapter(RawContacts.CONTENT_URI,
                     mAccount.mEmailAddress);
+        }
+
+        public boolean isGroupsUsed() {
+            return mGroupsUsed;
         }
 
         public EasContactsSyncParser(InputStream in, ContactsSyncAdapter adapter)
@@ -651,8 +657,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                         break;
 
                     case Tags.CONTACTS_CATEGORIES:
-                        // TODO: FIXME
-                        //mGroupsUsed = true;
+                        mGroupsUsed = true;
                         categoriesParser(ops, entity);
                         break;
 
@@ -1022,7 +1027,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private static class ContactOperations extends ArrayList<ContentProviderOperation> {
+    public static class ContactOperations extends ArrayList<ContentProviderOperation> {
         private static final long serialVersionUID = 1L;
         private int mCount = 0;
         private int mContactBackValue = mCount;
