@@ -160,4 +160,10 @@ public class EasContactsSyncHandler extends EasSyncHandler {
     protected void setUpsyncCommands(final Serializer s) throws IOException {
 
     }
+
+
+    @Override
+    protected void cleanup(final int syncResult) {
+
+    }
 }

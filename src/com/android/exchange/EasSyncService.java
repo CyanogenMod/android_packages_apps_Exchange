@@ -1076,7 +1076,7 @@ public class EasSyncService extends AbstractSyncService {
             if (status == HttpStatus.SC_OK) {
                 if (!resp.isEmpty()) {
                     InputStream is = resp.getInputStream();
-                    MoveItemsParser p = new MoveItemsParser(is, this);
+                    MoveItemsParser p = new MoveItemsParser(is);
                     p.parse();
                     int statusCode = p.getStatusCode();
                     ContentValues cv = new ContentValues();
