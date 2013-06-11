@@ -1,7 +1,5 @@
 package com.android.exchange.service;
 
-import com.google.common.collect.Sets;
-
 import android.content.ContentValues;
 import android.content.Context;
 import android.os.Build;
@@ -11,6 +9,7 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.HostAuth;
+import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.PolicyServiceProxy;
@@ -24,6 +23,7 @@ import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SettingsParser;
 import com.android.exchange.adapter.Tags;
 import com.android.mail.utils.LogUtils;
+import com.google.common.collect.Sets;
 
 import org.apache.http.Header;
 import org.apache.http.HttpStatus;
@@ -611,6 +611,13 @@ public class EasAccountValidator extends EasServerConnection {
 
         if (bundle != null) {
             bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, resultCode);
+        } else if (resultCode == MessagingException.NO_ERROR) {
+            // This is an actual sync which succeeded. Let's force the outbox to exist as well.
+            if (Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX) ==
+                    Mailbox.NO_MAILBOX) {
+                Mailbox.newSystemMailbox(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX)
+                        .save(mContext);
+            }
         }
     }
 

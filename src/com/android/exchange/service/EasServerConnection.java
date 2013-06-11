@@ -12,6 +12,7 @@ import com.android.emailcommon.Device;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
+import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
@@ -360,4 +361,19 @@ public abstract class EasServerConnection {
             mStopped = true;
         }
     }
+
+    /**
+     * Convenience method for adding a Message to an account's outbox
+     * @param msg the message to send
+     */
+    protected void sendMessage(final EmailContent.Message msg) {
+        final Mailbox mailbox =
+                Mailbox.restoreMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
+        if (mailbox != null) {
+            msg.mMailboxKey = mailbox.mId;
+            msg.mAccountKey = mAccount.mId;
+            msg.save(mContext);
+        }
+    }
+
 }

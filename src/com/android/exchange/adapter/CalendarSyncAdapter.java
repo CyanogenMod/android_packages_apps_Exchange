@@ -1220,63 +1220,11 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                     mAccountManagerAccount,
                     mMailbox.mSyncKey.getBytes())));
 
-            // We need to send cancellations now, because the Event won't exist after the commit
-            // TODO: Fix Upsync. (These lists are set by upsync.)
-            /*
-            for (long eventId: mSendCancelIdList) {
-                EmailContent.Message msg;
-                try {
-                    msg = CalendarUtilities.createMessageForEventId(mContext, eventId,
-                            EmailContent.Message.FLAG_OUTGOING_MEETING_CANCEL, null,
-                            mAccount);
-                } catch (RemoteException e) {
-                    // Nothing to do here; the Event may no longer exist
-                    continue;
-                }
-                if (msg != null) {
-                    EasOutboxService.sendMessage(mContext, mAccount.mId, msg);
-                }
-            }
-            */
-
             // Execute our CPO's safely
             try {
                 mOps.mResults = safeExecute(mContentResolver, CalendarContract.AUTHORITY, mOps);
             } catch (RemoteException e) {
                 throw new IOException("Remote exception caught; will retry");
-            }
-
-            if (mOps.mResults != null) {
-                // TODO: Fix Upsync. (These lists are set by upsync.)
-                /*
-                // Clear dirty and mark flags for updates sent to server
-                if (!mUploadedIdList.isEmpty())  {
-                    ContentValues cv = new ContentValues();
-                    cv.put(Events.DIRTY, 0);
-                    cv.put(EVENT_SYNC_MARK, "0");
-                    for (long eventId : mUploadedIdList) {
-                        mContentResolver.update(
-                                asSyncAdapter(
-                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
-                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv,
-                                null, null);
-                    }
-                }
-                // Delete events marked for deletion
-                if (!mDeletedIdList.isEmpty()) {
-                    for (long eventId : mDeletedIdList) {
-                        mContentResolver.delete(
-                                asSyncAdapter(
-                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
-                                        mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                                null, null);
-                    }
-                }
-                // Send any queued up email (invitations replies, etc.)
-                for (Message msg: mOutgoingMailList) {
-                    EasOutboxService.sendMessage(mContext, mAccount.mId, msg);
-                }
-                */
             }
         }
 
@@ -1798,385 +1746,381 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             return false;
         }
 
+        // We've got to handle exceptions as part of the parent when changes occur, so we need
+        // to find new/changed exceptions and mark the parent dirty
+        ArrayList<Long> orphanedExceptions = new ArrayList<Long>();
+        Cursor c = cr.query(Events.CONTENT_URI, ORIGINAL_EVENT_PROJECTION,
+                DIRTY_EXCEPTION_IN_CALENDAR, mCalendarIdArgument, null);
         try {
-            // We've got to handle exceptions as part of the parent when changes occur, so we need
-            // to find new/changed exceptions and mark the parent dirty
-            ArrayList<Long> orphanedExceptions = new ArrayList<Long>();
-            Cursor c = cr.query(Events.CONTENT_URI, ORIGINAL_EVENT_PROJECTION,
-                    DIRTY_EXCEPTION_IN_CALENDAR, mCalendarIdArgument, null);
-            try {
-                ContentValues cv = new ContentValues();
-                // We use _sync_mark here to distinguish dirty parents from parents with dirty
-                // exceptions
-                cv.put(EVENT_SYNC_MARK, "1");
-                while (c.moveToNext()) {
-                    // Mark the parents of dirty exceptions
-                    long parentId = c.getLong(0);
-                    int cnt = cr.update(
-                            asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
-                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv,
-                            EVENT_ID_AND_CALENDAR_ID, new String[] {
-                                    Long.toString(parentId), mCalendarIdString
-                            });
-                    // Keep track of any orphaned exceptions
-                    if (cnt == 0) {
-                        orphanedExceptions.add(c.getLong(1));
+            ContentValues cv = new ContentValues();
+            // We use _sync_mark here to distinguish dirty parents from parents with dirty
+            // exceptions
+            cv.put(EVENT_SYNC_MARK, "1");
+            while (c.moveToNext()) {
+                // Mark the parents of dirty exceptions
+                long parentId = c.getLong(0);
+                int cnt = cr.update(
+                        asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv,
+                        EVENT_ID_AND_CALENDAR_ID, new String[] {
+                                Long.toString(parentId), mCalendarIdString
+                        });
+                // Keep track of any orphaned exceptions
+                if (cnt == 0) {
+                    orphanedExceptions.add(c.getLong(1));
+                }
+            }
+        } finally {
+            c.close();
+        }
+
+        // Delete any orphaned exceptions
+        for (long orphan : orphanedExceptions) {
+            userLog(TAG, "Deleted orphaned exception: " + orphan);
+            cr.delete(
+                    asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, orphan),
+                            mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null, null);
+        }
+        orphanedExceptions.clear();
+
+        // Now we can go through dirty/marked top-level events and send them
+        // back to the server
+        EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
+                asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
+                DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, mCalendarIdArgument, null), cr);
+        ContentValues cidValues = new ContentValues();
+
+        try {
+            boolean first = true;
+            while (eventIterator.hasNext()) {
+                Entity entity = eventIterator.next();
+
+                // For each of these entities, create the change commands
+                ContentValues entityValues = entity.getEntityValues();
+                String serverId = entityValues.getAsString(Events._SYNC_ID);
+
+                // We first need to check whether we can upsync this event; our test for this
+                // is currently the value of EXTENDED_PROPERTY_ATTENDEES_REDACTED
+                // If this is set to "1", we can't upsync the event
+                for (NamedContentValues ncv: entity.getSubValues()) {
+                    if (ncv.uri.equals(ExtendedProperties.CONTENT_URI)) {
+                        ContentValues ncvValues = ncv.values;
+                        if (ncvValues.getAsString(ExtendedProperties.NAME).equals(
+                                EXTENDED_PROPERTY_UPSYNC_PROHIBITED)) {
+                            if ("1".equals(ncvValues.getAsString(ExtendedProperties.VALUE))) {
+                                // Make sure we mark this to clear the dirty flag
+                                mUploadedIdList.add(entityValues.getAsLong(Events._ID));
+                                continue;
+                            }
+                        }
                     }
                 }
-            } finally {
-                c.close();
-            }
 
-            // Delete any orphaned exceptions
-            for (long orphan : orphanedExceptions) {
-                userLog(TAG, "Deleted orphaned exception: " + orphan);
-                cr.delete(
-                        asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, orphan),
-                                mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null, null);
-            }
-            orphanedExceptions.clear();
+                // Find our uid in the entity; otherwise create one
+                String clientId = entityValues.getAsString(Events.SYNC_DATA2);
+                if (clientId == null) {
+                    clientId = UUID.randomUUID().toString();
+                }
 
-            // Now we can go through dirty/marked top-level events and send them
-            // back to the server
-            EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
-                    asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
-                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
-                    DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, mCalendarIdArgument, null), cr);
-            ContentValues cidValues = new ContentValues();
+                // EAS 2.5 needs: BusyStatus DtStamp EndTime Sensitivity StartTime TimeZone UID
+                // We can generate all but what we're testing for below
+                String organizerEmail = entityValues.getAsString(Events.ORGANIZER);
+                boolean selfOrganizer = organizerEmail.equalsIgnoreCase(mEmailAddress);
 
-            try {
-                boolean first = true;
-                while (eventIterator.hasNext()) {
-                    Entity entity = eventIterator.next();
+                if (!entityValues.containsKey(Events.DTSTART)
+                        || (!entityValues.containsKey(Events.DURATION) &&
+                                !entityValues.containsKey(Events.DTEND))
+                                || organizerEmail == null) {
+                    continue;
+                }
 
-                    // For each of these entities, create the change commands
-                    ContentValues entityValues = entity.getEntityValues();
-                    String serverId = entityValues.getAsString(Events._SYNC_ID);
-
-                    // We first need to check whether we can upsync this event; our test for this
-                    // is currently the value of EXTENDED_PROPERTY_ATTENDEES_REDACTED
-                    // If this is set to "1", we can't upsync the event
-                    for (NamedContentValues ncv: entity.getSubValues()) {
-                        if (ncv.uri.equals(ExtendedProperties.CONTENT_URI)) {
-                            ContentValues ncvValues = ncv.values;
-                            if (ncvValues.getAsString(ExtendedProperties.NAME).equals(
-                                    EXTENDED_PROPERTY_UPSYNC_PROHIBITED)) {
-                                if ("1".equals(ncvValues.getAsString(ExtendedProperties.VALUE))) {
-                                    // Make sure we mark this to clear the dirty flag
-                                    mUploadedIdList.add(entityValues.getAsLong(Events._ID));
-                                    continue;
-                                }
-                            }
+                if (first) {
+                    s.start(Tags.SYNC_COMMANDS);
+                    userLog("Sending Calendar changes to the server");
+                    first = false;
+                }
+                long eventId = entityValues.getAsLong(Events._ID);
+                if (serverId == null) {
+                    // This is a new event; create a clientId
+                    userLog("Creating new event with clientId: ", clientId);
+                    s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
+                    // And save it in the Event as the local id
+                    cidValues.put(Events.SYNC_DATA2, clientId);
+                    cidValues.put(EVENT_SYNC_VERSION, "0");
+                    cr.update(
+                            asSyncAdapter(
+                                    ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                            cidValues, null, null);
+                } else {
+                    if (entityValues.getAsInteger(Events.DELETED) == 1) {
+                        userLog("Deleting event with serverId: ", serverId);
+                        s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
+                        mDeletedIdList.add(eventId);
+                        if (selfOrganizer) {
+                            mSendCancelIdList.add(eventId);
+                        } else {
+                            sendDeclinedEmail(entity, clientId);
                         }
-                    }
-
-                    // Find our uid in the entity; otherwise create one
-                    String clientId = entityValues.getAsString(Events.SYNC_DATA2);
-                    if (clientId == null) {
-                        clientId = UUID.randomUUID().toString();
-                    }
-
-                    // EAS 2.5 needs: BusyStatus DtStamp EndTime Sensitivity StartTime TimeZone UID
-                    // We can generate all but what we're testing for below
-                    String organizerEmail = entityValues.getAsString(Events.ORGANIZER);
-                    boolean selfOrganizer = organizerEmail.equalsIgnoreCase(mEmailAddress);
-
-                    if (!entityValues.containsKey(Events.DTSTART)
-                            || (!entityValues.containsKey(Events.DURATION) &&
-                                    !entityValues.containsKey(Events.DTEND))
-                                    || organizerEmail == null) {
                         continue;
                     }
-
-                    if (first) {
-                        s.start(Tags.SYNC_COMMANDS);
-                        userLog("Sending Calendar changes to the server");
-                        first = false;
-                    }
-                    long eventId = entityValues.getAsLong(Events._ID);
-                    if (serverId == null) {
-                        // This is a new event; create a clientId
-                        userLog("Creating new event with clientId: ", clientId);
-                        s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
-                        // And save it in the Event as the local id
-                        cidValues.put(Events.SYNC_DATA2, clientId);
-                        cidValues.put(EVENT_SYNC_VERSION, "0");
-                        cr.update(
-                                asSyncAdapter(
-                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
-                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                                cidValues, null, null);
+                    userLog("Upsync change to event with serverId: " + serverId);
+                    // Get the current version
+                    String version = entityValues.getAsString(EVENT_SYNC_VERSION);
+                    // This should never be null, but catch this error anyway
+                    // Version should be "0" when we create the event, so use that
+                    if (version == null) {
+                        version = "0";
                     } else {
-                        if (entityValues.getAsInteger(Events.DELETED) == 1) {
-                            userLog("Deleting event with serverId: ", serverId);
-                            s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
-                            mDeletedIdList.add(eventId);
-                            if (selfOrganizer) {
-                                mSendCancelIdList.add(eventId);
-                            } else {
-                                sendDeclinedEmail(entity, clientId);
-                            }
-                            continue;
-                        }
-                        userLog("Upsync change to event with serverId: " + serverId);
-                        // Get the current version
-                        String version = entityValues.getAsString(EVENT_SYNC_VERSION);
-                        // This should never be null, but catch this error anyway
-                        // Version should be "0" when we create the event, so use that
-                        if (version == null) {
+                        // Increment and save
+                        try {
+                            version = Integer.toString((Integer.parseInt(version) + 1));
+                        } catch (Exception e) {
+                            // Handle the case in which someone writes a non-integer here;
+                            // shouldn't happen, but we don't want to kill the sync for his
                             version = "0";
-                        } else {
-                            // Increment and save
-                            try {
-                                version = Integer.toString((Integer.parseInt(version) + 1));
-                            } catch (Exception e) {
-                                // Handle the case in which someone writes a non-integer here;
-                                // shouldn't happen, but we don't want to kill the sync for his
-                                version = "0";
-                            }
-                        }
-                        cidValues.put(EVENT_SYNC_VERSION, version);
-                        // Also save in entityValues so that we send it this time around
-                        entityValues.put(EVENT_SYNC_VERSION, version);
-                        cr.update(
-                                asSyncAdapter(
-                                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
-                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                                cidValues, null, null);
-                        s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, serverId);
-                    }
-                    s.start(Tags.SYNC_APPLICATION_DATA);
-
-                    sendEvent(entity, clientId, s);
-
-                    // Now, the hard part; find exceptions for this event
-                    if (serverId != null) {
-                        EntityIterator exIterator = EventsEntity.newEntityIterator(cr.query(
-                                asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
-                                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
-                                ORIGINAL_EVENT_AND_CALENDAR, new String[] {
-                                        serverId, mCalendarIdString
-                                }, null), cr);
-                        boolean exFirst = true;
-                        while (exIterator.hasNext()) {
-                            Entity exEntity = exIterator.next();
-                            if (exFirst) {
-                                s.start(Tags.CALENDAR_EXCEPTIONS);
-                                exFirst = false;
-                            }
-                            s.start(Tags.CALENDAR_EXCEPTION);
-                            sendEvent(exEntity, null, s);
-                            ContentValues exValues = exEntity.getEntityValues();
-                            if (getInt(exValues, Events.DIRTY) == 1) {
-                                // This is a new/updated exception, so we've got to notify our
-                                // attendees about it
-                                long exEventId = exValues.getAsLong(Events._ID);
-                                int flag;
-
-                                // Copy subvalues into the exception; otherwise, we won't see the
-                                // attendees when preparing the message
-                                for (NamedContentValues ncv: entity.getSubValues()) {
-                                    exEntity.addSubValue(ncv.uri, ncv.values);
-                                }
-
-                                if ((getInt(exValues, Events.DELETED) == 1) ||
-                                        (getInt(exValues, Events.STATUS) ==
-                                            Events.STATUS_CANCELED)) {
-                                    flag = Message.FLAG_OUTGOING_MEETING_CANCEL;
-                                    if (!selfOrganizer) {
-                                        // Send a cancellation notice to the organizer
-                                        // Since CalendarProvider2 sets the organizer of exceptions
-                                        // to the user, we have to reset it first to the original
-                                        // organizer
-                                        exValues.put(Events.ORGANIZER,
-                                                entityValues.getAsString(Events.ORGANIZER));
-                                        sendDeclinedEmail(exEntity, clientId);
-                                    }
-                                } else {
-                                    flag = Message.FLAG_OUTGOING_MEETING_INVITE;
-                                }
-                                // Add the eventId of the exception to the uploaded id list, so that
-                                // the dirty/mark bits are cleared
-                                mUploadedIdList.add(exEventId);
-
-                                // Copy version so the ics attachment shows the proper sequence #
-                                exValues.put(EVENT_SYNC_VERSION,
-                                        entityValues.getAsString(EVENT_SYNC_VERSION));
-                                // Copy location so that it's included in the outgoing email
-                                if (entityValues.containsKey(Events.EVENT_LOCATION)) {
-                                    exValues.put(Events.EVENT_LOCATION,
-                                            entityValues.getAsString(Events.EVENT_LOCATION));
-                                }
-
-                                if (selfOrganizer) {
-                                    Message msg =
-                                        CalendarUtilities.createMessageForEntity(mContext,
-                                                exEntity, flag, clientId, mAccount);
-                                    if (msg != null) {
-                                        userLog("Queueing exception update to " + msg.mTo);
-                                        mOutgoingMailList.add(msg);
-                                    }
-                                }
-                            }
-                            s.end(); // EXCEPTION
-                        }
-                        if (!exFirst) {
-                            s.end(); // EXCEPTIONS
                         }
                     }
-
-                    s.end().end(); // ApplicationData & Change
-                    mUploadedIdList.add(eventId);
-
-                    // Go through the extended properties of this Event and pull out our tokenized
-                    // attendees list and the user attendee status; we will need them later
-                    String attendeeString = null;
-                    long attendeeStringId = -1;
-                    String userAttendeeStatus = null;
-                    long userAttendeeStatusId = -1;
-                    for (NamedContentValues ncv: entity.getSubValues()) {
-                        if (ncv.uri.equals(ExtendedProperties.CONTENT_URI)) {
-                            ContentValues ncvValues = ncv.values;
-                            String propertyName =
-                                ncvValues.getAsString(ExtendedProperties.NAME);
-                            if (propertyName.equals(EXTENDED_PROPERTY_ATTENDEES)) {
-                                attendeeString =
-                                    ncvValues.getAsString(ExtendedProperties.VALUE);
-                                attendeeStringId =
-                                    ncvValues.getAsLong(ExtendedProperties._ID);
-                            } else if (propertyName.equals(
-                                    EXTENDED_PROPERTY_USER_ATTENDEE_STATUS)) {
-                                userAttendeeStatus =
-                                    ncvValues.getAsString(ExtendedProperties.VALUE);
-                                userAttendeeStatusId =
-                                    ncvValues.getAsLong(ExtendedProperties._ID);
-                            }
-                        }
-                    }
-
-                    // Send the meeting invite if there are attendees and we're the organizer AND
-                    // if the Event itself is dirty (we might be syncing only because an exception
-                    // is dirty, in which case we DON'T send email about the Event)
-                    if (selfOrganizer &&
-                            (getInt(entityValues, Events.DIRTY) == 1)) {
-                        EmailContent.Message msg =
-                            CalendarUtilities.createMessageForEventId(mContext, eventId,
-                                    EmailContent.Message.FLAG_OUTGOING_MEETING_INVITE, clientId,
-                                    mAccount);
-                        if (msg != null) {
-                            userLog("Queueing invitation to ", msg.mTo);
-                            mOutgoingMailList.add(msg);
-                        }
-                        // Make a list out of our tokenized attendees, if we have any
-                        ArrayList<String> originalAttendeeList = new ArrayList<String>();
-                        if (attendeeString != null) {
-                            StringTokenizer st =
-                                new StringTokenizer(attendeeString, ATTENDEE_TOKENIZER_DELIMITER);
-                            while (st.hasMoreTokens()) {
-                                originalAttendeeList.add(st.nextToken());
-                            }
-                        }
-                        StringBuilder newTokenizedAttendees = new StringBuilder();
-                        // See if any attendees have been dropped and while we're at it, build
-                        // an updated String with tokenized attendee addresses
-                        for (NamedContentValues ncv: entity.getSubValues()) {
-                            if (ncv.uri.equals(Attendees.CONTENT_URI)) {
-                                String attendeeEmail =
-                                    ncv.values.getAsString(Attendees.ATTENDEE_EMAIL);
-                                // Remove all found attendees
-                                originalAttendeeList.remove(attendeeEmail);
-                                newTokenizedAttendees.append(attendeeEmail);
-                                newTokenizedAttendees.append(ATTENDEE_TOKENIZER_DELIMITER);
-                            }
-                        }
-                        // Update extended properties with the new attendee list, if we have one
-                        // Otherwise, create one (this would be the case for Events created on
-                        // device or "legacy" events (before this code was added)
-                        ContentValues cv = new ContentValues();
-                        cv.put(ExtendedProperties.VALUE, newTokenizedAttendees.toString());
-                        if (attendeeString != null) {
-                            cr.update(asSyncAdapter(ContentUris.withAppendedId(
-                                    ExtendedProperties.CONTENT_URI, attendeeStringId),
+                    cidValues.put(EVENT_SYNC_VERSION, version);
+                    // Also save in entityValues so that we send it this time around
+                    entityValues.put(EVENT_SYNC_VERSION, version);
+                    cr.update(
+                            asSyncAdapter(
+                                    ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
                                     mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                                    cv, null, null);
-                        } else {
-                            // If there wasn't an "attendees" property, insert one
-                            cv.put(ExtendedProperties.NAME, EXTENDED_PROPERTY_ATTENDEES);
-                            cv.put(ExtendedProperties.EVENT_ID, eventId);
-                            cr.insert(asSyncAdapter(ExtendedProperties.CONTENT_URI,
-                                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv);
+                            cidValues, null, null);
+                    s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, serverId);
+                }
+                s.start(Tags.SYNC_APPLICATION_DATA);
+
+                sendEvent(entity, clientId, s);
+
+                // Now, the hard part; find exceptions for this event
+                if (serverId != null) {
+                    EntityIterator exIterator = EventsEntity.newEntityIterator(cr.query(
+                            asSyncAdapter(Events.CONTENT_URI, mEmailAddress,
+                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
+                            ORIGINAL_EVENT_AND_CALENDAR, new String[] {
+                                    serverId, mCalendarIdString
+                            }, null), cr);
+                    boolean exFirst = true;
+                    while (exIterator.hasNext()) {
+                        Entity exEntity = exIterator.next();
+                        if (exFirst) {
+                            s.start(Tags.CALENDAR_EXCEPTIONS);
+                            exFirst = false;
                         }
-                        // Whoever is left has been removed from the attendee list; send them
-                        // a cancellation
-                        for (String removedAttendee: originalAttendeeList) {
-                            // Send a cancellation message to each of them
-                            msg = CalendarUtilities.createMessageForEventId(mContext, eventId,
-                                    Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, mAccount,
-                                    removedAttendee);
-                            if (msg != null) {
-                                // Just send it to the removed attendee
-                                userLog("Queueing cancellation to removed attendee " + msg.mTo);
-                                mOutgoingMailList.add(msg);
+                        s.start(Tags.CALENDAR_EXCEPTION);
+                        sendEvent(exEntity, null, s);
+                        ContentValues exValues = exEntity.getEntityValues();
+                        if (getInt(exValues, Events.DIRTY) == 1) {
+                            // This is a new/updated exception, so we've got to notify our
+                            // attendees about it
+                            long exEventId = exValues.getAsLong(Events._ID);
+                            int flag;
+
+                            // Copy subvalues into the exception; otherwise, we won't see the
+                            // attendees when preparing the message
+                            for (NamedContentValues ncv: entity.getSubValues()) {
+                                exEntity.addSubValue(ncv.uri, ncv.values);
                             }
-                        }
-                    } else if (!selfOrganizer) {
-                        // If we're not the organizer, see if we've changed our attendee status
-                        // Our last synced attendee status is in ExtendedProperties, and we've
-                        // retrieved it above as userAttendeeStatus
-                        int currentStatus = entityValues.getAsInteger(Events.SELF_ATTENDEE_STATUS);
-                        int syncStatus = Attendees.ATTENDEE_STATUS_NONE;
-                        if (userAttendeeStatus != null) {
-                            try {
-                                syncStatus = Integer.parseInt(userAttendeeStatus);
-                            } catch (NumberFormatException e) {
-                                // Just in case somebody else mucked with this and it's not Integer
+
+                            if ((getInt(exValues, Events.DELETED) == 1) ||
+                                    (getInt(exValues, Events.STATUS) ==
+                                        Events.STATUS_CANCELED)) {
+                                flag = Message.FLAG_OUTGOING_MEETING_CANCEL;
+                                if (!selfOrganizer) {
+                                    // Send a cancellation notice to the organizer
+                                    // Since CalendarProvider2 sets the organizer of exceptions
+                                    // to the user, we have to reset it first to the original
+                                    // organizer
+                                    exValues.put(Events.ORGANIZER,
+                                            entityValues.getAsString(Events.ORGANIZER));
+                                    sendDeclinedEmail(exEntity, clientId);
+                                }
+                            } else {
+                                flag = Message.FLAG_OUTGOING_MEETING_INVITE;
                             }
-                        }
-                        if ((currentStatus != syncStatus) &&
-                                (currentStatus != Attendees.ATTENDEE_STATUS_NONE)) {
-                            // If so, send a meeting reply
-                            int messageFlag = 0;
-                            switch (currentStatus) {
-                                case Attendees.ATTENDEE_STATUS_ACCEPTED:
-                                    messageFlag = Message.FLAG_OUTGOING_MEETING_ACCEPT;
-                                    break;
-                                case Attendees.ATTENDEE_STATUS_DECLINED:
-                                    messageFlag = Message.FLAG_OUTGOING_MEETING_DECLINE;
-                                    break;
-                                case Attendees.ATTENDEE_STATUS_TENTATIVE:
-                                    messageFlag = Message.FLAG_OUTGOING_MEETING_TENTATIVE;
-                                    break;
+                            // Add the eventId of the exception to the uploaded id list, so that
+                            // the dirty/mark bits are cleared
+                            mUploadedIdList.add(exEventId);
+
+                            // Copy version so the ics attachment shows the proper sequence #
+                            exValues.put(EVENT_SYNC_VERSION,
+                                    entityValues.getAsString(EVENT_SYNC_VERSION));
+                            // Copy location so that it's included in the outgoing email
+                            if (entityValues.containsKey(Events.EVENT_LOCATION)) {
+                                exValues.put(Events.EVENT_LOCATION,
+                                        entityValues.getAsString(Events.EVENT_LOCATION));
                             }
-                            // Make sure we have a valid status (messageFlag should never be zero)
-                            if (messageFlag != 0 && userAttendeeStatusId >= 0) {
-                                // Save away the new status
-                                cidValues.clear();
-                                cidValues.put(ExtendedProperties.VALUE,
-                                        Integer.toString(currentStatus));
-                                cr.update(asSyncAdapter(ContentUris.withAppendedId(
-                                        ExtendedProperties.CONTENT_URI, userAttendeeStatusId),
-                                        mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                                        cidValues, null, null);
-                                // Send mail to the organizer advising of the new status
-                                EmailContent.Message msg =
-                                    CalendarUtilities.createMessageForEventId(mContext, eventId,
-                                            messageFlag, clientId, mAccount);
+
+                            if (selfOrganizer) {
+                                Message msg =
+                                    CalendarUtilities.createMessageForEntity(mContext,
+                                            exEntity, flag, clientId, mAccount);
                                 if (msg != null) {
-                                    userLog("Queueing invitation reply to " + msg.mTo);
+                                    userLog("Queueing exception update to " + msg.mTo);
                                     mOutgoingMailList.add(msg);
                                 }
                             }
                         }
+                        s.end(); // EXCEPTION
+                    }
+                    if (!exFirst) {
+                        s.end(); // EXCEPTIONS
                     }
                 }
-                if (!first) {
-                    s.end(); // Commands
+
+                s.end().end(); // ApplicationData & Change
+                mUploadedIdList.add(eventId);
+
+                // Go through the extended properties of this Event and pull out our tokenized
+                // attendees list and the user attendee status; we will need them later
+                String attendeeString = null;
+                long attendeeStringId = -1;
+                String userAttendeeStatus = null;
+                long userAttendeeStatusId = -1;
+                for (NamedContentValues ncv: entity.getSubValues()) {
+                    if (ncv.uri.equals(ExtendedProperties.CONTENT_URI)) {
+                        ContentValues ncvValues = ncv.values;
+                        String propertyName =
+                            ncvValues.getAsString(ExtendedProperties.NAME);
+                        if (propertyName.equals(EXTENDED_PROPERTY_ATTENDEES)) {
+                            attendeeString =
+                                ncvValues.getAsString(ExtendedProperties.VALUE);
+                            attendeeStringId =
+                                ncvValues.getAsLong(ExtendedProperties._ID);
+                        } else if (propertyName.equals(
+                                EXTENDED_PROPERTY_USER_ATTENDEE_STATUS)) {
+                            userAttendeeStatus =
+                                ncvValues.getAsString(ExtendedProperties.VALUE);
+                            userAttendeeStatusId =
+                                ncvValues.getAsLong(ExtendedProperties._ID);
+                        }
+                    }
                 }
-            } finally {
-                eventIterator.close();
+
+                // Send the meeting invite if there are attendees and we're the organizer AND
+                // if the Event itself is dirty (we might be syncing only because an exception
+                // is dirty, in which case we DON'T send email about the Event)
+                if (selfOrganizer &&
+                        (getInt(entityValues, Events.DIRTY) == 1)) {
+                    EmailContent.Message msg =
+                        CalendarUtilities.createMessageForEventId(mContext, eventId,
+                                EmailContent.Message.FLAG_OUTGOING_MEETING_INVITE, clientId,
+                                mAccount);
+                    if (msg != null) {
+                        userLog("Queueing invitation to ", msg.mTo);
+                        mOutgoingMailList.add(msg);
+                    }
+                    // Make a list out of our tokenized attendees, if we have any
+                    ArrayList<String> originalAttendeeList = new ArrayList<String>();
+                    if (attendeeString != null) {
+                        StringTokenizer st =
+                            new StringTokenizer(attendeeString, ATTENDEE_TOKENIZER_DELIMITER);
+                        while (st.hasMoreTokens()) {
+                            originalAttendeeList.add(st.nextToken());
+                        }
+                    }
+                    StringBuilder newTokenizedAttendees = new StringBuilder();
+                    // See if any attendees have been dropped and while we're at it, build
+                    // an updated String with tokenized attendee addresses
+                    for (NamedContentValues ncv: entity.getSubValues()) {
+                        if (ncv.uri.equals(Attendees.CONTENT_URI)) {
+                            String attendeeEmail =
+                                ncv.values.getAsString(Attendees.ATTENDEE_EMAIL);
+                            // Remove all found attendees
+                            originalAttendeeList.remove(attendeeEmail);
+                            newTokenizedAttendees.append(attendeeEmail);
+                            newTokenizedAttendees.append(ATTENDEE_TOKENIZER_DELIMITER);
+                        }
+                    }
+                    // Update extended properties with the new attendee list, if we have one
+                    // Otherwise, create one (this would be the case for Events created on
+                    // device or "legacy" events (before this code was added)
+                    ContentValues cv = new ContentValues();
+                    cv.put(ExtendedProperties.VALUE, newTokenizedAttendees.toString());
+                    if (attendeeString != null) {
+                        cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                                ExtendedProperties.CONTENT_URI, attendeeStringId),
+                                mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                cv, null, null);
+                    } else {
+                        // If there wasn't an "attendees" property, insert one
+                        cv.put(ExtendedProperties.NAME, EXTENDED_PROPERTY_ATTENDEES);
+                        cv.put(ExtendedProperties.EVENT_ID, eventId);
+                        cr.insert(asSyncAdapter(ExtendedProperties.CONTENT_URI,
+                                mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv);
+                    }
+                    // Whoever is left has been removed from the attendee list; send them
+                    // a cancellation
+                    for (String removedAttendee: originalAttendeeList) {
+                        // Send a cancellation message to each of them
+                        msg = CalendarUtilities.createMessageForEventId(mContext, eventId,
+                                Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, mAccount,
+                                removedAttendee);
+                        if (msg != null) {
+                            // Just send it to the removed attendee
+                            userLog("Queueing cancellation to removed attendee " + msg.mTo);
+                            mOutgoingMailList.add(msg);
+                        }
+                    }
+                } else if (!selfOrganizer) {
+                    // If we're not the organizer, see if we've changed our attendee status
+                    // Our last synced attendee status is in ExtendedProperties, and we've
+                    // retrieved it above as userAttendeeStatus
+                    int currentStatus = entityValues.getAsInteger(Events.SELF_ATTENDEE_STATUS);
+                    int syncStatus = Attendees.ATTENDEE_STATUS_NONE;
+                    if (userAttendeeStatus != null) {
+                        try {
+                            syncStatus = Integer.parseInt(userAttendeeStatus);
+                        } catch (NumberFormatException e) {
+                            // Just in case somebody else mucked with this and it's not Integer
+                        }
+                    }
+                    if ((currentStatus != syncStatus) &&
+                            (currentStatus != Attendees.ATTENDEE_STATUS_NONE)) {
+                        // If so, send a meeting reply
+                        int messageFlag = 0;
+                        switch (currentStatus) {
+                            case Attendees.ATTENDEE_STATUS_ACCEPTED:
+                                messageFlag = Message.FLAG_OUTGOING_MEETING_ACCEPT;
+                                break;
+                            case Attendees.ATTENDEE_STATUS_DECLINED:
+                                messageFlag = Message.FLAG_OUTGOING_MEETING_DECLINE;
+                                break;
+                            case Attendees.ATTENDEE_STATUS_TENTATIVE:
+                                messageFlag = Message.FLAG_OUTGOING_MEETING_TENTATIVE;
+                                break;
+                        }
+                        // Make sure we have a valid status (messageFlag should never be zero)
+                        if (messageFlag != 0 && userAttendeeStatusId >= 0) {
+                            // Save away the new status
+                            cidValues.clear();
+                            cidValues.put(ExtendedProperties.VALUE,
+                                    Integer.toString(currentStatus));
+                            cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                                    ExtendedProperties.CONTENT_URI, userAttendeeStatusId),
+                                    mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                    cidValues, null, null);
+                            // Send mail to the organizer advising of the new status
+                            EmailContent.Message msg =
+                                CalendarUtilities.createMessageForEventId(mContext, eventId,
+                                        messageFlag, clientId, mAccount);
+                            if (msg != null) {
+                                userLog("Queueing invitation reply to " + msg.mTo);
+                                mOutgoingMailList.add(msg);
+                            }
+                        }
+                    }
+                }
             }
-        } catch (RemoteException e) {
-            LogUtils.e(TAG, "Could not read dirty events.");
+            if (!first) {
+                s.end(); // Commands
+            }
+        } finally {
+            eventIterator.close();
         }
 
         return false;
