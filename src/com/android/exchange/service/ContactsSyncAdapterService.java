@@ -16,13 +16,6 @@
 
 package com.android.exchange.service;
 
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.Mailbox;
-import com.android.exchange.Eas;
-import com.android.mail.utils.LogUtils;
-
 import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
@@ -35,8 +28,15 @@ import android.os.Bundle;
 import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
 
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.exchange.Eas;
+import com.android.mail.utils.LogUtils;
+
 public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
-    private static final String TAG = "EAS ContactsSyncAdapterService";
+    private static final String TAG = "EASContactsSyncAdaptSvc";
     private static final String ACCOUNT_AND_TYPE_CONTACTS =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CONTACTS;
 

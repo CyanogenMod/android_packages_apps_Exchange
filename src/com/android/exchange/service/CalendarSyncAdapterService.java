@@ -34,7 +34,7 @@ import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
-    private static final String TAG = "EAS CalendarSyncAdapterService";
+    private static final String TAG = "EASCalSyncAdaptSvc";
     private static final String ACCOUNT_AND_TYPE_CALENDAR =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CALENDAR;
     private static final String DIRTY_IN_ACCOUNT =

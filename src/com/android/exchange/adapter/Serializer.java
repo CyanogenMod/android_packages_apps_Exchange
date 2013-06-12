@@ -223,7 +223,7 @@ public class Serializer {
         out.write(0);
     }
 
-    void writeStringValue (ContentValues cv, String key, int tag) throws IOException {
+    public void writeStringValue (ContentValues cv, String key, int tag) throws IOException {
         String value = cv.getAsString(key);
         if (value != null && value.length() > 0) {
             data(tag, value);

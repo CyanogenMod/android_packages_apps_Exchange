@@ -2005,18 +2005,15 @@ public class CalendarUtilities {
      *            there aren't any addressees; if false, return the Message
      *            regardless (addressees will be filled in later)
      * @return a Message with many fields pre-filled (more later)
-     * @throws RemoteException if there is an issue retrieving the Event from
-     *             CalendarProvider
      */
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
-            int messageFlag, String uid, Account account) throws RemoteException {
+            int messageFlag, String uid, Account account) {
         return createMessageForEventId(context, eventId, messageFlag, uid, account,
                 null /* specifiedAttendee */);
     }
 
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
-            int messageFlag, String uid, Account account, String specifiedAttendee)
-            throws RemoteException {
+            int messageFlag, String uid, Account account, String specifiedAttendee) {
         ContentResolver cr = context.getContentResolver();
         EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
                 ContentUris.withAppendedId(Events.CONTENT_URI, eventId), null, null, null, null),
