@@ -152,8 +152,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             syncLookback = mAccount.mSyncLookback;
         }
         switch (syncLookback) {
-            case SyncWindow.SYNC_WINDOW_AUTO:
-                return Eas.FILTER_AUTO;
             case SyncWindow.SYNC_WINDOW_1_DAY:
                 return Eas.FILTER_1_DAY;
             case SyncWindow.SYNC_WINDOW_3_DAYS:
@@ -167,6 +165,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             case SyncWindow.SYNC_WINDOW_ALL:
                 return Eas.FILTER_ALL;
             default:
+                // Auto window is deprecated and will also use the default.
                 return Eas.FILTER_1_WEEK;
         }
     }
@@ -228,12 +227,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             s.data(Tags.SYNC_WINDOW_SIZE, EMAIL_WINDOW_SIZE);
             s.start(Tags.SYNC_OPTIONS);
             // Set the lookback appropriately (EAS calls this a "filter")
-            String filter = getEmailFilter();
-            // We shouldn't get FILTER_AUTO here, but if we do, make it something legal...
-            if (filter.equals(Eas.FILTER_AUTO)) {
-                filter = Eas.FILTER_3_DAYS;
-            }
-            s.data(Tags.SYNC_FILTER_TYPE, filter);
+            s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
             // Set the truncation amount for all classes
             if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
                 s.start(Tags.BASE_BODY_PREFERENCE);
@@ -268,17 +262,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             return true;
         }
 
-        // Don't check for "auto" on the initial sync
-        if (!("0".equals(mMailbox.mSyncKey))) {
-            // We've completed the first successful sync
-            if (getEmailFilter().equals(Eas.FILTER_AUTO)) {
-                getAutomaticLookback();
-             }
-        }
-
         return res;
     }
 
+    /**
+     * This function is no longer used, but keeping it here in case we revive this functionality.
+     * @throws IOException
+     */
+    @Deprecated
     private void getAutomaticLookback() throws IOException {
         // If we're using an auto lookback, check how many items in the past week
         // TODO Make the literal ints below constants once we twiddle them a bit

@@ -18,7 +18,6 @@
 package com.android.exchange;
 
 import com.android.emailcommon.service.EmailServiceProxy;
-import com.android.emailcommon.service.SyncWindow;
 import com.android.mail.utils.LogUtils;
 
 /**
@@ -52,10 +51,10 @@ public class Eas {
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
 
     public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE =
-            Configuration.EXCHANGE_ACCOUNT_MANAGER_TYPE;
-    public static final String PROTOCOL = Configuration.EXCHANGE_PROTOCOL;
+            com.android.exchange.Configuration.EXCHANGE_ACCOUNT_MANAGER_TYPE;
+    public static final String PROTOCOL = com.android.exchange.Configuration.EXCHANGE_PROTOCOL;
     public static final String EXCHANGE_SERVICE_INTENT_ACTION =
-            Configuration.EXCHANGE_SERVICE_INTENT_ACTION;
+            com.android.exchange.Configuration.EXCHANGE_SERVICE_INTENT_ACTION;
 
     // From EAS spec
     //                Mail Cal
@@ -68,14 +67,13 @@ public class Eas {
     // 6 3 months ago No   Yes
     // 7 6 months ago No   Yes
 
-    public static final String FILTER_AUTO =  Integer.toString(SyncWindow.SYNC_WINDOW_AUTO);
     // TODO Rationalize this with SYNC_WINDOW_ALL
     public static final String FILTER_ALL = "0";
-    public static final String FILTER_1_DAY = Integer.toString(SyncWindow.SYNC_WINDOW_1_DAY);
-    public static final String FILTER_3_DAYS =  Integer.toString(SyncWindow.SYNC_WINDOW_3_DAYS);
-    public static final String FILTER_1_WEEK =  Integer.toString(SyncWindow.SYNC_WINDOW_1_WEEK);
-    public static final String FILTER_2_WEEKS =  Integer.toString(SyncWindow.SYNC_WINDOW_2_WEEKS);
-    public static final String FILTER_1_MONTH =  Integer.toString(SyncWindow.SYNC_WINDOW_1_MONTH);
+    public static final String FILTER_1_DAY = "1";
+    public static final String FILTER_3_DAYS =  "2";
+    public static final String FILTER_1_WEEK =  "3";
+    public static final String FILTER_2_WEEKS =  "4";
+    public static final String FILTER_1_MONTH =  "5";
     public static final String FILTER_3_MONTHS = "6";
     public static final String FILTER_6_MONTHS = "7";
 
