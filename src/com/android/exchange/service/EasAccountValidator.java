@@ -9,7 +9,6 @@ import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.HostAuth;
-import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.PolicyServiceProxy;
@@ -220,7 +219,6 @@ public class EasAccountValidator extends EasServerConnection {
                             resp.getInputStream(), mAccount, isStatusOnly).parse();
                 }
                 resultCode = MessagingException.NO_ERROR;
-                // TODO: Save mAccount (at least syncKey should be different).
             } else if (code == HttpStatus.SC_FORBIDDEN) {
                 // For validation only, we take 403 as ACCESS_DENIED (the account isn't
                 // authorized, possibly due to device type)
@@ -611,13 +609,6 @@ public class EasAccountValidator extends EasServerConnection {
 
         if (bundle != null) {
             bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, resultCode);
-        } else if (resultCode == MessagingException.NO_ERROR) {
-            // This is an actual sync which succeeded. Let's force the outbox to exist as well.
-            if (Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX) ==
-                    Mailbox.NO_MAILBOX) {
-                Mailbox.newSystemMailbox(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX)
-                        .save(mContext);
-            }
         }
     }
 
