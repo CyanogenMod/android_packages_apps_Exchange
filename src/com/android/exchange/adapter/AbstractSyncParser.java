@@ -187,10 +187,6 @@ public abstract class AbstractSyncParser extends Parser {
                     mailboxUpdated = true;
                     newSyncKey = true;
                 }
-                // If we were pushing (i.e. auto-start), now we'll become ping-triggered
-                if (mMailbox.mSyncInterval == Mailbox.CHECK_INTERVAL_PUSH) {
-                    mMailbox.mSyncInterval = Mailbox.CHECK_INTERVAL_PING;
-                }
            } else {
                 skipTag();
            }
