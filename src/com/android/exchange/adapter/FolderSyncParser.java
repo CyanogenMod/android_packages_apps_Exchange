@@ -152,6 +152,8 @@ public class FolderSyncParser extends AbstractSyncParser {
     // other data
     private final boolean mStatusOnly;
 
+    private boolean mOutboxCreated = false;
+
     private static final ContentValues UNINITIALIZED_PARENT_KEY = new ContentValues();
 
     {
@@ -420,6 +422,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                 // mailbox.
                 mailboxType = Mailbox.TYPE_OUTBOX;
                 syncInterval = Mailbox.CHECK_INTERVAL_NEVER;
+                mOutboxCreated = true;
                 break;
             case SENT_TYPE:
                 mailboxType = Mailbox.TYPE_SENT;
@@ -719,8 +722,8 @@ public class FolderSyncParser extends AbstractSyncParser {
                     ContentProviderOperation.newUpdate(mAccount.getUri()).withValues(cv).build());
         }
 
-        // If this is the initial sync, add the outbox.
-        if (mInitialSync) {
+        // If this is the initial sync, and we didn't get an Outbox, make one.
+        if (mInitialSync && !mOutboxCreated) {
             addMailboxOp(Mailbox.getSystemMailboxName(mContext, Mailbox.TYPE_OUTBOX), "0", "0",
                     OUTBOX_TYPE);
         }
