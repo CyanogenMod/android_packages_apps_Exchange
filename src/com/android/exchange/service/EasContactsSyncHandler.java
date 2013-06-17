@@ -879,7 +879,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                     .build());
         }
         ops.execute(mContext);
-        if (mParser.isGroupsUsed()) {
+        if (mParser != null && mParser.isGroupsUsed()) {
             // Make sure the title column is set for all of our groups
             // And that all of our groups are visible
             // TODO Perhaps the visible part should only happen when the group is created, but
