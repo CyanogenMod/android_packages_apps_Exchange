@@ -16,6 +16,16 @@
 
 package com.android.exchange.service;
 
+import android.content.AbstractThreadedSyncAdapter;
+import android.content.ContentProviderClient;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SyncResult;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.os.IBinder;
+
 import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
@@ -35,16 +45,6 @@ import com.android.mail.utils.LogUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;
-
-import android.content.AbstractThreadedSyncAdapter;
-import android.content.ContentProviderClient;
-import android.content.ContentResolver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SyncResult;
-import android.database.Cursor;
-import android.os.Bundle;
-import android.os.IBinder;
 
 /**
  * Service for communicating with Exchange servers. There are three main parts of this class:
@@ -242,15 +242,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         @Override
-        public Bundle autoDiscover(final String userName, final String password) {
+        public Bundle autoDiscover(final String username, final String password) {
             LogUtils.d(TAG, "IEmailService.autoDiscover");
-            HostAuth hostAuth = new HostAuth();
-            hostAuth.mLogin = userName;
-            hostAuth.mPassword = password;
-            hostAuth.mFlags = HostAuth.FLAG_AUTHENTICATE | HostAuth.FLAG_SSL;
-            hostAuth.mPort = 443;
-            return null;
-            //return new EasSyncService().tryAutodiscover(ExchangeService.this, hostAuth);
+            return new EasAutoDiscover(EmailSyncAdapterService.this, username, password)
+                    .doAutodiscover();
         }
 
         @Override
