@@ -107,6 +107,28 @@ public class EasPingSyncHandler extends EasServerConnection {
             return null;
         }
 
+        private String getAuthority(final int mailboxType) {
+            switch (mailboxType) {
+                case Mailbox.TYPE_CALENDAR:
+                    return CalendarContract.AUTHORITY;
+                case Mailbox.TYPE_CONTACTS:
+                    return ContactsContract.AUTHORITY;
+                default:
+                    return EmailContent.AUTHORITY;
+            }
+        }
+
+        private String getFolderClass(final int mailboxType) {
+            switch (mailboxType) {
+                case Mailbox.TYPE_CALENDAR:
+                    return "Calendar";
+                case Mailbox.TYPE_CONTACTS:
+                    return "Contacts";
+                default:
+                    return "Email";
+            }
+        }
+
         /**
          * If mailbox is eligible for push, add it to the ping request, creating the
          * {@link Serializer} for the request if necessary.
@@ -122,23 +144,7 @@ public class EasPingSyncHandler extends EasServerConnection {
                 final android.accounts.Account amAccount) throws IOException {
             // We can't push until the initial sync is done
             if (mailbox.mSyncKey != null && !mailbox.mSyncKey.equals("0")) {
-                final String authority;
-                final String folderClass;
-                switch (mailbox.mType) {
-                    case Mailbox.TYPE_CALENDAR:
-                        authority = CalendarContract.AUTHORITY;
-                        folderClass = "Calendar";
-                        break;
-                    case Mailbox.TYPE_CONTACTS:
-                        authority = ContactsContract.AUTHORITY;
-                        folderClass = "Contacts";
-                        break;
-                    default:
-                        authority = EmailContent.AUTHORITY;
-                        folderClass = "Email";
-                        break;
-                }
-                if (ContentResolver.getSyncAutomatically(amAccount, authority)) {
+                if (ContentResolver.getSyncAutomatically(amAccount, getAuthority(mailbox.mType))) {
                     if (s == null) {
                         // No serializer yet, so create and initialize it.
                         // Note that these start()s correspond to the end()s in doInBackground.
@@ -151,7 +157,7 @@ public class EasPingSyncHandler extends EasServerConnection {
                     }
                     s.start(Tags.PING_FOLDER);
                     s.data(Tags.PING_ID, mailbox.mServerId);
-                    s.data(Tags.PING_CLASS, folderClass);
+                    s.data(Tags.PING_CLASS, getFolderClass(mailbox.mType));
                     s.end();
                 }
             }
@@ -253,8 +259,8 @@ public class EasPingSyncHandler extends EasServerConnection {
                                         EmailContent.CONTENT_URI.toString());
                                 extras.putString(EmailServiceStatus.SYNC_EXTRAS_CALLBACK_METHOD,
                                         "sync_status");
-                                ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY,
-                                        extras);
+                                ContentResolver.requestSync(amAccount, getAuthority(c.getInt(
+                                        Mailbox.CONTENT_TYPE_COLUMN)), extras);
                                 syncRequested = true;
                             }
                         } finally {
