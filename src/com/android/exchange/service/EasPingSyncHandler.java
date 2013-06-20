@@ -36,9 +36,8 @@ public class EasPingSyncHandler extends EasServerConnection {
     private final PingTask mPingTask;
 
     private class PingTask extends AsyncTask<Void, Void, Void> {
-        private static final String AND_FREQUENCY_PING_PUSH = " AND " +
-                MailboxColumns.SYNC_INTERVAL + " IN (" + Mailbox.CHECK_INTERVAL_PING +
-                ',' + Mailbox.CHECK_INTERVAL_PUSH + ")";
+        private static final String AND_FREQUENCY_PUSH = " AND " + MailboxColumns.SYNC_INTERVAL +
+                '=' + Mailbox.CHECK_INTERVAL_PUSH + ")";
         private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
                 MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
 
@@ -61,7 +60,7 @@ public class EasPingSyncHandler extends EasServerConnection {
             while(continuePing) {
                 final Cursor c = mContentResolver.query(Mailbox.CONTENT_URI,
                         Mailbox.CONTENT_PROJECTION, MailboxColumns.ACCOUNT_KEY + '=' +
-                        mAccount.mId + AND_FREQUENCY_PING_PUSH, null, null);
+                        mAccount.mId + AND_FREQUENCY_PUSH, null, null);
                 if (c == null) {
                     // TODO: Signal error: can't read mailbox data.
                     break;
