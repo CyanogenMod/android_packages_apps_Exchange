@@ -37,7 +37,7 @@ public class EasPingSyncHandler extends EasServerConnection {
 
     private class PingTask extends AsyncTask<Void, Void, Void> {
         private static final String AND_FREQUENCY_PUSH = " AND " + MailboxColumns.SYNC_INTERVAL +
-                '=' + Mailbox.CHECK_INTERVAL_PUSH + ")";
+                '=' + Mailbox.CHECK_INTERVAL_PUSH;
         private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
                 MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
 
