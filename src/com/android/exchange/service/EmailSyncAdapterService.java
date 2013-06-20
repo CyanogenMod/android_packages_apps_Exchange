@@ -497,7 +497,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             } else {
                 // Sync the mailbox that was explicitly requested.
                 final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
-                if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
+                if (mailbox != null && mailbox.mType == Mailbox.TYPE_OUTBOX) {
                     final EasOutboxSyncHandler outboxSyncHandler =
                             new EasOutboxSyncHandler(context, account, mailbox);
                     outboxSyncHandler.performSync();
