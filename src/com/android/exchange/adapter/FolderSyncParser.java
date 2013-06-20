@@ -406,46 +406,46 @@ public class FolderSyncParser extends AbstractSyncParser {
         cv.put(MailboxColumns.PARENT_SERVER_ID, parentId);
         cv.put(MailboxColumns.ACCOUNT_KEY, mAccountId);
         final int mailboxType;
-        final long syncInterval;
+        final boolean shouldSync;
         switch (easType) {
             case INBOX_TYPE:
                 mailboxType = Mailbox.TYPE_INBOX;
-                syncInterval = mAccount.mSyncInterval;
+                shouldSync = true;
                 break;
             case CONTACTS_TYPE:
                 mailboxType = Mailbox.TYPE_CONTACTS;
-                syncInterval = mAccount.mSyncInterval;
+                shouldSync = true;
                 break;
             case OUTBOX_TYPE:
                 // TYPE_OUTBOX mailboxes are known by ExchangeService to sync whenever they
                 // aren't empty.  The value of mSyncFrequency is ignored for this kind of
                 // mailbox.
                 mailboxType = Mailbox.TYPE_OUTBOX;
-                syncInterval = Mailbox.CHECK_INTERVAL_NEVER;
+                shouldSync = false;
                 mOutboxCreated = true;
                 break;
             case SENT_TYPE:
                 mailboxType = Mailbox.TYPE_SENT;
-                syncInterval = Mailbox.CHECK_INTERVAL_NEVER;
+                shouldSync = false;
                 break;
             case DRAFTS_TYPE:
                 mailboxType = Mailbox.TYPE_DRAFTS;
-                syncInterval = Mailbox.CHECK_INTERVAL_NEVER;
+                shouldSync = false;
                 break;
             case DELETED_TYPE:
                 mailboxType = Mailbox.TYPE_TRASH;
-                syncInterval = Mailbox.CHECK_INTERVAL_NEVER;
+                shouldSync = false;
                 break;
             case CALENDAR_TYPE:
                 mailboxType = Mailbox.TYPE_CALENDAR;
-                syncInterval = mAccount.mSyncInterval;
+                shouldSync = true;
                 break;
             default:
                 mailboxType = Mailbox.TYPE_MAIL;
-                syncInterval = Mailbox.CHECK_INTERVAL_NEVER;
+                shouldSync = false;
         }
         cv.put(MailboxColumns.TYPE, mailboxType);
-        cv.put(MailboxColumns.SYNC_INTERVAL, syncInterval);
+        cv.put(MailboxColumns.SYNC_INTERVAL, shouldSync ? 1 : 0);
 
         // Set basic flags
         int flags = 0;
