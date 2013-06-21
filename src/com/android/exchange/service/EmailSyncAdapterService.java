@@ -58,6 +58,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private static final String TAG = "EAS EmailSyncAdaptSvc";
 
     /**
+     * If sync extras do not include a mailbox id, then we want to perform a full sync.
+     */
+    private static final long FULL_ACCOUNT_SYNC = Mailbox.NO_MAILBOX;
+
+    /**
      * Bookkeeping for handling synchronization between pings and syncs.
      * "Ping" refers to a hanging POST or GET that is used to receive push notifications. Ping is
      * the term for the Exchange command, but this code should be generic enough to be easily
@@ -185,7 +190,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     // ping or sync might start first. It only works for startSync because sync is
                     // higher priority than ping (i.e. a ping can't start while a sync is pending)
                     // and only one ping can run at a time.
-                    EasPingSyncHandler pingHandler = new EasPingSyncHandler(context, account, this);
+                    final EasPingSyncHandler pingHandler =
+                            new EasPingSyncHandler(context, account, this);
                     mPingHandlers.put(accountId, pingHandler);
                     // Whenever we have a running ping, make sure this service stays running.
                     final EmailSyncAdapterService service = EmailSyncAdapterService.this;
@@ -436,16 +442,16 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         @Override
-        public void onPerformSync(android.accounts.Account acct, Bundle extras,
-                String authority, ContentProviderClient provider, SyncResult syncResult) {
-
+        public void onPerformSync(final android.accounts.Account acct, final Bundle extras,
+                final String authority, final ContentProviderClient provider,
+                final SyncResult syncResult) {
+            LogUtils.i(TAG, "performSync: extras = %s", extras.toString());
             TempDirectory.setTempDirectory(EmailSyncAdapterService.this);
 
             // TODO: Perform any connectivity checks, bail early if we don't have proper network
             // for this sync operation.
 
             final Context context = getContext();
-            LogUtils.i(TAG, "performSync");
             final ContentResolver cr = context.getContentResolver();
 
             // Get the EmailContent Account
@@ -464,9 +470,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 accountCursor.close();
             }
 
-            // TODO: If this account is on security hold (i.e. not enforcing policy), do not permit
-            // sync to occur.
-
             // Do the bookkeeping for starting a sync, including stopping a ping if necessary.
             mSyncHandlerMap.startSync(account.mId);
 
@@ -474,46 +477,39 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // pings to stop. It may not matter since the things that may have been twiddled might
             // not affect syncing.
 
-            final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID,
-                    Mailbox.NO_MAILBOX);
-            if (mailboxId == Mailbox.NO_MAILBOX) {
-                // If no mailbox is specified, this is an account sync.
+            // There are three possibilities for Mailbox.SYNC_EXTRA_MAILBOX_ID:
+            // 1) It's Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY. Sync only the account data.
+            // 2) It's not present. Perform a full account sync.
+            // 3) It's a mailbox id (non-negative value). Sync that mailbox only.
+            final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, FULL_ACCOUNT_SYNC);
+            if (mailboxId == FULL_ACCOUNT_SYNC ||
+                    mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY) {
                 final EasAccountSyncHandler accountSyncHandler =
                         new EasAccountSyncHandler(context, account);
                 accountSyncHandler.performSync();
 
-                // Account sync also does an inbox sync.
-                final Mailbox inbox = Mailbox.restoreMailboxOfType(context, account.mId,
-                        Mailbox.TYPE_INBOX);
-                final EasSyncHandler inboxSyncHandler = EasSyncHandler.getEasSyncHandler(
-                        context, cr, acct, account, inbox, extras, syncResult);
-                if (inboxSyncHandler == null) {
-                    // TODO: Inbox does not exist for this account, add proper error handling.
-                } else {
-                    inboxSyncHandler.performSync();
+                if (mailboxId == Mailbox.NO_MAILBOX) {
+                    // Full account sync includes all mailboxes that participate in system sync.
+                    final Cursor c = Mailbox.getMailboxIdsForSync(cr, account.mId);
+                    if (c != null) {
+                        try {
+                            while (c.moveToNext()) {
+                                syncMailbox(context, cr, acct, account, c.getLong(0), extras,
+                                        syncResult);
+                            }
+                        } finally {
+                            c.close();
+                        }
+                    }
                 }
-
-                // TODO: Do an outbox sync as well?
             } else {
                 // Sync the mailbox that was explicitly requested.
-                final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
-                if (mailbox != null && mailbox.mType == Mailbox.TYPE_OUTBOX) {
-                    final EasOutboxSyncHandler outboxSyncHandler =
-                            new EasOutboxSyncHandler(context, account, mailbox);
-                    outboxSyncHandler.performSync();
-                } else {
-                    final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
-                            acct, account, mailbox, extras, syncResult);
-
-                    if (syncHandler != null) {
-                        syncHandler.performSync();
-                    } else {
-                        // We can't sync this mailbox, so just send the expected UI callbacks.
-                        EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                                EmailServiceStatus.IN_PROGRESS, 0);
-                        EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                                EmailServiceStatus.SUCCESS, 0);
-                    }
+                if (!syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult)) {
+                    // We can't sync this mailbox, so just send the expected UI callbacks.
+                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
+                            EmailServiceStatus.IN_PROGRESS, 0);
+                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
+                            EmailServiceStatus.SUCCESS, 0);
                 }
             }
 
@@ -523,6 +519,29 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // TODO: It may make sense to have common error handling here. Two possible mechanisms:
             // 1) performSync return value can signal some useful info.
             // 2) syncResult can contain useful info.
+        }
+
+        private boolean syncMailbox(final Context context, final ContentResolver cr,
+                final android.accounts.Account acct, final Account account, final long mailboxId,
+                final Bundle extras, final SyncResult syncResult) {
+            final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
+            if (mailbox == null) {
+                return false;
+            }
+
+            if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
+                final EasOutboxSyncHandler outboxSyncHandler =
+                        new EasOutboxSyncHandler(context, account, mailbox);
+                outboxSyncHandler.performSync();
+            } else {
+                final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
+                        acct, account, mailbox, extras, syncResult);
+                if (syncHandler == null) {
+                    return false;
+                }
+                syncHandler.performSync();
+            }
+            return true;
         }
     }
 }

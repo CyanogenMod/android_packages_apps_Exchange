@@ -139,10 +139,7 @@ public abstract class AbstractSyncParser extends Parser {
                     if (status == 3 || CommandStatus.isBadSyncKey(status)) {
                         // Must delete all of the data and start over with syncKey of "0"
                         mMailbox.mSyncKey = "0";
-                        // Make this a push box through the first sync
-                        // TODO Make frequency conditional on user settings!
-                        mMailbox.mSyncInterval = Mailbox.CHECK_INTERVAL_PUSH;
-                        // TODO: Implement wipe if needed.
+                        // TODO: Implement wipe.
                         //mAdapter.wipe();
                         // Indicate there's more so that we'll start syncing again
                         moreAvailable = true;
