@@ -171,7 +171,6 @@ public class EasSyncService extends AbstractSyncService {
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     private String mClientCertAlias = null;
-    private int mPort;
 
     public ContentResolver mContentResolver;
     // Whether or not the sync service is valid (usable)
@@ -706,7 +705,6 @@ public class EasSyncService extends AbstractSyncService {
             mHostAuth = hostAuth;
             mUserName = hostAuth.mLogin;
             mPassword = hostAuth.mPassword;
-            mPort = hostAuth.mPort;
             mSsl = hostAuth.shouldUseSsl();
 
             // Make sure the authentication string is recreated and cached
@@ -1224,7 +1222,6 @@ public class EasSyncService extends AbstractSyncService {
         mSsl = hostAuth.shouldUseSsl();
         mTrustSsl = hostAuth.shouldTrustAllServerCerts();
         mClientCertAlias = hostAuth.mClientCertAlias;
-        mPort = hostAuth.mPort;
 
         // Register the new alias, if needed.
         if (mClientCertAlias != null) {

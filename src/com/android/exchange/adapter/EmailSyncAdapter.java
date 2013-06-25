@@ -808,7 +808,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 // We'll ignore the attachments, as we'll get them directly from EAS
                 ArrayList<Part> attachments = new ArrayList<Part>();
                 MimeUtility.collectParts(mimeMessage, viewables, attachments);
-                Body tempBody = new Body();
                 // parseBodyFields fills in the content fields of the Body
                 ConversionUtilities.BodyFieldData data =
                         ConversionUtilities.parseBodyFields(viewables);

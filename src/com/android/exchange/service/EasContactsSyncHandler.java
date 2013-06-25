@@ -124,44 +124,29 @@ public class EasContactsSyncHandler extends EasSyncHandler {
     }
 
     // Classes for each type of contact.
-    // For now the constants in each class are all that matters; these are copied from
-    // ContactSyncAdapter verbatim, but the parser hasn't been moved over yet. When that happens,
-    // the variables and functions will also matter.
+    // These are copied from ContactSyncAdapter, with unused fields and methods removed, but the
+    // parser hasn't been moved over yet. When that happens, the variables and functions may also
+    // need to be copied over.
 
     /**
      * Data and constants for a Personal contact.
      */
     private static final class EasPersonal {
-        String anniversary;
-        String fileAs;
-
             /** MIME type used when storing this in data table. */
         public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/eas_personal";
         public static final String ANNIVERSARY = "data2";
         public static final String FILE_AS = "data4";
-
-        boolean hasData() {
-            return anniversary != null || fileAs != null;
-        }
     }
 
     /**
      * Data and constants for a Business contact.
      */
     private static final class EasBusiness {
-        String customerId;
-        String governmentId;
-        String accountName;
-
         /** MIME type used when storing this in data table. */
         public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/eas_business";
         public static final String CUSTOMER_ID = "data6";
         public static final String GOVERNMENT_ID = "data7";
         public static final String ACCOUNT_NAME = "data8";
-
-        boolean hasData() {
-            return customerId != null || governmentId != null || accountName != null;
-        }
     }
 
     public EasContactsSyncHandler(final Context context, final ContentResolver contentResolver,

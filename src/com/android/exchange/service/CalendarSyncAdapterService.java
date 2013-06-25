@@ -57,8 +57,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            CalendarSyncAdapterService.performSync(getContext(), account, extras, authority,
-                    provider, syncResult);
+            CalendarSyncAdapterService.performSync(getContext(), account, extras);
         }
     }
 
@@ -68,8 +67,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
      * The missing piece at this point is integration with the push/ping mechanism in EAS; this will
      * be put in place at a later time.
      */
-    private static void performSync(Context context, Account account, Bundle extras,
-            String authority, ContentProviderClient provider, SyncResult syncResult) {
+    private static void performSync(Context context, Account account, Bundle extras) {
         ContentResolver cr = context.getContentResolver();
         boolean logging = Eas.USER_LOG;
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {

@@ -666,21 +666,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
                 }
             }
 
-            // We must have first name, last name, or company name
-            String name = null;
-            if (firstName != null || lastName != null) {
-                if (firstName == null) {
-                    name = lastName;
-                } else if (lastName == null) {
-                    name = firstName;
-                } else {
-                    name = firstName + ' ' + lastName;
-                }
-            } else if (companyName != null) {
-                name = companyName;
-            }
-
-            ops.addName(entity, prefix, firstName, lastName, middleName, suffix, name,
+            ops.addName(entity, prefix, firstName, lastName, middleName, suffix,
                     yomiFirstName, yomiLastName);
             ops.addBusiness(entity, business);
             ops.addPersonal(entity, personal);
@@ -1290,8 +1276,7 @@ public class ContactsSyncAdapter extends AbstractSyncAdapter {
         }
 
         public void addName(Entity entity, String prefix, String givenName, String familyName,
-                String middleName, String suffix, String displayName, String yomiFirstName,
-                String yomiLastName) {
+                String middleName, String suffix, String yomiFirstName, String yomiLastName) {
             RowBuilder builder = untypedRowBuilder(entity, StructuredName.CONTENT_ITEM_TYPE);
             ContentValues cv = builder.cv;
             if (cv != null && cvCompareString(cv, StructuredName.GIVEN_NAME, givenName) &&

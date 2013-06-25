@@ -25,7 +25,6 @@ import android.content.Entity.NamedContentValues;
 import android.content.EntityIterator;
 import android.content.res.Resources;
 import android.net.Uri;
-import android.os.RemoteException;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;

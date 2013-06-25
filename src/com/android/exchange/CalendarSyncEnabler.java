@@ -111,7 +111,7 @@ public class CalendarSyncEnabler {
     }
 
     /** @return {@link Intent} to launch the Calendar app. */
-    private Intent createLaunchCalendarIntent() {
+    private static Intent createLaunchCalendarIntent() {
         return new Intent(Intent.ACTION_VIEW, Uri.parse("content://com.android.calendar/time"));
     }
 }

@@ -104,8 +104,8 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         private Object[] row;
         static long dataId = 1;
 
-        GalContactRow(GalProjection projection, long contactId, String lookupKey,
-                String accountName, String displayName) {
+        GalContactRow(GalProjection projection, long contactId, String accountName,
+                String displayName) {
             this.mProjection = projection;
             row = new Object[projection.size];
 
@@ -140,11 +140,10 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         }
 
         static void addEmailAddress(MatrixCursor cursor, GalProjection galProjection,
-                long contactId, String lookupKey, String accountName, String displayName,
-                String address) {
+                long contactId, String accountName, String displayName, String address) {
             if (!TextUtils.isEmpty(address)) {
                 GalContactRow r = new GalContactRow(
-                        galProjection, contactId, lookupKey, accountName, displayName);
+                        galProjection, contactId, accountName, displayName);
                 r.put(Data.MIMETYPE, Email.CONTENT_ITEM_TYPE);
                 r.put(Email.TYPE, Email.TYPE_WORK);
                 r.put(Email.ADDRESS, address);
@@ -153,10 +152,10 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         }
 
         static void addPhoneRow(MatrixCursor cursor, GalProjection projection, long contactId,
-                String lookupKey, String accountName, String displayName, int type, String number) {
+                String accountName, String displayName, int type, String number) {
             if (!TextUtils.isEmpty(number)) {
                 GalContactRow r = new GalContactRow(
-                        projection, contactId, lookupKey, accountName, displayName);
+                        projection, contactId, accountName, displayName);
                 r.put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE);
                 r.put(Phone.TYPE, type);
                 r.put(Phone.NUMBER, number);
@@ -165,10 +164,10 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         }
 
         public static void addNameRow(MatrixCursor cursor, GalProjection galProjection,
-                long contactId, String lookupKey, String accountName, String displayName,
+                long contactId, String accountName, String displayName,
                 String firstName, String lastName) {
             GalContactRow r = new GalContactRow(
-                    galProjection, contactId, lookupKey, accountName, displayName);
+                    galProjection, contactId, accountName, displayName);
             r.put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE);
             r.put(StructuredName.GIVEN_NAME, firstName);
             r.put(StructuredName.FAMILY_NAME, lastName);
@@ -322,15 +321,15 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                         : DEFAULT_CONTACT_ID;
                 ps = new PackedString(lookupKey);
                 String displayName = ps.get(GalData.DISPLAY_NAME);
-                GalContactRow.addEmailAddress(cursor, galProjection, contactId, lookupKey,
+                GalContactRow.addEmailAddress(cursor, galProjection, contactId,
                         accountName, displayName, ps.get(GalData.EMAIL_ADDRESS));
-                GalContactRow.addPhoneRow(cursor, galProjection, contactId, accountName,
+                GalContactRow.addPhoneRow(cursor, galProjection, contactId,
                         displayName, displayName, Phone.TYPE_HOME, ps.get(GalData.HOME_PHONE));
-                GalContactRow.addPhoneRow(cursor, galProjection, contactId, accountName,
+                GalContactRow.addPhoneRow(cursor, galProjection, contactId,
                         displayName, displayName, Phone.TYPE_WORK, ps.get(GalData.WORK_PHONE));
-                GalContactRow.addPhoneRow(cursor, galProjection, contactId, accountName,
+                GalContactRow.addPhoneRow(cursor, galProjection, contactId,
                         displayName, displayName, Phone.TYPE_MOBILE, ps.get(GalData.MOBILE_PHONE));
-                GalContactRow.addNameRow(cursor, galProjection, contactId, accountName, displayName,
+                GalContactRow.addNameRow(cursor, galProjection, contactId, displayName,
                         ps.get(GalData.FIRST_NAME), ps.get(GalData.LAST_NAME), displayName);
                 return cursor;
             }
