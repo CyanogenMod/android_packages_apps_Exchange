@@ -3,7 +3,6 @@ package com.android.exchange.service;
 import android.content.Context;
 
 import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.HostAuth;
 
 
 /**
@@ -11,7 +10,7 @@ import com.android.emailcommon.provider.HostAuth;
  */
 public class EasAccountSyncHandler extends EasAccountValidator {
     public EasAccountSyncHandler(final Context context, final Account account) {
-        super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        super(context, account);
     }
 
     public void performSync() {

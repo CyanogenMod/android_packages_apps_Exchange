@@ -75,10 +75,14 @@ public class EasAccountValidator extends EasServerConnection {
         }
     }
 
-    public EasAccountValidator(final Context context, final Account account,
+    private EasAccountValidator(final Context context, final Account account,
             final HostAuth hostAuth) {
         super(context, account, hostAuth);
         mRedirectCount = 0;
+    }
+
+    protected EasAccountValidator(final Context context, final Account account) {
+        this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
     public EasAccountValidator(final Context context, final HostAuth hostAuth) {

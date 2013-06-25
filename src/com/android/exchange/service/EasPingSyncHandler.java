@@ -12,7 +12,6 @@ import android.text.format.DateUtils;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.exchange.Eas;
@@ -288,7 +287,7 @@ public class EasPingSyncHandler extends EasServerConnection {
 
     public EasPingSyncHandler(final Context context, final Account account,
             final EmailSyncAdapterService.SyncHandlerSynchronizer syncHandlerMap) {
-        super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        super(context, account);
         mContentResolver = context.getContentResolver();
         mPingTask = new PingTask(syncHandlerMap);
         mPingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);

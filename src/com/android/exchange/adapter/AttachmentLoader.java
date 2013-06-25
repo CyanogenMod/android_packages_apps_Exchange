@@ -45,8 +45,6 @@ import java.io.OutputStream;
  * Handle EAS attachment loading, regardless of protocol version
  */
 public class AttachmentLoader {
-    static private final int CHUNK_SIZE = 16*1024;
-
     private final EasSyncService mService;
     private final Context mContext;
     private final Attachment mAttachment;
@@ -79,55 +77,6 @@ public class AttachmentLoader {
                     EmailServiceStatus.IN_PROGRESS, progress);
         } catch (RemoteException e) {
             // No danger if the client is no longer around
-        }
-    }
-
-    /**
-     * Read the attachment data in chunks and write the data back out to our attachment file
-     * @param inputStream the InputStream we're reading the attachment from
-     * @param outputStream the OutputStream the attachment will be written to
-     * @param len the number of expected bytes we're going to read
-     * @throws IOException
-     */
-    public void readChunked(InputStream inputStream, OutputStream outputStream, int len)
-            throws IOException {
-        byte[] bytes = new byte[CHUNK_SIZE];
-        int length = len;
-        // Loop terminates 1) when EOF is reached or 2) IOException occurs
-        // One of these is guaranteed to occur
-        int totalRead = 0;
-        int lastCallbackPct = -1;
-        int lastCallbackTotalRead = 0;
-        mService.userLog("Expected attachment length: ", len);
-        while (true) {
-            int read = inputStream.read(bytes, 0, CHUNK_SIZE);
-            if (read < 0) {
-                // -1 means EOF
-                mService.userLog("Attachment load reached EOF, totalRead: ", totalRead);
-                break;
-            }
-
-            // Keep track of how much we've read for progress callback
-            totalRead += read;
-            // Write these bytes out
-            outputStream.write(bytes, 0, read);
-
-            // We can't report percentage if data is chunked; the length of incoming data is unknown
-            if (length > 0) {
-                int pct = (totalRead * 100) / length;
-                // Callback only if we've read at least 1% more and have read more than CHUNK_SIZE
-                // We don't want to spam the Email app
-                if ((pct > lastCallbackPct) && (totalRead > (lastCallbackTotalRead + CHUNK_SIZE))) {
-                    // Report progress back to the UI
-                    doProgressCallback(pct);
-                    lastCallbackTotalRead = totalRead;
-                    lastCallbackPct = pct;
-                }
-            }
-        }
-        if (totalRead > length) {
-            // Apparently, the length, as reported by EAS, isn't always accurate; let's log it
-            mService.userLog("Read more than expected: ", totalRead);
         }
     }
 
@@ -224,7 +173,7 @@ public class AttachmentLoader {
                         tmpFile = File.createTempFile("eas_", "tmp", mContext.getCacheDir());
                         os = new FileOutputStream(tmpFile);
                         if (eas14) {
-                            ItemOperationsParser p = new ItemOperationsParser(this, is, os,
+                            ItemOperationsParser p = new ItemOperationsParser(is, os,
                                     mAttachmentSize);
                             p.parse();
                             if (p.getStatusCode() == 1 /* Success */) {
@@ -236,7 +185,8 @@ public class AttachmentLoader {
                             if (len != 0) {
                                 // len > 0 means that Content-Length was set in the headers
                                 // len < 0 means "chunked" transfer-encoding
-                                readChunked(is, os, (len < 0) ? mAttachmentSize : len);
+                                ItemOperationsParser.readChunked(is, os,
+                                        (len < 0) ? mAttachmentSize : len);
                                 finishLoadAttachment(tmpFile);
                                 return;
                             }

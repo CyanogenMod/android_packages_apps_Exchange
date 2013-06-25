@@ -39,6 +39,8 @@ import java.util.HashMap;
 /**
  * Base class for communicating with an EAS server. Anything that needs to send messages to the
  * server can subclass this to get access to the {@link #sendHttpClientPost} family of functions.
+ * TODO: This class has a regrettable name. It's not a connection, but rather a task that happens
+ * to have (and use) a connection to the server.
  */
 public abstract class EasServerConnection {
     /** Logging tag. */
@@ -154,6 +156,10 @@ public abstract class EasServerConnection {
         mContext = context;
         mHostAuth = hostAuth;
         mAccount = account;
+    }
+
+    protected EasServerConnection(final Context context, final Account account) {
+        this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
     protected EmailClientConnectionManager getClientConnectionManager() {
