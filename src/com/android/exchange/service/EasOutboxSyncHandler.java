@@ -545,7 +545,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         return true;
     }
 
-    private int getModeTag(final boolean isEas14, final SmartSendInfo smartSendInfo) {
+    private static int getModeTag(final boolean isEas14, final SmartSendInfo smartSendInfo) {
         if (isEas14) {
             if (smartSendInfo == null) {
                 return Tags.COMPOSE_SEND_MAIL;

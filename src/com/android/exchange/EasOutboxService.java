@@ -240,7 +240,7 @@ public class EasOutboxService extends EasSyncService {
         }
     }
 
-    private void sendCallback(long msgId, String subject, int status) {
+    private static void sendCallback(long msgId, String subject, int status) {
         try {
             ExchangeService.callback().sendMessageStatus(msgId, subject, status, 0);
         } catch (RemoteException e) {
@@ -320,7 +320,7 @@ public class EasOutboxService extends EasSyncService {
      * @param atts the array of attachments to look in
      * @return whether the test attachment is among the array of attachments
      */
-    private boolean amongAttachments(Attachment att, Attachment[] atts) {
+    private static boolean amongAttachments(Attachment att, Attachment[] atts) {
         String location = att.mLocation;
         if (location == null) return false;
         for (Attachment a: atts) {

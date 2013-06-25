@@ -155,7 +155,7 @@ public class AttachmentLoader {
      * Close, ignoring errors (as during cleanup)
      * @param c a Closeable
      */
-    private void close(Closeable c) {
+    private static void close(Closeable c) {
         try {
             c.close();
         } catch (IOException e) {
@@ -166,7 +166,7 @@ public class AttachmentLoader {
      * Save away the contentUri for this Attachment and notify listeners
      * @throws IOException
      */
-    private void finishLoadAttachment(File file, OutputStream os) throws IOException {
+    private void finishLoadAttachment(File file) throws IOException {
         InputStream in = null;
         try {
             in = new FileInputStream(file);
@@ -228,7 +228,7 @@ public class AttachmentLoader {
                                     mAttachmentSize);
                             p.parse();
                             if (p.getStatusCode() == 1 /* Success */) {
-                                finishLoadAttachment(tmpFile, os);
+                                finishLoadAttachment(tmpFile);
                                 return;
                             }
                         } else {
@@ -237,7 +237,7 @@ public class AttachmentLoader {
                                 // len > 0 means that Content-Length was set in the headers
                                 // len < 0 means "chunked" transfer-encoding
                                 readChunked(is, os, (len < 0) ? mAttachmentSize : len);
-                                finishLoadAttachment(tmpFile, os);
+                                finishLoadAttachment(tmpFile);
                                 return;
                             }
                         }

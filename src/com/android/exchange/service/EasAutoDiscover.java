@@ -233,7 +233,7 @@ public class EasAutoDiscover extends EasServerConnection {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void parseServer(final XmlPullParser parser, final HostAuth hostAuth)
+    private static void parseServer(final XmlPullParser parser, final HostAuth hostAuth)
             throws XmlPullParserException, IOException {
         boolean mobileSync = false;
         while (true) {
@@ -264,7 +264,7 @@ public class EasAutoDiscover extends EasServerConnection {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void parseSettings(final XmlPullParser parser, final HostAuth hostAuth)
+    private static void parseSettings(final XmlPullParser parser, final HostAuth hostAuth)
             throws XmlPullParserException, IOException {
         while (true) {
             final int type = parser.next();
@@ -286,7 +286,7 @@ public class EasAutoDiscover extends EasServerConnection {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void parseAction(final XmlPullParser parser, final HostAuth hostAuth)
+    private static void parseAction(final XmlPullParser parser, final HostAuth hostAuth)
             throws XmlPullParserException, IOException {
         while (true) {
             final int type = parser.next();
@@ -312,7 +312,7 @@ public class EasAutoDiscover extends EasServerConnection {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void parseUser(final XmlPullParser parser, final HostAuth hostAuth)
+    private static void parseUser(final XmlPullParser parser, final HostAuth hostAuth)
             throws XmlPullParserException, IOException {
         while (true) {
             int type = parser.next();
@@ -338,7 +338,7 @@ public class EasAutoDiscover extends EasServerConnection {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void parseResponse(final XmlPullParser parser, final HostAuth hostAuth)
+    private static void parseResponse(final XmlPullParser parser, final HostAuth hostAuth)
             throws XmlPullParserException, IOException {
         while (true) {
             final int type = parser.next();
@@ -360,7 +360,7 @@ public class EasAutoDiscover extends EasServerConnection {
      * @param resp The {@link EasResponse} from the server.
      * @return The final {@link HostAuth} for this server.
      */
-    private HostAuth parseAutodiscover(final EasResponse resp) {
+    private static HostAuth parseAutodiscover(final EasResponse resp) {
         // The response to Autodiscover is regular XML (not WBXML)
         try {
             final XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();

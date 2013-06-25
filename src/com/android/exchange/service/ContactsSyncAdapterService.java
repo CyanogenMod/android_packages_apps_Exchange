@@ -57,8 +57,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            ContactsSyncAdapterService.performSync(getContext(), account, extras, authority,
-                    provider, syncResult);
+            ContactsSyncAdapterService.performSync(getContext(), account, extras);
         }
     }
 
@@ -77,8 +76,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
      * The missing piece at this point is integration with the push/ping mechanism in EAS; this will
      * be put in place at a later time.
      */
-    private static void performSync(Context context, Account account, Bundle extras,
-            String authority, ContentProviderClient provider, SyncResult syncResult) {
+    private static void performSync(Context context, Account account, Bundle extras) {
         ContentResolver cr = context.getContentResolver();
 
         // If we've been asked to do an upload, make sure we've got work to do

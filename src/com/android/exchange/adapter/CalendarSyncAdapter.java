@@ -19,7 +19,6 @@ package com.android.exchange.adapter;
 
 import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
-import android.content.ContentProviderResult;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -161,8 +160,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     public CalendarSyncAdapter(EasSyncService service) {
         super(service);
         mEmailAddress = mAccount.mEmailAddress;
-
-        final String amType = Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE;
 
         Cursor c = mService.mContentResolver.query(Calendars.CONTENT_URI,
                 new String[] {Calendars._ID}, CALENDAR_SELECTION,
@@ -515,7 +512,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         break;
                     case Tags.CALENDAR_ATTENDEES:
                         // If eventId >= 0, this is an update; otherwise, a new Event
-                        attendeeValues = attendeesParser(ops, eventId);
+                        attendeeValues = attendeesParser();
                         break;
                     case Tags.BASE_BODY:
                         cv.put(Events.DESCRIPTION, bodyParser());
@@ -599,7 +596,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                         responseType = getValueInt();
                         break;
                     case Tags.CALENDAR_CATEGORIES:
-                        String categories = categoriesParser(ops);
+                        String categories = categoriesParser();
                         if (categories.length() > 0) {
                             ops.newExtendedProperty(EXTENDED_PROPERTY_CATEGORIES, categories);
                         }
@@ -1006,7 +1003,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private String categoriesParser(CalendarOperations ops) throws IOException {
+        private String categoriesParser() throws IOException {
             StringBuilder categories = new StringBuilder();
             while (nextTag(Tags.CALENDAR_CATEGORIES) != END) {
                 switch (tag) {
@@ -1038,14 +1035,14 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private ArrayList<ContentValues> attendeesParser(CalendarOperations ops, long eventId)
+        private ArrayList<ContentValues> attendeesParser()
                 throws IOException {
             int attendeeCount = 0;
             ArrayList<ContentValues> attendeeValues = new ArrayList<ContentValues>();
             while (nextTag(Tags.CALENDAR_ATTENDEES) != END) {
                 switch (tag) {
                     case Tags.CALENDAR_ATTENDEE:
-                        ContentValues cv = attendeeParser(ops, eventId);
+                        ContentValues cv = attendeeParser();
                         // If we're going to redact these attendees anyway, let's avoid unnecessary
                         // memory pressure, and not keep them around
                         // We still need to parse them all, however
@@ -1063,7 +1060,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
             return attendeeValues;
         }
 
-        private ContentValues attendeeParser(CalendarOperations ops, long eventId)
+        private ContentValues attendeeParser()
                 throws IOException {
             ContentValues cv = new ContentValues();
             while (nextTag(Tags.CALENDAR_ATTENDEE) != END) {
@@ -1222,7 +1219,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
             // Execute our CPO's safely
             try {
-                mOps.mResults = safeExecute(mContentResolver, CalendarContract.AUTHORITY, mOps);
+                safeExecute(mContentResolver, CalendarContract.AUTHORITY, mOps);
             } catch (RemoteException e) {
                 throw new IOException("Remote exception caught; will retry");
             }
@@ -1313,7 +1310,6 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
     protected static class CalendarOperations extends ArrayList<Operation> {
         private static final long serialVersionUID = 1L;
         public int mCount = 0;
-        private ContentProviderResult[] mResults = null;
         private int mEventStart = 0;
         private final ContentResolver mContentResolver;
         private final Uri mAsSyncAdapterAttendees;
@@ -1830,8 +1826,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
                 if (!entityValues.containsKey(Events.DTSTART)
                         || (!entityValues.containsKey(Events.DURATION) &&
-                                !entityValues.containsKey(Events.DTEND))
-                                || organizerEmail == null) {
+                                !entityValues.containsKey(Events.DTEND))) {
                     continue;
                 }
 

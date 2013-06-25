@@ -118,7 +118,6 @@ public abstract class AbstractSyncParser extends Parser {
         int status;
         boolean moreAvailable = false;
         boolean newSyncKey = false;
-        int interval = mMailbox.mSyncInterval;
         mLooping = false;
         // If we're not at the top of the xml tree, throw an exception
         if (nextTag(START_DOCUMENT) != Tags.SYNC_SYNC) {

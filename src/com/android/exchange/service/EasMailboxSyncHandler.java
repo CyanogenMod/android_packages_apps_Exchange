@@ -293,7 +293,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
      * @param firstCommand Whether any sync commands have already been written to s.
      * @throws IOException
      */
-    private void addDeleteMessageCommand(final Serializer s, final String serverId,
+    private static void addDeleteMessageCommand(final Serializer s, final String serverId,
             final boolean firstCommand) throws IOException {
         if (firstCommand) {
             s.start(Tags.SYNC_COMMANDS);

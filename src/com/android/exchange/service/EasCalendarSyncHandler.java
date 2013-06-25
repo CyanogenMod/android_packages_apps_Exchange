@@ -249,7 +249,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @return The new version number for this event (i.e. 0 if it's a new event, or the old version
      *     number + 1).
      */
-    private String getEntityVersion(final ContentValues entityValues) {
+    private static String getEntityVersion(final ContentValues entityValues) {
         final String version = entityValues.getAsString(EVENT_SYNC_VERSION);
         // This should never be null, but catch this error anyway
         // Version should be "0" when we create the event, so use that
