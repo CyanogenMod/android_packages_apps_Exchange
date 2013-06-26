@@ -9,7 +9,6 @@ import android.text.format.DateUtils;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.exchange.CommandStatusException;
@@ -81,7 +80,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
     protected EasSyncHandler(final Context context, final ContentResolver contentResolver,
             final Account account, final Mailbox mailbox, final Bundle syncExtras,
             final SyncResult syncResult) {
-        super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        super(context, account);
         mContentResolver = contentResolver;
         mMailbox = mailbox;
         mSyncExtras = syncExtras;

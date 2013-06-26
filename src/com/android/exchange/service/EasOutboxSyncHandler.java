@@ -17,7 +17,6 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
-import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
@@ -66,7 +65,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
 
     public EasOutboxSyncHandler(final Context context, final Account account,
             final Mailbox mailbox) {
-        super(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        super(context, account);
         mMailbox = mailbox;
         mCacheDir = context.getCacheDir();
     }
