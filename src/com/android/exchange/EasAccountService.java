@@ -879,7 +879,7 @@ public class EasAccountService extends EasSyncService {
                 }
             }
         }
-        return pp.getSyncStatus();
+        return pp.getPingStatus();
     }
 
     /**
