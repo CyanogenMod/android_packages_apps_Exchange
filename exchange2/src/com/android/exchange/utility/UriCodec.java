@@ -20,7 +20,6 @@ package com.android.exchange.utility;
 import java.io.ByteArrayOutputStream;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
-import java.nio.charset.Charsets;
 
 // Note: This class copied verbatim from libcore.net
 
@@ -32,6 +31,7 @@ import java.nio.charset.Charsets;
  * character like "\u0080" may be encoded to multiple octets like %C2%80.
  */
 public abstract class UriCodec {
+    public static final Charset UTF_8 = Charset.forName("UTF-8");
 
     /**
      * Returns true if {@code c} does not need to be escaped.
@@ -137,11 +137,11 @@ public abstract class UriCodec {
     }
 
     public final void appendEncoded(StringBuilder builder, String s) {
-        appendEncoded(builder, s, Charsets.UTF_8, false);
+        appendEncoded(builder, s, UTF_8, false);
     }
 
     public final void appendPartiallyEncoded(StringBuilder builder, String s) {
-        appendEncoded(builder, s, Charsets.UTF_8, true);
+        appendEncoded(builder, s, UTF_8, true);
     }
 
     /**
@@ -200,7 +200,7 @@ public abstract class UriCodec {
     }
 
     public static String decode(String s) {
-        return decode(s, false, Charsets.UTF_8);
+        return decode(s, false, UTF_8);
     }
 
     private static void appendHex(StringBuilder builder, String s, Charset charset) {
