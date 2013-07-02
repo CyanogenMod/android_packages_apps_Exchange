@@ -70,6 +70,22 @@ public abstract class EasServerConnection {
         }
     };
 
+    /**
+     * Value for {@link #mStoppedReason} when we haven't been stopped.
+     */
+    public static final int STOPPED_REASON_NONE = 0;
+
+    /**
+     * Passed to {@link #stop} to indicate that this stop request should terminate this task.
+     */
+    public static final int STOPPED_REASON_ABORT = 1;
+
+    /**
+     * Passed to {@link #stop} to indicate that this stop request should restart this task (e.g. in
+     * order to reload parameters).
+     */
+    public static final int STOPPED_REASON_RESTART = 2;
+
     protected final Context mContext;
     // TODO: Make this private if possible. Subclasses must be careful about altering the HostAuth
     // to not screw up any connection caching (use redirectHostAuth).
@@ -81,6 +97,7 @@ public abstract class EasServerConnection {
     // Access to these variables should be synchronized on this.
     private HttpPost mPendingPost = null;
     private boolean mStopped = false;
+    private int mStoppedReason = STOPPED_REASON_NONE;
 
     /**
      * The protocol version to use, as a double. This is a cached value based on the protocol
@@ -401,6 +418,7 @@ public abstract class EasServerConnection {
         } finally {
             synchronized (this) {
                 mPendingPost = null;
+                mStoppedReason = STOPPED_REASON_NONE;
             }
         }
     }
@@ -410,18 +428,35 @@ public abstract class EasServerConnection {
     }
 
     /**
-     * Stop the current request. If we're in the middle of the POST, abort it, otherwise prevent
-     * the next POST from happening. This second part is necessary in cases where the stop request
-     * happens while we're setting up the POST but before we're actually in it.
-     * TODO: We also want to do something reasonable if the stop request comes in after the POST
-     * responds.
+     * If called while this object is executing a POST, interrupt it with an {@link IOException}.
+     * Otherwise cause the next attempt to execute a POST to be interrupted with an
+     * {@link IOException}.
+     * @param reason The reason for requesting a stop. This should be one of the STOPPED_REASON_*
+     *               constants defined in this class, other than {@link #STOPPED_REASON_NONE} which
+     *               is used to signify that no stop has occurred.
+     *               This class simply stores the value; subclasses are responsible for checking
+     *               this value when catching the {@link IOException} and responding appropriately.
+     * @return Whether we were in the middle of a POST.
      */
-    public synchronized void stop() {
-        if (mPendingPost != null) {
+    public synchronized boolean stop(final int reason) {
+        final boolean isMidPost = (mPendingPost != null);
+        LogUtils.i(TAG, "%s with reason %d", (isMidPost ? "Interrupt" : "Stop next"), reason);
+        mStoppedReason = reason;
+        if (isMidPost) {
             mPendingPost.abort();
         } else {
             mStopped = true;
         }
+        return isMidPost;
+    }
+
+    /**
+     * Check the reason of the last {@link #stop} request.
+     * @return The reason supplied to the last call to {@link #stop}, or
+     *     {@link #STOPPED_REASON_NONE} if we haven't been stopped since the last successful POST.
+     */
+    protected int getStoppedReason() {
+        return mStoppedReason;
     }
 
     /**
