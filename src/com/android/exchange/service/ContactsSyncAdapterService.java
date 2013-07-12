@@ -36,7 +36,7 @@ import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
-    private static final String TAG = "EASContactsSyncAdaptSvc";
+    private static final String TAG = "EASContactSyncAdaptSvc";
     private static final String ACCOUNT_AND_TYPE_CONTACTS =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CONTACTS;
 

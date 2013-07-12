@@ -72,7 +72,7 @@ import java.util.UUID;
  */
 public class CalendarSyncAdapter extends AbstractSyncAdapter {
 
-    private static final String TAG = "EasCalendarSyncAdapter";
+    private static final String TAG = "EasCalSyncAdapter";
 
     private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.SYNC_DATA1;
     /**
