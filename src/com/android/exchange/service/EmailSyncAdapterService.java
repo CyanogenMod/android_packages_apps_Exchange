@@ -282,9 +282,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public void loadAttachment(final IEmailServiceCallback callback, final long attachmentId,
                 final boolean background) {
             LogUtils.d(TAG, "IEmailService.loadAttachment: %d", attachmentId);
-            // TODO: Make this go through the sync manager, so that it can't happen in parallel with
-            // a sync.
-            EasAttachmentLoader.loadAttachment(EmailSyncAdapterService.this, attachmentId);
+            // TODO: Prevent this from happening in parallel with a sync?
+            EasAttachmentLoader.loadAttachment(EmailSyncAdapterService.this, attachmentId,
+                    callback);
         }
 
         @Override

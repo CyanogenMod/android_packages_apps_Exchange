@@ -379,7 +379,13 @@ public abstract class EasServerConnection {
 
     protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
             final long timeout) throws IOException {
-        return sendHttpClientPost(cmd, new ByteArrayEntity(bytes), timeout);
+        final ByteArrayEntity entity;
+        if (bytes == null) {
+            entity = null;
+        } else {
+            entity = new ByteArrayEntity(bytes);
+        }
+        return sendHttpClientPost(cmd, entity, timeout);
     }
 
     protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)

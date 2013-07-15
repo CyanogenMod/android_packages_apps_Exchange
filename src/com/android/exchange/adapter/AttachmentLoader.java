@@ -27,6 +27,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
+import com.android.exchange.service.EasAttachmentLoader.ProgressCallback;
 import com.android.exchange.utility.UriCodec;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -172,9 +173,11 @@ public class AttachmentLoader {
                     try {
                         tmpFile = File.createTempFile("eas_", "tmp", mContext.getCacheDir());
                         os = new FileOutputStream(tmpFile);
+                        final ProgressCallback callback = new ProgressCallback(
+                                        ExchangeService.callback(), mAttachment);
                         if (eas14) {
                             ItemOperationsParser p = new ItemOperationsParser(is, os,
-                                    mAttachmentSize);
+                                    mAttachmentSize, callback);
                             p.parse();
                             if (p.getStatusCode() == 1 /* Success */) {
                                 finishLoadAttachment(tmpFile);
@@ -186,7 +189,7 @@ public class AttachmentLoader {
                                 // len > 0 means that Content-Length was set in the headers
                                 // len < 0 means "chunked" transfer-encoding
                                 ItemOperationsParser.readChunked(is, os,
-                                        (len < 0) ? mAttachmentSize : len);
+                                        (len < 0) ? mAttachmentSize : len, callback);
                                 finishLoadAttachment(tmpFile);
                                 return;
                             }
