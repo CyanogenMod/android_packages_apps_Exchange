@@ -216,7 +216,8 @@ public class ExchangeService extends SyncManager {
         }
 
         @Override
-        public void loadAttachment(long attachmentId, boolean background) throws RemoteException {
+        public void loadAttachment(final IEmailServiceCallback callback, final long attachmentId,
+                final boolean background) throws RemoteException {
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
             log("loadAttachment " + attachmentId + ": " + att.mFileName);
             sendMessageRequest(new PartRequest(att, null, null));

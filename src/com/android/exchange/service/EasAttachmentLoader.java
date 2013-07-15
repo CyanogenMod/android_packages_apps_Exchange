@@ -192,10 +192,13 @@ public class EasAttachmentLoader extends EasServerConnection {
                         }
                         success = true;
                     }
+                    final boolean finishSuccess;
                     if (success) {
-                        finishLoadAttachment(attachment, tmpFile);
+                        finishSuccess = finishLoadAttachment(attachment, tmpFile);
+                    } else {
+                        finishSuccess = false;
                     }
-                    return success;
+                    return finishSuccess;
                 } catch (final IOException e) {
                     LogUtils.w(TAG, "Error reading attachment: %s", e.getMessage());
                     return false;
