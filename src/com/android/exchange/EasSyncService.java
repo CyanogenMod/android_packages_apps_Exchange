@@ -1138,7 +1138,7 @@ public class EasSyncService extends AbstractSyncService {
             if (status == HttpStatus.SC_OK) {
                 if (!resp.isEmpty()) {
                     InputStream is = resp.getInputStream();
-                    new MeetingResponseParser(is, this).parse();
+                    new MeetingResponseParser(is).parse();
                     String meetingInfo = msg.mMeetingInfo;
                     if (meetingInfo != null) {
                         String responseRequested = new PackedString(meetingInfo).get(

@@ -1,9 +1,11 @@
 package com.android.exchange.service;
 
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Base64;
@@ -470,13 +472,28 @@ public abstract class EasServerConnection {
      * @param msg the message to send
      */
     protected void sendMessage(final EmailContent.Message msg) {
-        final Mailbox mailbox =
-                Mailbox.restoreMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
-        if (mailbox != null) {
-            msg.mMailboxKey = mailbox.mId;
+        final long mailboxId =
+                Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
+        if (mailboxId != Mailbox.NO_MAILBOX) {
+            msg.mMailboxKey = mailboxId;
             msg.mAccountKey = mAccount.mId;
             msg.save(mContext);
+            requestSyncForMailbox(new android.accounts.Account(mAccount.mEmailAddress,
+                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
         }
+    }
+
+    /**
+     * Issue a {@link android.content.ContentResolver#requestSync} for a specific mailbox.
+     * @param amAccount The {@link android.accounts.Account} for the account we're pinging.
+     * @param authority The authority for the mailbox that needs to sync.
+     * @param mailboxId The id of the mailbox that needs to sync.
+     */
+    protected static void requestSyncForMailbox(final android.accounts.Account amAccount,
+            final String authority, final long mailboxId) {
+        final Bundle extras = new Bundle(1);
+        extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
+        ContentResolver.requestSync(amAccount, authority, extras);
     }
 
 }
