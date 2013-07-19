@@ -25,6 +25,7 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.TransactionTooLargeException;
 import android.provider.CalendarContract.Events;
 import android.text.Html;
@@ -110,6 +111,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int FETCH_REQUEST_SERVER_ID = 1;
 
     private static final String EMAIL_WINDOW_SIZE = "5";
+    private static final String ENTIRE_EMAIL_SYNC_SIZE = String.valueOf(Utility.ENTIRE_MAIL);
 
     private static final int MAX_NUM_FETCH_SIZE_REDUCTIONS = 5;
 
@@ -254,7 +256,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 s.start(Tags.BASE_BODY_PREFERENCE);
                 // HTML for email
                 s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
-                s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
+                if (SystemProperties.getBoolean("persist.env.email.syncsize", true)) {
+                    String sizeTruncation = Integer.toString(mAccount.mSyncSize);
+                    if (!ENTIRE_EMAIL_SYNC_SIZE.equals(sizeTruncation)) {
+                        s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
+                    }
+                } else {
+                    s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
+                }
                 s.end();
             } else {
                 // Use MIME data for EAS 2.5
@@ -776,6 +785,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         break;
                     case Tags.BASE_DATA:
                         body = getValue();
+                        break;
+                    case Tags.BASE_TRUNCATED:
+                        boolean truncated = getValue().equals("1") ? true : false;
+                        if (truncated) {
+                            msg.mFlagLoaded = Message.FLAG_LOADED_SYNC_SIZE_COMPLETE;
+                        }
                         break;
                     default:
                         skipTag();
