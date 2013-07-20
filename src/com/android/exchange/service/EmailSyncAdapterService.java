@@ -63,6 +63,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
      */
     private static final long FULL_ACCOUNT_SYNC = Mailbox.NO_MAILBOX;
 
+    /** Projection used for getting email address for an account. */
+    private static final String[] ACCOUNT_EMAIL_PROJECTION = { AccountColumns.EMAIL_ADDRESS };
+
     /**
      * Bookkeeping for handling synchronization between pings and syncs.
      * "Ping" refers to a hanging POST or GET that is used to receive push notifications. Ping is
@@ -237,6 +240,17 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
      * The binder for IEmailService.
      */
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
+
+        private String getEmailAddressForAccount(final long accountId) {
+            final String emailAddress = Utility.getFirstRowString(EmailSyncAdapterService.this,
+                    Account.CONTENT_URI, ACCOUNT_EMAIL_PROJECTION, Account.ID_SELECTION,
+                    new String[] {Long.toString(accountId)}, null, 0);
+            if (emailAddress == null) {
+                LogUtils.e(TAG, "Could not find email address for account %d", accountId);
+            }
+            return emailAddress;
+        }
+
         @Override
         public Bundle validate(final HostAuth hostAuth) {
             LogUtils.d(TAG, "IEmailService.validate");
@@ -252,10 +266,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void updateFolderList(final long accountId) {
-            LogUtils.d(TAG, "IEmailService.updateFolderList");
-            final String emailAddress = Utility.getFirstRowString(EmailSyncAdapterService.this,
-                    Account.CONTENT_URI, new String[] {AccountColumns.EMAIL_ADDRESS},
-                    Account.ID_SELECTION, new String[] {Long.toString(accountId)}, null, 0);
+            LogUtils.d(TAG, "IEmailService.updateFolderList: %d", accountId);
+            final String emailAddress = getEmailAddressForAccount(accountId);
             if (emailAddress != null) {
                 ContentResolver.requestSync(new android.accounts.Account(
                         emailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
@@ -297,32 +309,17 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         /**
          * Delete PIM (calendar, contacts) data for the specified account
          *
-         * @param accountId the account whose data should be deleted
+         * @param emailAddress the email address for the account whose data should be deleted
          */
         @Override
-        public void deleteAccountPIMData(final long accountId) {
+        public void deleteAccountPIMData(final String emailAddress) {
             LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
-            // TODO: Implement
-            /*
-            SyncManager exchangeService = INSTANCE;
-            if (exchangeService == null) return;
-            // Stop any running syncs
-            ExchangeService.stopAccountSyncs(accountId);
-            // Delete the data
-            ExchangeService.deleteAccountPIMData(ExchangeService.this, accountId);
-            long accountMailboxId = Mailbox.findMailboxOfType(exchangeService, accountId,
-                    Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
-            if (accountMailboxId != Mailbox.NO_MAILBOX) {
-                // Make sure the account mailbox is held due to security
-                synchronized(sSyncLock) {
-                    mSyncErrorMap.put(accountMailboxId, exchangeService.new SyncError(
-                            AbstractSyncService.EXIT_SECURITY_FAILURE, false));
-
-                }
+            if (emailAddress != null) {
+                final Context context = EmailSyncAdapterService.this;
+                EasContactsSyncHandler.wipeAccountFromContentProvider(context, emailAddress);
+                EasCalendarSyncHandler.wipeAccountFromContentProvider(context, emailAddress);
             }
-            // Make sure the reconciler runs
-            runAccountReconcilerSync(ExchangeService.this);
-            */
+            // TODO: Run account reconciler?
         }
 
         @Override

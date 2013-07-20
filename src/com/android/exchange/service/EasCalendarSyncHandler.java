@@ -9,6 +9,7 @@ import android.content.Entity;
 import android.content.EntityIterator;
 import android.content.SyncResult;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
@@ -32,6 +33,7 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
+import com.android.exchange.R;
 import com.android.exchange.adapter.AbstractSyncParser;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.Serializer;
@@ -148,13 +150,20 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * Adds params to a {@link Uri} to indicate that the caller is a sync adapter, and to add the
      * account info.
      * @param uri The {@link Uri} to which to add params.
-     * @return
+     * @return The augmented {@link Uri}.
      */
-    private Uri asSyncAdapter(final Uri uri) {
+    private static Uri asSyncAdapter(final Uri uri, final String emailAddress) {
         return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
-                .appendQueryParameter(Calendars.ACCOUNT_NAME, mAccount.mEmailAddress)
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, emailAddress)
                 .appendQueryParameter(Calendars.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE)
                 .build();
+    }
+
+    /**
+     * Convenience wrapper to {@link #asSyncAdapter(android.net.Uri, String)}.
+     */
+    private Uri asSyncAdapter(final Uri uri) {
+        return asSyncAdapter(uri, mAccount.mEmailAddress);
     }
 
     @Override
@@ -978,5 +987,18 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             mUploadedIdList.clear();
             mOutgoingMailList.clear();
         }
+    }
+
+    /**
+     * Delete an account from the Calendar provider.
+     * @param context Our {@link Context}
+     * @param emailAddress The email address of the account we wish to delete
+     */
+    public static void wipeAccountFromContentProvider(final Context context,
+            final String emailAddress) {
+        context.getContentResolver().delete(asSyncAdapter(Calendars.CONTENT_URI, emailAddress),
+                Calendars.ACCOUNT_NAME + "=" + DatabaseUtils.sqlEscapeString(emailAddress)
+                        + " AND " + Calendars.ACCOUNT_TYPE + "="+ DatabaseUtils.sqlEscapeString(
+                        context.getString(R.string.account_manager_type_exchange)), null);
     }
 }
