@@ -889,4 +889,15 @@ public class EasContactsSyncHandler extends EasSyncHandler {
             }
         }
     }
+
+    /**
+     * Delete an account from the Contacts provider.
+     * @param context Our {@link Context}
+     * @param emailAddress The email address of the account we wish to delete
+     */
+    public static void wipeAccountFromContentProvider(final Context context,
+            final String emailAddress) {
+        context.getContentResolver().delete(uriWithAccountAndIsSyncAdapter(
+                ContactsContract.RawContacts.CONTENT_URI, emailAddress), null, null);
+    }
 }
