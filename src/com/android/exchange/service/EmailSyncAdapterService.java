@@ -289,9 +289,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void sendMeetingResponse(final long messageId, final int response) {
-            LogUtils.d(TAG, "IEmailService.sendMeetingResponse");
-            // TODO: Implement.
-            //sendMessageRequest(new MeetingResponseRequest(messageId, response));
+            LogUtils.d(TAG, "IEmailService.sendMeetingResponse: %d, %d", messageId, response);
+            EasMeetingResponder.sendMeetingResponse(EmailSyncAdapterService.this, messageId,
+                    response);
         }
 
         /**

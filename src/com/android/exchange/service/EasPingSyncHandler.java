@@ -4,7 +4,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.os.AsyncTask;
-import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.format.DateUtils;
@@ -379,19 +378,6 @@ public class EasPingSyncHandler extends EasServerConnection {
 
             return pingStatus;
         }
-    }
-
-    /**
-     * Issue a {@link ContentResolver#requestSync} for a specific mailbox.
-     * @param amAccount The {@link android.accounts.Account} for the account we're pinging.
-     * @param authority The authority for the mailbox that needs to sync.
-     * @param mailboxId The id of the mailbox that needs to sync.
-     */
-    private static void requestSyncForMailbox(final android.accounts.Account amAccount,
-            final String authority, final long mailboxId) {
-        final Bundle extras = new Bundle(1);
-        extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
-        ContentResolver.requestSync(amAccount, authority, extras);
     }
 
     /**

@@ -15,7 +15,7 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.EasSyncService;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,22 +24,21 @@ import java.io.InputStream;
  * Parse the result of a MeetingRequest command.
  */
 public class MeetingResponseParser extends Parser {
-    private EasSyncService mService;
+    private static final String TAG = "MeetingResponseParser";
 
-    public MeetingResponseParser(InputStream in, EasSyncService service) throws IOException {
+    public MeetingResponseParser(final InputStream in) throws IOException {
         super(in);
-        mService = service;
     }
 
-    public void parseResult() throws IOException {
+    private void parseResult() throws IOException {
         while (nextTag(Tags.MREQ_RESULT) != END) {
             if (tag == Tags.MREQ_STATUS) {
                 int status = getValueInt();
                 if (status != 1) {
-                    mService.userLog("Error in meeting response: " + status);
+                    LogUtils.i(TAG, "Error in meeting response: %d", status);
                 }
             } else if (tag == Tags.MREQ_CAL_ID) {
-                mService.userLog("Meeting response calendar id: " + getValue());
+                LogUtils.i(TAG, "Meeting response calender id: %s", getValue());
             } else {
                 skipTag();
             }
