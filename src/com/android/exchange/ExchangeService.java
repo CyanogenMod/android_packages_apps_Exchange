@@ -295,29 +295,12 @@ public class ExchangeService extends SyncManager {
         /**
          * Delete PIM (calendar, contacts) data for the specified account
          *
-         * @param accountId the account whose data should be deleted
+         * @param emailAddress the email address for the account whose data should be deleted
          * @throws RemoteException
          */
         @Override
-        public void deleteAccountPIMData(long accountId) throws RemoteException {
-            SyncManager exchangeService = INSTANCE;
-            if (exchangeService == null) return;
-            // Stop any running syncs
-            ExchangeService.stopAccountSyncs(accountId);
-            // Delete the data
-            ExchangeService.deleteAccountPIMData(ExchangeService.this, accountId);
-            long accountMailboxId = Mailbox.findMailboxOfType(exchangeService, accountId,
-                    Mailbox.TYPE_EAS_ACCOUNT_MAILBOX);
-            if (accountMailboxId != Mailbox.NO_MAILBOX) {
-                // Make sure the account mailbox is held due to security
-                synchronized(sSyncLock) {
-                    mSyncErrorMap.put(accountMailboxId, exchangeService.new SyncError(
-                            AbstractSyncService.EXIT_SECURITY_FAILURE, false));
-
-                }
-            }
-            // Make sure the reconciler runs
-            runAccountReconcilerSync(ExchangeService.this);
+        public void deleteAccountPIMData(final String emailAddress) throws RemoteException {
+            // ExchangeService is deprecated so I am deleting rather than fixing this function.
         }
 
         @Override
