@@ -24,7 +24,6 @@ import android.content.Intent;
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.exchange.Eas;
-import com.android.exchange.ExchangeService;
 import com.android.mail.utils.LogUtils;
 
 /**
@@ -66,9 +65,7 @@ public class ExchangeBroadcastProcessorService extends IntentService {
             final Intent broadcastIntent = intent.getParcelableExtra(Intent.EXTRA_INTENT);
             final String broadcastAction = broadcastIntent.getAction();
 
-            if (Intent.ACTION_BOOT_COMPLETED.equals(broadcastAction)) {
-                onBootCompleted();
-            } else if (AccountManager.LOGIN_ACCOUNTS_CHANGED_ACTION.equals(broadcastAction)) {
+            if (AccountManager.LOGIN_ACCOUNTS_CHANGED_ACTION.equals(broadcastAction)) {
                 if (Eas.USER_LOG) {
                     LogUtils.d(Logging.LOG_TAG, "Login accounts changed; reconciling...");
                 }
@@ -76,12 +73,5 @@ public class ExchangeBroadcastProcessorService extends IntentService {
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
             }
        }
-    }
-
-    /**
-     * Handles {@link Intent#ACTION_BOOT_COMPLETED}.  Called on a worker thread.
-     */
-    private void onBootCompleted() {
-        startService(new Intent(this, ExchangeService.class));
     }
 }
