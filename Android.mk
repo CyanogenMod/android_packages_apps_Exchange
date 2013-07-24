@@ -13,6 +13,8 @@
 # limitations under the License.
 
 LOCAL_PATH:= $(call my-dir)
+
+ifeq (0,1)
 include $(CLEAR_VARS)
 
 #
@@ -32,8 +34,7 @@ LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
 
 #include $(BUILD_PACKAGE)
 
-include $(CLEAR_VARS)
-
+endif
 
 ##################################################
 # Build all sub-directories
