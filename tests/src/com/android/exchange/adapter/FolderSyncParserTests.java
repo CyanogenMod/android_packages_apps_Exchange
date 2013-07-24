@@ -19,7 +19,6 @@ package com.android.exchange.adapter;
 import android.content.ContentResolver;
 import android.content.res.AssetManager;
 import android.database.Cursor;
-import android.os.Debug;
 import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.emailcommon.provider.Account;
@@ -87,17 +86,17 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
         parser.mContentResolver = mProviderContext.getContentResolver();
 
         // Don't save the box; just create it, and give it a server id
-        Mailbox box1 = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox box1 = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 null);
-        Mailbox box2 = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox box2 = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 null);
         Mailbox boxa = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_1_MONTH,
                 null);
         Mailbox boxb = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_2_WEEKS,
                 null);
-        Mailbox boxc = setupBoxSync(Account.CHECK_INTERVAL_PUSH, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxc = setupBoxSync(Account.CHECK_INTERVAL_PUSH, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 null);
-        Mailbox boxd = setupBoxSync(Account.CHECK_INTERVAL_PUSH, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxd = setupBoxSync(Account.CHECK_INTERVAL_PUSH, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 null);
         Mailbox boxe = setupBoxSync(Account.CHECK_INTERVAL_PUSH, SyncWindow.SYNC_WINDOW_1_DAY,
                 null);
@@ -117,19 +116,19 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
                 new String[] {parser.mAccountIdAsString});
 
         // Create new boxes, all with default values for interval & window
-        Mailbox box1x = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox box1x = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 box1.mServerId);
-        Mailbox box2x = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox box2x = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 box2.mServerId);
-        Mailbox boxax = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxax = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 boxa.mServerId);
-        Mailbox boxbx = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxbx = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 boxb.mServerId);
-        Mailbox boxcx = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxcx = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 boxc.mServerId);
-        Mailbox boxdx = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxdx = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 boxd.mServerId);
-        Mailbox boxex = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_UNKNOWN,
+        Mailbox boxex = setupBoxSync(Account.CHECK_INTERVAL_NEVER, SyncWindow.SYNC_WINDOW_ACCOUNT,
                 boxe.mServerId);
 
         // Restore the sync options

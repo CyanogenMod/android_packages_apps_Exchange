@@ -147,7 +147,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
     private String getEmailFilter() {
         int syncLookback = mMailbox.mSyncLookback;
-        if (syncLookback == SyncWindow.SYNC_WINDOW_UNKNOWN
+        if (syncLookback == SyncWindow.SYNC_WINDOW_ACCOUNT
                 || mMailbox.mType == Mailbox.TYPE_INBOX) {
             syncLookback = mAccount.mSyncLookback;
         }
