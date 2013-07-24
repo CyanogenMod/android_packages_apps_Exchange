@@ -326,7 +326,7 @@ public class FolderSyncParser extends AbstractSyncParser {
     private static final String MAILBOX_STATE_SELECTION =
         MailboxColumns.ACCOUNT_KEY + "=? AND (" + MailboxColumns.SYNC_INTERVAL + "!=" +
             Account.CHECK_INTERVAL_NEVER + " OR " + Mailbox.SYNC_LOOKBACK + "!=" +
-            SyncWindow.SYNC_WINDOW_UNKNOWN + ")";
+            SyncWindow.SYNC_WINDOW_ACCOUNT + ")";
 
     private static final String[] MAILBOX_STATE_PROJECTION = new String[] {
         MailboxColumns.SERVER_ID, MailboxColumns.SYNC_INTERVAL, MailboxColumns.SYNC_LOOKBACK};
