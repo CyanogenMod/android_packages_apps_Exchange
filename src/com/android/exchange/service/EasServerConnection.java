@@ -10,12 +10,12 @@ import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Base64;
 
-import com.android.emailcommon.Device;
 import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
@@ -87,6 +87,8 @@ public abstract class EasServerConnection {
      * order to reload parameters).
      */
     public static final int STOPPED_REASON_RESTART = 2;
+
+    private static String sDeviceId = null;
 
     protected final Context mContext;
     // TODO: Make this private if possible. Subclasses must be careful about altering the HostAuth
@@ -217,16 +219,15 @@ public abstract class EasServerConnection {
     }
 
     private String makeUserString() {
-        String deviceId;
-        try {
-            deviceId = Device.getDeviceId(mContext);
-        } catch (final IOException e) {
-            // TODO: Make Device.getDeviceId not throw IOException, if possible.
-            // Otherwise use a better deviceId default.
-            deviceId = "0";
+        if (sDeviceId == null) {
+            sDeviceId = new AccountServiceProxy(mContext).getDeviceId();
+            if (sDeviceId == null) {
+                LogUtils.e(TAG, "Could not get device id, defaulting to '0'");
+                sDeviceId = "0";
+            }
         }
         return "&User=" + Uri.encode(mHostAuth.mLogin) + "&DeviceId=" +
-                deviceId + "&DeviceType=" + DEVICE_TYPE;
+                sDeviceId + "&DeviceType=" + DEVICE_TYPE;
     }
 
     private String makeBaseUriString() {
