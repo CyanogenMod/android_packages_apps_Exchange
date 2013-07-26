@@ -76,22 +76,6 @@
         <receiver
             android:name="com.android.emailsync.MailboxAlarmReceiver"/>
 
-        <receiver
-            android:name=".service.ExchangeBroadcastReceiver"
-            android:enabled="true">
-            <intent-filter>
-                <action
-                    android:name="android.intent.action.DEVICE_STORAGE_LOW" />
-                <action
-                    android:name="android.intent.action.DEVICE_STORAGE_OK" />
-                <action
-                    android:name="android.accounts.LOGIN_ACCOUNTS_CHANGED" />
-            </intent-filter>
-        </receiver>
-
-        <service
-            android:name=".service.ExchangeBroadcastProcessorService" />
-
         <!--Required stanza to register the EAS EmailSyncAdapterService with SyncManager -->
         <service
             android:name="com.android.exchange.service.EmailSyncAdapterService"
