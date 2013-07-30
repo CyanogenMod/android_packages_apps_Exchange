@@ -19,6 +19,7 @@ package com.android.exchange.service;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SyncResult;
@@ -34,7 +35,6 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
-import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
@@ -531,7 +531,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         try {
                             while (c.moveToNext()) {
                                 syncMailbox(context, cr, acct, account, c.getLong(0), extras,
-                                        syncResult);
+                                        syncResult, false);
                             }
                         } finally {
                             c.close();
@@ -540,13 +540,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 }
             } else {
                 // Sync the mailbox that was explicitly requested.
-                if (!syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult)) {
-                    // We can't sync this mailbox, so just send the expected UI callbacks.
-                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                            EmailServiceStatus.IN_PROGRESS, 0);
-                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                            EmailServiceStatus.SUCCESS, 0);
-                }
+                syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, true);
             }
 
             // Clean up the bookkeeping, including restarting ping if necessary.
@@ -557,25 +551,53 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // 2) syncResult can contain useful info.
         }
 
+        /**
+         * Update the mailbox's sync status with the provider and, if we're finished with the sync,
+         * write the last sync time as well.
+         * @param context Our {@link Context}.
+         * @param mailbox The mailbox whose sync status to update.
+         * @param cv A {@link ContentValues} object to use for updating the provider.
+         * @param syncStatus The status for the current sync.
+         */
+        private void updateMailbox(final Context context, final Mailbox mailbox,
+                final ContentValues cv, final int syncStatus) {
+            cv.put(Mailbox.UI_SYNC_STATUS, syncStatus);
+            if (syncStatus == EmailContent.SYNC_STATUS_NONE) {
+                cv.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
+            }
+            mailbox.update(context, cv);
+        }
+
         private boolean syncMailbox(final Context context, final ContentResolver cr,
                 final android.accounts.Account acct, final Account account, final long mailboxId,
-                final Bundle extras, final SyncResult syncResult) {
+                final Bundle extras, final SyncResult syncResult, final boolean isMailboxSync) {
             final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
             if (mailbox == null) {
                 return false;
             }
 
+            final ContentValues cv = new ContentValues(2);
+            // Non-mailbox syncs are whole account syncs initiated by the AccountManager and are
+            // treated as background syncs.
+            // TODO: Push will be treated as "user" syncs, and probably should be background.
+            final int syncStatus = isMailboxSync ?
+                    EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND;
+
             if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
                 final EasOutboxSyncHandler outboxSyncHandler =
                         new EasOutboxSyncHandler(context, account, mailbox);
+                updateMailbox(context, mailbox, cv, syncStatus);
                 outboxSyncHandler.performSync();
+                updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
             } else {
                 final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
                         acct, account, mailbox, extras, syncResult);
                 if (syncHandler == null) {
                     return false;
                 }
+                updateMailbox(context, mailbox, cv, syncStatus);
                 syncHandler.performSync();
+                updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
             }
             return true;
         }
