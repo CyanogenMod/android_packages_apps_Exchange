@@ -10,7 +10,6 @@ import android.text.format.DateUtils;
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
-import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
@@ -354,18 +353,4 @@ public abstract class EasSyncHandler extends EasServerConnection {
             // TODO: Signal caller that it probably wants to sync again.
         }
     }
-
-    // Communication with the application.
-
-    // TODO: Consider bringing the EmailServiceStatus functions here?
-    /**
-     * Convenience wrapper to {@link EmailServiceStatus#syncMailboxStatus}.
-     * @param statusCode
-     * @param progress
-     */
-    protected void syncMailboxStatus(final int statusCode, final int progress) {
-        EmailServiceStatus.syncMailboxStatus(mContentResolver, mSyncExtras, mMailbox.mId,
-                statusCode, progress);
-    }
-
 }
