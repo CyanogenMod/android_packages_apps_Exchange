@@ -276,12 +276,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         @Override
-        public void setCallback(final IEmailServiceCallback cb) {
-            // TODO: Determine if this is ever called in practice.
-            //mCallbackList.register(cb);
-        }
-
-        @Override
         public void setLogging(final int flags) {
             // TODO: fix this?
             // Protocol logging
@@ -328,7 +322,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             LogUtils.d(TAG, "IEmailService.searchMessages");
             return Search.searchMessages(EmailSyncAdapterService.this, accountId, searchParams,
                     destMailboxId);
-
+            // TODO: may need an explicit callback to replace the one to IEmailServiceCallback.
         }
 
         @Override

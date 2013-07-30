@@ -368,26 +368,4 @@ public abstract class EasSyncHandler extends EasServerConnection {
                 statusCode, progress);
     }
 
-    /**
-     * Convenience wrapper to {@link EmailServiceStatus#sendMessageStatus}.
-     * @param messageId
-     * @param subject
-     * @param statusCode
-     * @param progress
-     */
-    protected void sendMessageStatus(final long messageId, final String subject,
-            final int statusCode, final int progress) {
-        EmailServiceStatus.sendMessageStatus(mContentResolver, mSyncExtras, messageId, subject,
-                statusCode, progress);
-    }
-
-    /**
-     * Convenience wrapper to {@link EmailServiceStatus#syncMailboxListStatus}.
-     * @param statusCode
-     * @param progress
-     */
-    protected void syncMailboxListStatus(final int statusCode, final int progress) {
-        EmailServiceStatus.syncMailboxListStatus(mContentResolver, mSyncExtras, mAccount.mId,
-                statusCode, progress);
-    }
 }

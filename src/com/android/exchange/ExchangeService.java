@@ -28,7 +28,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
@@ -44,8 +43,6 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.emailcommon.provider.ProviderUnavailableException;
 import com.android.emailcommon.service.AccountServiceProxy;
-import com.android.emailcommon.service.EmailServiceCallback;
-import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.IEmailServiceCallback.Stub;
@@ -117,13 +114,6 @@ public class ExchangeService extends SyncManager {
     private final ConcurrentHashMap<Long, CalendarObserver> mCalendarObservers =
             new ConcurrentHashMap<Long, CalendarObserver>();
 
-    // Callbacks as set up via setCallback
-    private static final RemoteCallbackList<IEmailServiceCallback> mCallbackList =
-            new RemoteCallbackList<IEmailServiceCallback>();
-
-    static private final EmailServiceCallback sCallbackProxy =
-            new EmailServiceCallback(mCallbackList);
-
     private final Intent mIntent = new Intent(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
 
     /**
@@ -179,11 +169,6 @@ public class ExchangeService extends SyncManager {
                     log("User requested sync of account in security hold; releasing");
                 }
                 if (sConnectivityHold) {
-                    // UI is expecting the callbacks....
-                    sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS,
-                            0);
-                    sCallbackProxy.syncMailboxStatus(mailboxId,
-                            EmailServiceStatus.CONNECTION_ERROR, 0);
                     return;
                 }
             }
@@ -201,9 +186,6 @@ public class ExchangeService extends SyncManager {
                 // Outbox can't be synced in EAS
                 return;
             } else if (!isSyncable(m)) {
-                // UI may be expecting the callbacks, so send them
-                sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.IN_PROGRESS, 0);
-                sCallbackProxy.syncMailboxStatus(mailboxId, EmailServiceStatus.SUCCESS, 0);
                 return;
             }
             startManualSync(mailboxId, userRequest ? ExchangeService.SYNC_UI_REQUEST :
@@ -285,11 +267,6 @@ public class ExchangeService extends SyncManager {
         public boolean renameFolder(long accountId, String oldName, String newName)
                 throws RemoteException {
             return false;
-        }
-
-        @Override
-        public void setCallback(IEmailServiceCallback cb) throws RemoteException {
-            mCallbackList.register(cb);
         }
 
         /**
@@ -384,10 +361,6 @@ public class ExchangeService extends SyncManager {
             c.close();
         }
         return accounts;
-    }
-
-    static public IEmailServiceCallback callback() {
-        return sCallbackProxy;
     }
 
     public static void deleteAccountPIMData(final Context context, final long accountId) {
@@ -594,12 +567,7 @@ public class ExchangeService extends SyncManager {
     }
 
     static private void reloadFolderListFailed(long accountId) {
-        try {
-            callback().syncMailboxListStatus(accountId,
-                    EmailServiceStatus.ACCOUNT_UNINITIALIZED, 0);
-        } catch (RemoteException e1) {
-            // Don't care if this fails
-        }
+
     }
 
     static public void reloadFolderList(Context context, long accountId, boolean force) {
@@ -767,13 +735,13 @@ public class ExchangeService extends SyncManager {
 
     @Override
     public Stub getCallbackProxy() {
-        return sCallbackProxy;
+        return null;
     }
 
     /**
      * Stop any ping in progress if required
      *
-     * @param Mailbox whose service has started
+     * @param mailbox whose service has started
      */
     @Override
     public void onStartService(Mailbox mailbox) {

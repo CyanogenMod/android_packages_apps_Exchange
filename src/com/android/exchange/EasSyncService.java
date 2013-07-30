@@ -674,8 +674,7 @@ public class EasSyncService extends AbstractSyncService {
      * Use the Exchange 2007 AutoDiscover feature to try to retrieve server information using
      * only an email address and the password
      *
-     * @param userName the user's email address
-     * @param password the user's password
+     * @param context Our {@link Context}.
      * @return a HostAuth ready to be saved in an Account or null (failure)
      */
     public Bundle tryAutodiscover(Context context, HostAuth hostAuth) throws RemoteException {
@@ -1804,12 +1803,6 @@ public class EasSyncService extends AbstractSyncService {
             setConnectionParameters(ha);
         } catch (CertificateException e) {
             userLog("Couldn't retrieve certificate for connection");
-            try {
-                ExchangeService.callback().syncMailboxStatus(mMailboxId,
-                        EmailServiceStatus.CLIENT_CERTIFICATE_ERROR, 0);
-            } catch (RemoteException e1) {
-                // Don't care if this fails.
-            }
             return false;
         }
 
@@ -1881,16 +1874,6 @@ public class EasSyncService extends AbstractSyncService {
                             userLog("Looping for user request...");
                             mRequestTime = 0;
                         }
-                        String syncKey = target.getSyncKey();
-                        if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START ||
-                                "0".equals(syncKey)) {
-                            try {
-                                ExchangeService.callback().syncMailboxStatus(mMailboxId,
-                                        EmailServiceStatus.IN_PROGRESS, 0);
-                            } catch (RemoteException e1) {
-                                // Don't care if this fails
-                            }
-                        }
                         sync(target);
                     } while (mRequestTime != 0);
                 }
@@ -1941,21 +1924,6 @@ public class EasSyncService extends AbstractSyncService {
                 } else {
                     userLog("Stopped sync finished.");
                     status = EmailServiceStatus.SUCCESS;
-                }
-
-                // Send a callback (doesn't matter how the sync was started)
-                try {
-                    // Unless the user specifically asked for a sync, we don't want to report
-                    // connection issues, as they are likely to be transient.  In this case, we
-                    // simply report success, so that the progress indicator terminates without
-                    // putting up an error banner
-                    if (mSyncReason != ExchangeService.SYNC_UI_REQUEST &&
-                            status == EmailServiceStatus.CONNECTION_ERROR) {
-                        status = EmailServiceStatus.SUCCESS;
-                    }
-                    ExchangeService.callback().syncMailboxStatus(mMailboxId, status, 0);
-                } catch (RemoteException e1) {
-                    // Don't care if this fails
                 }
 
                 // Make sure ExchangeService knows about this

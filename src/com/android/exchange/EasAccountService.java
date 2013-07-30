@@ -22,7 +22,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.TrafficStats;
-import android.os.RemoteException;
 import android.os.SystemClock;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
@@ -32,10 +31,10 @@ import android.text.format.DateUtils;
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
@@ -224,13 +223,6 @@ public class EasAccountService extends EasSyncService {
         MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
         // Initialize exit status to success
         try {
-            try {
-                ExchangeService.callback()
-                    .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.IN_PROGRESS, 0);
-            } catch (RemoteException e1) {
-                // Don't care if this fails
-            }
-
             if (mAccount.mSyncKey == null) {
                 mAccount.mSyncKey = "0";
                 userLog("Account syncKey INIT to 0");
@@ -370,15 +362,6 @@ public class EasAccountService extends EasSyncService {
                     userLog("Set push/hold boxes to push...");
                 }
 
-                try {
-                    ExchangeService.callback()
-                        .syncMailboxListStatus(mAccount.mId,
-                                exitStatusToServiceStatus(mExitStatus),
-                                0);
-                } catch (RemoteException e1) {
-                    // Don't care if this fails
-                }
-
                 // Before each run of the pingLoop, if this Account has a PolicySet, make sure it's
                 // active; otherwise, clear out the key/flag.  This should cause a provisioning
                 // error on the next POST, and start the security sequence over again
@@ -420,32 +403,11 @@ public class EasAccountService extends EasSyncService {
                 }
             } else if (CommandStatus.isDeniedAccess(status)) {
                 mExitStatus = EasSyncService.EXIT_ACCESS_DENIED;
-                try {
-                    ExchangeService.callback().syncMailboxListStatus(mAccount.mId,
-                            EmailServiceStatus.ACCESS_DENIED, 0);
-                } catch (RemoteException e1) {
-                    // Don't care if this fails
-                }
                 return;
             } else {
                 userLog("Unexpected status: " + CommandStatus.toString(status));
                 mExitStatus = EasSyncService.EXIT_EXCEPTION;
             }
-        } catch (IOException e) {
-            // We catch this here to send the folder sync status callback
-            // A folder sync failed callback will get sent from run()
-            try {
-                if (!isStopped()) {
-                    // NOTE: The correct status is CONNECTION_ERROR, but the UI displays this, and
-                    // it's not really appropriate for EAS as this is not unexpected for a ping and
-                    // connection errors are retried in any case
-                    ExchangeService.callback()
-                        .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.SUCCESS, 0);
-                }
-            } catch (RemoteException e1) {
-                // Don't care if this fails
-            }
-            throw e;
         }
     }
 

@@ -16,18 +16,15 @@
 package com.android.exchange.adapter;
 
 import android.content.Context;
-import android.os.RemoteException;
 
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.service.EmailServiceStatus;
-import com.android.emailsync.PartRequest;
 import com.android.emailcommon.utility.AttachmentUtilities;
+import com.android.emailsync.PartRequest;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
-import com.android.exchange.ExchangeService;
-import com.android.exchange.service.EasAttachmentLoader.ProgressCallback;
 import com.android.exchange.utility.UriCodec;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -65,20 +62,11 @@ public class AttachmentLoader {
     }
 
     private void doStatusCallback(int status) {
-        try {
-            ExchangeService.callback().loadAttachmentStatus(mMessageId, mAttachmentId, status, 0);
-        } catch (RemoteException e) {
-            // No danger if the client is no longer around
-        }
+
     }
 
     private void doProgressCallback(int progress) {
-        try {
-            ExchangeService.callback().loadAttachmentStatus(mMessageId, mAttachmentId,
-                    EmailServiceStatus.IN_PROGRESS, progress);
-        } catch (RemoteException e) {
-            // No danger if the client is no longer around
-        }
+
     }
 
     @VisibleForTesting
@@ -173,11 +161,9 @@ public class AttachmentLoader {
                     try {
                         tmpFile = File.createTempFile("eas_", "tmp", mContext.getCacheDir());
                         os = new FileOutputStream(tmpFile);
-                        final ProgressCallback callback = new ProgressCallback(
-                                        ExchangeService.callback(), mAttachment);
                         if (eas14) {
                             ItemOperationsParser p = new ItemOperationsParser(is, os,
-                                    mAttachmentSize, callback);
+                                    mAttachmentSize, null);
                             p.parse();
                             if (p.getStatusCode() == 1 /* Success */) {
                                 finishLoadAttachment(tmpFile);
@@ -189,7 +175,7 @@ public class AttachmentLoader {
                                 // len > 0 means that Content-Length was set in the headers
                                 // len < 0 means "chunked" transfer-encoding
                                 ItemOperationsParser.readChunked(is, os,
-                                        (len < 0) ? mAttachmentSize : len, callback);
+                                        (len < 0) ? mAttachmentSize : len, null);
                                 finishLoadAttachment(tmpFile);
                                 return;
                             }
