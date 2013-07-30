@@ -23,7 +23,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.TrafficStats;
 import android.net.Uri;
-import android.os.RemoteException;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.TrafficFlags;
@@ -240,14 +239,6 @@ public class EasOutboxService extends EasSyncService {
         }
     }
 
-    private static void sendCallback(long msgId, String subject, int status) {
-        try {
-            ExchangeService.callback().sendMessageStatus(msgId, subject, status, 0);
-        } catch (RemoteException e) {
-            // It's all good
-        }
-    }
-
     /*package*/ String generateSmartSendCmd(boolean reply, OriginalMessageInfo info) {
         StringBuilder sb = new StringBuilder();
         sb.append(reply ? "SmartReply" : "SmartForward");
@@ -307,7 +298,6 @@ public class EasOutboxService extends EasSyncService {
         ContentValues cv = new ContentValues();
         cv.put(SyncColumns.SERVER_ID, SEND_FAILED);
         Message.update(mContext, Message.CONTENT_URI, msgId, cv);
-        sendCallback(msgId, null, result);
     }
 
     /**
@@ -345,8 +335,6 @@ public class EasOutboxService extends EasSyncService {
         // authentication) rather than message-specific; returning anything else will terminate
         // the Outbox sync! Message-specific errors are marked in the messages themselves.
         int result = EmailServiceStatus.SUCCESS;
-        // Say we're starting to send this message
-        sendCallback(msgId, null, EmailServiceStatus.IN_PROGRESS);
         // Create a temporary file (this will hold the outgoing message in RFC822 (MIME) format)
         File tmpFile = File.createTempFile("eas_", "tmp", cacheDir);
         try {
@@ -486,7 +474,6 @@ public class EasOutboxService extends EasSyncService {
                         // Delete the message from the Outbox and send callback
                         mContentResolver.delete(
                                 ContentUris.withAppendedId(Message.CONTENT_URI, msgId), null, null);
-                        sendCallback(-1, msg.mSubject, EmailServiceStatus.SUCCESS);
                         break;
                     } else if (code == EasSyncService.INTERNAL_SERVER_ERROR_CODE && smartSend) {
                         // This is the retry case for EAS 12.1 and below; we'll send without "smart"
@@ -507,10 +494,6 @@ public class EasOutboxService extends EasSyncService {
                     resp.close();
                 }
             }
-        } catch (IOException e) {
-            // We catch this just to send the callback
-            sendCallback(msgId, null, EmailServiceStatus.CONNECTION_ERROR);
-            throw e;
         } finally {
             // Clean up the temporary file
             if (tmpFile.exists()) {
