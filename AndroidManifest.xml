@@ -140,7 +140,8 @@
               android:value="true"/>
         </provider>
 
-        <activity android:name=".EasCertificateRequestor">
+        <activity android:name=".EasCertificateRequestor"
+                  android:configChanges="orientation|screenSize|locale">
             <intent-filter>
                 <action android:name="com.android.emailcommon.REQUEST_CERT" />
                 <data android:scheme="eas" android:path="/certrequest" />
