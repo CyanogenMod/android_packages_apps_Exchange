@@ -473,15 +473,20 @@ public abstract class EasServerConnection {
      * @param msg the message to send
      */
     protected void sendMessage(final EmailContent.Message msg) {
-        final long mailboxId =
-                Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
-        if (mailboxId != Mailbox.NO_MAILBOX) {
-            msg.mMailboxKey = mailboxId;
-            msg.mAccountKey = mAccount.mId;
-            msg.save(mContext);
-            requestSyncForMailbox(new android.accounts.Account(mAccount.mEmailAddress,
-                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
+        long mailboxId = Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
+        // TODO: Improve system mailbox handling.
+        if (mailboxId == Mailbox.NO_MAILBOX) {
+            LogUtils.d(TAG, "No outbox for account %d, creating it", mAccount.mId);
+            final Mailbox outbox =
+                    Mailbox.newSystemMailbox(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
+            outbox.save(mContext);
+            mailboxId = outbox.mId;
         }
+        msg.mMailboxKey = mailboxId;
+        msg.mAccountKey = mAccount.mId;
+        msg.save(mContext);
+        requestSyncForMailbox(new android.accounts.Account(mAccount.mEmailAddress,
+                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
     }
 
     /**
