@@ -26,6 +26,8 @@ import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.os.RemoteException;
 import android.text.TextUtils;
+import android.util.SparseBooleanArray;
+import android.util.SparseIntArray;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
@@ -44,9 +46,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
 /**
  * Parse the result of a FolderSync command
@@ -58,24 +58,37 @@ public class FolderSyncParser extends AbstractSyncParser {
 
     public static final String TAG = "FolderSyncParser";
 
-    // These are defined by the EAS protocol
-    public static final int USER_GENERIC_TYPE = 1;
-    public static final int INBOX_TYPE = 2;
-    public static final int DRAFTS_TYPE = 3;
-    public static final int DELETED_TYPE = 4;
-    public static final int SENT_TYPE = 5;
-    public static final int OUTBOX_TYPE = 6;
-    public static final int TASKS_TYPE = 7;
-    public static final int CALENDAR_TYPE = 8;
-    public static final int CONTACTS_TYPE = 9;
-    public static final int NOTES_TYPE = 10;
-    public static final int JOURNAL_TYPE = 11;
-    public static final int USER_MAILBOX_TYPE = 12;
-
-    // EAS types that we are willing to consider valid folders for EAS sync
-    private static final List<Integer> VALID_EAS_FOLDER_TYPES = Arrays.asList(INBOX_TYPE,
-            DRAFTS_TYPE, DELETED_TYPE, SENT_TYPE, OUTBOX_TYPE, USER_MAILBOX_TYPE, CALENDAR_TYPE,
-            CONTACTS_TYPE, USER_GENERIC_TYPE);
+    /**
+     * Mapping from EAS type values to {@link Mailbox} types.
+     * See http://msdn.microsoft.com/en-us/library/gg650877(v=exchg.80).aspx for the list of EAS
+     * type values.
+     * If an EAS type is not in the map, or is inserted with a value of {@link Mailbox#TYPE_NONE},
+     * then we don't support that type and we should ignore it.
+     * TODO: Maybe we should store the mailbox anyway, otherwise it'll be annoying to upgrade.
+     */
+    private static final SparseIntArray MAILBOX_TYPE_MAP;
+    static {
+        MAILBOX_TYPE_MAP = new SparseIntArray(11);
+        MAILBOX_TYPE_MAP.put(1,  Mailbox.TYPE_MAIL);       // User-created folder (generic)
+        MAILBOX_TYPE_MAP.put(2,  Mailbox.TYPE_INBOX);      // Default Inbox folder
+        MAILBOX_TYPE_MAP.put(3,  Mailbox.TYPE_DRAFTS);     // Default Drafts folder
+        MAILBOX_TYPE_MAP.put(4,  Mailbox.TYPE_TRASH);      // Default Deleted Items folder
+        MAILBOX_TYPE_MAP.put(5,  Mailbox.TYPE_SENT);       // Default Sent Items folder
+        MAILBOX_TYPE_MAP.put(6,  Mailbox.TYPE_OUTBOX);     // Default Outbox folder
+        //MAILBOX_TYPE_MAP.put(7,  Mailbox.TYPE_TASKS);      // Default Tasks folder
+        MAILBOX_TYPE_MAP.put(8,  Mailbox.TYPE_CALENDAR);   // Default Calendar folder
+        MAILBOX_TYPE_MAP.put(9,  Mailbox.TYPE_CONTACTS);   // Default Contacts folder
+        //MAILBOX_TYPE_MAP.put(10, Mailbox.TYPE_NONE);       // Default Notes folder
+        //MAILBOX_TYPE_MAP.put(11, Mailbox.TYPE_NONE);       // Default Journal folder
+        MAILBOX_TYPE_MAP.put(12, Mailbox.TYPE_MAIL);       // User-created Mail folder
+        MAILBOX_TYPE_MAP.put(13, Mailbox.TYPE_CALENDAR);   // User-created Calendar folder
+        MAILBOX_TYPE_MAP.put(14, Mailbox.TYPE_CONTACTS);   // User-created Contacts folder
+        //MAILBOX_TYPE_MAP.put(15, Mailbox.TYPE_TASKS);      // User-created Tasks folder
+        //MAILBOX_TYPE_MAP.put(16, Mailbox.TYPE_NONE);       // User-created Journal folder
+        //MAILBOX_TYPE_MAP.put(17, Mailbox.TYPE_NONE);       // User-created Notes folder
+        //MAILBOX_TYPE_MAP.put(18, Mailbox.TYPE_NONE);       // Unknown folder type
+        //MAILBOX_TYPE_MAP.put(19, Mailbox.TYPE_NONE);       // Recipient information cache
+    }
 
     /** Content selection for all mailboxes belonging to an account. */
     private static final String WHERE_ACCOUNT_KEY = MailboxColumns.ACCOUNT_KEY + "=?";
@@ -152,7 +165,9 @@ public class FolderSyncParser extends AbstractSyncParser {
     // other data
     private final boolean mStatusOnly;
 
-    private boolean mOutboxCreated = false;
+    /** Map of folder types that have been created during this sync. */
+    private final SparseBooleanArray mCreatedFolderTypes =
+            new SparseBooleanArray(Mailbox.REQUIRED_FOLDER_TYPES.length);
 
     private static final ContentValues UNINITIALIZED_PARENT_KEY = new ContentValues();
 
@@ -386,65 +401,36 @@ public class FolderSyncParser extends AbstractSyncParser {
      * @param name The new mailbox's name.
      * @param serverId The new mailbox's server id.
      * @param parentServerId The server id of the new mailbox's parent ("0" if none).
-     * @param easType The mailbox's type, in terms of the EAS values (NOT {@link Mailbox}'s type
-     *                values).
+     * @param mailboxType The mailbox's type, which is one of the values defined in {@link Mailbox}.
+     * @param fromServer Whether this mailbox was synced from server (as opposed to local-only).
      * @throws IOException
      */
     private void addMailboxOp(final String name, final String serverId,
-            final String parentServerId, final int easType) throws IOException {
-        final ContentValues cv = new ContentValues();
+            final String parentServerId, final int mailboxType, final boolean fromServer)
+            throws IOException {
+        final ContentValues cv = new ContentValues(10);
         cv.put(MailboxColumns.DISPLAY_NAME, name);
-        cv.put(MailboxColumns.SERVER_ID, serverId);
-        final String parentId;
-        if (parentServerId.equals("0")) {
-            parentId = NO_MAILBOX_STRING;
-            cv.put(Mailbox.PARENT_KEY, Mailbox.NO_MAILBOX);
+        if (fromServer) {
+            cv.put(MailboxColumns.SERVER_ID, serverId);
+            final String parentId;
+            if (parentServerId.equals("0")) {
+                parentId = NO_MAILBOX_STRING;
+                cv.put(MailboxColumns.PARENT_KEY, Mailbox.NO_MAILBOX);
+            } else {
+                parentId = parentServerId;
+                mParentFixupsNeeded.add(parentId);
+            }
+            cv.put(MailboxColumns.PARENT_SERVER_ID, parentId);
         } else {
-            parentId = parentServerId;
-            mParentFixupsNeeded.add(parentId);
+            cv.put(MailboxColumns.SERVER_ID, "");
+            cv.put(MailboxColumns.PARENT_KEY, Mailbox.NO_MAILBOX);
+            cv.put(MailboxColumns.PARENT_SERVER_ID, NO_MAILBOX_STRING);
+            cv.put(MailboxColumns.TOTAL_COUNT, -1);
         }
-        cv.put(MailboxColumns.PARENT_SERVER_ID, parentId);
         cv.put(MailboxColumns.ACCOUNT_KEY, mAccountId);
-        final int mailboxType;
-        final boolean shouldSync;
-        switch (easType) {
-            case INBOX_TYPE:
-                mailboxType = Mailbox.TYPE_INBOX;
-                shouldSync = true;
-                break;
-            case CONTACTS_TYPE:
-                mailboxType = Mailbox.TYPE_CONTACTS;
-                shouldSync = true;
-                break;
-            case OUTBOX_TYPE:
-                // TYPE_OUTBOX mailboxes are known by ExchangeService to sync whenever they
-                // aren't empty.  The value of mSyncFrequency is ignored for this kind of
-                // mailbox.
-                mailboxType = Mailbox.TYPE_OUTBOX;
-                shouldSync = false;
-                mOutboxCreated = true;
-                break;
-            case SENT_TYPE:
-                mailboxType = Mailbox.TYPE_SENT;
-                shouldSync = false;
-                break;
-            case DRAFTS_TYPE:
-                mailboxType = Mailbox.TYPE_DRAFTS;
-                shouldSync = false;
-                break;
-            case DELETED_TYPE:
-                mailboxType = Mailbox.TYPE_TRASH;
-                shouldSync = false;
-                break;
-            case CALENDAR_TYPE:
-                mailboxType = Mailbox.TYPE_CALENDAR;
-                shouldSync = true;
-                break;
-            default:
-                mailboxType = Mailbox.TYPE_MAIL;
-                shouldSync = false;
-        }
         cv.put(MailboxColumns.TYPE, mailboxType);
+
+        final boolean shouldSync = fromServer && Mailbox.getDefaultSyncStateForType(mailboxType);
         cv.put(MailboxColumns.SYNC_INTERVAL, shouldSync ? 1 : 0);
 
         // Set basic flags
@@ -464,6 +450,8 @@ public class FolderSyncParser extends AbstractSyncParser {
 
         mOperations.add(
                 ContentProviderOperation.newInsert(Mailbox.CONTENT_URI).withValues(cv).build());
+
+        mCreatedFolderTypes.put(mailboxType, true);
     }
 
     /**
@@ -499,9 +487,11 @@ public class FolderSyncParser extends AbstractSyncParser {
                     skipTag();
             }
         }
-
-        if (VALID_EAS_FOLDER_TYPES.contains(type)) {
-            addMailboxOp(name, serverId, parentId, type);
+        if (name != null && serverId != null && parentId != null) {
+            final int mailboxType = MAILBOX_TYPE_MAP.get(type, Mailbox.TYPE_NONE);
+            if (mailboxType != Mailbox.TYPE_NONE) {
+                addMailboxOp(name, serverId, parentId, mailboxType, true);
+            }
         }
     }
 
@@ -722,10 +712,14 @@ public class FolderSyncParser extends AbstractSyncParser {
                     ContentProviderOperation.newUpdate(mAccount.getUri()).withValues(cv).build());
         }
 
-        // If this is the initial sync, and we didn't get an Outbox, make one.
-        if (mInitialSync && !mOutboxCreated) {
-            addMailboxOp(Mailbox.getSystemMailboxName(mContext, Mailbox.TYPE_OUTBOX), "0", "0",
-                    OUTBOX_TYPE);
+        // If this is the initial sync, make sure we have all the required folder types.
+        if (mInitialSync) {
+            for (final int requiredType : Mailbox.REQUIRED_FOLDER_TYPES) {
+                if (!mCreatedFolderTypes.get(requiredType)) {
+                    addMailboxOp(Mailbox.getSystemMailboxName(mContext, requiredType),
+                            null, null, requiredType, false);
+                }
+            }
         }
 
         // Send all operations so far.
