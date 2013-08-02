@@ -318,6 +318,10 @@ public class EasPingSyncHandler extends EasServerConnection {
                 LogUtils.i(TAG, "Auth Error for account %d", mAccount.mId);
                 return PingParser.STATUS_FAILED;
             }
+            if (EasResponse.isRedirectError(code)) {
+                redirectHostAuth(resp.getRedirectAddress());
+                return PingParser.STATUS_REDIRECT;
+            }
             if (code != HttpStatus.SC_OK || resp.isEmpty()) {
                 LogUtils.e(TAG, "Bad response (%d) for account %d", code, mAccount.mId);
                 return PingParser.STATUS_FAILED;
