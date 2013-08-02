@@ -576,30 +576,31 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 return false;
             }
 
-            final ContentValues cv = new ContentValues(2);
+            final boolean success;
             // Non-mailbox syncs are whole account syncs initiated by the AccountManager and are
             // treated as background syncs.
             // TODO: Push will be treated as "user" syncs, and probably should be background.
-            final int syncStatus = isMailboxSync ?
-                    EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND;
+            final ContentValues cv = new ContentValues(2);
+            updateMailbox(context, mailbox, cv, isMailboxSync ?
+                    EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND);
 
             if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
                 final EasOutboxSyncHandler outboxSyncHandler =
                         new EasOutboxSyncHandler(context, account, mailbox);
-                updateMailbox(context, mailbox, cv, syncStatus);
                 outboxSyncHandler.performSync();
-                updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
-            } else {
+                success = true;
+            } else if(mailbox.isSyncable()) {
                 final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
                         acct, account, mailbox, extras, syncResult);
-                if (syncHandler == null) {
-                    return false;
+                success = (syncHandler != null);
+                if (syncHandler != null) {
+                    syncHandler.performSync();
                 }
-                updateMailbox(context, mailbox, cv, syncStatus);
-                syncHandler.performSync();
-                updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
+            } else {
+                success = false;
             }
-            return true;
+            updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
+            return success;
         }
     }
 }

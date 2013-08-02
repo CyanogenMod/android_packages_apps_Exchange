@@ -108,13 +108,16 @@ public abstract class EasSyncHandler extends EasServerConnection {
             switch (mailbox.mType) {
                 case Mailbox.TYPE_INBOX:
                 case Mailbox.TYPE_MAIL:
+                case Mailbox.TYPE_DRAFTS:
+                case Mailbox.TYPE_SENT:
+                case Mailbox.TYPE_TRASH:
                     return new EasMailboxSyncHandler(context, contentResolver, account, mailbox,
                             syncExtras, syncResult);
-                case Mailbox.TYPE_CONTACTS:
-                    return new EasContactsSyncHandler(context, contentResolver,
-                            accountManagerAccount, account, mailbox, syncExtras, syncResult);
                 case Mailbox.TYPE_CALENDAR:
                     return new EasCalendarSyncHandler(context, contentResolver,
+                            accountManagerAccount, account, mailbox, syncExtras, syncResult);
+                case Mailbox.TYPE_CONTACTS:
+                    return new EasContactsSyncHandler(context, contentResolver,
                             accountManagerAccount, account, mailbox, syncExtras, syncResult);
             }
         }
