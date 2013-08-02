@@ -31,11 +31,13 @@ public class MeetingResponseRequest extends Request {
 
     // MeetingResponseRequests are unique by their message id (i.e. there's only one response to
     // a given message)
+    @Override
     public boolean equals(Object o) {
         if (!(o instanceof MeetingResponseRequest)) return false;
         return ((MeetingResponseRequest)o).mMessageId == mMessageId;
     }
 
+    @Override
     public int hashCode() {
         return (int)mMessageId;
     }

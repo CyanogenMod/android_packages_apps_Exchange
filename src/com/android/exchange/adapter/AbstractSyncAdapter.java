@@ -188,6 +188,7 @@ public abstract class AbstractSyncAdapter {
             mOffset = 0;
         }
 
+        @Override
         public String toString() {
             StringBuilder sb = new StringBuilder("Op: ");
             ContentProviderOperation op = operationToContentProviderOperation(this, 0);
