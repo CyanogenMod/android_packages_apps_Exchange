@@ -40,7 +40,6 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
-import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AccountSyncAdapter;
@@ -842,21 +841,5 @@ public class EasAccountService extends EasSyncService {
             }
         }
         return pp.getPingStatus();
-    }
-
-    /**
-     * Translate exit status code to service status code (used in callbacks)
-     * @param exitStatus the service's exit status
-     * @return the corresponding service status
-     */
-    private static int exitStatusToServiceStatus(int exitStatus) {
-        switch(exitStatus) {
-            case EasSyncService.EXIT_SECURITY_FAILURE:
-                return EmailServiceStatus.SECURITY_FAILURE;
-            case EasSyncService.EXIT_LOGIN_FAILURE:
-                return EmailServiceStatus.LOGIN_FAILED;
-            default:
-                return EmailServiceStatus.SUCCESS;
-        }
     }
 }

@@ -182,7 +182,7 @@ public class Serializer {
         // Now write out the opaque data in batches
         byte[] buffer = new byte[BUFFER_SIZE];
         while (length > 0) {
-            int bytesRead = is.read(buffer, 0, (int)Math.min(BUFFER_SIZE, length));
+            int bytesRead = is.read(buffer, 0, Math.min(BUFFER_SIZE, length));
             if (bytesRead == -1) {
                 break;
             }
