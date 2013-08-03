@@ -37,6 +37,8 @@ public class PingParser extends Parser {
     // Values less than STATUS_FAILED are never actually returned by the PingParser. They detect
     // error statuses that happen outside the actual parsing, but since they are used in the same
     // context as parsing statuses, it's convenient to have them here.
+    /** Indicates that the ping returned a redirect error. */
+    public static final int STATUS_REDIRECT = -6;
     /** Indicates that the ping terminated due to an exception while making the POST. */
     public static final int STATUS_NETWORK_EXCEPTION = -5;
     /** Indicates that the ping was interrupted by a sync request. */
@@ -136,14 +138,22 @@ public class PingParser extends Parser {
      * @return Whether we should send another ping immediately.
      */
     public static boolean shouldPingAgain(final int pingStatus) {
-        // We only want to ping again if the previous ping timed out, or got a server response
-        // that indicates a new ping is warranted.
-        return pingStatus == STATUS_EXPIRED ||
-                pingStatus == STATUS_REQUEST_INCOMPLETE ||
-                pingStatus == STATUS_REQUEST_MALFORMED ||
+        // Explanation for why we ping again for each case:
+        // - Redirect errors have already been processed by updating the HostAuth to reflect the
+        //   new address, so we just ping again for those.
+        // - If the ping expired we should keep looping with pings.
+        // - The EAS spec says to handle incomplete and malformed request errors by pinging again
+        //   with corrected request data. Since we always send a complete request, we simply
+        //   repeat (and assume that some sort of network error is what caused the corruption).
+        // - Heartbeat errors are handled by pinging with a better heartbeat value.
+        // - Other server errors are considered transient and therefore we just reping for those.
+        return pingStatus == STATUS_REDIRECT
+                || pingStatus == STATUS_EXPIRED
+                || pingStatus == STATUS_REQUEST_INCOMPLETE
+                || pingStatus == STATUS_REQUEST_MALFORMED
                 // TODO: Implement heartbeat adjusting and re-enable this.
-                //pingStatus == STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS ||
-                pingStatus == STATUS_SERVER_ERROR;
+                // || pingStatus == STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS
+                || pingStatus == STATUS_SERVER_ERROR;
     }
 
     /**
