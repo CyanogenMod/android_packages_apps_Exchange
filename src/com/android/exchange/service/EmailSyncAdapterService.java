@@ -346,12 +346,14 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         AccountCapabilities.SANITIZED_HTML |
                         AccountCapabilities.SMART_REPLY |
                         AccountCapabilities.SERVER_SEARCH |
-                        AccountCapabilities.UNDO;
+                        AccountCapabilities.UNDO |
+                        AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
             } else {
                 return AccountCapabilities.SYNCABLE_FOLDERS |
                         AccountCapabilities.SANITIZED_HTML |
                         AccountCapabilities.SMART_REPLY |
-                        AccountCapabilities.UNDO;
+                        AccountCapabilities.UNDO |
+                        AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
             }
         }
 
