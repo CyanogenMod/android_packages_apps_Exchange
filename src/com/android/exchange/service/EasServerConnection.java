@@ -368,7 +368,6 @@ public abstract class EasServerConnection {
         } finally {
             synchronized (this) {
                 mPendingPost = null;
-                mStoppedReason = STOPPED_REASON_NONE;
             }
         }
     }
@@ -403,7 +402,7 @@ public abstract class EasServerConnection {
     /**
      * Check the reason of the last {@link #stop} request.
      * @return The reason supplied to the last call to {@link #stop}, or
-     *     {@link #STOPPED_REASON_NONE} if we haven't been stopped since the last successful POST.
+     *     {@link #STOPPED_REASON_NONE} if we haven't been stopped.
      */
     protected int getStoppedReason() {
         return mStoppedReason;
