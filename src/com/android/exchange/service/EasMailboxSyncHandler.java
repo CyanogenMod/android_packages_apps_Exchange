@@ -572,7 +572,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
                             // handled next sync
                         }
                     }
-                } else if (EasResponse.isAuthError(status)) {
+                } else if (resp.isAuthError()) {
                     throw new EasAuthenticationException();
                 } else {
                     LogUtils.i(TAG, "Move items request failed, code: %d", status);

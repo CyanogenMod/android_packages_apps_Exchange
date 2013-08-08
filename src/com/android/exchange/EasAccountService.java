@@ -284,9 +284,9 @@ public class EasAccountService extends EasSyncService {
                      } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
                         // Cause this to re-run
                         throw new IOException("Will retry after a brief hold...");
-                     } else if (EasResponse.isProvisionError(code)) {
+                     } else if (resp.isProvisionError()) {
                          throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
-                     } else if (EasResponse.isAuthError(code)) {
+                     } else if (resp.isAuthError()) {
                          mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                          return;
                      } else {
@@ -337,9 +337,9 @@ public class EasAccountService extends EasSyncService {
                                 continue;
                             }
                         }
-                    } else if (EasResponse.isProvisionError(code)) {
+                    } else if (resp.isProvisionError()) {
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
-                    } else if (EasResponse.isAuthError(code)) {
+                    } else if (resp.isAuthError()) {
                         mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                         return;
                     } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
@@ -691,7 +691,7 @@ public class EasAccountService extends EasSyncService {
                                 // Act as if we have an IOException (backoff, etc.)
                                 throw new IOException();
                             }
-                        } else if (EasResponse.isAuthError(code)) {
+                        } else if (resp.isAuthError()) {
                             mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                             userLog("Authorization error during Ping: ", code);
                             throw new IOException();

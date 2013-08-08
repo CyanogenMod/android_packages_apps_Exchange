@@ -174,7 +174,7 @@ public class EasMeetingResponder extends EasServerConnection {
                     meetingInfo.get(MeetingInfo.MEETING_UID), mAccount);
         // Assuming we got a message back (we might not if the event has been deleted), send it
         if (outgoingMsg != null) {
-            sendMessage(outgoingMsg);
+            sendMessage(mAccount, outgoingMsg);
         }
     }
 
@@ -211,7 +211,7 @@ public class EasMeetingResponder extends EasServerConnection {
                         }
                     }
                 }
-            } else if (EasResponse.isAuthError(status)) {
+            } else if (resp.isAuthError()) {
                 // TODO: Handle this gracefully.
                 //throw new EasAuthenticationException();
             } else {

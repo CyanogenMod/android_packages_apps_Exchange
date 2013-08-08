@@ -488,7 +488,7 @@ public class EasSyncService extends AbstractSyncService {
                         // For validation only, we take 403 as ACCESS_DENIED (the account isn't
                         // authorized, possibly due to device type)
                         resultCode = MessagingException.ACCESS_DENIED;
-                    } else if (EasResponse.isProvisionError(code)) {
+                    } else if (resp.isProvisionError()) {
                         // The device needs to have security policies enforced
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (code == HttpStatus.SC_NOT_FOUND) {
@@ -518,7 +518,7 @@ public class EasSyncService extends AbstractSyncService {
                         }
                         userLog("Validation successful");
                     }
-                } else if (EasResponse.isAuthError(code)) {
+                } else if (resp.isAuthError()) {
                     userLog("Authentication failed");
                     resultCode = resp.isMissingCertificate()
                             ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
@@ -631,7 +631,7 @@ public class EasSyncService extends AbstractSyncService {
         int code = resp.getStatus();
         // On a redirect, try the new location
         if (code == EAS_REDIRECT_CODE) {
-            post = getRedirect(resp.mResponse, post);
+            //post = getRedirect(resp.mResponse, post);
             if (post != null) {
                 userLog("Posting autodiscover to redirect: " + post.getURI());
                 return executePostWithTimeout(client, post, COMMAND_TIMEOUT);
@@ -1102,7 +1102,7 @@ public class EasSyncService extends AbstractSyncService {
                         // handled next sync
                     }
                 }
-            } else if (EasResponse.isAuthError(status)) {
+            } else if (resp.isAuthError()) {
                 throw new EasAuthenticationException();
             } else {
                 userLog("Move items request failed, code: " + status);
@@ -1149,7 +1149,7 @@ public class EasSyncService extends AbstractSyncService {
                     }
                     sendMeetingResponseMail(msg, req.mResponse);
                 }
-            } else if (EasResponse.isAuthError(status)) {
+            } else if (resp.isAuthError()) {
                 throw new EasAuthenticationException();
             } else {
                 userLog("Meeting response request failed, code: " + status);
@@ -1766,9 +1766,9 @@ public class EasSyncService extends AbstractSyncService {
                     }
                 } else {
                     userLog("Sync response error: ", code);
-                    if (EasResponse.isProvisionError(code)) {
+                    if (resp.isProvisionError()) {
                         mExitStatus = EXIT_SECURITY_FAILURE;
-                    } else if (EasResponse.isAuthError(code)) {
+                    } else if (resp.isAuthError()) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                     } else {
                         mExitStatus = EXIT_IO_ERROR;

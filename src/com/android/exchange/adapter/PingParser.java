@@ -34,21 +34,6 @@ public class PingParser extends Parser {
     /** Sentinel value, used when some property doesn't have a meaningful value. */
     public static final int NO_VALUE = -1;
 
-    // Values less than STATUS_FAILED are never actually returned by the PingParser. They detect
-    // error statuses that happen outside the actual parsing, but since they are used in the same
-    // context as parsing statuses, it's convenient to have them here.
-    /** Indicates that the ping returned a redirect error. */
-    public static final int STATUS_REDIRECT = -6;
-    /** Indicates that the ping terminated due to an exception while making the POST. */
-    public static final int STATUS_NETWORK_EXCEPTION = -5;
-    /** Indicates that the ping was interrupted by a sync request. */
-    public static final int STATUS_INTERRUPTED = -4;
-    /** Indicates that there were no folders to ping. */
-    public static final int STATUS_NO_FOLDERS = -3;
-
-    /** Indicates a malformed response, or some other client failure while processing the ping. */
-    public static final int STATUS_FAILED = -2;
-
     // The following are the actual status codes from the Exchange server.
     // See http://msdn.microsoft.com/en-us/library/gg663456(v=exchg.80).aspx for more details.
     /** Indicates that the heartbeat interval expired before a change happened. */
@@ -75,15 +60,6 @@ public class PingParser extends Parser {
 
     public PingParser(final InputStream in) throws IOException {
         super(in);
-    }
-
-    @Override
-    public boolean parse() {
-        final boolean result = parseInternal();
-        if (!result) {
-            mPingStatus = STATUS_FAILED;
-        }
-        return result;
     }
 
     /**
@@ -139,16 +115,13 @@ public class PingParser extends Parser {
      */
     public static boolean shouldPingAgain(final int pingStatus) {
         // Explanation for why we ping again for each case:
-        // - Redirect errors have already been processed by updating the HostAuth to reflect the
-        //   new address, so we just ping again for those.
         // - If the ping expired we should keep looping with pings.
         // - The EAS spec says to handle incomplete and malformed request errors by pinging again
         //   with corrected request data. Since we always send a complete request, we simply
         //   repeat (and assume that some sort of network error is what caused the corruption).
         // - Heartbeat errors are handled by pinging with a better heartbeat value.
         // - Other server errors are considered transient and therefore we just reping for those.
-        return pingStatus == STATUS_REDIRECT
-                || pingStatus == STATUS_EXPIRED
+        return  pingStatus == STATUS_EXPIRED
                 || pingStatus == STATUS_REQUEST_INCOMPLETE
                 || pingStatus == STATUS_REQUEST_MALFORMED
                 // TODO: Implement heartbeat adjusting and re-enable this.
@@ -180,25 +153,17 @@ public class PingParser extends Parser {
      * @param currentValue The current value of the property we're parsing.
      * @param minValue The minimum value for the property we're parsing.
      * @param maxValue The maximum value for the property we're parsing.
-     * @return The new value of the property we're parsing, or {@link #NO_VALUE} if there was an
-     *         error.
+     * @return The new value of the property we're parsing.
+
      */
     private int getValue(final String name, final int currentValue, final int minValue,
-            final int maxValue) {
+            final int maxValue) throws IOException {
         if (currentValue != NO_VALUE) {
-            LogUtils.e(TAG, "Response has multiple values for %s", name);
-            return NO_VALUE;
+            throw new IOException("Response has multiple values for " + name);
         }
-        final int value;
-        try {
-            value = getValueInt();
-        } catch (final IOException e) {
-            LogUtils.e(TAG, "IOException while parsing %s: %s", name, e.getMessage());
-            return NO_VALUE;
-        }
+        final int value = getValueInt();
         if (value < minValue || (maxValue > 0 && value > maxValue)) {
-            LogUtils.e(TAG, "%s value out of bound (%d)", name, value);
-            return NO_VALUE;
+            throw new IOException(name + " out of bounds: " + value);
         }
         return value;
     }
@@ -208,73 +173,67 @@ public class PingParser extends Parser {
      * positive. A value cannot be set more than once.
      * @param name The name of the property we're parsing (for logging purposes).
      * @param currentValue The current value of the property we're parsing.
-     * @return The new value of the property we're parsing, or {@link #NO_VALUE} if there was an
-     *         error.
+     * @return The new value of the property we're parsing.
+     * @throws IOException
      */
-    private int getValue(final String name, final int currentValue) {
+    private int getValue(final String name, final int currentValue) throws IOException {
         return getValue(name, currentValue, 1, -1);
     }
 
     /**
      * Parse the entire response, and set our internal state accordingly.
      * @return Whether the response was well-formed.
+     * @throws IOException
      */
-    private boolean parseInternal() {
-        try {
-            if (nextTag(START_DOCUMENT) != Tags.PING_PING) {
-                LogUtils.e(TAG, "Ping response does not include a Ping element");
-                return false;
-            }
-            while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
-                if (tag == Tags.PING_STATUS) {
-                    mPingStatus = getValue("Status", mPingStatus, STATUS_EXPIRED,
-                            STATUS_SERVER_ERROR);
-                    if (mPingStatus == NO_VALUE) {
-                        return false;
-                    }
-                } else if (tag == Tags.PING_MAX_FOLDERS) {
-                    mMaxFolders = getValue("MaxFolders", mMaxFolders);
-                    if (mMaxFolders == NO_VALUE) {
-                        return false;
-                    }
-                } else if (tag == Tags.PING_FOLDERS) {
-                    if (!mSyncList.isEmpty()) {
-                        LogUtils.e(TAG, "Response has multiple values for Folders");
-                        mPingStatus = STATUS_FAILED;
-                        return false;
-                    }
-                    parsePingFolders();
-                    final int count = mSyncList.size();
-                    LogUtils.i(TAG, "Folders has %d elements", count);
-                    if (count == 0) {
-                        LogUtils.e(TAG, "Folders was empty");
-                        return false;
-                    }
-                } else if (tag == Tags.PING_HEARTBEAT_INTERVAL) {
-                    mHeartbeatInterval = getValue("HeartbeatInterval", mHeartbeatInterval);
-                    if (mHeartbeatInterval == NO_VALUE) {
-                        return false;
-                    }
-                } else {
-                    // TODO: Error?
-                    skipTag();
+    @Override
+    public boolean parse() throws IOException {
+        if (nextTag(START_DOCUMENT) != Tags.PING_PING) {
+            throw new IOException("Ping response does not include a Ping element");
+        }
+        while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
+            if (tag == Tags.PING_STATUS) {
+                mPingStatus = getValue("Status", mPingStatus, STATUS_EXPIRED,
+                        STATUS_SERVER_ERROR);
+            } else if (tag == Tags.PING_MAX_FOLDERS) {
+                mMaxFolders = getValue("MaxFolders", mMaxFolders);
+            } else if (tag == Tags.PING_FOLDERS) {
+                if (!mSyncList.isEmpty()) {
+                    throw new IOException("Response has multiple values for Folders");
                 }
+                parsePingFolders();
+                final int count = mSyncList.size();
+                LogUtils.i(TAG, "Folders has %d elements", count);
+                if (count == 0) {
+                    throw new IOException("Folders was empty");
+                }
+            } else if (tag == Tags.PING_HEARTBEAT_INTERVAL) {
+                mHeartbeatInterval = getValue("HeartbeatInterval", mHeartbeatInterval);
+            } else {
+                // TODO: Error?
+                skipTag();
             }
-        } catch (final IOException e) {
-            LogUtils.e(TAG, "IOException while parsing ping response");
-            return false;
         }
 
         // Check the parse results for status values that don't match the other output.
+
         switch (mPingStatus) {
             case NO_VALUE:
-                return false;
+                throw new IOException("No status set in ping response");
             case STATUS_CHANGES_FOUND:
-                return !mSyncList.isEmpty();
+                if (mSyncList.isEmpty()) {
+                    throw new IOException("No changes found in ping response");
+                }
+                break;
             case STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS:
-                return mHeartbeatInterval != NO_VALUE;
+                if (mHeartbeatInterval == NO_VALUE) {
+                    throw new IOException("No value specified for heartbeat out of bounds");
+                }
+                break;
             case STATUS_REQUEST_TOO_MANY_FOLDERS:
-                return mMaxFolders != NO_VALUE;
+                if (mMaxFolders == NO_VALUE) {
+                    throw new IOException("No value specified for too many folders");
+                }
+                break;
         }
         return true;
     }

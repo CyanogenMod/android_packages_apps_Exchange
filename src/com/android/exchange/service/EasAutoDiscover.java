@@ -197,7 +197,7 @@ public class EasAutoDiscover extends EasServerConnection {
 
         final int code = resp.getStatus();
 
-        if (EasResponse.isRedirectError(code)) {
+        if (resp.isRedirectError()) {
             final String loc = resp.getRedirectAddress();
             if (loc != null && loc.startsWith("http")) {
                 LogUtils.d(TAG, "Posting autodiscover to redirect: " + loc);
