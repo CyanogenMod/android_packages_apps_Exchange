@@ -101,6 +101,7 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
         new String[] {Events.ORIGINAL_ID, Events._ID};
     private static final String EVENT_ID_AND_NAME =
         ExtendedProperties.EVENT_ID + "=? AND " + ExtendedProperties.NAME + "=?";
+    private static final String ORIGINAL_EVENT_ID = Events.ORIGINAL_ID + "=?";
 
     // Note that we use LIKE below for its case insensitivity
     private static final String EVENT_AND_EMAIL  =
@@ -1262,6 +1263,13 @@ public class CalendarSyncAdapter extends AbstractSyncAdapter {
                                         ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
                                         mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), null,
                                 null);
+                        // If the event is a recurring event we must make sure
+                        // that all exceptions are deleted as well
+                        mContentResolver.delete(
+                                asSyncAdapter(
+                                        Events.CONTENT_URI, mEmailAddress,
+                                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), ORIGINAL_EVENT_ID,
+                                new String[] {Long.toString(eventId)});
                     }
                 }
                 // Send any queued up email (invitations replies, etc.)
