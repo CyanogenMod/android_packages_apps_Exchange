@@ -151,6 +151,7 @@ public abstract class AbstractSyncParser extends Parser {
                         // Status 8 is Bad; it means the server doesn't recognize the serverId it
                         // sent us.  12 means that we're being asked to refresh the folder list.
                         // We'll do that with 8 also...
+                        mAccount.refresh(mContext);
                         ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
                         // We don't have any provision for telling the user "wait a minute while
                         // we sync folders"...
