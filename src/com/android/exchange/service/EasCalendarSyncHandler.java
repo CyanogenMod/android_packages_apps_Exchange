@@ -978,7 +978,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             }
             // Send all messages that were created during this sync.
             for (final Message msg : mOutgoingMailList) {
-                sendMessage(msg);
+                sendMessage(mAccount, msg);
             }
         }
         // Clear our lists for the next Sync request, if necessary.

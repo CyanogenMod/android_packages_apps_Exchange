@@ -87,7 +87,7 @@ public class EasAccountValidator extends EasServerConnection {
 
     public EasAccountValidator(final Context context, final HostAuth hostAuth) {
         this(context, new Account(), hostAuth);
-        mAccount.mEmailAddress = mHostAuth.mLogin;
+        mAccount.mEmailAddress = hostAuth.mLogin;
     }
 
     /**
@@ -118,7 +118,7 @@ public class EasAccountValidator extends EasServerConnection {
         final boolean protocolChanged = !newProtocolVersion.equals(mAccount.mProtocolVersion);
         if (protocolChanged) {
             mAccount.mProtocolVersion = newProtocolVersion;
-            uncacheProtocolVersion();
+            setProtocolVersion(newProtocolVersion);
         }
 
         // Fixup search flags, if they're not set.
@@ -172,7 +172,7 @@ public class EasAccountValidator extends EasServerConnection {
                 }
                 return MessagingException.NO_ERROR;
             }
-            if (EasResponse.isAuthError(code)) {
+            if (resp.isAuthError()) {
                 return resp.isMissingCertificate()
                         ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
                         : MessagingException.AUTHENTICATION_FAILED;
@@ -180,7 +180,7 @@ public class EasAccountValidator extends EasServerConnection {
             if (code == HttpStatus.SC_INTERNAL_SERVER_ERROR) {
                 return MessagingException.AUTHENTICATION_FAILED_OR_SERVER_ERROR;
             }
-            if (EasResponse.isRedirectError(code)) {
+            if (resp.isRedirectError()) {
                 throw new RedirectException(resp);
             }
             // TODO Need to catch other kinds of errors (e.g. policy) For now, report code.
@@ -227,7 +227,7 @@ public class EasAccountValidator extends EasServerConnection {
                 // For validation only, we take 403 as ACCESS_DENIED (the account isn't
                 // authorized, possibly due to device type)
                 resultCode = MessagingException.ACCESS_DENIED;
-            } else if (EasResponse.isProvisionError(code)) {
+            } else if (resp.isProvisionError()) {
                 // The device needs to have security policies enforced
                 throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
             } else if (code == HttpStatus.SC_NOT_FOUND) {
@@ -237,7 +237,7 @@ public class EasAccountValidator extends EasServerConnection {
                 resultCode = resp.isMissingCertificate()
                         ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
                         : MessagingException.AUTHENTICATION_FAILED;
-            } else if (EasResponse.isRedirectError(code)) {
+            } else if (resp.isRedirectError()) {
                 throw new RedirectException(resp);
             } else {
                 resultCode = MessagingException.UNSPECIFIED_EXCEPTION;

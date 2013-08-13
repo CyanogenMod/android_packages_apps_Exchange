@@ -41,7 +41,7 @@ import java.net.URI;
  * TODO: This class has a regrettable name. It's not a connection, but rather a task that happens
  * to have (and use) a connection to the server.
  */
-public abstract class EasServerConnection {
+public class EasServerConnection {
     /** Logging tag. */
     private static final String TAG = "EasServerConnection";
 
@@ -94,11 +94,9 @@ public abstract class EasServerConnection {
     private int mStoppedReason = STOPPED_REASON_NONE;
 
     /**
-     * The protocol version to use, as a double. This is a cached value based on the protocol
-     * version in {@link #mAccount}, so whenever that value is changed,
-     * {@link #uncacheProtocolVersion()} must be called.
+     * The protocol version to use, as a double.
      */
-    private double mProtocolVersionDouble = 0.0d;
+    private double mProtocolVersion = 0.0d;
 
     /**
      * The client for any requests made by this object. This is created lazily, and cleared
@@ -112,14 +110,15 @@ public abstract class EasServerConnection {
      */
     private EmailClientConnectionManager mConnectionManager;
 
-    protected EasServerConnection(final Context context, final Account account,
+    public EasServerConnection(final Context context, final Account account,
             final HostAuth hostAuth) {
         mContext = context;
         mHostAuth = hostAuth;
         mAccount = account;
+        setProtocolVersion(account.mProtocolVersion);
     }
 
-    protected EasServerConnection(final Context context, final Account account) {
+    public EasServerConnection(final Context context, final Account account) {
         this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
@@ -131,7 +130,7 @@ public abstract class EasServerConnection {
         return mConnectionManager;
     }
 
-    protected void redirectHostAuth(final String newAddress) {
+    public void redirectHostAuth(final String newAddress) {
         mClient = null;
         mConnectionManager = null;
         mHostAuth.mAddress = newAddress;
@@ -177,46 +176,34 @@ public abstract class EasServerConnection {
                 "://" + mHostAuth.mAddress + "/Microsoft-Server-ActiveSync";
     }
 
-    private String makeUriString(final String cmd, final String extra) {
+    public String makeUriString(final String cmd) {
         String uriString = makeBaseUriString();
         if (cmd != null) {
             uriString += "?Cmd=" + cmd + makeUserString();
         }
-        if (extra != null) {
-            uriString += extra;
-        }
         return uriString;
     }
 
-    /**
-     * Get the protocol version for {@link #mAccount}, or a default if we can't determine it.
-     * @return The protocol version for {@link #mAccount}, as a String.
-     */
-    private String getProtocolVersionString() {
-        if (mAccount.mProtocolVersion != null) {
-            return mAccount.mProtocolVersion;
-        }
-        return Eas.DEFAULT_PROTOCOL_VERSION;
+    private String makeUriString(final String cmd, final String extra) {
+        return makeUriString(cmd) + extra;
     }
 
     /**
      * If a sync causes us to update our protocol version, this function must be called so that
      * subsequent calls to {@link #getProtocolVersion()} will do the right thing.
      */
-    protected void uncacheProtocolVersion() {
-        mProtocolVersionDouble = 0.0d;
+    protected void setProtocolVersion(String protocolVersionString) {
+        if (protocolVersionString == null) {
+            protocolVersionString = Eas.DEFAULT_PROTOCOL_VERSION;
+        }
+        mProtocolVersion = Eas.getProtocolVersionDouble(protocolVersionString);
     }
 
     /**
-     * Get the protocol version for {@link #mAccount}, as a double. This function caches the result
-     * of looking up the value so that subsequent calls do not have to repeat that.
-     * @return The protocol version for {@link #mAccount}, as a double.
+     * @return The protocol version for this connection.
      */
-    protected double getProtocolVersion() {
-        if (mProtocolVersionDouble == 0.0d) {
-            mProtocolVersionDouble = Eas.getProtocolVersionDouble(getProtocolVersionString());
-        }
-        return mProtocolVersionDouble;
+    public double getProtocolVersion() {
+        return mProtocolVersion;
     }
 
     /**
@@ -246,11 +233,11 @@ public abstract class EasServerConnection {
      * @param usePolicyKey Whether or not a policy key should be sent.
      * @return
      */
-    protected HttpPost makePost(final String uri, final HttpEntity entity, final String contentType,
+    public HttpPost makePost(final String uri, final HttpEntity entity, final String contentType,
             final boolean usePolicyKey) {
         final HttpPost post = new HttpPost(uri);
         post.setHeader("Authorization", makeAuthString());
-        post.setHeader("MS-ASProtocolVersion", getProtocolVersionString());
+        post.setHeader("MS-ASProtocolVersion", String.valueOf(mProtocolVersion));
         post.setHeader("User-Agent", USER_AGENT);
         post.setHeader("Accept-Encoding", "gzip");
         if (contentType != null) {
@@ -309,8 +296,13 @@ public abstract class EasServerConnection {
         else {
             contentType = null;
         }
-        final HttpPost method = makePost(makeUriString(cmd, extra), entity, contentType,
-                !isPingCommand);
+        final String uriString;
+        if (extra == null) {
+            uriString = makeUriString(cmd);
+        } else {
+            uriString = makeUriString(cmd, extra);
+        }
+        final HttpPost method = makePost(uriString, entity, contentType, !isPingCommand);
         // NOTE
         // The next lines are added at the insistence of $VENDOR, who is seeing inappropriate
         // network activity related to the Ping command on some networks with some servers.
@@ -321,7 +313,7 @@ public abstract class EasServerConnection {
         return executePost(method, timeout);
     }
 
-    protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
+    public EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
             final long timeout) throws IOException {
         final ByteArrayEntity entity;
         if (bytes == null) {
@@ -346,7 +338,7 @@ public abstract class EasServerConnection {
      * @return The response from the Exchange server.
      * @throws IOException
      */
-    protected EasResponse executePost(final HttpPost method, final long timeout)
+    public EasResponse executePost(final HttpPost method, final long timeout)
             throws IOException {
         // The synchronized blocks are here to support the stop() function, specifically to handle
         // when stop() is called first. Notably, they are NOT here in order to guard against
@@ -356,18 +348,23 @@ public abstract class EasServerConnection {
                 mStopped = false;
                 // If this gets stopped after the POST actually starts, it throws an IOException.
                 // Therefore if we get stopped here, let's throw the same sort of exception, so
-                // callers can just equate IOException with the "this POST got killed for some
-                // reason".
+                // callers can equate IOException with "this POST got killed for some reason".
                 throw new IOException("Command was stopped before POST");
             }
            mPendingPost = method;
         }
+        boolean postCompleted = false;
         try {
-            return EasResponse.fromHttpRequest(getClientConnectionManager(), getHttpClient(timeout),
-                    method);
+            final EasResponse response = EasResponse.fromHttpRequest(getClientConnectionManager(),
+                    getHttpClient(timeout), method);
+            postCompleted = true;
+            return response;
         } finally {
             synchronized (this) {
                 mPendingPost = null;
+                if (postCompleted) {
+                    mStoppedReason = STOPPED_REASON_NONE;
+                }
             }
         }
     }
@@ -385,47 +382,49 @@ public abstract class EasServerConnection {
      *               is used to signify that no stop has occurred.
      *               This class simply stores the value; subclasses are responsible for checking
      *               this value when catching the {@link IOException} and responding appropriately.
-     * @return Whether we were in the middle of a POST.
      */
-    public synchronized boolean stop(final int reason) {
-        final boolean isMidPost = (mPendingPost != null);
-        LogUtils.i(TAG, "%s with reason %d", (isMidPost ? "Interrupt" : "Stop next"), reason);
-        mStoppedReason = reason;
-        if (isMidPost) {
-            mPendingPost.abort();
-        } else {
-            mStopped = true;
+    public synchronized void stop(final int reason) {
+        // Only process legitimate reasons.
+        if (reason >= STOPPED_REASON_ABORT && reason <= STOPPED_REASON_RESTART) {
+            final boolean isMidPost = (mPendingPost != null);
+            LogUtils.i(TAG, "%s with reason %d", (isMidPost ? "Interrupt" : "Stop next"), reason);
+            mStoppedReason = reason;
+            if (isMidPost) {
+                mPendingPost.abort();
+            } else {
+                mStopped = true;
+            }
         }
-        return isMidPost;
     }
 
     /**
-     * Check the reason of the last {@link #stop} request.
      * @return The reason supplied to the last call to {@link #stop}, or
-     *     {@link #STOPPED_REASON_NONE} if we haven't been stopped.
+     *         {@link #STOPPED_REASON_NONE} if {@link #stop} hasn't been called since the last
+     *         successful POST.
      */
-    protected int getStoppedReason() {
+    public synchronized int getStoppedReason() {
         return mStoppedReason;
     }
 
     /**
      * Convenience method for adding a Message to an account's outbox
-     * @param msg the message to send
+     * @param account The {@link Account} from which to send the message.
+     * @param msg The message to send
      */
-    protected void sendMessage(final EmailContent.Message msg) {
-        long mailboxId = Mailbox.findMailboxOfType(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
+    protected void sendMessage(final Account account, final EmailContent.Message msg) {
+        long mailboxId = Mailbox.findMailboxOfType(mContext, account.mId, Mailbox.TYPE_OUTBOX);
         // TODO: Improve system mailbox handling.
         if (mailboxId == Mailbox.NO_MAILBOX) {
-            LogUtils.d(TAG, "No outbox for account %d, creating it", mAccount.mId);
+            LogUtils.d(TAG, "No outbox for account %d, creating it", account.mId);
             final Mailbox outbox =
-                    Mailbox.newSystemMailbox(mContext, mAccount.mId, Mailbox.TYPE_OUTBOX);
+                    Mailbox.newSystemMailbox(mContext, account.mId, Mailbox.TYPE_OUTBOX);
             outbox.save(mContext);
             mailboxId = outbox.mId;
         }
         msg.mMailboxKey = mailboxId;
-        msg.mAccountKey = mAccount.mId;
+        msg.mAccountKey = account.mId;
         msg.save(mContext);
-        requestSyncForMailbox(new android.accounts.Account(mAccount.mEmailAddress,
+        requestSyncForMailbox(new android.accounts.Account(account.mEmailAddress,
                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
     }
 

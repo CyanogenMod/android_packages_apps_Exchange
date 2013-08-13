@@ -494,9 +494,9 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                 // Let's retry without "smart" commands.
                 return sendOneMessage(message, null);
             } else {
-                if (EasResponse.isAuthError(code)) {
+                if (resp.isAuthError()) {
                     return false; // TODO: Handle SyncStatus.FAILURE_LOGIN;
-                } else if (EasResponse.isProvisionError(code)) {
+                } else if (resp.isProvisionError()) {
                     return false; // TODO: Handle SyncStatus.FAILURE_SECURITY;
                 }
             }

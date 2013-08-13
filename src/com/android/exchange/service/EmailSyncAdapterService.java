@@ -42,6 +42,8 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Search;
+import com.android.exchange.eas.EasOperation;
+import com.android.exchange.eas.EasPing;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
 
@@ -99,8 +101,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          * 3) If there is a sync running, there is an entry with null as the value.
          * We cannot have more than one ping or sync running at a time.
          */
-        private final HashMap<Long, EasPingSyncHandler> mPingHandlers =
-                new HashMap<Long, EasPingSyncHandler>();
+        private final HashMap<Long, PingTask> mPingHandlers = new HashMap<Long, PingTask>();
 
         /**
          * Wait until neither a sync nor a ping is running on this account, and then return.
@@ -109,9 +110,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          */
         private synchronized void waitUntilNoActivity(final long accountId) {
             while (mPingHandlers.containsKey(accountId)) {
-                final EasPingSyncHandler pingHandler = mPingHandlers.get(accountId);
+                final PingTask pingHandler = mPingHandlers.get(accountId);
                 if (pingHandler != null) {
-                    pingHandler.stop(EasServerConnection.STOPPED_REASON_ABORT);
+                    pingHandler.stop();
                 }
                 try {
                     wait();
@@ -134,7 +135,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          * If there are no running pings, stop the service.
          */
         private void stopServiceIfNoPings() {
-            for (final EasPingSyncHandler pingHandler : mPingHandlers.values()) {
+            for (final PingTask pingHandler : mPingHandlers.values()) {
                 if (pingHandler != null) {
                     return;
                 }
@@ -165,25 +166,25 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             }
 
             // If a ping is currently running, tell it to restart to pick up new params.
-            final EasPingSyncHandler pingSyncHandler = mPingHandlers.get(account.mId);
+            final PingTask pingSyncHandler = mPingHandlers.get(account.mId);
             if (pingSyncHandler != null) {
-                pingSyncHandler.stop(EasServerConnection.STOPPED_REASON_RESTART);
+                pingSyncHandler.restart();
                 return;
             }
 
             // If we're here, then there's neither a sync nor a ping running. Start a new ping.
             final EmailSyncAdapterService service = EmailSyncAdapterService.this;
             if (account.mSyncInterval == Account.CHECK_INTERVAL_PUSH) {
+                // TODO: Also check if we have any mailboxes that WANT push.
                 // This account needs to ping.
                 // Note: unlike startSync, we CANNOT allow the caller to do the actual work.
                 // If we return before the ping starts, there's a race condition where another
                 // ping or sync might start first. It only works for startSync because sync is
                 // higher priority than ping (i.e. a ping can't start while a sync is pending)
                 // and only one sync can run at a time.
-                final EasPingSyncHandler pingHandler =
-                        new EasPingSyncHandler(service, account, this);
+                final PingTask pingHandler = new PingTask(service, account, this);
                 mPingHandlers.put(account.mId, pingHandler);
-                pingHandler.startPing();
+                pingHandler.start();
                 // Whenever we have a running ping, make sure this service stays running.
                 service.startService(new Intent(service, EmailSyncAdapterService.class));
             }
@@ -205,26 +206,24 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          * Updates the synchronization bookkeeping when a ping is done. Also requests a ping-only
          * sync if necessary.
          * @param amAccount The {@link android.accounts.Account} for this account.
-         * @param account The account whose ping just finished.
+         * @param accountId The account whose ping just finished.
          * @param pingStatus The status value from {@link PingParser} for the last ping performed.
          *                   This cannot be one of the values that results in another ping, so this
          *                   function only needs to handle the terminal statuses.
          */
         public synchronized void pingComplete(final android.accounts.Account amAccount,
-                final Account account, final int pingStatus) {
-            mPingHandlers.remove(account.mId);
+                final long accountId, final int pingStatus) {
+            mPingHandlers.remove(accountId);
 
             // TODO: if (pingStatus == PingParser.STATUS_FAILED), notify UI.
             // TODO: if (pingStatus == PingParser.STATUS_REQUEST_TOO_MANY_FOLDERS), notify UI.
 
-            if (pingStatus == PingParser.STATUS_NETWORK_EXCEPTION) {
+            if (pingStatus == EasOperation.RESULT_REQUEST_FAILURE) {
                 // Request a new ping through the SyncManager. This will do the right thing if the
                 // exception was due to loss of network connectivity, etc. (i.e. it will wait for
                 // network to restore and then request it).
-                EasPingSyncHandler.requestPing(amAccount);
-            } else if (pingStatus != PingParser.STATUS_INTERRUPTED &&
-                    pingStatus != PingParser.STATUS_CHANGES_FOUND &&
-                    pingStatus != PingParser.STATUS_FOLDER_REFRESH_NEEDED) {
+                EasPing.requestPing(amAccount);
+            } else {
                 stopServiceIfNoPings();
             }
 

@@ -482,9 +482,9 @@ public class EasOutboxService extends EasSyncService {
                         smartSend = false;
                     } else {
                         userLog("Message sending failed, code: " + code);
-                        if (EasResponse.isAuthError(code)) {
+                        if (resp.isAuthError()) {
                             result = EmailServiceStatus.LOGIN_FAILED;
-                        } else if (EasResponse.isProvisionError(code)) {
+                        } else if (resp.isProvisionError()) {
                             result = EmailServiceStatus.SECURITY_FAILURE;
                         }
                         sendFailed(msgId, result);
