@@ -1,6 +1,7 @@
 package com.android.exchange.service;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
@@ -17,6 +18,7 @@ import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.eas.EasConnectionCache;
@@ -56,7 +58,7 @@ public class EasServerConnection {
     protected static final long COMMAND_TIMEOUT = 30 * DateUtils.SECOND_IN_MILLIS;
 
     private static final String DEVICE_TYPE = "Android";
-    protected static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
+    private static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
 
     /** Message MIME type for EAS version 14 and later. */
@@ -78,6 +80,9 @@ public class EasServerConnection {
      */
     public static final int STOPPED_REASON_RESTART = 2;
 
+    private static final String[] ACCOUNT_SECURITY_KEY_PROJECTION =
+            { EmailContent.AccountColumns.SECURITY_SYNC_KEY };
+
     private static String sDeviceId = null;
 
     protected final Context mContext;
@@ -85,6 +90,7 @@ public class EasServerConnection {
     // to not screw up any connection caching (use redirectHostAuth).
     protected final HostAuth mHostAuth;
     protected final Account mAccount;
+    private final long mAccountId;
 
     // Bookkeeping for interrupting a POST. This is primarily for use by Ping (there's currently
     // no mechanism for stopping a sync).
@@ -115,6 +121,7 @@ public class EasServerConnection {
         mContext = context;
         mHostAuth = hostAuth;
         mAccount = account;
+        mAccountId = account.mId;
         setProtocolVersion(account.mProtocolVersion);
     }
 
@@ -207,6 +214,13 @@ public class EasServerConnection {
     }
 
     /**
+     * @return The useragent string for our client.
+     */
+    public final String getUserAgent() {
+        return USER_AGENT;
+    }
+
+    /**
      * Send an http OPTIONS request to server.
      * @return The {@link EasResponse} from the Exchange server.
      * @throws IOException
@@ -215,7 +229,7 @@ public class EasServerConnection {
         // For OPTIONS, just use the base string and the single header
         final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString()));
         method.setHeader("Authorization", makeAuthString());
-        method.setHeader("User-Agent", USER_AGENT);
+        method.setHeader("User-Agent", getUserAgent());
         return EasResponse.fromHttpRequest(getClientConnectionManager(),
                 getHttpClient(COMMAND_TIMEOUT), method);
     }
@@ -238,7 +252,7 @@ public class EasServerConnection {
         final HttpPost post = new HttpPost(uri);
         post.setHeader("Authorization", makeAuthString());
         post.setHeader("MS-ASProtocolVersion", String.valueOf(mProtocolVersion));
-        post.setHeader("User-Agent", USER_AGENT);
+        post.setHeader("User-Agent", getUserAgent());
         post.setHeader("Accept-Encoding", "gzip");
         if (contentType != null) {
             post.setHeader("Content-Type", contentType);
@@ -248,7 +262,14 @@ public class EasServerConnection {
             // account), send "0".  The server will respond with code 449 if there are policies
             // to be enforced
             final String key;
-            final String accountKey = mAccount.mSecuritySyncKey;
+            final String accountKey;
+            if (mAccountId == Account.NO_ACCOUNT) {
+                accountKey = null;
+            } else {
+               accountKey = Utility.getFirstRowString(mContext,
+                        ContentUris.withAppendedId(Account.CONTENT_URI, mAccountId),
+                        ACCOUNT_SECURITY_KEY_PROJECTION, null, null, null, 0);
+            }
             if (!TextUtils.isEmpty(accountKey)) {
                 key = accountKey;
             } else {
