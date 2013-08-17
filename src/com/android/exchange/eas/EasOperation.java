@@ -64,38 +64,47 @@ public abstract class EasOperation {
     /** Message MIME type for EAS version 14 and later. */
     private static final String EAS_14_MIME_TYPE = "application/vnd.ms-sync.wbxml";
 
+    /** Error code indicating the operation was cancelled via {@link #abort}. */
+    public static final int RESULT_ABORT = -1;
+    /** Error code indicating the operation was cancelled via {@link #restart}. */
+    public static final int RESULT_RESTART = -2;
+    /** Error code indicating the Exchange servers redirected too many times. */
+    public static final int RESULT_TOO_MANY_REDIRECTS = -3;
+    /** Error code indicating the request failed due to a network problem. */
+    public static final int RESULT_REQUEST_FAILURE = -4;
+    /** Error code indicating a 403 (forbidden) error. */
+    public static final int RESULT_FORBIDDEN = -5;
+    /** Error code indicating an unresolved provisioning error. */
+    public static final int RESULT_PROVISIONING_ERROR = -6;
+    /** Error code indicating an authentication problem. */
+    public static final int RESULT_AUTHENTICATION_ERROR = -7;
+    /** Error code indicating some other failure. */
+    public static final int RESULT_OTHER_FAILURE = -8;
+
     protected final Context mContext;
+
+    /**
+     * The account id for this operation.
+     * Currently only used for handling provisioning errors. Ideally we should minimize the creep
+     * of how this gets used (i.e. don't let it get to the intertwined state of the past).
+     */
+    private final long mAccountId;
     private final EasServerConnection mConnection;
 
     protected EasOperation(final Context context, final Account account, final HostAuth hostAuth) {
-        mContext = context;
-        mConnection = new EasServerConnection(context, account, hostAuth);
+        this(context, account.mId, new EasServerConnection(context, account, hostAuth));
     }
 
     protected EasOperation(final Context context, final Account account) {
         this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
-    /**
-     * The below constants are the result codes (returned from {@link #performOperation} for errors
-     * that occur in the base class, i.e. those that happen either during making the request or due
-     * to the common error handling. These values are all negative, leaving non-negative values for
-     * {@link #handleResponse}. If {@link #performOperation} returns a negative value, then it's
-     * most likely due to an error in the base class. Subclasses should generally not return
-     * negative values from {@link #handleResponse}, except for possibly
-     * {@link #RESULT_OTHER_FAILURE}.
-     */
-
-    /** Error code for the operation being cancelled via {@link #abort}. */
-    public static final int RESULT_ABORT = -1;
-    /** Error code for the operation being cancelled via {@link #restart}. */
-    public static final int RESULT_RESTART = -2;
-    /** Error code for when the Exchange servers redirect you too many times in a row. */
-    public static final int RESULT_TOO_MANY_REDIRECTS = -3;
-    /** Error code for when the request failed due to a network problem. */
-    public static final int RESULT_REQUEST_FAILURE = -4;
-    /** Error code for all other errors. */
-    public static final int RESULT_OTHER_FAILURE = -5;
+    protected EasOperation(final Context context, final long accountId,
+            final EasServerConnection connection) {
+        mContext = context;
+        mAccountId = accountId;
+        mConnection = connection;
+    }
 
     /**
      * Request that this operation terminate. Intended for use by the sync service to interrupt
@@ -117,9 +126,23 @@ public abstract class EasOperation {
      * The skeleton of performing an operation. This function handles all the common code and
      * error handling, calling into virtual functions that are implemented or overridden by the
      * subclass to do the operation-specific logic.
+     *
+     * The result codes work as follows:
+     * - Negative values indicate common error codes and are defined above (the various RESULT_*
+     *   constants).
+     * - Non-negative values indicate the result of {@link #handleResponse}. These are obviously
+     *   specific to the subclass, and may indicate success or error conditions.
+     *
+     * The common error codes primarily indicate conditions that occur when performing the POST
+     * itself, such as network errors and handling of the HTTP response. However, some errors that
+     * can be indicated in the HTTP response code can also be indicated in the payload of the
+     * response as well, so {@link #handleResponse} should in those cases return the appropriate
+     * negative result code, which will be handled the same as if it had been indicated in the HTTP
+     * response code.
+     *
      * @param syncResult If this operation is a sync, the {@link SyncResult} object that should
      *                   be written to for this sync; otherwise null.
-     * @return A result code for the outcome of this operation, one of the RESULT_* values above.
+     * @return A result code for the outcome of this operation, as described above.
      */
     protected final int performOperation(final SyncResult syncResult) {
         // We handle server redirects by looping, but we need to protect against too much looping.
@@ -160,10 +183,14 @@ public abstract class EasOperation {
 
             // The POST completed, so process the response.
             try {
+                final int result;
                 // First off, the success case.
                 if (response.isSuccess()) {
                     try {
-                        return handleResponse(response, syncResult);
+                        result = handleResponse(response, syncResult);
+                        if (result >= 0) {
+                            return result;
+                        }
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
                         if (syncResult != null) {
@@ -171,60 +198,70 @@ public abstract class EasOperation {
                         }
                         return RESULT_OTHER_FAILURE;
                     }
-                }
-
-                // Now handle the error types we know how to deal with.
-                if (response.isForbidden() && handleForbidden()) {
-                    // Some operations distinguish forbidden from provisioning errors, in which
-                    // case there's nothing futher to do here.
-                    LogUtils.e(LOG_TAG, "Forbidden response");
-                } else  if (response.isProvisionError()) {
-                    LogUtils.e(LOG_TAG, "Provisioning error");
-                    handleProvisionError();
-                } else if (response.isAuthError()) {
-                    LogUtils.e(LOG_TAG, "Authentication error");
-                    handleAuthError();
                 } else {
-                    LogUtils.e(LOG_TAG, "Generic error");
+                    result = RESULT_OTHER_FAILURE;
                 }
 
-                // If it's not a redirect, we're done.
-                if (!response.isRedirectError()) {
+                // If this operation has distinct handling for 403 errors, do that.
+                if (result == RESULT_FORBIDDEN || (response.isForbidden() && handleForbidden())) {
+                    LogUtils.e(LOG_TAG, "Forbidden response");
                     if (syncResult != null) {
-                        if (response.isAuthError()) {
-                            ++syncResult.stats.numAuthExceptions;
-                        } else {
-                            // TODO: Is there a more appropriate stat?
-                            ++syncResult.stats.numIoExceptions;
-                        }
+                        // TODO: Is this the best stat to increment?
+                        ++syncResult.stats.numAuthExceptions;
+                    }
+                    return RESULT_FORBIDDEN;
+                }
+
+                // Handle provisioning errors.
+                if (result == RESULT_PROVISIONING_ERROR || response.isProvisionError()) {
+                    if (handleProvisionError(syncResult, mAccountId)) {
+                        // The provisioning error has been taken care of, so we should re-do this
+                        // request.
+                        continue;
+                    }
+                    if (syncResult != null) {
+                        // TODO: Is this the best stat to increment?
+                        ++syncResult.stats.numAuthExceptions;
+                    }
+                    return RESULT_PROVISIONING_ERROR;
+                }
+
+                // Handle authentication errors.
+                if (response.isAuthError()) {
+                    LogUtils.e(LOG_TAG, "Authentication error");
+                    if (syncResult != null) {
+                        ++syncResult.stats.numAuthExceptions;
+                    }
+                    handleAuthError();
+                    return RESULT_AUTHENTICATION_ERROR;
+                }
+
+                // Handle redirects.
+                if (response.isRedirectError()) {
+                    ++redirectCount;
+                    mConnection.redirectHostAuth(response.getRedirectAddress());
+                    // Note that unlike other errors, we do NOT return here; we just keep looping.
+                } else {
+                    // All other errors.
+                    LogUtils.e(LOG_TAG, "Generic error");
+                    if (syncResult != null) {
+                        // TODO: Is this the best stat to increment?
+                        ++syncResult.stats.numIoExceptions;
                     }
                     return RESULT_OTHER_FAILURE;
                 }
-
-                // For redirects, update our connection and try again.
-                ++redirectCount;
-                mConnection.redirectHostAuth(response.getRedirectAddress());
             } finally {
                 response.close();
             }
         } while (redirectCount < MAX_REDIRECTS);
 
-        // Non-redirects return out of the while loop, so the only way to reach here is if we
+        // Non-redirects return immediately after handling, so the only way to reach here is if we
         // looped too many times.
         LogUtils.e(LOG_TAG, "Too many redirects");
         if (syncResult != null) {
            syncResult.tooManyRetries = true;
         }
         return RESULT_TOO_MANY_REDIRECTS;
-    }
-
-    /**
-     * Handling for provisioning (i.e. policy enforcement) errors. Should be the same for all
-     * operations.
-     * TODO: Implement.
-     */
-    private final void handleProvisionError() {
-
     }
 
     /**
@@ -261,7 +298,10 @@ public abstract class EasOperation {
      * @param response The {@link EasResponse} to our request.
      * @param syncResult The {@link SyncResult} object for this operation, or null if we're not
      *                   handling a sync.
-     * @return A result code that is returned to the caller of {@link #performOperation}.
+     * @return A result code. Non-negative values are returned directly to the caller; negative
+     *         values
+     *
+     * that is returned to the caller of {@link #performOperation}.
      * @throws IOException
      */
     protected abstract int handleResponse(final EasResponse response, final SyncResult syncResult)
@@ -296,7 +336,6 @@ public abstract class EasOperation {
     }
 
     /**
-     *
      * @return The timeout to use for the POST.
      */
     protected long getTimeout() {
@@ -313,14 +352,40 @@ public abstract class EasOperation {
     }
 
     /**
+     * Handle a provisioning error. Subclasses may override this to do something different, e.g.
+     * to validate rather than actually do the provisioning.
+     * @param syncResult
+     * @param accountId
+     * @return
+     */
+    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+        final EasProvision provisionOperation = new EasProvision(mContext, accountId, mConnection);
+        return provisionOperation.provision(syncResult, accountId);
+    }
+
+    /**
+     * Convenience methods for subclasses to use.
+     */
+
+    /**
      * Convenience method to make an {@link HttpEntity} from {@link Serializer}.
      */
     protected final HttpEntity makeEntity(final Serializer s) {
         return new ByteArrayEntity(s.toByteArray());
     }
 
+    /**
+     * @return The protocol version to use.
+     */
     protected final double getProtocolVersion() {
         return mConnection.getProtocolVersion();
+    }
+
+    /**
+     * @return Our useragent.
+     */
+    protected final String getUserAgent() {
+        return mConnection.getUserAgent();
     }
 
     /**
@@ -328,7 +393,7 @@ public abstract class EasOperation {
      * @param account The {@link Account} from which to send the message.
      * @param msg the message to send
      */
-    protected void sendMessage(final Account account, final EmailContent.Message msg) {
+    protected final void sendMessage(final Account account, final EmailContent.Message msg) {
         long mailboxId = Mailbox.findMailboxOfType(mContext, account.mId, Mailbox.TYPE_OUTBOX);
         // TODO: Improve system mailbox handling.
         if (mailboxId == Mailbox.NO_MAILBOX) {

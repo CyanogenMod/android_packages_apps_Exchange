@@ -1,0 +1,263 @@
+/*
+ * Copyright (C) 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.android.exchange.eas;
+
+import android.content.Context;
+import android.content.SyncResult;
+import android.os.Build;
+
+import com.android.emailcommon.provider.Policy;
+import com.android.emailcommon.service.PolicyServiceProxy;
+import com.android.exchange.Eas;
+import com.android.exchange.EasResponse;
+import com.android.exchange.adapter.ProvisionParser;
+import com.android.exchange.adapter.Serializer;
+import com.android.exchange.adapter.Tags;
+import com.android.exchange.service.EasServerConnection;
+import com.android.mail.utils.LogUtils;
+
+import org.apache.http.HttpEntity;
+
+import java.io.IOException;
+
+/**
+ * Implements the EAS Provision protocol.
+ *
+ * Provisioning actually consists of two server interactions:
+ * 1) Ask the server for the required policies.
+ * 2) Acknowledge our disposition for enforcing those policies.
+ *
+ * The structure of the requests and response are essentially the same for both, so we use the
+ * same code and vary slightly based on which one we're doing. Also, provisioning responses can tell
+ * us to wipe the device, so we need to handle that too.
+ * TODO: Make it possible to ack separately, possibly by splitting into separate operations.
+ * See http://msdn.microsoft.com/en-us/library/ee203567(v=exchg.80).aspx for more details.
+ */
+public class EasProvision extends EasOperation {
+
+    private static final String LOG_TAG = "EasProvision";
+
+    /** The policy type for versions of EAS prior to 2007. */
+    private static final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";
+    /** The policy type for versions of EAS starting with 2007. */
+    private static final String EAS_12_POLICY_TYPE = "MS-EAS-Provisioning-WBXML";
+
+    /** The EAS protocol Provision status for "we implement all of the policies" */
+    private static final String PROVISION_STATUS_OK = "1";
+    /** The EAS protocol Provision status meaning "we partially implement the policies" */
+    private static final String PROVISION_STATUS_PARTIAL = "2";
+
+    /** Value for {@link #mPhase} indicating we're performing the initial request. */
+    private static final int PHASE_INITIAL = 0;
+    /** Value for {@link #mPhase} indicating we're performing the acknowledgement request. */
+    private static final int PHASE_ACKNOWLEDGE = 1;
+    /** Value for {@link #mPhase} indicating we're performing the acknowledgement for a wipe. */
+    private static final int PHASE_WIPE = 2;
+
+    /**
+     * This operation doesn't use public result codes because ultimately the operation answers
+     * a yes/no question. These result codes are used internally only to communicate from
+     * {@link #handleResponse}.
+     */
+
+    /** Result code indicating the server's policy can be fully supported. */
+    private static final int RESULT_POLICY_SUPPORTED = 1;
+    /** Result code indicating the server's policy cannot be fully supported. */
+    private static final int RESULT_POLICY_UNSUPPORTED = 2;
+    /** Result code indicating the server sent a remote wipe directive. */
+    private static final int RESULT_REMOTE_WIPE = 3;
+
+    private Policy mPolicy;
+    private String mPolicyKey;
+    private String mStatus;
+
+    /**
+     * Because this operation supports variants of the request and parsing, and {@link EasOperation}
+     * has no way to communicate this into {@link #performOperation}, we use this member variable
+     * to vary how {@link #getRequestEntity} and {@link #handleResponse} work.
+     */
+    private int mPhase;
+
+    public EasProvision(final Context context, final long accountId,
+            final EasServerConnection connection) {
+        super(context, accountId, connection);
+        mPolicy = null;
+        mPolicyKey = null;
+        mStatus = null;
+        mPhase = 0;
+    }
+
+    private int performInitialRequest(final SyncResult syncResult) {
+        mPhase = PHASE_INITIAL;
+        return performOperation(syncResult);
+    }
+
+    private void performAckRequestForWipe(final SyncResult syncResult) {
+        mPhase = PHASE_WIPE;
+        performOperation(syncResult);
+    }
+
+    private int performAckRequest(final SyncResult syncResult, final boolean isPartial) {
+        mPhase = PHASE_ACKNOWLEDGE;
+        mStatus = isPartial ? PROVISION_STATUS_PARTIAL : PROVISION_STATUS_OK;
+        return performOperation(syncResult);
+    }
+
+    /**
+     * Make the provisioning calls to determine if we can handle the required policy.
+     * @return Whether we can support the required policy.
+     */
+    public final boolean test() {
+        int result = performInitialRequest(null);
+        if (result == RESULT_POLICY_UNSUPPORTED) {
+            // Check if the server will permit partial policies.
+            result = performAckRequest(null, true);
+        }
+        return result == RESULT_POLICY_SUPPORTED;
+    }
+
+    /**
+     * Get the required policy from the server and enforce it.
+     * @param syncResult The {@link SyncResult}, if anym for this operation.
+     * @param accountId The id for the account for this request.
+     * @return Whether we succeeded in provisioning this account.
+     */
+    public final boolean provision(final SyncResult syncResult, final long accountId) {
+        final int result = performInitialRequest(syncResult);
+
+        if (result < 0) {
+            return false;
+        }
+
+        if (result == RESULT_REMOTE_WIPE) {
+            performAckRequestForWipe(syncResult);
+            LogUtils.i(LOG_TAG, "Executing remote wipe");
+            PolicyServiceProxy.remoteWipe(mContext);
+            return false;
+        }
+
+        // Apply the policies (that we support) with the temporary key.
+        mPolicy.mProtocolPoliciesUnsupported = null;
+        PolicyServiceProxy.setAccountPolicy(mContext, accountId, mPolicy, null);
+        if (!PolicyServiceProxy.isActive(mContext, mPolicy)) {
+            return false;
+        }
+
+        // Acknowledge to the server and make sure all's well.
+        if (performAckRequest(syncResult, result == RESULT_POLICY_UNSUPPORTED) ==
+                RESULT_POLICY_UNSUPPORTED) {
+            return false;
+        }
+
+        // Write the final policy key to the Account.
+        PolicyServiceProxy.setAccountPolicy(mContext, accountId, mPolicy, mPolicyKey);
+        return true;
+    }
+
+    @Override
+    protected String getCommand() {
+        return "Provision";
+    }
+
+    @Override
+    protected HttpEntity getRequestEntity() throws IOException {
+        final Serializer s = new Serializer();
+        s.start(Tags.PROVISION_PROVISION);
+
+        // When requesting the policy in 14.1, we also need to send device information.
+        if (mPhase == PHASE_INITIAL &&
+                getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
+            s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
+            s.data(Tags.SETTINGS_MODEL, Build.MODEL);
+            //s.data(Tags.SETTINGS_IMEI, "");
+            //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
+            s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
+            //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
+            //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
+            //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
+            s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
+            s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
+        }
+        s.start(Tags.PROVISION_POLICIES);
+        s.start(Tags.PROVISION_POLICY);
+        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType());
+
+        // When acknowledging a policy, we tell the server whether we applied the policy.
+        if (mPhase == PHASE_ACKNOWLEDGE) {
+            s.data(Tags.PROVISION_POLICY_KEY, mPolicyKey);
+            s.data(Tags.PROVISION_STATUS, mStatus);
+        }
+        if (mPhase == PHASE_WIPE) {
+            s.start(Tags.PROVISION_REMOTE_WIPE);
+            s.data(Tags.PROVISION_STATUS, PROVISION_STATUS_OK);
+            s.end();
+        }
+        s.end().end().end().done(); // PROVISION_POLICY, PROVISION_POLICIES, PROVISION_PROVISION
+
+        return makeEntity(s);
+    }
+
+    @Override
+    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
+            throws IOException {
+        final ProvisionParser pp = new ProvisionParser(mContext, response.getInputStream());
+        // If this is the response for a remote wipe ack, it doesn't have anything useful in it.
+        // Just go ahead and return now.
+        if (mPhase == PHASE_WIPE) {
+            return RESULT_REMOTE_WIPE;
+        }
+
+        if (!pp.parse()) {
+            throw new IOException("Error while parsing response");
+        }
+
+        // What we care about in the response depends on what phase we're in.
+        if (mPhase == PHASE_INITIAL) {
+            if (pp.getRemoteWipe()) {
+                return RESULT_REMOTE_WIPE;
+            }
+            mPolicy = pp.getPolicy();
+            mPolicyKey = pp.getSecuritySyncKey();
+
+            return (pp.hasSupportablePolicySet()
+                    ? RESULT_POLICY_SUPPORTED : RESULT_POLICY_UNSUPPORTED);
+        }
+
+        if (mPhase == PHASE_ACKNOWLEDGE) {
+            mPolicyKey = pp.getSecuritySyncKey();
+            return (mPolicyKey != null ? RESULT_POLICY_SUPPORTED : RESULT_POLICY_UNSUPPORTED);
+        }
+
+        // Note: this should be unreachable, but the compiler doesn't know it.
+        // If we somehow get here, act like we can't do anything.
+        return RESULT_POLICY_UNSUPPORTED;
+    }
+
+    @Override
+    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+        // If we get a provisioning error while doing provisioning, we should not recurse.
+        return false;
+    }
+
+    /**
+     * @return The policy type for this connection.
+     */
+    private final String getPolicyType() {
+        return (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) ?
+                EAS_12_POLICY_TYPE : EAS_2_POLICY_TYPE;
+    }
+}
