@@ -259,7 +259,7 @@ public class EasAccountValidator extends EasServerConnection {
         s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
         s.data(Tags.SETTINGS_MODEL, Build.MODEL);
         s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
-        s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
+        s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
         s.end().end().end().done(); // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION, SETTINGS_SETTINGS
         final EasResponse resp = sendHttpClientPost("Settings", s.toByteArray());
         try {
@@ -369,7 +369,7 @@ public class EasAccountValidator extends EasServerConnection {
             //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
             //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
             //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
-            s.data(Tags.SETTINGS_USER_AGENT, USER_AGENT);
+            s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
             s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
         }
         s.start(Tags.PROVISION_POLICIES);

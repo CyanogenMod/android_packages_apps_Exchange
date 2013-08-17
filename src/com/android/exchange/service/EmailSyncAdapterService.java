@@ -42,6 +42,7 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Search;
+import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
@@ -521,9 +522,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             if (mailboxId == FULL_ACCOUNT_SYNC ||
                     mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY) {
-                final EasAccountSyncHandler accountSyncHandler =
-                        new EasAccountSyncHandler(context, account);
-                accountSyncHandler.performSync();
+                final EasFolderSync folderSync = new EasFolderSync(context, account);
+                folderSync.doFolderSync(syncResult);
 
                 if (mailboxId == FULL_ACCOUNT_SYNC) {
                     // Full account sync includes all mailboxes that participate in system sync.
