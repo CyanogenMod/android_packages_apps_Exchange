@@ -40,9 +40,10 @@ import java.util.ArrayList;
 
 /**
  * Performs an Exchange Ping, which is the command for receiving push notifications.
+ * See http://msdn.microsoft.com/en-us/library/ee200913(v=exchg.80).aspx for more details.
  */
 public class EasPing extends EasOperation {
-    private static final String TAG = "EasPingSyncHandler";
+    private static final String TAG = "EasPing";
 
     private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
             MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
