@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.exchange.service;
 
 import android.content.ContentResolver;
@@ -28,6 +44,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
@@ -36,6 +53,7 @@ import org.apache.http.params.HttpParams;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.cert.CertificateException;
 
 /**
  * Base class for communicating with an EAS server. Anything that needs to send messages to the
@@ -92,17 +110,17 @@ public class EasServerConnection {
     protected final Account mAccount;
     private final long mAccountId;
 
-    // Bookkeeping for interrupting a POST. This is primarily for use by Ping (there's currently
+    // Bookkeeping for interrupting a request. This is primarily for use by Ping (there's currently
     // no mechanism for stopping a sync).
     // Access to these variables should be synchronized on this.
-    private HttpPost mPendingPost = null;
+    private HttpUriRequest mPendingRequest = null;
     private boolean mStopped = false;
     private int mStoppedReason = STOPPED_REASON_NONE;
 
-    /**
-     * The protocol version to use, as a double.
-     */
+    /** The protocol version to use, as a double. */
     private double mProtocolVersion = 0.0d;
+    /** Whether {@link #setProtocolVersion} was last called with a non-null value. */
+    private boolean mProtocolVersionIsSet = false;
 
     /**
      * The client for any requests made by this object. This is created lazily, and cleared
@@ -198,12 +216,16 @@ public class EasServerConnection {
     /**
      * If a sync causes us to update our protocol version, this function must be called so that
      * subsequent calls to {@link #getProtocolVersion()} will do the right thing.
+     * @return Whether the protocol version changed.
      */
-    protected void setProtocolVersion(String protocolVersionString) {
+    public boolean setProtocolVersion(String protocolVersionString) {
         if (protocolVersionString == null) {
             protocolVersionString = Eas.DEFAULT_PROTOCOL_VERSION;
         }
+        mProtocolVersionIsSet = (protocolVersionString != null);
+        final double oldProtocolVersion = mProtocolVersion;
         mProtocolVersion = Eas.getProtocolVersionDouble(protocolVersionString);
+        return (oldProtocolVersion != mProtocolVersion);
     }
 
     /**
@@ -282,6 +304,17 @@ public class EasServerConnection {
     }
 
     /**
+     * Make an {@link HttpOptions} request for this connection.
+     * @return The {@link HttpOptions} object.
+     */
+    public HttpOptions makeOptions() {
+        final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString()));
+        method.setHeader("Authorization", makeAuthString());
+        method.setHeader("User-Agent", getUserAgent());
+        return method;
+    }
+
+    /**
      * Send a POST request to the server.
      * @param cmd The command we're sending to the server.
      * @param entity The {@link HttpEntity} containing the payload of the message.
@@ -331,7 +364,7 @@ public class EasServerConnection {
         if (isPingCommand) {
             method.setHeader("Connection", "close");
         }
-        return executePost(method, timeout);
+        return executeHttpUriRequest(method, timeout);
     }
 
     public EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
@@ -351,7 +384,7 @@ public class EasServerConnection {
     }
 
     /**
-     * Executes an {@link HttpPost}.
+     * Executes an {@link HttpUriRequest}.
      * Note: this function must not be called by multiple threads concurrently. Only one thread may
      * send server requests from a particular object at a time.
      * @param method The post to execute.
@@ -359,7 +392,7 @@ public class EasServerConnection {
      * @return The response from the Exchange server.
      * @throws IOException
      */
-    public EasResponse executePost(final HttpPost method, final long timeout)
+    public EasResponse executeHttpUriRequest(final HttpUriRequest method, final long timeout)
             throws IOException {
         // The synchronized blocks are here to support the stop() function, specifically to handle
         // when stop() is called first. Notably, they are NOT here in order to guard against
@@ -372,7 +405,7 @@ public class EasServerConnection {
                 // callers can equate IOException with "this POST got killed for some reason".
                 throw new IOException("Command was stopped before POST");
             }
-           mPendingPost = method;
+           mPendingRequest = method;
         }
         boolean postCompleted = false;
         try {
@@ -382,7 +415,7 @@ public class EasServerConnection {
             return response;
         } finally {
             synchronized (this) {
-                mPendingPost = null;
+                mPendingRequest = null;
                 if (postCompleted) {
                     mStoppedReason = STOPPED_REASON_NONE;
                 }
@@ -391,7 +424,7 @@ public class EasServerConnection {
     }
 
     protected EasResponse executePost(final HttpPost method) throws IOException {
-        return executePost(method, COMMAND_TIMEOUT);
+        return executeHttpUriRequest(method, COMMAND_TIMEOUT);
     }
 
     /**
@@ -407,11 +440,11 @@ public class EasServerConnection {
     public synchronized void stop(final int reason) {
         // Only process legitimate reasons.
         if (reason >= STOPPED_REASON_ABORT && reason <= STOPPED_REASON_RESTART) {
-            final boolean isMidPost = (mPendingPost != null);
+            final boolean isMidPost = (mPendingRequest != null);
             LogUtils.i(TAG, "%s with reason %d", (isMidPost ? "Interrupt" : "Stop next"), reason);
             mStoppedReason = reason;
             if (isMidPost) {
-                mPendingPost.abort();
+                mPendingRequest.abort();
             } else {
                 mStopped = true;
             }
@@ -425,6 +458,30 @@ public class EasServerConnection {
      */
     public synchronized int getStoppedReason() {
         return mStoppedReason;
+    }
+
+    /**
+     * Try to register our client certificate, if needed.
+     * @return True if we succeeded or didn't need a client cert, false if we failed to register it.
+     */
+    public boolean registerClientCert() {
+        if (mHostAuth.mClientCertAlias != null) {
+            try {
+                getClientConnectionManager().registerClientCert(mContext, mHostAuth);
+            } catch (final CertificateException e) {
+                // The client certificate the user specified is invalid/inaccessible.
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @return Whether {@link #setProtocolVersion} was last called with a non-null value. Note that
+     *         at construction time it is set to whatever protocol version is in the account.
+     */
+    public boolean isProtocolVersionSet() {
+        return mProtocolVersionIsSet;
     }
 
     /**
