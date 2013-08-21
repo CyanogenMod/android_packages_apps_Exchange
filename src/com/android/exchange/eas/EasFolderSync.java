@@ -20,8 +20,11 @@ import android.content.Context;
 import android.content.SyncResult;
 import android.os.Bundle;
 
+import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
+import com.android.emailcommon.provider.Policy;
+import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.FolderSyncParser;
@@ -38,6 +41,7 @@ import java.io.IOException;
  * during account adding flow as a convenient command to validate the account settings (e.g. since
  * it needs to login and will tell us about provisioning requirements).
  * TODO: Doing validation here is kind of wonky. There must be a better way.
+ * TODO: Add the use of the Settings command during validation.
  *
  * See http://msdn.microsoft.com/en-us/library/ee237648(v=exchg.80).aspx for more details.
  */
@@ -57,6 +61,9 @@ public class EasFolderSync extends EasOperation {
     /** Indicates whether this object is for validation rather than sync. */
     private final boolean mStatusOnly;
 
+    /** During validation, this holds the policy we must enforce. */
+    private Policy mPolicy;
+
     /**
      * Constructor for actually doing folder sync.
      * @param context
@@ -66,6 +73,7 @@ public class EasFolderSync extends EasOperation {
         super(context, account);
         mAccount = account;
         mStatusOnly = false;
+        mPolicy = null;
     }
 
     /**
@@ -99,17 +107,36 @@ public class EasFolderSync extends EasOperation {
 
     /**
      * Perform account validation.
-     * TODO: Implement correctly.
-     * @param bundle The {@link Bundle} to provide the results of validation to the UI.
-     * @return A result code, either from above or from the base class.
+     * @return The response {@link Bundle} expected by the RPC.
      */
-    public int validate(final Bundle bundle) {
-        if (!mStatusOnly || bundle == null) {
-            return RESULT_WRONG_OPERATION;
+    public Bundle validate() {
+        final Bundle bundle = new Bundle(3);
+        if (!mStatusOnly) {
+            writeResultCode(bundle, RESULT_OTHER_FAILURE);
+            return bundle;
         }
         LogUtils.i(LOG_TAG, "Performing validation");
-        final int result = performOperation(null);
-        return RESULT_OK;
+
+        if (!registerClientCert()) {
+            bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
+                    MessagingException.CLIENT_CERTIFICATE_ERROR);
+            return bundle;
+        }
+
+        if (shouldGetProtocolVersion()) {
+            final EasOptions options = new EasOptions(this);
+            final int result = options.getProtocolVersionFromServer(null);
+            if (result != EasOptions.RESULT_OK) {
+                writeResultCode(bundle, result);
+                return bundle;
+            }
+            final String protocolVersion = options.getProtocolVersionString();
+            setProtocolVersion(protocolVersion);
+            bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION, protocolVersion);
+        }
+
+        writeResultCode(bundle, performOperation(null));
+        return bundle;
     }
 
     @Override
@@ -151,5 +178,71 @@ public class EasFolderSync extends EasOperation {
     @Override
     protected boolean handleForbidden() {
         return mStatusOnly;
+    }
+
+    @Override
+    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+        if (mStatusOnly) {
+            final EasProvision provisionOperation = new EasProvision(this);
+            mPolicy = provisionOperation.test();
+            // Regardless of whether the policy is supported, we return false because there's
+            // no need to re-run the operation.
+            return false;
+        }
+        return super.handleProvisionError(syncResult, accountId);
+    }
+
+    /**
+     * Translate {@link EasOperation} result codes to the values needed by the RPC, and write
+     * them to the {@link Bundle}.
+     * @param bundle The {@link Bundle} to return to the RPC.
+     * @param resultCode The result code for this operation.
+     */
+    private void writeResultCode(final Bundle bundle, final int resultCode) {
+        final int messagingExceptionCode;
+        switch (resultCode) {
+            case RESULT_ABORT:
+                messagingExceptionCode = MessagingException.IOERROR;
+                break;
+            case RESULT_RESTART:
+                messagingExceptionCode = MessagingException.IOERROR;
+                break;
+            case RESULT_TOO_MANY_REDIRECTS:
+                messagingExceptionCode = MessagingException.UNSPECIFIED_EXCEPTION;
+                break;
+            case RESULT_REQUEST_FAILURE:
+                messagingExceptionCode = MessagingException.IOERROR;
+                break;
+            case RESULT_FORBIDDEN:
+                messagingExceptionCode = MessagingException.ACCESS_DENIED;
+                break;
+            case RESULT_PROVISIONING_ERROR:
+                if (mPolicy == null) {
+                    messagingExceptionCode = MessagingException.SECURITY_POLICIES_REQUIRED;
+                    bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET, mPolicy);
+                } else {
+                    messagingExceptionCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
+                }
+                break;
+            case RESULT_AUTHENTICATION_ERROR:
+                messagingExceptionCode = MessagingException.AUTHENTICATION_FAILED;
+                break;
+            case RESULT_CLIENT_CERTIFICATE_REQUIRED:
+                messagingExceptionCode = MessagingException.CLIENT_CERTIFICATE_REQUIRED;
+                break;
+            case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
+                messagingExceptionCode = MessagingException.PROTOCOL_VERSION_UNSUPPORTED;
+                break;
+            case RESULT_OTHER_FAILURE:
+                messagingExceptionCode = MessagingException.UNSPECIFIED_EXCEPTION;
+                break;
+            case RESULT_OK:
+                messagingExceptionCode = MessagingException.NO_ERROR;
+                break;
+            default:
+                messagingExceptionCode = MessagingException.UNSPECIFIED_EXCEPTION;
+                break;
+        }
+        bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE, messagingExceptionCode);
     }
 }
