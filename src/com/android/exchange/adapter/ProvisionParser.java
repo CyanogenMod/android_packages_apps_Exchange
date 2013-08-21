@@ -22,7 +22,7 @@ import android.os.storage.StorageManager;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.R;
-import com.android.exchange.service.EasAccountValidator;
+import com.android.exchange.eas.EasProvision;
 import com.android.mail.utils.LogUtils;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -543,7 +543,7 @@ public class ProvisionParser extends Parser {
                     LogUtils.i(TAG, "Policy status: %s", getValue());
                     break;
                 case Tags.PROVISION_DATA:
-                    if (policyType.equalsIgnoreCase(EasAccountValidator.EAS_2_POLICY_TYPE)) {
+                    if (policyType.equalsIgnoreCase(EasProvision.EAS_2_POLICY_TYPE)) {
                         // Parse the old style XML document
                         parseProvisionDocXml(getValue());
                     } else {

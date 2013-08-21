@@ -218,10 +218,12 @@ public class EasFolderSync extends EasOperation {
                 break;
             case RESULT_PROVISIONING_ERROR:
                 if (mPolicy == null) {
-                    messagingExceptionCode = MessagingException.SECURITY_POLICIES_REQUIRED;
-                    bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET, mPolicy);
+                    messagingExceptionCode = MessagingException.UNSPECIFIED_EXCEPTION;
                 } else {
-                    messagingExceptionCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
+                    bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET, mPolicy);
+                    messagingExceptionCode = mPolicy.mProtocolPoliciesUnsupported == null ?
+                            MessagingException.SECURITY_POLICIES_REQUIRED :
+                            MessagingException.SECURITY_POLICIES_UNSUPPORTED;
                 }
                 break;
             case RESULT_AUTHENTICATION_ERROR:

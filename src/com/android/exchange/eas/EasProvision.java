@@ -17,7 +17,6 @@
 package com.android.exchange.eas;
 
 import android.content.SyncResult;
-import android.os.Build;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
@@ -50,9 +49,9 @@ public class EasProvision extends EasOperation {
     private static final String LOG_TAG = "EasProvision";
 
     /** The policy type for versions of EAS prior to 2007. */
-    private static final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";
+    public static final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";
     /** The policy type for versions of EAS starting with 2007. */
-    private static final String EAS_12_POLICY_TYPE = "MS-EAS-Provisioning-WBXML";
+    public static final String EAS_12_POLICY_TYPE = "MS-EAS-Provisioning-WBXML";
 
     /** The EAS protocol Provision status for "we implement all of the policies" */
     private static final String PROVISION_STATUS_OK = "1";
@@ -125,12 +124,12 @@ public class EasProvision extends EasOperation {
             result = performAckRequest(null, true);
         }
         if (result == RESULT_POLICY_SUPPORTED) {
-            return mPolicy;
+            // The server is ok with us not supporting everything, so clear the unsupported ones.
+            mPolicy.mProtocolPoliciesUnsupported = null;
         }
-        return null;
+        return (result == RESULT_POLICY_SUPPORTED || result == RESULT_POLICY_UNSUPPORTED)
+                ? mPolicy : null;
     }
-
-
 
     /**
      * Get the required policy from the server and enforce it.
@@ -167,6 +166,20 @@ public class EasProvision extends EasOperation {
 
         // Write the final policy key to the Account.
         PolicyServiceProxy.setAccountPolicy(mContext, accountId, mPolicy, mPolicyKey);
+
+        // For 12.1 and 14.0, after provisioning we need to also send the device information via
+        // the Settings command.
+        // See the comments for EasSettings for more details.
+        final double version = getProtocolVersion();
+        if (version == Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE
+                || version == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+            final EasSettings settingsOperation = new EasSettings(this);
+            if (!settingsOperation.sendDeviceInformation(syncResult)) {
+                // If the Settings command failed, so do we.
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -183,16 +196,7 @@ public class EasProvision extends EasOperation {
         // When requesting the policy in 14.1, we also need to send device information.
         if (mPhase == PHASE_INITIAL &&
                 getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
-            s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
-            s.data(Tags.SETTINGS_MODEL, Build.MODEL);
-            //s.data(Tags.SETTINGS_IMEI, "");
-            //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
-            s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
-            //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
-            //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
-            //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
-            s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
-            s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
+            addDeviceInformationToSerlializer(s);
         }
         s.start(Tags.PROVISION_POLICIES);
         s.start(Tags.PROVISION_POLICY);
