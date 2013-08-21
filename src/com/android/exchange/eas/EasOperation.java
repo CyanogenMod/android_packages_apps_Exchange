@@ -22,6 +22,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncResult;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.format.DateUtils;
 
@@ -33,6 +34,7 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
+import com.android.exchange.adapter.Tags;
 import com.android.exchange.service.EasServerConnection;
 import com.android.mail.utils.LogUtils;
 
@@ -452,6 +454,24 @@ public abstract class EasOperation {
      */
     protected final boolean registerClientCert() {
         return mConnection.registerClientCert();
+    }
+
+    /**
+     * Add the device information to the current request.
+     * @param s The {@link Serializer} for our current request.
+     * @throws IOException
+     */
+    protected final void addDeviceInformationToSerlializer(final Serializer s) throws IOException {
+        s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
+        s.data(Tags.SETTINGS_MODEL, Build.MODEL);
+        //s.data(Tags.SETTINGS_IMEI, "");
+        //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
+        s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
+        //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
+        //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
+        //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
+        s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
+        s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
     }
 
     /**
