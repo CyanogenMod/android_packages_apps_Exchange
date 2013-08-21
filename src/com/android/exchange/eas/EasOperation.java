@@ -17,8 +17,11 @@
 package com.android.exchange.eas;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncResult;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.format.DateUtils;
 
@@ -26,6 +29,7 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
@@ -33,7 +37,7 @@ import com.android.exchange.service.EasServerConnection;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
@@ -78,8 +82,12 @@ public abstract class EasOperation {
     public static final int RESULT_PROVISIONING_ERROR = -6;
     /** Error code indicating an authentication problem. */
     public static final int RESULT_AUTHENTICATION_ERROR = -7;
+    /** Error code indicating the client is missing a certificate. */
+    public static final int RESULT_CLIENT_CERTIFICATE_REQUIRED = -8;
+    /** Error code indicating we don't have a protocol version in common with the server. */
+    public static final int RESULT_PROTOCOL_VERSION_UNSUPPORTED = -9;
     /** Error code indicating some other failure. */
-    public static final int RESULT_OTHER_FAILURE = -8;
+    public static final int RESULT_OTHER_FAILURE = -10;
 
     protected final Context mContext;
 
@@ -91,6 +99,13 @@ public abstract class EasOperation {
     private final long mAccountId;
     private final EasServerConnection mConnection;
 
+    private EasOperation(final Context context, final long accountId,
+            final EasServerConnection connection) {
+        mContext = context;
+        mAccountId = accountId;
+        mConnection = connection;
+    }
+
     protected EasOperation(final Context context, final Account account, final HostAuth hostAuth) {
         this(context, account.mId, new EasServerConnection(context, account, hostAuth));
     }
@@ -99,11 +114,13 @@ public abstract class EasOperation {
         this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
-    protected EasOperation(final Context context, final long accountId,
-            final EasServerConnection connection) {
-        mContext = context;
-        mAccountId = accountId;
-        mConnection = connection;
+    /**
+     * This constructor is for use by operations that are created by other operations, e.g.
+     * {@link EasProvision}.
+     * @param parentOperation The {@link EasOperation} that is creating us.
+     */
+    protected EasOperation(final EasOperation parentOperation) {
+        this(parentOperation.mContext, parentOperation.mAccountId, parentOperation.mConnection);
     }
 
     /**
@@ -149,12 +166,10 @@ public abstract class EasOperation {
         int redirectCount = 0;
 
         do {
-            // Perform the POST and handle exceptions.
+            // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                final HttpPost post = mConnection.makePost(getRequestUri(), getRequestEntity(),
-                        getRequestContentType(), addPolicyKeyHeaderToRequest());
-                response = mConnection.executePost(post, getTimeout());
+                response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
             } catch (final IOException e) {
                 // If we were stopped, return the appropriate result code.
                 switch (mConnection.getStoppedReason()) {
@@ -173,7 +188,7 @@ public abstract class EasOperation {
                 return RESULT_REQUEST_FAILURE;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
-                // TODO: If executePost can throw an ISE, we may want to tidy this up a bit.
+                // TODO: If executeHttpUriRequest can throw an ISE, we may want to tidy this up.
                 LogUtils.e(LOG_TAG, e, "Exception while sending request");
                 if (syncResult != null) {
                     syncResult.databaseError = true;
@@ -232,7 +247,9 @@ public abstract class EasOperation {
                     if (syncResult != null) {
                         ++syncResult.stats.numAuthExceptions;
                     }
-                    handleAuthError();
+                    if (response.isMissingCertificate()) {
+                        return RESULT_CLIENT_CERTIFICATE_REQUIRED;
+                    }
                     return RESULT_AUTHENTICATION_ERROR;
                 }
 
@@ -265,11 +282,42 @@ public abstract class EasOperation {
     }
 
     /**
-     * Handling for authentication errors. Should be the same for all operations.
-     * TODO: Implement.
+     * Reset the protocol version to use for this connection. If it's changed, and our account is
+     * persisted, also write back the changes to the DB.
+     * @param protocolVersion The new protocol version to use, as a string.
      */
-    private final void handleAuthError() {
+    protected final void setProtocolVersion(final String protocolVersion) {
+        if (mConnection.setProtocolVersion(protocolVersion) && mAccountId != Account.NOT_SAVED) {
+            final Uri uri = ContentUris.withAppendedId(Account.CONTENT_URI, mAccountId);
+            final ContentValues cv = new ContentValues(2);
+            if (getProtocolVersion() >= 12.0) {
+                final int oldFlags = Utility.getFirstRowInt(mContext, uri,
+                        Account.ACCOUNT_FLAGS_PROJECTION, null, null, null,
+                        Account.ACCOUNT_FLAGS_COLUMN_FLAGS, 0);
+                final int newFlags = oldFlags
+                        | Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
+                if (oldFlags != newFlags) {
+                    cv.put(EmailContent.AccountColumns.FLAGS, newFlags);
+                }
+            }
+            cv.put(EmailContent.AccountColumns.PROTOCOL_VERSION, protocolVersion);
+            mContext.getContentResolver().update(uri, cv, null, null);
+        }
+    }
 
+    /**
+     * Create the request object for this operation.
+     * Most operations use a POST, but some use other request types (e.g. Options).
+     * @return An {@link HttpUriRequest}.
+     * @throws IOException
+     */
+    private final HttpUriRequest makeRequest() throws IOException {
+        final String requestUri = getRequestUri();
+        if (requestUri == null) {
+            return mConnection.makeOptions();
+        }
+        return mConnection.makePost(requestUri, getRequestEntity(),
+                getRequestContentType(), addPolicyKeyHeaderToRequest());
     }
 
     /**
@@ -286,8 +334,9 @@ public abstract class EasOperation {
     protected abstract String getCommand();
 
     /**
-     * Build the {@link HttpEntity} which us used to construct the POST. Typically this function
+     * Build the {@link HttpEntity} which is used to construct the POST. Typically this function
      * will build the Exchange request using a {@link Serializer} and then call {@link #makeEntity}.
+     * If the subclass is not using a POST, then it should override this to return null.
      * @return The {@link HttpEntity} to pass to {@link EasServerConnection#makePost}.
      * @throws IOException
      */
@@ -359,7 +408,7 @@ public abstract class EasOperation {
      * @return
      */
     protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
-        final EasProvision provisionOperation = new EasProvision(mContext, accountId, mConnection);
+        final EasProvision provisionOperation = new EasProvision(this);
         return provisionOperation.provision(syncResult, accountId);
     }
 
@@ -375,6 +424,16 @@ public abstract class EasOperation {
     }
 
     /**
+     * Check whether we should ask the server what protocol versions it supports and set this
+     * account to use that version.
+     * @return Whether we need a new protocol version from the server.
+     */
+    protected final boolean shouldGetProtocolVersion() {
+        // TODO: Find conditions under which we should check other than not having one yet.
+        return !mConnection.isProtocolVersionSet();
+    }
+
+    /**
      * @return The protocol version to use.
      */
     protected final double getProtocolVersion() {
@@ -386,6 +445,13 @@ public abstract class EasOperation {
      */
     protected final String getUserAgent() {
         return mConnection.getUserAgent();
+    }
+
+    /**
+     * @return Whether we succeeeded in registering the client cert.
+     */
+    protected final boolean registerClientCert() {
+        return mConnection.registerClientCert();
     }
 
     /**

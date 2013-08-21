@@ -16,7 +16,6 @@
 
 package com.android.exchange.eas;
 
-import android.content.Context;
 import android.content.SyncResult;
 import android.os.Build;
 
@@ -27,7 +26,6 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.exchange.service.EasServerConnection;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -92,9 +90,8 @@ public class EasProvision extends EasOperation {
      */
     private int mPhase;
 
-    public EasProvision(final Context context, final long accountId,
-            final EasServerConnection connection) {
-        super(context, accountId, connection);
+    public EasProvision(final EasOperation parentOperation) {
+        super(parentOperation);
         mPolicy = null;
         mPolicyKey = null;
         mStatus = null;
@@ -119,16 +116,21 @@ public class EasProvision extends EasOperation {
 
     /**
      * Make the provisioning calls to determine if we can handle the required policy.
-     * @return Whether we can support the required policy.
+     * @return The {@link Policy} if we support it, or null otherwise.
      */
-    public final boolean test() {
+    public final Policy test() {
         int result = performInitialRequest(null);
         if (result == RESULT_POLICY_UNSUPPORTED) {
             // Check if the server will permit partial policies.
             result = performAckRequest(null, true);
         }
-        return result == RESULT_POLICY_SUPPORTED;
+        if (result == RESULT_POLICY_SUPPORTED) {
+            return mPolicy;
+        }
+        return null;
     }
+
+
 
     /**
      * Get the required policy from the server and enforce it.
