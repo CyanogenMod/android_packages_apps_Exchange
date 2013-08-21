@@ -219,10 +219,10 @@ public class EasServerConnection {
      * @return Whether the protocol version changed.
      */
     public boolean setProtocolVersion(String protocolVersionString) {
+        mProtocolVersionIsSet = (protocolVersionString != null);
         if (protocolVersionString == null) {
             protocolVersionString = Eas.DEFAULT_PROTOCOL_VERSION;
         }
-        mProtocolVersionIsSet = (protocolVersionString != null);
         final double oldProtocolVersion = mProtocolVersion;
         mProtocolVersion = Eas.getProtocolVersionDouble(protocolVersionString);
         return (oldProtocolVersion != mProtocolVersion);
