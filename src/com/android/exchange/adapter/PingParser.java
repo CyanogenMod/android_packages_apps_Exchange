@@ -124,8 +124,7 @@ public class PingParser extends Parser {
         return  pingStatus == STATUS_EXPIRED
                 || pingStatus == STATUS_REQUEST_INCOMPLETE
                 || pingStatus == STATUS_REQUEST_MALFORMED
-                // TODO: Implement heartbeat adjusting and re-enable this.
-                // || pingStatus == STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS
+                || pingStatus == STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS
                 || pingStatus == STATUS_SERVER_ERROR;
     }
 
