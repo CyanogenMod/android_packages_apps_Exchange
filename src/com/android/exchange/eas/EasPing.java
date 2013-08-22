@@ -17,13 +17,18 @@
 package com.android.exchange.eas;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncResult;
 import android.database.Cursor;
+import android.net.Uri;
+import android.os.SystemClock;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
@@ -50,38 +55,85 @@ public class EasPing extends EasOperation {
 
     private final long mAccountId;
     private final android.accounts.Account mAmAccount;
+    private long mPingDuration;
 
-    // TODO: Implement Heartbeat autoadjustments based on the server responses.
     /**
-     * The heartbeat interval specified to the Exchange server. This is the maximum amount of
-     * time (in seconds) that the server should wait before responding to the ping request.
+     * The default heartbeat interval specified to the Exchange server. This is the maximum amount
+     * of time (in seconds) that the server should wait before responding to the ping request.
      */
-    private static final long PING_HEARTBEAT =
+    private static final long DEFAULT_PING_HEARTBEAT =
             8 * (DateUtils.MINUTE_IN_MILLIS / DateUtils.SECOND_IN_MILLIS);
 
-    /** {@link #PING_HEARTBEAT}, as a String. */
-    private static final String PING_HEARTBEAT_STRING = Long.toString(PING_HEARTBEAT);
+    /**
+     * The minimum heartbeat interval we should ever use, in seconds.
+     */
+    private static final long MINIMUM_PING_HEARTBEAT =
+            8 * (DateUtils.MINUTE_IN_MILLIS / DateUtils.SECOND_IN_MILLIS);
 
     /**
-     * The timeout used for the HTTP POST (in milliseconds). Notionally this should be the same
-     * as {@link #PING_HEARTBEAT} but in practice is a few seconds longer to allow for latency
-     * in the server's response.
+     * The maximum heartbeat interval we should ever use, in seconds.
      */
-    private static final long POST_TIMEOUT = (5 + PING_HEARTBEAT) * DateUtils.SECOND_IN_MILLIS;
+    private static final long MAXIMUM_PING_HEARTBEAT =
+            28 * (DateUtils.MINUTE_IN_MILLIS / DateUtils.SECOND_IN_MILLIS);
+
+    /**
+     * The maximum amount that we can change with each adjustment, in seconds.
+     */
+    private static final long MAXIMUM_HEARTBEAT_INCREMENT =
+            5 * (DateUtils.MINUTE_IN_MILLIS / DateUtils.SECOND_IN_MILLIS);
+
+    /**
+     * The extra time for the timeout used for the HTTP POST (in milliseconds). Notionally this
+     * should be the same as ping heartbeat but in practice is a few seconds longer to allow for
+     * latency in the server's response.
+     */
+    private static final long EXTRA_POST_TIMEOUT_MILLIS = 5 * DateUtils.SECOND_IN_MILLIS;
 
     public EasPing(final Context context, final Account account) {
         super(context, account);
         mAccountId = account.mId;
         mAmAccount = new android.accounts.Account(account.mEmailAddress,
                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+        mPingDuration = account.mPingDuration;
+        if (mPingDuration == 0) {
+            mPingDuration = DEFAULT_PING_HEARTBEAT;
+        }
+        LogUtils.d(TAG, "initial ping duration " + mPingDuration + " account " + mAccountId);
     }
 
     public final int doPing() {
+        final long startTime = SystemClock.elapsedRealtime();
         final int result = performOperation(null);
         if (result == RESULT_RESTART) {
             return PingParser.STATUS_EXPIRED;
+        } else  if (result == RESULT_REQUEST_FAILURE) {
+            final long timeoutDuration = SystemClock.elapsedRealtime() - startTime;
+            LogUtils.d(TAG, "doPing request failure " + timeoutDuration);
+            decreasePingDuration();
         }
         return result;
+    }
+
+    private void decreasePingDuration() {
+        mPingDuration = Math.max(MINIMUM_PING_HEARTBEAT,
+                mPingDuration - MAXIMUM_HEARTBEAT_INCREMENT);
+        LogUtils.d(TAG, "decreasePingDuration adjusting by " + MAXIMUM_HEARTBEAT_INCREMENT +
+                " new duration " + mPingDuration + " account " + mAccountId);
+        storePingDuration();
+    }
+
+    private void increasePingDuration() {
+        mPingDuration = Math.min(MAXIMUM_PING_HEARTBEAT,
+                mPingDuration + MAXIMUM_HEARTBEAT_INCREMENT);
+        LogUtils.d(TAG, "increasePingDuration adjusting by " + MAXIMUM_HEARTBEAT_INCREMENT +
+                " new duration " + mPingDuration + " account " + mAccountId);
+        storePingDuration();
+    }
+
+    private void storePingDuration() {
+        final ContentValues values = new ContentValues(1);
+        values.put(AccountColumns.PING_DURATION, mPingDuration);
+        Account.update(mContext, Account.CONTENT_URI, mAccountId, values);
     }
 
     public final long getAccountId() {
@@ -132,6 +184,7 @@ public class EasPing extends EasOperation {
     protected int handleResponse(final EasResponse response, final SyncResult syncResult)
             throws IOException {
         if (response.isEmpty()) {
+            // TODO this should probably not be an IOException, maybe something more descriptive?
             throw new IOException("Empty ping response");
         }
 
@@ -146,6 +199,8 @@ public class EasPing extends EasOperation {
         switch (pingStatus) {
             case PingParser.STATUS_EXPIRED:
                 LogUtils.i(TAG, "Ping expired for account %d", mAccountId);
+                // On successful expiration, we can increase our ping duration
+                increasePingDuration();
                 break;
             case PingParser.STATUS_CHANGES_FOUND:
                 LogUtils.i(TAG, "Ping found changed folders for account %d", mAccountId);
@@ -159,8 +214,11 @@ public class EasPing extends EasOperation {
                 LogUtils.e(TAG, "Bad ping request for account %d", mAccountId);
                 break;
             case PingParser.STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS:
-                LogUtils.i(TAG, "Heartbeat out of bounds for account %d", mAccountId);
-                // TODO: Implement auto heartbeat adjustments.
+                long newDuration = pp.getHeartbeatInterval();
+                LogUtils.i(TAG, "Heartbeat out of bounds for account %d, " +
+                        "old duration %d new duration %d", mAccountId, mPingDuration, newDuration);
+                mPingDuration = newDuration;
+                storePingDuration();
                 break;
             case PingParser.STATUS_REQUEST_TOO_MANY_FOLDERS:
                 LogUtils.i(TAG, "Too many folders for account %d", mAccountId);
@@ -187,7 +245,7 @@ public class EasPing extends EasOperation {
 
     @Override
     protected long getTimeout() {
-        return POST_TIMEOUT;
+        return mPingDuration * DateUtils.SECOND_IN_MILLIS + EXTRA_POST_TIMEOUT_MILLIS;
     }
 
     /**
@@ -209,7 +267,7 @@ public class EasPing extends EasOperation {
                     // If either side changes, the other must be kept in sync.
                     s = new Serializer();
                     s.start(Tags.PING_PING);
-                    s.data(Tags.PING_HEARTBEAT_INTERVAL, PING_HEARTBEAT_STRING);
+                    s.data(Tags.PING_HEARTBEAT_INTERVAL, Long.toString(mPingDuration));
                     s.start(Tags.PING_FOLDERS);
                 }
                 s.start(Tags.PING_FOLDER);
