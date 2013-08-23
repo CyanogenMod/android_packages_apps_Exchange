@@ -43,6 +43,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.eas.EasFolderSync;
+import com.android.exchange.eas.EasMoveItems;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
@@ -527,6 +528,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             // Do the bookkeeping for starting a sync, including stopping a ping if necessary.
             mSyncHandlerMap.startSync(account.mId);
+
+            EasMoveItems move = new EasMoveItems(context, account);
+            move.upsyncMovedMessages(syncResult);
 
             // TODO: Should we refresh the account here? It may have changed while waiting for any
             // pings to stop. It may not matter since the things that may have been twiddled might
