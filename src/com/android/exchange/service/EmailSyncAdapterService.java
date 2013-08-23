@@ -412,12 +412,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     /**
      * {@link AsyncTask} for restarting pings for all accounts that need it.
      */
-    private static class RestartPingsTask extends AsyncTask<Void, Void, Void> {
-        private static final String PUSH_ACCOUNTS_SELECTION =
-                AccountColumns.SYNC_INTERVAL + "=" + Integer.toString(Account.CHECK_INTERVAL_PUSH);
+    private static final String PUSH_ACCOUNTS_SELECTION =
+            AccountColumns.SYNC_INTERVAL + "=" + Integer.toString(Account.CHECK_INTERVAL_PUSH);
+    private class RestartPingsTask extends AsyncTask<Void, Void, Void> {
 
         private final ContentResolver mContentResolver;
         private final SyncHandlerSynchronizer mSyncHandlerMap;
+        private boolean mAnyAccounts;
 
         public RestartPingsTask(final ContentResolver contentResolver,
                 final SyncHandlerSynchronizer syncHandlerMap) {
@@ -431,6 +432,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     Account.CONTENT_PROJECTION, PUSH_ACCOUNTS_SELECTION, null, null);
             if (c != null) {
                 try {
+                    mAnyAccounts = (c.getCount() != 0);
                     while (c.moveToNext()) {
                         final Account account = new Account();
                         account.restore(c);
@@ -439,8 +441,18 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 } finally {
                     c.close();
                 }
+            } else {
+                mAnyAccounts = false;
             }
             return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            if (!mAnyAccounts) {
+                LogUtils.d(TAG, "stopping for no accounts");
+                EmailSyncAdapterService.this.stopSelf();
+            }
         }
     }
 
