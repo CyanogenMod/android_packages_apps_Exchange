@@ -68,11 +68,15 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
      * be put in place at a later time.
      */
     private static void performSync(Context context, Account account, Bundle extras) {
-        ContentResolver cr = context.getContentResolver();
-        boolean logging = Eas.USER_LOG;
+        final ContentResolver cr = context.getContentResolver();
+        final boolean logging = Eas.USER_LOG;
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
-            Cursor c = cr.query(Events.CONTENT_URI,
+            final Cursor c = cr.query(Events.CONTENT_URI,
                     new String[] {Events._ID}, DIRTY_IN_ACCOUNT, new String[] {account.name}, null);
+            if (c == null) {
+                LogUtils.e(TAG, "Null changes cursor in CalendarSyncAdapterService");
+                return;
+            }
             try {
                 if (!c.moveToFirst()) {
                     if (logging) {
