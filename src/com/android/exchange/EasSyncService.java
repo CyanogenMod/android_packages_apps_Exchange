@@ -62,7 +62,6 @@ import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
 import com.android.exchange.adapter.AttachmentLoader;
-import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.EmailSyncAdapter;
 import com.android.exchange.adapter.FolderSyncParser;
@@ -216,12 +215,34 @@ public class EasSyncService extends AbstractSyncService {
 
     @Override
     public void resetCalendarSyncKey() {
-        CalendarSyncAdapter adapter = new CalendarSyncAdapter(this);
-            try {
-                adapter.setSyncKey("0", false);
-            } catch (IOException e) {
-                // The provider can't be reached; nothing to be done
-            }
+        // resetCalendarSyncKey is declared in AbstractSyncAdapterService,
+        // so we need to define this function, by since CalendarSyncAdapter no longer exists,
+        // we need to remove this:
+//        CalendarSyncAdapter adapter = new CalendarSyncAdapter(this);
+//            try {
+//                adapter.setSyncKey("0", false);
+//            } catch (IOException e) {
+//                // The provider can't be reached; nothing to be done
+//            }
+
+     // For reference, this is what CalendarSyncAdapter.setSyncKey() did:
+//        synchronized (sSyncKeyLock) {
+//            if ("0".equals(syncKey) || !inCommands) {
+//                ContentProviderClient client = mService.mContentResolver
+//                        .acquireContentProviderClient(CalendarContract.CONTENT_URI);
+//                try {
+//                    SyncStateContract.Helpers.set(
+//                            client,
+//                            asSyncAdapter(SyncState.CONTENT_URI, mEmailAddress,
+//                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount,
+//                            syncKey.getBytes());
+//                    userLog("SyncKey set to ", syncKey, " in CalendarProvider");
+//                } catch (RemoteException e) {
+//                    throw new IOException("Can't set SyncKey in CalendarProvider");
+//                }
+//            }
+//            mMailbox.mSyncKey = syncKey;
+//        }
     }
 
     /**
@@ -1861,8 +1882,11 @@ public class EasSyncService extends AbstractSyncService {
                         TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
                         target = new ContactsSyncAdapter( this);
                     } else if (mMailbox.mType == Mailbox.TYPE_CALENDAR) {
-                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
-                        target = new CalendarSyncAdapter(this);
+                        // CalendarSyncAdapter is gone, and this class is deprecated.
+                        // Just leaving this commented out here for reference.
+//                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
+//                        target = new CalendarSyncAdapter(this);
+                        target = null;
                     } else {
                         TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
                         target = new EmailSyncAdapter(this);
