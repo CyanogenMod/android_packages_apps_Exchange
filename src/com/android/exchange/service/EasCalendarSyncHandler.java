@@ -35,7 +35,7 @@ import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.R;
 import com.android.exchange.adapter.AbstractSyncParser;
-import com.android.exchange.adapter.CalendarSyncAdapter;
+import com.android.exchange.adapter.CalendarSyncParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.utility.CalendarUtilities;
@@ -195,7 +195,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
     @Override
     protected AbstractSyncParser getParser(final InputStream is) throws IOException {
-        return new CalendarSyncAdapter.EasCalendarSyncParser(mContext, mContentResolver, is,
+        return new CalendarSyncParser(mContext, mContentResolver, is,
                 mMailbox, mAccount, mAccountManagerAccount, mCalendarId);
     }
 
