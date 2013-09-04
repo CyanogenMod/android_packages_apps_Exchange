@@ -57,7 +57,7 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
     public void testGetMimeTypeFromFileName() throws IOException {
         EasSyncService service = getTestService();
         EmailSyncAdapter adapter = new EmailSyncAdapter(service);
-        EasEmailSyncParser p = adapter.new EasEmailSyncParser(getTestInputStream(), adapter);
+        EasEmailSyncParser p = new EasEmailSyncParser(getTestInputStream(), adapter);
         // Test a few known types
         String mimeType = p.getMimeTypeFromFileName("foo.jpg");
         assertEquals("image/jpeg", mimeType);
@@ -168,7 +168,7 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
     void setupSyncParserAndAdapter(Account account, Mailbox mailbox) throws IOException {
         EasSyncService service = getTestService(account, mailbox);
         mSyncAdapter = new EmailSyncAdapter(service);
-        mSyncParser = mSyncAdapter.new EasEmailSyncParser(getTestInputStream(), mSyncAdapter);
+        mSyncParser = new EasEmailSyncParser(getTestInputStream(), mSyncAdapter);
     }
 
     ArrayList<Long> setupAccountMailboxAndMessages(int numMessages) {
