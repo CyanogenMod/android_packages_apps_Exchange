@@ -76,45 +76,50 @@ public class EasAutoDiscover extends EasServerConnection {
         if (entity == null) {
             return null;
         }
-
-        final HttpPost post = makePost("https://" + domain + AUTO_DISCOVER_PAGE, entity, "text/xml",
-                false);
-        final EasResponse resp = getResponse(post, domain);
-        if (resp == null) {
-            return null;
-        }
-
         try {
-            // resp is either an authentication error, or a good response.
-            final int code = resp.getStatus();
-            if (code == HttpStatus.SC_UNAUTHORIZED) {
-                final Bundle bundle = new Bundle(1);
-                bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
-                        MessagingException.AUTODISCOVER_AUTHENTICATION_FAILED);
-                return bundle;
-            } else {
-                final HostAuth hostAuth = parseAutodiscover(resp);
-                if (hostAuth != null) {
-                    // Fill in the rest of the HostAuth
-                    // We use the user name and password that were successful during
-                    // the autodiscover process
-                    hostAuth.mLogin = mHostAuth.mLogin;
-                    hostAuth.mPassword = mHostAuth.mPassword;
-                    // Note: there is no way we can auto-discover the proper client
-                    // SSL certificate to use, if one is needed.
-                    hostAuth.mPort = 443;
-                    hostAuth.mProtocol = Eas.PROTOCOL;
-                    hostAuth.mFlags = HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
-                    final Bundle bundle = new Bundle(2);
-                    bundle.putParcelable(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_HOST_AUTH,
-                            hostAuth);
-                    bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
-                            MessagingException.NO_ERROR);
-                    return bundle;
-                }
+            final HttpPost post = makePost("https://" + domain + AUTO_DISCOVER_PAGE, entity,
+                    "text/xml", false);
+            final EasResponse resp = getResponse(post, domain);
+            if (resp == null) {
+                return null;
             }
-        } finally {
-            resp.close();
+
+            try {
+                // resp is either an authentication error, or a good response.
+                final int code = resp.getStatus();
+                if (code == HttpStatus.SC_UNAUTHORIZED) {
+                    final Bundle bundle = new Bundle(1);
+                    bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                            MessagingException.AUTODISCOVER_AUTHENTICATION_FAILED);
+                    return bundle;
+                } else {
+                    final HostAuth hostAuth = parseAutodiscover(resp);
+                    if (hostAuth != null) {
+                        // Fill in the rest of the HostAuth
+                        // We use the user name and password that were successful during
+                        // the autodiscover process
+                        hostAuth.mLogin = mHostAuth.mLogin;
+                        hostAuth.mPassword = mHostAuth.mPassword;
+                        // Note: there is no way we can auto-discover the proper client
+                        // SSL certificate to use, if one is needed.
+                        hostAuth.mPort = 443;
+                        hostAuth.mProtocol = Eas.PROTOCOL;
+                        hostAuth.mFlags = HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
+                        final Bundle bundle = new Bundle(2);
+                        bundle.putParcelable(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_HOST_AUTH,
+                                hostAuth);
+                        bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                                MessagingException.NO_ERROR);
+                        return bundle;
+                    }
+                }
+            } finally {
+                resp.close();
+            }
+        } catch (final IllegalArgumentException e) {
+            // This happens when the domain is malformatted.
+            // TODO: Fix sanitizing of the domain -- we try to in UI but apparently not correctly.
+            LogUtils.e(TAG, "ISE with domain: %s", domain);
         }
         return null;
     }
