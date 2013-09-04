@@ -29,6 +29,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.provider.CalendarContract;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
 
@@ -50,7 +51,7 @@ import com.android.emailcommon.service.SearchParams;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.SyncManager;
-import com.android.exchange.adapter.CalendarSyncAdapter;
+import com.android.exchange.adapter.CalendarSyncParser;
 import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.utility.FileLogger;
@@ -373,10 +374,20 @@ public class ExchangeService extends SyncManager {
         }
         mailbox =
             Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CALENDAR);
+
         if (mailbox != null) {
             EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
-            CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
-            adapter.wipe();
+            Uri eventsAsSyncAdapter = eventsAsSyncAdapter(Events.CONTENT_URI,
+                    service.mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+            // XXX Used to be this:
+//          CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
+//          adapter.wipe();
+            // XXX In CalendarSyncAdapter.wipe(), we would add the account name and
+            // account type as uri query parameters, and also selection and selectionArgs.
+            // Do we need both for some reason?
+            context.getContentResolver().delete(eventsAsSyncAdapter, null, null);
+            unregisterCalendarObservers();
+
         }
     }
 
@@ -386,6 +397,12 @@ public class ExchangeService extends SyncManager {
 
     private static boolean onSyncDisabledHold(Account account) {
         return (account.mFlags & Account.FLAGS_SYNC_DISABLED) != 0;
+    }
+
+    private static Uri eventsAsSyncAdapter(Uri uri, String account, String accountType) {
+        return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+            .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
+            .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
     }
 
     /**
@@ -415,7 +432,7 @@ public class ExchangeService extends SyncManager {
             // Find the Calendar for this account
             Cursor c = mResolver.query(Calendars.CONTENT_URI,
                     new String[] {Calendars._ID, Calendars.SYNC_EVENTS},
-                    CalendarSyncAdapter.CALENDAR_SELECTION,
+                    CALENDAR_SELECTION,
                     new String[] {account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE},
                     null);
             if (c != null) {
@@ -431,6 +448,83 @@ public class ExchangeService extends SyncManager {
             }
         }
 
+        private void onChangeInBackground() {
+            try {
+                Cursor c = mResolver.query(Calendars.CONTENT_URI,
+                        new String[] {Calendars.SYNC_EVENTS}, Calendars._ID + "=?",
+                        new String[] {Long.toString(mCalendarId)}, null);
+                if (c == null) return;
+                // Get its sync events; if it's changed, we've got work to do
+                try {
+                    if (c.moveToFirst()) {
+                        long newSyncEvents = c.getLong(0);
+                        if (newSyncEvents != mSyncEvents) {
+                            log("_sync_events changed for calendar in " + mAccountName);
+                            Mailbox mailbox = Mailbox.restoreMailboxOfType(INSTANCE,
+                                    mAccountId, Mailbox.TYPE_CALENDAR);
+                            // Sanity check for mailbox deletion
+                            if (mailbox == null) return;
+                            ContentValues cv = new ContentValues();
+                            if (newSyncEvents == 0) {
+                                // When sync is disabled, we're supposed to delete
+                                // all events in the calendar
+                                log("Deleting events and setting syncKey to 0 for " +
+                                        mAccountName);
+                                // First, stop any sync that's ongoing
+                                stopManualSync(mailbox.mId);
+                                // Set the syncKey to 0 (reset)
+                                EasSyncService service =
+                                    EasSyncService.getServiceForMailbox(
+                                            INSTANCE, mailbox);
+
+                                // CalendarSyncAdapter is gone, and this class is deprecated.
+                                // Just leaving this commented out code here for reference:
+                                // Reset the sync key locally and stop syncing
+//                                CalendarSyncAdapter adapter =
+//                                    new CalendarSyncAdapter(service);
+//                                try {
+//                                    adapter.setSyncKey("0", false);
+//                                } catch (IOException e) {
+//                                    // The provider can't be reached; nothing to be done
+//                                }
+
+                                cv.put(Mailbox.SYNC_KEY, "0");
+                                cv.put(Mailbox.SYNC_INTERVAL,
+                                        Mailbox.CHECK_INTERVAL_NEVER);
+                                mResolver.update(ContentUris.withAppendedId(
+                                        Mailbox.CONTENT_URI, mailbox.mId), cv, null,
+                                        null);
+                                // Delete all events using the sync adapter
+                                // parameter so that the deletion is only local
+                                Uri eventsAsSyncAdapter = eventsAsSyncAdapter(Events.CONTENT_URI,
+                                        mAccountName, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                                mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
+                                        new String[] {Long.toString(mCalendarId)});
+                            } else {
+                                // Make this a push mailbox and kick; this will start
+                                // a resync of the Calendar; the account mailbox will
+                                // ping on this during the next cycle of the ping loop
+                                cv.put(Mailbox.SYNC_INTERVAL,
+                                        Mailbox.CHECK_INTERVAL_PUSH);
+                                mResolver.update(ContentUris.withAppendedId(
+                                        Mailbox.CONTENT_URI, mailbox.mId), cv, null,
+                                        null);
+                                kick("calendar sync changed");
+                            }
+
+                            // Save away the new value
+                            mSyncEvents = newSyncEvents;
+                        }
+                    }
+                } finally {
+                    c.close();
+                }
+            } catch (ProviderUnavailableException e) {
+                LogUtils.w(TAG, "Observer failed; provider unavailable");
+            }
+        }
+
+
         @Override
         public synchronized void onChange(boolean selfChange) {
             // See if the user has changed syncing of our calendar
@@ -438,79 +532,9 @@ public class ExchangeService extends SyncManager {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        try {
-                            Cursor c = mResolver.query(Calendars.CONTENT_URI,
-                                    new String[] {Calendars.SYNC_EVENTS}, Calendars._ID + "=?",
-                                    new String[] {Long.toString(mCalendarId)}, null);
-                            if (c == null) return;
-                            // Get its sync events; if it's changed, we've got work to do
-                            try {
-                                if (c.moveToFirst()) {
-                                    long newSyncEvents = c.getLong(0);
-                                    if (newSyncEvents != mSyncEvents) {
-                                        log("_sync_events changed for calendar in " + mAccountName);
-                                        Mailbox mailbox = Mailbox.restoreMailboxOfType(INSTANCE,
-                                                mAccountId, Mailbox.TYPE_CALENDAR);
-                                        // Sanity check for mailbox deletion
-                                        if (mailbox == null) return;
-                                        ContentValues cv = new ContentValues();
-                                        if (newSyncEvents == 0) {
-                                            // When sync is disabled, we're supposed to delete
-                                            // all events in the calendar
-                                            log("Deleting events and setting syncKey to 0 for " +
-                                                    mAccountName);
-                                            // First, stop any sync that's ongoing
-                                            stopManualSync(mailbox.mId);
-                                            // Set the syncKey to 0 (reset)
-                                            EasSyncService service =
-                                                EasSyncService.getServiceForMailbox(
-                                                        INSTANCE, mailbox);
-                                            CalendarSyncAdapter adapter =
-                                                new CalendarSyncAdapter(service);
-                                            try {
-                                                adapter.setSyncKey("0", false);
-                                            } catch (IOException e) {
-                                                // The provider can't be reached; nothing to be done
-                                            }
-                                            // Reset the sync key locally and stop syncing
-                                            cv.put(Mailbox.SYNC_KEY, "0");
-                                            cv.put(Mailbox.SYNC_INTERVAL,
-                                                    Mailbox.CHECK_INTERVAL_NEVER);
-                                            mResolver.update(ContentUris.withAppendedId(
-                                                    Mailbox.CONTENT_URI, mailbox.mId), cv, null,
-                                                    null);
-                                            // Delete all events using the sync adapter
-                                            // parameter so that the deletion is only local
-                                            Uri eventsAsSyncAdapter =
-                                                CalendarSyncAdapter.asSyncAdapter(
-                                                    Events.CONTENT_URI,
-                                                    mAccountName,
-                                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                                            mResolver.delete(eventsAsSyncAdapter, WHERE_CALENDAR_ID,
-                                                    new String[] {Long.toString(mCalendarId)});
-                                        } else {
-                                            // Make this a push mailbox and kick; this will start
-                                            // a resync of the Calendar; the account mailbox will
-                                            // ping on this during the next cycle of the ping loop
-                                            cv.put(Mailbox.SYNC_INTERVAL,
-                                                    Mailbox.CHECK_INTERVAL_PUSH);
-                                            mResolver.update(ContentUris.withAppendedId(
-                                                    Mailbox.CONTENT_URI, mailbox.mId), cv, null,
-                                                    null);
-                                            kick("calendar sync changed");
-                                        }
-
-                                        // Save away the new value
-                                        mSyncEvents = newSyncEvents;
-                                    }
-                                }
-                            } finally {
-                                c.close();
-                            }
-                        } catch (ProviderUnavailableException e) {
-                            LogUtils.w(TAG, "Observer failed; provider unavailable");
-                        }
-                    }}, "Calendar Observer").start();
+                        onChangeInBackground();
+                    }
+                }, "Calendar Observer").start();
             }
         }
     }
