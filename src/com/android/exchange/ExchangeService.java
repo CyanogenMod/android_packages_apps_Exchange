@@ -52,7 +52,6 @@ import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.SyncManager;
 import com.android.exchange.adapter.CalendarSyncParser;
-import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.utility.FileLogger;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
@@ -369,8 +368,10 @@ public class ExchangeService extends SyncManager {
             Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CONTACTS);
         if (mailbox != null) {
             EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
-            ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
-            adapter.wipe();
+            // ContactsSyncAdapter is gone now, and this class is deprecated.
+            // Just leaving this commented out code here for reference.
+//            ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
+//            adapter.wipe();
         }
         mailbox =
             Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CALENDAR);
@@ -379,7 +380,8 @@ public class ExchangeService extends SyncManager {
             EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
             Uri eventsAsSyncAdapter = eventsAsSyncAdapter(Events.CONTENT_URI,
                     service.mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-            // XXX Used to be this:
+            // ContactsSyncAdapter is gone now, and this class is deprecated.
+            // Just leaving this commented out code here for reference.
 //          CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
 //          adapter.wipe();
             // XXX In CalendarSyncAdapter.wipe(), we would add the account name and

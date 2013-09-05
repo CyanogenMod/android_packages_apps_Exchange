@@ -37,7 +37,7 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.AbstractSyncParser;
-import com.android.exchange.adapter.ContactsSyncAdapter;
+import com.android.exchange.adapter.ContactsSyncParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.mail.utils.LogUtils;
@@ -111,7 +111,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
 
     // We store the parser so that we can ask it later isGroupsUsed.
     // TODO: Can we do this more cleanly?
-    private ContactsSyncAdapter.EasContactsSyncParser mParser = null;
+    private ContactsSyncParser mParser = null;
 
     private static final class EasChildren {
         private EasChildren() {}
@@ -204,7 +204,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
     protected AbstractSyncParser getParser(final InputStream is) throws IOException {
         // Store the parser because we'll want to ask it about whether groups are used later.
         // TODO: It'd be nice to find a cleaner way to get this result back from the parser.
-        mParser = new ContactsSyncAdapter.EasContactsSyncParser(mContext, mContentResolver, is,
+        mParser = new ContactsSyncParser(mContext, mContentResolver, is,
                 mMailbox, mAccount, mAccountManagerAccount);
         return mParser;
     }
@@ -848,7 +848,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
 
         // Mark the changed contacts dirty = 0
         // Permanently delete the user deletions
-        ContactsSyncAdapter.ContactOperations ops = new ContactsSyncAdapter.ContactOperations();
+        ContactsSyncParser.ContactOperations ops = new ContactsSyncParser.ContactOperations();
         for (final Long id: mUpdatedContacts) {
             ops.add(ContentProviderOperation
                     .newUpdate(ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI,
