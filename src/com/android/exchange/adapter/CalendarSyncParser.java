@@ -101,7 +101,6 @@ public class CalendarSyncParser extends AbstractSyncParser {
     // TODO Find a better solution to this workaround
     private static final int MAX_OPS_BEFORE_EXCEPTION_ATTENDEE_REDACTION = 500;
 
-
     public CalendarSyncParser(final Context context, final ContentResolver resolver,
             final InputStream in, final Mailbox mailbox, final Account account,
             final android.accounts.Account accountManagerAccount,
