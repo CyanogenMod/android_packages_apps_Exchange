@@ -62,7 +62,6 @@ import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
 import com.android.exchange.adapter.AttachmentLoader;
-import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.EmailSyncAdapter;
 import com.android.exchange.adapter.FolderSyncParser;
 import com.android.exchange.adapter.GalParser;
@@ -1879,8 +1878,11 @@ public class EasSyncService extends AbstractSyncService {
                 } else {
                     AbstractSyncAdapter target;
                     if (mMailbox.mType == Mailbox.TYPE_CONTACTS) {
-                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
-                        target = new ContactsSyncAdapter( this);
+                        // ContactsSyncAdapter is gone, and this class is deprecated.
+                        // Just leaving this commented out here for reference.
+//                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
+//                        target = new ContactsSyncAdapter(this);
+                        target = null;
                     } else if (mMailbox.mType == Mailbox.TYPE_CALENDAR) {
                         // CalendarSyncAdapter is gone, and this class is deprecated.
                         // Just leaving this commented out here for reference.
