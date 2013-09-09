@@ -199,7 +199,8 @@ public class EasOutboxSyncHandler extends EasServerConnection {
             String[] cols = Utility.getRowColumns(context, Body.CONTENT_URI, BODY_SOURCE_PROJECTION,
                     WHERE_MESSAGE_KEY, new String[] {Long.toString(message.mId)});
             long refId = 0;
-            if (cols != null) {
+            // TODO: We can probably just write a smarter query to do this all at once.
+            if (cols != null && cols[0] != null) {
                 refId = Long.parseLong(cols[0]);
                 // Then, we need the serverId and mailboxKey of the message
                 cols = Utility.getRowColumns(context, Message.CONTENT_URI, refId,
