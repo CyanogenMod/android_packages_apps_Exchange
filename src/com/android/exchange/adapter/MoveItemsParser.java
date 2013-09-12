@@ -27,6 +27,7 @@ public class MoveItemsParser extends Parser {
     private static final String TAG = "MoveItemsParser";
     private int mStatusCode = 0;
     private String mNewServerId;
+    private String mSourceServerId;
 
     // These are the EAS status codes for MoveItems
     private static final int STATUS_NO_SOURCE_FOLDER = 1;
@@ -52,6 +53,10 @@ public class MoveItemsParser extends Parser {
 
     public String getNewServerId() {
         return mNewServerId;
+    }
+
+    public String getSourceServerId() {
+        return mSourceServerId;
     }
 
     public void parseResponse() throws IOException {
@@ -87,6 +92,9 @@ public class MoveItemsParser extends Parser {
             } else if (tag == Tags.MOVE_DSTMSGID) {
                 mNewServerId = getValue();
                 LogUtils.i(TAG, "Moved message id is now: %s", mNewServerId);
+            } else if (tag == Tags.MOVE_SRCMSGID) {
+                mSourceServerId = getValue();
+                LogUtils.i(TAG, "Source message id is: %s", mNewServerId);
             } else {
                 skipTag();
             }

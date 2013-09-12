@@ -56,7 +56,12 @@ public class EasSync extends EasOperation {
 
     @Override
     protected HttpEntity getRequestEntity() throws IOException {
-        return null;
+        final Serializer s = new Serializer();
+        s.start(Tags.SYNC_SYNC);
+        s.start(Tags.SYNC_COLLECTIONS);
+        addOneCollectionToRequest(s, mMailbox);
+        s.end().end().done();
+        return makeEntity(s);
     }
 
 
@@ -80,6 +85,8 @@ public class EasSync extends EasOperation {
         if (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE) {
             s.data(Tags.SYNC_CLASS, Eas.getFolderClass(mailbox.mType));
         }
+        s.data(Tags.SYNC_SYNC_KEY, getSyncKeyForMailbox(mailbox));
+        s.data(Tags.SYNC_COLLECTION_ID, mailbox.mServerId);
         s.end();
     }
 
