@@ -95,10 +95,10 @@ public abstract class EasOperation {
 
     /**
      * The account id for this operation.
-     * Currently only used for handling provisioning errors. Ideally we should minimize the creep
-     * of how this gets used (i.e. don't let it get to the intertwined state of the past).
+     * NOTE: You will be tempted to add a reference to the {@link Account} here. Resist.
+     * It's too easy for that to lead to creep and stale data.
      */
-    private final long mAccountId;
+    protected final long mAccountId;
     private final EasServerConnection mConnection;
 
     private EasOperation(final Context context, final long accountId,
@@ -190,7 +190,7 @@ public abstract class EasOperation {
                 return RESULT_REQUEST_FAILURE;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
-                // TODO: If executeHttpUriRequest can throw an ISE, we may want to tidy this up.
+                // TODO: Switch away from ISEs.
                 LogUtils.e(LOG_TAG, e, "Exception while sending request");
                 if (syncResult != null) {
                     syncResult.databaseError = true;
