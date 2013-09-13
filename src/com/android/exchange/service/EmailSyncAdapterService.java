@@ -27,6 +27,7 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.text.TextUtils;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
@@ -38,6 +39,7 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
+import com.android.emailcommon.service.ServiceProxy;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.PingParser;
@@ -471,6 +473,23 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             return mBinder;
         }
         return super.onBind(intent);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null &&
+                TextUtils.equals(Eas.EXCHANGE_SERVICE_INTENT_ACTION, intent.getAction())) {
+            if (intent.getBooleanExtra(ServiceProxy.EXTRA_FORCE_SHUTDOWN, false)) {
+                // We've been asked to forcibly shutdown. This happens if email accounts are
+                // deleted, otherwise we can get errors if services are still running for
+                // accounts that are now gone.
+                // TODO: This is kind of a hack, it would be nicer if we could handle it correctly
+                // if accounts disappear out from under us.
+                LogUtils.d(TAG, "Forced shutdown, killing process");
+                System.exit(-1);
+            }
+        }
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
