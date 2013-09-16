@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+// TODO: Deprecated, remove this file.
+
 package com.android.exchange.adapter;
 
 import android.content.ContentProviderOperation;
