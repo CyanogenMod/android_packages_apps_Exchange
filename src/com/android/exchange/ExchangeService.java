@@ -364,30 +364,28 @@ public class ExchangeService extends SyncManager {
     }
 
     public static void deleteAccountPIMData(final Context context, final long accountId) {
-        Mailbox mailbox =
+        /*Mailbox mailbox =
             Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CONTACTS);
         if (mailbox != null) {
             EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
             // ContactsSyncAdapter is gone now, and this class is deprecated.
             // Just leaving this commented out code here for reference.
-//            ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
-//            adapter.wipe();
-        }
-        mailbox =
+            ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
+            adapter.wipe();
+        }*/
+        final Mailbox mailbox =
             Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CALENDAR);
 
         if (mailbox != null) {
-            EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
-            Uri eventsAsSyncAdapter = eventsAsSyncAdapter(Events.CONTENT_URI,
+            final EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
+            final Uri eventsAsSyncAdapter = eventsAsSyncAdapter(Events.CONTENT_URI,
                     service.mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-            // ContactsSyncAdapter is gone now, and this class is deprecated.
+            // CalenderSyncAdapter is gone now, and this class is deprecated.
             // Just leaving this commented out code here for reference.
 //          CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
 //          adapter.wipe();
-            // XXX In CalendarSyncAdapter.wipe(), we would add the account name and
-            // account type as uri query parameters, and also selection and selectionArgs.
-            // Do we need both for some reason?
-            context.getContentResolver().delete(eventsAsSyncAdapter, null, null);
+            // Need to have a selection since we don't specify an id in the url
+            context.getContentResolver().delete(eventsAsSyncAdapter, "TRUE", new String[0]);
             unregisterCalendarObservers();
 
         }
