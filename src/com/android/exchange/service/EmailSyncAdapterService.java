@@ -273,9 +273,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             LogUtils.d(TAG, "IEmailService.updateFolderList: %d", accountId);
             final String emailAddress = getEmailAddressForAccount(accountId);
             if (emailAddress != null) {
+                final Bundle extras = new Bundle(1);
+                extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
                 ContentResolver.requestSync(new android.accounts.Account(
                         emailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
-                        EmailContent.AUTHORITY, new Bundle());
+                        EmailContent.AUTHORITY, extras);
             }
         }
 
