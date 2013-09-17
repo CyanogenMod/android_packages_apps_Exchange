@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.support.v4.util.LongSparseArray;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -35,6 +36,7 @@ import com.android.exchange.adapter.EmailSyncParser;
 import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
 
@@ -129,11 +131,24 @@ public class EasSync extends EasOperation {
                                 Mailbox.ProjectionSyncData.COLUMN_SERVER_ID);
                         mMailboxSyncKey = mailboxCursor.getString(
                                 Mailbox.ProjectionSyncData.COLUMN_SYNC_KEY);
-                        final int result = performOperation(syncResult);
+                        final int result;
+                        if (TextUtils.isEmpty(mMailboxSyncKey) || mMailboxSyncKey.equals("0")) {
+                            // For some reason we can get here without a valid mailbox sync key
+                            // b/10797675
+                            // TODO: figure out why and clean this up
+                            LogUtils.d(LOG_TAG,
+                                    "Tried to sync mailbox with invalid mailbox sync key");
+                            result = -1;
+                        } else {
+                            result = performOperation(syncResult);
+                        }
                         if (result == 0) {
                             handleMessageUpdateStatus(mMessageUpdateStatus, messageIds, counts);
                         } else {
-                            // TODO: Retry or revert in this case?
+                            for (final MessageStateChange msc : mStateChanges) {
+                                messageIds[1][counts[1]] = msc.getMessageId();
+                                ++counts[1];
+                            }
                         }
                     }
                 } finally {
