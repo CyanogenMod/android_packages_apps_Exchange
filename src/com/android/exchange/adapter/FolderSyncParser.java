@@ -40,6 +40,8 @@ import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.ExchangeService;
+import com.android.exchange.service.EasCalendarSyncHandler;
+import com.android.exchange.service.EasContactsSyncHandler;
 import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -149,15 +151,15 @@ public class FolderSyncParser extends AbstractSyncParser {
     @VisibleForTesting
     boolean mInUnitTest = false;
 
-    private String[] mBindArguments = new String[2];
+    private final String[] mBindArguments = new String[2];
 
     /** List of pending operations to send as a batch to the content provider. */
-    private ArrayList<ContentProviderOperation> mOperations =
+    private final ArrayList<ContentProviderOperation> mOperations =
             new ArrayList<ContentProviderOperation>();
     /** Indicates whether this sync is an initial FolderSync. */
     private boolean mInitialSync;
     /** List of folder server ids whose children changed with this sync. */
-    private ArrayList<String> mParentFixupsNeeded = new ArrayList<String>();
+    private final ArrayList<String> mParentFixupsNeeded = new ArrayList<String>();
     /** Indicates whether the sync response provided a different sync key than we had. */
     private boolean mSyncKeyChanged = false;
 
@@ -237,8 +239,11 @@ public class FolderSyncParser extends AbstractSyncParser {
                     // and EAS 14 style command status
                     } else if (status == Eas.FOLDER_STATUS_INVALID_KEY ||
                             CommandStatus.isBadSyncKey(status)) {
-                        // Delete PIM data
-                        ExchangeService.deleteAccountPIMData(mContext, mAccountId);
+                        EasCalendarSyncHandler.wipeAccountFromContentProvider(mContext,
+                                mAccount.mEmailAddress);
+                        EasContactsSyncHandler.wipeAccountFromContentProvider(mContext,
+                                mAccount.mEmailAddress);
+
                         // Save away any mailbox sync information that is NOT default
                         saveMailboxSyncOptions();
                         // And only then, delete mailboxes
