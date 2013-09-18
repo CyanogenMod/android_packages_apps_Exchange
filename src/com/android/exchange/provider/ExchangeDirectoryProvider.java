@@ -84,6 +84,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+        EmailContent.init(getContext());
         return true;
     }
 
