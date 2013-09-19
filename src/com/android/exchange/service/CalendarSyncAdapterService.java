@@ -40,13 +40,21 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
     private static final String DIRTY_IN_ACCOUNT =
         Events.DIRTY + "=1 AND " + Events.ACCOUNT_NAME + "=?";
 
+    private static final Object sSyncAdapterLock = new Object();
+    private static AbstractThreadedSyncAdapter sSyncAdapter = null;
+
     public CalendarSyncAdapterService() {
         super();
     }
 
     @Override
-    protected AbstractThreadedSyncAdapter newSyncAdapter() {
-        return new SyncAdapterImpl(this);
+    protected AbstractThreadedSyncAdapter getSyncAdapter() {
+        synchronized (sSyncAdapterLock) {
+            if (sSyncAdapter == null) {
+                sSyncAdapter = new SyncAdapterImpl(this);
+            }
+            return sSyncAdapter;
+        }
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {

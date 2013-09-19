@@ -26,11 +26,9 @@ import com.android.emailcommon.provider.EmailContent;
 /**
  * Base class for services that handle sync requests from the system SyncManager.
  * This class covers the boilerplate for using an {@link AbstractThreadedSyncAdapter}. Subclasses
- * should just implement their sync adapter, and override {@link #newSyncAdapter}.
+ * should just implement their sync adapter, and override {@link #getSyncAdapter}.
  */
 public abstract class AbstractSyncAdapterService extends Service {
-    private AbstractThreadedSyncAdapter mSyncAdapter = null;
-
     public AbstractSyncAdapterService() {
         super();
     }
@@ -40,17 +38,17 @@ public abstract class AbstractSyncAdapterService extends Service {
         super.onCreate();
         // Make sure EmailContent is initialized in Exchange app
         EmailContent.init(this);
-        mSyncAdapter = newSyncAdapter();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        return mSyncAdapter.getSyncAdapterBinder();
+        return getSyncAdapter().getSyncAdapterBinder();
     }
 
     /**
-     * Subclasses should override this to supply a new instance of its sync adapter.
-     * @return A new instance of the sync adapter.
+     * Subclasses should override this to supply an instance of its sync adapter. Best practice is
+     * to create a singleton and return that.
+     * @return An instance of the sync adapter.
      */
-    protected abstract AbstractThreadedSyncAdapter newSyncAdapter();
+    protected abstract AbstractThreadedSyncAdapter getSyncAdapter();
 }
