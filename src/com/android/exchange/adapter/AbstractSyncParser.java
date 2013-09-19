@@ -216,9 +216,7 @@ public abstract class AbstractSyncParser extends Parser {
         return moreAvailable;
     }
 
-    protected void wipe() {
-        // TODO: Implement for non email mailboxes
-    }
+    abstract protected void wipe();
 
     void userLog(String ...strings) {
         // TODO: Convert to other logging types?
