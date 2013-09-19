@@ -144,8 +144,7 @@ public abstract class AbstractSyncParser extends Parser {
                     if (status == 3 || CommandStatus.isBadSyncKey(status)) {
                         // Must delete all of the data and start over with syncKey of "0"
                         mMailbox.mSyncKey = "0";
-                        // TODO: Implement wipe.
-                        //mAdapter.wipe();
+                        wipe();
                         // Indicate there's more so that we'll start syncing again
                         moreAvailable = true;
                     } else if (status == 16 || status == 5) {
@@ -215,6 +214,10 @@ public abstract class AbstractSyncParser extends Parser {
             userLog("MoreAvailable");
         }
         return moreAvailable;
+    }
+
+    protected void wipe() {
+        // TODO: Implement for non email mailboxes
     }
 
     void userLog(String ...strings) {
