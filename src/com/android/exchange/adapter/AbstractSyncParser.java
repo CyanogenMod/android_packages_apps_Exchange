@@ -20,12 +20,15 @@ package com.android.exchange.adapter;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.OperationApplicationException;
+import android.os.RemoteException;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +40,8 @@ import java.io.InputStream;
  *
  */
 public abstract class AbstractSyncParser extends Parser {
+    private static final String TAG = "AbstractSyncParser";
+
     protected Mailbox mMailbox;
     protected Account mAccount;
     protected Context mContext;
@@ -90,7 +95,8 @@ public abstract class AbstractSyncParser extends Parser {
      * Commit any changes found during parsing
      * @throws IOException
      */
-    public abstract void commit() throws IOException;
+    public abstract void commit() throws IOException, RemoteException,
+            OperationApplicationException;
 
     public boolean isLooping() {
         return mLooping;
@@ -194,30 +200,16 @@ public abstract class AbstractSyncParser extends Parser {
         }
 
         // Commit any changes
-        commit();
-
-
-        // TODO: I don't think this is still relevant. Syncing should not trigger changes in the
-        // sync interval.
-        /*
-        // If the sync interval has changed, we need to save it
-        if (mMailbox.mSyncInterval != interval) {
-            cv.put(MailboxColumns.SYNC_INTERVAL, mMailbox.mSyncInterval);
-            mailboxUpdated = true;
-        // If there are changes, and we were bounced from push/ping, try again
-        } else if (mAdapter.mChangeCount > 0 &&
-                mAccount.mSyncInterval == Account.CHECK_INTERVAL_PUSH &&
-                mMailbox.mSyncInterval > 0) {
-            userLog("Changes found to ping loop mailbox ", mMailbox.mDisplayName, ": will ping.");
-            cv.put(MailboxColumns.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_PING);
-            mailboxUpdated = true;
-            abortSyncs = true;
+        try {
+            commit();
+            if (mailboxUpdated) {
+                mMailbox.update(mContext, cv);
+            }
+        } catch (RemoteException e) {
+            LogUtils.e(TAG, "Failed to commit changes", e);
+        } catch (OperationApplicationException e) {
+            LogUtils.e(TAG, "Failed to commit changes", e);
         }
-         */
-        if (mailboxUpdated) {
-            mMailbox.update(mContext, cv);
-        }
-
         // Let the caller know that there's more to do
         if (moreAvailable) {
             userLog("MoreAvailable");

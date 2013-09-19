@@ -88,6 +88,8 @@ public class Eas {
     public static final String MIME_BODY_PREFERENCE_TEXT = "0";
     public static final String MIME_BODY_PREFERENCE_MIME = "2";
 
+    // These limits must never exceed about 500k which is half the max size of a Binder IPC buffer.
+
     // For EAS 12, we use HTML, so we want a larger size than in EAS 2.5
     public static final String EAS12_TRUNCATION_SIZE = "200000";
     // For EAS 2.5, truncation is a code; the largest is "7", which is 100k
