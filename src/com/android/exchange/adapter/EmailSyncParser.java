@@ -7,6 +7,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
+import android.os.Parcel;
 import android.os.RemoteException;
 import android.os.TransactionTooLargeException;
 import android.provider.CalendarContract;
@@ -14,6 +15,7 @@ import android.text.Html;
 import android.text.SpannedString;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import com.android.emailcommon.internet.MimeMessage;
@@ -76,6 +78,14 @@ public class EmailSyncParser extends AbstractSyncParser {
     static final int LAST_VERB_FORWARD = 3;
 
     private final Policy mPolicy;
+
+    // Max times to retry when we get a TransactionTooLargeException exception
+    private static final int MAX_RETRIES = 10;
+
+    // Max number of ops per batch. It could end up more than this but once we detect we are at or
+    // above this number, we flush.
+    private static final int MAX_OPS_PER_BATCH = 50;
+
     private boolean mFetchNeeded = false;
 
     private final Map<String, Integer> mMessageUpdateStatus = new HashMap();
@@ -719,25 +729,45 @@ public class EmailSyncParser extends AbstractSyncParser {
         }
     }
 
+    /**
+     * Commit all changes. This results in a Binder IPC call which has constraint on the size of
+     * the data, the docs say it currently 1MB. We set a limit to the size of the message we fetch
+     * with {@link Eas#EAS12_TRUNCATION_SIZE} & {@link Eas#EAS12_TRUNCATION_SIZE} which are at 200k
+     * or bellow. As long as these limits are bellow 500k, we should be able to apply a single
+     * message (the transaction size is about double the message size because Java strings are 16
+     * bit.
+     * <b/>
+     * We first try to apply the changes in normal chunk size {@link #MAX_OPS_PER_BATCH}. If we get
+     * a {@link TransactionTooLargeException} we try again with but this time, we apply each change
+     * immediately.
+     */
     @Override
-    public void commit() {
-        commitImpl(0);
+    public void commit() throws RemoteException, OperationApplicationException {
+        try {
+            commitImpl(MAX_OPS_PER_BATCH);
+        } catch (TransactionTooLargeException e) {
+            // Try again but apply batch after every message. The max message size defined in
+            // Eas.EAS12_TRUNCATION_SIZE or Eas.EAS2_5_TRUNCATION_SIZE is small enough to fit
+            // in a single Binder call.
+            LogUtils.w(TAG, "Transaction too large, retrying in single mode", e);
+            commitImpl(1);
+        }
     }
 
-    public void commitImpl(int tryCount) {
+    public void commitImpl(int maxOpsPerBatch)
+            throws RemoteException, OperationApplicationException {
         // Use a batch operation to handle the changes
         ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
 
         // Maximum size of message text per fetch
         int numFetched = fetchedEmails.size();
-        int maxPerFetch = 0;
-        if (numFetched > 0 && tryCount > 0) {
-            // Educated guess that 450000 chars (900k) is ok; 600k is a killer
-            // Remember that when fetching, we're not getting any other data
-            // We'll keep trying, reducing the maximum each time
-            // Realistically, this will rarely exceed 1, and probably never 2
-            maxPerFetch = 450000 / numFetched / tryCount;
-        }
+        LogUtils.d(TAG, "commitImpl: maxOpsPerBatch=%d numFetched=%d numNew=%d "
+                + "numDeleted=%d numChanged=%d",
+                maxOpsPerBatch,
+                numFetched,
+                newEmails.size(),
+                deletedEmails.size(),
+                changedEmails.size());
         for (EmailContent.Message msg: fetchedEmails) {
             // Find the original message's id (by serverId and mailbox)
             Cursor c = getServerIdCursor(msg.mServerId, EmailContent.ID_PROJECTION);
@@ -762,10 +792,6 @@ public class EmailSyncParser extends AbstractSyncParser {
             if (id != null) {
                 userLog("Fetched body successfully for ", id);
                 final String[] bindArgument = new String[] {id};
-                if ((maxPerFetch > 0) && (msg.mText.length() > maxPerFetch)) {
-                    userLog("Truncating message to " + maxPerFetch);
-                    msg.mText = msg.mText.substring(0, maxPerFetch) + "...";
-                }
                 ops.add(ContentProviderOperation.newUpdate(EmailContent.Body.CONTENT_URI)
                         .withSelection(EmailContent.Body.MESSAGE_KEY + "=?", bindArgument)
                         .withValue(EmailContent.Body.TEXT_CONTENT, msg.mText)
@@ -776,16 +802,19 @@ public class EmailSyncParser extends AbstractSyncParser {
                                 EmailContent.Message.FLAG_LOADED_COMPLETE)
                         .build());
             }
+            applyBatchIfNeeded(ops, maxOpsPerBatch, false);
         }
 
         for (EmailContent.Message msg: newEmails) {
             msg.addSaveOps(ops);
+            applyBatchIfNeeded(ops, maxOpsPerBatch, false);
         }
 
         for (Long id : deletedEmails) {
             ops.add(ContentProviderOperation.newDelete(
                     ContentUris.withAppendedId(EmailContent.Message.CONTENT_URI, id)).build());
             AttachmentUtilities.deleteAllAttachmentFiles(mContext, mAccount.mId, id);
+            applyBatchIfNeeded(ops, maxOpsPerBatch, false);
         }
 
         if (!changedEmails.isEmpty()) {
@@ -806,6 +835,7 @@ public class EmailSyncParser extends AbstractSyncParser {
                         .withValues(cv)
                         .build());
             }
+            applyBatchIfNeeded(ops, maxOpsPerBatch, false);
         }
 
         // We only want to update the sync key here
@@ -815,16 +845,28 @@ public class EmailSyncParser extends AbstractSyncParser {
                 ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailbox.mId))
                 .withValues(mailboxValues).build());
 
-        try {
+        applyBatchIfNeeded(ops, maxOpsPerBatch, true);
+        userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
+    }
+
+    // Check if there at least MAX_OPS_PER_BATCH ops in queue and flush if there are.
+    // If force is true, flush regardless of size.
+    private void applyBatchIfNeeded(ArrayList<ContentProviderOperation> ops, int maxOpsPerBatch,
+            boolean force)
+            throws RemoteException, OperationApplicationException {
+        if (force ||  ops.size() >= maxOpsPerBatch) {
+            // STOPSHIP Remove calculating size of data before ship
+            if (LogUtils.isLoggable(TAG, Log.DEBUG)) {
+                final Parcel parcel = Parcel.obtain();
+                for (ContentProviderOperation op : ops) {
+                    op.writeToParcel(parcel, 0);
+                }
+                Log.d(TAG, String.format("Committing %d ops total size=%d",
+                        ops.size(), parcel.dataSize()));
+                parcel.recycle();
+            }
             mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
-            userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
-        } catch (TransactionTooLargeException e) {
-            LogUtils.w(TAG, "Transaction failed on fetched message; retrying...");
-            commitImpl(++tryCount);
-        } catch (RemoteException e) {
-            // There is nothing to be done here; fail by returning null
-        } catch (OperationApplicationException e) {
-            // There is nothing to be done here; fail by returning null
+            ops.clear();
         }
     }
 }
