@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,6 +33,8 @@ import android.os.RemoteException;
 import android.provider.CalendarContract;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
+import android.provider.ContactsContract;
+import android.provider.ContactsContract.RawContacts;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.provider.Account;
@@ -363,34 +366,6 @@ public class ExchangeService extends SyncManager {
         return accounts;
     }
 
-    public static void deleteAccountPIMData(final Context context, final long accountId) {
-        /*Mailbox mailbox =
-            Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CONTACTS);
-        if (mailbox != null) {
-            EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
-            // ContactsSyncAdapter is gone now, and this class is deprecated.
-            // Just leaving this commented out code here for reference.
-            ContactsSyncAdapter adapter = new ContactsSyncAdapter(service);
-            adapter.wipe();
-        }*/
-        final Mailbox mailbox =
-            Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_CALENDAR);
-
-        if (mailbox != null) {
-            final EasSyncService service = EasSyncService.getServiceForMailbox(context, mailbox);
-            final Uri eventsAsSyncAdapter = eventsAsSyncAdapter(Events.CONTENT_URI,
-                    service.mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-            // CalenderSyncAdapter is gone now, and this class is deprecated.
-            // Just leaving this commented out code here for reference.
-//          CalendarSyncAdapter adapter = new CalendarSyncAdapter(service);
-//          adapter.wipe();
-            // Need to have a selection since we don't specify an id in the url
-            context.getContentResolver().delete(eventsAsSyncAdapter, "TRUE", new String[0]);
-            unregisterCalendarObservers();
-
-        }
-    }
-
     public static boolean onSecurityHold(Account account) {
         return (account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0;
     }
@@ -399,10 +374,12 @@ public class ExchangeService extends SyncManager {
         return (account.mFlags & Account.FLAGS_SYNC_DISABLED) != 0;
     }
 
-    private static Uri eventsAsSyncAdapter(Uri uri, String account, String accountType) {
-        return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
-            .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
-            .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
+    private static Uri eventsAsSyncAdapter(final Uri uri, final String account,
+            final String accountType) {
+        return uri.buildUpon()
+                .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, account)
+                .appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build();
     }
 
     /**
