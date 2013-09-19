@@ -1060,6 +1060,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 } else
                     skipTag();
             }
+
         }
 
         /**
@@ -1222,6 +1223,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             } catch (OperationApplicationException e) {
                 // There is nothing to be done here; fail by returning null
             }
+        }
+
+        @Override
+        protected void wipe() {
+            // This file is deprecated, no need to implement this.
         }
     }
 
