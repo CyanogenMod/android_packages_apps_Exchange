@@ -40,13 +40,21 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
     private static final String ACCOUNT_AND_TYPE_CONTACTS =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CONTACTS;
 
+    private static final Object sSyncAdapterLock = new Object();
+    private static AbstractThreadedSyncAdapter sSyncAdapter = null;
+
     public ContactsSyncAdapterService() {
         super();
     }
 
     @Override
-    protected AbstractThreadedSyncAdapter newSyncAdapter() {
-        return new SyncAdapterImpl(this);
+    protected AbstractThreadedSyncAdapter getSyncAdapter() {
+        synchronized (sSyncAdapterLock) {
+            if (sSyncAdapter == null) {
+                sSyncAdapter = new SyncAdapterImpl(this);
+            }
+            return sSyncAdapter;
+        }
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
