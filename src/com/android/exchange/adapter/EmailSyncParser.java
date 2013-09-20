@@ -729,6 +729,12 @@ public class EmailSyncParser extends AbstractSyncParser {
         }
     }
 
+    @Override
+    protected void wipe() {
+        LogUtils.i(TAG, "Wiping mailbox " + mMailbox);
+        Mailbox.resyncMailbox(mContentResolver, mAccount.mAmAccount, mMailbox.mId);
+    }
+
     /**
      * Commit all changes. This results in a Binder IPC call which has constraint on the size of
      * the data, the docs say it currently 1MB. We set a limit to the size of the message we fetch
