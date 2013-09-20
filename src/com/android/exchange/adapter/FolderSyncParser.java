@@ -239,27 +239,10 @@ public class FolderSyncParser extends AbstractSyncParser {
                     // and EAS 14 style command status
                     } else if (status == Eas.FOLDER_STATUS_INVALID_KEY ||
                             CommandStatus.isBadSyncKey(status)) {
-                        EasCalendarSyncHandler.wipeAccountFromContentProvider(mContext,
-                                mAccount.mEmailAddress);
-                        EasContactsSyncHandler.wipeAccountFromContentProvider(mContext,
-                                mAccount.mEmailAddress);
-
-                        // Save away any mailbox sync information that is NOT default
-                        saveMailboxSyncOptions();
-                        // And only then, delete mailboxes
-                        mContentResolver.delete(Mailbox.CONTENT_URI, WHERE_ACCOUNT_KEY,
-                                new String[] {mAccountIdAsString});
+                        wipe();
                         // Reconstruct _main
                         res = true;
                         resetFolders = true;
-                        // Reset the sync key and save (this should trigger the AccountObserver
-                        // in ExchangeService, which will recreate the account mailbox, which
-                        // will then start syncing folders, etc.)
-                        mAccount.mSyncKey = "0";
-                        ContentValues cv = new ContentValues();
-                        cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
-                        mContentResolver.update(ContentUris.withAppendedId(Account.CONTENT_URI,
-                                mAccount.mId), cv, null, null);
                     } else {
                         // Other errors are at the server, so let's throw an error that will
                         // cause this sync to be retried at a later time
@@ -768,4 +751,23 @@ public class FolderSyncParser extends AbstractSyncParser {
     public void responsesParser() throws IOException {
     }
 
+    @Override
+    protected void wipe() {
+        EasCalendarSyncHandler.wipeAccountFromContentProvider(mContext,
+                mAccount.mEmailAddress);
+        EasContactsSyncHandler.wipeAccountFromContentProvider(mContext,
+                mAccount.mEmailAddress);
+
+        // Save away any mailbox sync information that is NOT default
+        saveMailboxSyncOptions();
+        // And only then, delete mailboxes
+        mContentResolver.delete(Mailbox.CONTENT_URI, WHERE_ACCOUNT_KEY,
+                new String[] {mAccountIdAsString});
+        // Reset the sync key and save.
+        mAccount.mSyncKey = "0";
+        ContentValues cv = new ContentValues();
+        cv.put(AccountColumns.SYNC_KEY, mAccount.mSyncKey);
+        mContentResolver.update(ContentUris.withAppendedId(Account.CONTENT_URI,
+                mAccount.mId), cv, null, null);
+    }
 }
