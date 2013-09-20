@@ -73,6 +73,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     /** Projection used for getting email address for an account. */
     private static final String[] ACCOUNT_EMAIL_PROJECTION = { AccountColumns.EMAIL_ADDRESS };
 
+    private static final Object sSyncAdapterLock = new Object();
+    private static AbstractThreadedSyncAdapter sSyncAdapter = null;
+
     /**
      * Bookkeeping for handling synchronization between pings and syncs.
      * "Ping" refers to a hanging POST or GET that is used to receive push notifications. Ping is
@@ -496,8 +499,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     }
 
     @Override
-    protected AbstractThreadedSyncAdapter newSyncAdapter() {
-        return new SyncAdapterImpl(this);
+    protected AbstractThreadedSyncAdapter getSyncAdapter() {
+        synchronized (sSyncAdapterLock) {
+            if (sSyncAdapter == null) {
+                sSyncAdapter = new SyncAdapterImpl(this);
+            }
+            return sSyncAdapter;
+        }
     }
 
     // TODO: Handle cancelSync() appropriately.
