@@ -63,7 +63,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
     /** Content selection for getting a calendar id for an account. */
     private static final String CALENDAR_SELECTION = Calendars.ACCOUNT_NAME + "=? AND " +
-            Calendars.ACCOUNT_TYPE + "=?";
+            Calendars.ACCOUNT_TYPE + "=? AND " + Calendars._SYNC_ID + "=?";
 
     /** The column used to track the timezone of the event. */
     private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.SYNC_DATA1;
@@ -124,7 +124,11 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         mAccountManagerAccount = accountManagerAccount;
         final Cursor c = mContentResolver.query(Calendars.CONTENT_URI, CALENDAR_ID_PROJECTION,
                 CALENDAR_SELECTION,
-                new String[] {mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE}, null);
+                new String[] {
+                        mAccount.mEmailAddress,
+                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE,
+                        mailbox.mServerId,
+                }, null);
         if (c == null) {
             mCalendarId = -1;
         } else {
@@ -168,23 +172,13 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
     @Override
     protected String getSyncKey() {
-        // mMailbox.mSyncKey is bogus since state is stored by the calendar provider, so we
-        // need to fetch the data from there.
-        // However, we need for that value to be reasonable, so we set it here once we fetch it.
-        final ContentProviderClient client =
-                mContentResolver.acquireContentProviderClient(CalendarContract.CONTENT_URI);
-        try {
-            final byte[] data = SyncStateContract.Helpers.get(client,
-                    asSyncAdapter(SyncState.CONTENT_URI), mAccountManagerAccount);
-            if (data == null || data.length == 0) {
-                mMailbox.mSyncKey = "0";
-            } else {
-                mMailbox.mSyncKey = new String(data);
-            }
-            return mMailbox.mSyncKey;
-        } catch (final RemoteException e) {
+        if (mMailbox == null) {
             return null;
         }
+        if (mMailbox.mSyncKey == null) {
+            mMailbox.mSyncKey = "0";
+        }
+        return mMailbox.mSyncKey;
     }
 
     @Override
