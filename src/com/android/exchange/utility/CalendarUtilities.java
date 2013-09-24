@@ -1395,10 +1395,11 @@ public class CalendarUtilities {
         // Create a Calendar object
         ContentValues cv = new ContentValues();
         // TODO How will this change if the user changes his account display name?
-        cv.put(Calendars.CALENDAR_DISPLAY_NAME, account.mDisplayName);
+        cv.put(Calendars.CALENDAR_DISPLAY_NAME, mailbox.mDisplayName);
         cv.put(Calendars.ACCOUNT_NAME, account.mEmailAddress);
         cv.put(Calendars.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         cv.put(Calendars.SYNC_EVENTS, 1);
+        cv.put(Calendars._SYNC_ID, mailbox.mServerId);
         cv.put(Calendars.VISIBLE, 1);
         // Don't show attendee status if we're the organizer
         cv.put(Calendars.CAN_ORGANIZER_RESPOND, 0);
