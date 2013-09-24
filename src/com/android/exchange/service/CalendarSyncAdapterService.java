@@ -114,7 +114,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                 final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, Mailbox.ID_PROJECTION,
                         ACCOUNT_AND_TYPE_CALENDAR, new String[] {Long.toString(accountId)}, null);
                 try {
-                    if (mailboxCursor.moveToFirst()) {
+                    while (mailboxCursor.moveToNext()) {
                         if (logging) {
                             LogUtils.d(TAG, "Upload sync requested for " + account.name);
                         }
