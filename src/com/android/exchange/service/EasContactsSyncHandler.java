@@ -1,6 +1,5 @@
 package com.android.exchange.service;
 
-import android.content.ContentProviderClient;
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -12,7 +11,6 @@ import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Event;
@@ -28,7 +26,6 @@ import android.provider.ContactsContract.CommonDataKinds.StructuredName;
 import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
 import android.provider.ContactsContract.CommonDataKinds.Website;
 import android.provider.ContactsContract.Groups;
-import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.util.Base64;
 
@@ -159,40 +156,6 @@ public class EasContactsSyncHandler extends EasSyncHandler {
     @Override
     protected int getTrafficFlag() {
         return TrafficFlags.DATA_CONTACTS;
-    }
-
-    @Override
-    protected String getSyncKey() {
-        // mMailbox.mSyncKey is bogus since state is stored by the contacts provider, so we
-        // need to fetch the data from there.
-        // However, we need for that value to be reasonable, so we set it here once we fetch it.
-        final ContentProviderClient client = mContentResolver.acquireContentProviderClient(
-                ContactsContract.AUTHORITY_URI);
-        try {
-            final byte[] data = SyncStateContract.Helpers.get(client,
-                    ContactsContract.SyncState.CONTENT_URI, mAccountManagerAccount);
-            if (data == null || data.length == 0) {
-                // We don't have a sync key yet, initialize it.
-                // TODO: Should we leave it and just let the first successful sync set it?
-                /*
-                mMailbox.mSyncKey = "0";
-                SyncStateContract.Helpers.set(client, ContactsContract.SyncState.CONTENT_URI,
-                            mAccountManagerAccount, "0".getBytes());
-                // Make sure ungrouped contacts for Exchange are visible by default.
-                final ContentValues cv = new ContentValues(3);
-                cv.put(Groups.ACCOUNT_NAME, mAccount.mEmailAddress);
-                cv.put(Groups.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                cv.put(ContactsContract.Settings.UNGROUPED_VISIBLE, true);
-                client.insert(addCallerIsSyncAdapterParameter(Settings.CONTENT_URI), cv);
-                */
-                mMailbox.mSyncKey = "0";
-            } else {
-                mMailbox.mSyncKey = new String(data);
-            }
-            return mMailbox.mSyncKey;
-        } catch (final RemoteException e) {
-            return null;
-        }
     }
 
     @Override

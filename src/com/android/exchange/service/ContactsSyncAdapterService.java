@@ -128,7 +128,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                 final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, Mailbox.ID_PROJECTION,
                         ACCOUNT_AND_TYPE_CONTACTS, new String[] {Long.toString(accountId)}, null);
                 try {
-                     if (mailboxCursor.moveToFirst()) {
+                    while (mailboxCursor.moveToNext()) {
                          LogUtils.i(TAG, "Contact sync requested for " + account.name);
                          // TODO: Currently just bouncing this to Email sync; eventually streamline.
                         final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
