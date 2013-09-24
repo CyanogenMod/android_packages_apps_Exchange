@@ -171,17 +171,6 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     }
 
     @Override
-    protected String getSyncKey() {
-        if (mMailbox == null) {
-            return null;
-        }
-        if (mMailbox.mSyncKey == null) {
-            mMailbox.mSyncKey = "0";
-        }
-        return mMailbox.mSyncKey;
-    }
-
-    @Override
     protected String getFolderClassName() {
         return "Calendar";
     }

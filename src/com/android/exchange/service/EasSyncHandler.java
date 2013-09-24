@@ -156,7 +156,15 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * @return The sync key for the object being synced. "0" means this is the first sync. If
      *      there is an error in getting the sync key, this function returns null.
      */
-    protected abstract String getSyncKey();
+    protected String getSyncKey() {
+        if (mMailbox == null) {
+            return null;
+        }
+        if (mMailbox.mSyncKey == null) {
+            mMailbox.mSyncKey = "0";
+        }
+        return mMailbox.mSyncKey;
+    }
 
     /**
      * Get the folder class name for this mailbox.
