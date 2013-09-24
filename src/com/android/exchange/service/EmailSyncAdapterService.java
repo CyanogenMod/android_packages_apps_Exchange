@@ -467,10 +467,22 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     @Override
     public void onCreate() {
+        LogUtils.i(TAG, "onCreate()");
         super.onCreate();
         // Restart push for all accounts that need it.
         new RestartPingsTask(getContentResolver(), mSyncHandlerMap).executeOnExecutor(
                 AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    @Override
+    public void onDestroy() {
+        LogUtils.i(TAG, "onDestroy()");
+        super.onDestroy();
+        for (PingTask task : mSyncHandlerMap.mPingHandlers.values()) {
+            if (task != null) {
+                task.stop();
+            }
+        }
     }
 
     @Override
