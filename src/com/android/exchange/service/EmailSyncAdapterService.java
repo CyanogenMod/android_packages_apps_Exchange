@@ -468,6 +468,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     @Override
     public void onCreate() {
         super.onCreate();
+        startService(new Intent(this, EmailSyncAdapterService.class));
         // Restart push for all accounts that need it.
         new RestartPingsTask(getContentResolver(), mSyncHandlerMap).executeOnExecutor(
                 AsyncTask.THREAD_POOL_EXECUTOR);
