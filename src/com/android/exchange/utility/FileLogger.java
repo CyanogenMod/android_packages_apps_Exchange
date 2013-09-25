@@ -16,7 +16,6 @@
 
 package com.android.exchange.utility;
 
-import android.content.Context;
 import android.os.Environment;
 
 import java.io.FileWriter;
@@ -30,7 +29,7 @@ public class FileLogger {
     public static String LOG_FILE_NAME =
         Environment.getExternalStorageDirectory() + "/emaillog.txt";
 
-    public synchronized static FileLogger getLogger (Context c) {
+    public synchronized static FileLogger getLogger() {
         LOGGER = new FileLogger();
         return LOGGER;
     }

@@ -18,6 +18,12 @@ package com.android.exchange;
 
 import android.app.Application;
 
+import com.android.mail.utils.LogTag;
+
 public class Exchange extends Application {
-    // TODO Investigate whether this class is needed
+    private static final String LOG_TAG = "Exchange";
+
+    static {
+        LogTag.setLogTag(LOG_TAG);
+    }
 }

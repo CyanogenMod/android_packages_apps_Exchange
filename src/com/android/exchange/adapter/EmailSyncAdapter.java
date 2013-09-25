@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+// TODO: Deprecated, remove this file.
+
 package com.android.exchange.adapter;
 
 import android.content.ContentProviderOperation;
@@ -32,7 +34,6 @@ import android.text.Html;
 import android.text.SpannedString;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import com.android.emailcommon.internet.MimeMessage;
@@ -66,6 +67,7 @@ import com.android.exchange.EasSyncService;
 import com.android.exchange.MessageMoveRequest;
 import com.android.exchange.R;
 import com.android.exchange.utility.CalendarUtilities;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpStatus;
@@ -147,13 +149,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
     private String getEmailFilter() {
         int syncLookback = mMailbox.mSyncLookback;
-        if (syncLookback == SyncWindow.SYNC_WINDOW_UNKNOWN
+        if (syncLookback == SyncWindow.SYNC_WINDOW_ACCOUNT
                 || mMailbox.mType == Mailbox.TYPE_INBOX) {
             syncLookback = mAccount.mSyncLookback;
         }
         switch (syncLookback) {
-            case SyncWindow.SYNC_WINDOW_AUTO:
-                return Eas.FILTER_AUTO;
             case SyncWindow.SYNC_WINDOW_1_DAY:
                 return Eas.FILTER_1_DAY;
             case SyncWindow.SYNC_WINDOW_3_DAYS:
@@ -167,6 +167,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             case SyncWindow.SYNC_WINDOW_ALL:
                 return Eas.FILTER_ALL;
             default:
+                // Auto window is deprecated and will also use the default.
                 return Eas.FILTER_1_WEEK;
         }
     }
@@ -228,12 +229,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             s.data(Tags.SYNC_WINDOW_SIZE, EMAIL_WINDOW_SIZE);
             s.start(Tags.SYNC_OPTIONS);
             // Set the lookback appropriately (EAS calls this a "filter")
-            String filter = getEmailFilter();
-            // We shouldn't get FILTER_AUTO here, but if we do, make it something legal...
-            if (filter.equals(Eas.FILTER_AUTO)) {
-                filter = Eas.FILTER_3_DAYS;
-            }
-            s.data(Tags.SYNC_FILTER_TYPE, filter);
+            s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
             // Set the truncation amount for all classes
             if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
                 s.start(Tags.BASE_BODY_PREFERENCE);
@@ -268,17 +264,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             return true;
         }
 
-        // Don't check for "auto" on the initial sync
-        if (!("0".equals(mMailbox.mSyncKey))) {
-            // We've completed the first successful sync
-            if (getEmailFilter().equals(Eas.FILTER_AUTO)) {
-                getAutomaticLookback();
-             }
-        }
-
         return res;
     }
 
+    /**
+     * This function is no longer used, but keeping it here in case we revive this functionality.
+     * @throws IOException
+     */
+    @Deprecated
     private void getAutomaticLookback() throws IOException {
         // If we're using an auto lookback, check how many items in the past week
         // TODO Make the literal ints below constants once we twiddle them a bit
@@ -336,7 +329,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
 
         CharSequence[] windowEntries = mContext.getResources().getTextArray(
                 R.array.account_settings_mail_window_entries);
-        Log.d(TAG, "Auto lookback: " + windowEntries[lookback]);
+        LogUtils.d(TAG, "Auto lookback: " + windowEntries[lookback]);
     }
 
     private static class GetItemEstimateParser extends Parser {
@@ -373,7 +366,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         public void parseResponse() throws IOException {
             while (nextTag(Tags.GIE_RESPONSE) != END) {
                 if (tag == Tags.GIE_STATUS) {
-                    Log.d(TAG, "GIE status: " + getValue());
+                    LogUtils.d(TAG, "GIE status: " + getValue());
                 } else if (tag == Tags.GIE_COLLECTION) {
                     parseCollection();
                 } else {
@@ -385,12 +378,12 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         public void parseCollection() throws IOException {
             while (nextTag(Tags.GIE_COLLECTION) != END) {
                 if (tag == Tags.GIE_CLASS) {
-                    Log.d(TAG, "GIE class: " + getValue());
+                    LogUtils.d(TAG, "GIE class: " + getValue());
                 } else if (tag == Tags.GIE_COLLECTION_ID) {
-                    Log.d(TAG, "GIE collectionId: " + getValue());
+                    LogUtils.d(TAG, "GIE collectionId: " + getValue());
                 } else if (tag == Tags.GIE_ESTIMATE) {
                     mEstimate = getValueInt();
-                    Log.d(TAG, "GIE estimate: " + mEstimate);
+                    LogUtils.d(TAG, "GIE estimate: " + mEstimate);
                 } else {
                     skipTag();
                 }
@@ -654,7 +647,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private void putFromMeeting(PackedString ps, String field, ContentValues values,
+        private static void putFromMeeting(PackedString ps, String field, ContentValues values,
                 String column) {
             String val = ps.get(field);
             if (!TextUtils.isEmpty(val)) {
@@ -807,7 +800,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
          * @param mimeData the MIME data we've received from the server
          * @throws IOException
          */
-        private void mimeBodyParser(Message msg, String mimeData) throws IOException {
+        private static void mimeBodyParser(Message msg, String mimeData) throws IOException {
             try {
                 ByteArrayInputStream in = new ByteArrayInputStream(mimeData.getBytes());
                 // The constructor parses the message
@@ -817,12 +810,14 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 // We'll ignore the attachments, as we'll get them directly from EAS
                 ArrayList<Part> attachments = new ArrayList<Part>();
                 MimeUtility.collectParts(mimeMessage, viewables, attachments);
-                Body tempBody = new Body();
-                // updateBodyFields fills in the content fields of the Body
-                ConversionUtilities.updateBodyFields(tempBody, msg, viewables);
+                // parseBodyFields fills in the content fields of the Body
+                ConversionUtilities.BodyFieldData data =
+                        ConversionUtilities.parseBodyFields(viewables);
                 // But we need them in the message itself for handling during commit()
-                msg.mHtml = tempBody.mHtmlContent;
-                msg.mText = tempBody.mTextContent;
+                msg.setFlags(data.isQuotedReply, data.isQuotedForward);
+                msg.mSnippet = data.snippet;
+                msg.mHtml = data.htmlContent;
+                msg.mText = data.textContent;
             } catch (MessagingException e) {
                 // This would most likely indicate a broken stream
                 throw new IOException(e);
@@ -1065,6 +1060,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 } else
                     skipTag();
             }
+
         }
 
         /**
@@ -1220,13 +1216,18 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
                 userLog(mMailbox.mDisplayName, " SyncKey saved as: ", mMailbox.mSyncKey);
             } catch (TransactionTooLargeException e) {
-                Log.w(TAG, "Transaction failed on fetched message; retrying...");
+                LogUtils.w(TAG, "Transaction failed on fetched message; retrying...");
                 commitImpl(++tryCount);
              } catch (RemoteException e) {
                 // There is nothing to be done here; fail by returning null
             } catch (OperationApplicationException e) {
                 // There is nothing to be done here; fail by returning null
             }
+        }
+
+        @Override
+        protected void wipe() {
+            // This file is deprecated, no need to implement this.
         }
     }
 
@@ -1270,7 +1271,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         }
     }
 
-    private String formatTwo(int num) {
+    private static String formatTwo(int num) {
         if (num < 10) {
             return "0" + (char)('0' + num);
         } else
@@ -1305,7 +1306,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
      * can utilize this id to find references to the message.  The only reference situation at this
      * point is in the Body table; it is when sending messages via SmartForward and SmartReply
      */
-    private boolean messageReferenced(ContentResolver cr, long id) {
+    private static boolean messageReferenced(ContentResolver cr, long id) {
         // See if this id is referenced in a body
         Cursor c = cr.query(Body.CONTENT_URI, Body.ID_PROJECTION, WHERE_BODY_SOURCE_MESSAGE_KEY,
                 new String[] {Long.toString(id)}, null);

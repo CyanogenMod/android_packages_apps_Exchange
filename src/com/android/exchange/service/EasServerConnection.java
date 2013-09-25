@@ -1,42 +1,79 @@
+/*
+ * Copyright (C) 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.exchange.service;
 
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Base64;
+import android.util.Log;
 
-import com.android.emailcommon.Device;
+import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
+import com.android.exchange.eas.EasConnectionCache;
+import com.android.mail.utils.LogUtils;
 
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpEntityEnclosingRequest;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.params.ConnManagerPNames;
-import org.apache.http.conn.params.ConnPerRoute;
-import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.RequestWrapper;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.BasicHttpProcessor;
+import org.apache.http.protocol.HttpContext;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.util.HashMap;
+import java.security.cert.CertificateException;
 
 /**
  * Base class for communicating with an EAS server. Anything that needs to send messages to the
  * server can subclass this to get access to the {@link #sendHttpClientPost} family of functions.
+ * TODO: This class has a regrettable name. It's not a connection, but rather a task that happens
+ * to have (and use) a connection to the server.
  */
-public abstract class EasServerConnection {
+public class EasServerConnection {
+    /** Logging tag. */
+    private static final String TAG = "EasServerConnection";
+
     /**
      * Timeout for establishing a connection to the server.
      */
@@ -48,99 +85,112 @@ public abstract class EasServerConnection {
     protected static final long COMMAND_TIMEOUT = 30 * DateUtils.SECOND_IN_MILLIS;
 
     private static final String DEVICE_TYPE = "Android";
-    protected static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
+    private static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
 
+    /** Message MIME type for EAS version 14 and later. */
+    private static final String EAS_14_MIME_TYPE = "application/vnd.ms-sync.wbxml";
 
-    private static final ConnPerRoute sConnPerRoute = new ConnPerRoute() {
-        @Override
-        public int getMaxForRoute(final HttpRoute route) {
-            return 8;
-        }
-    };
+    /**
+     * Value for {@link #mStoppedReason} when we haven't been stopped.
+     */
+    public static final int STOPPED_REASON_NONE = 0;
+
+    /**
+     * Passed to {@link #stop} to indicate that this stop request should terminate this task.
+     */
+    public static final int STOPPED_REASON_ABORT = 1;
+
+    /**
+     * Passed to {@link #stop} to indicate that this stop request should restart this task (e.g. in
+     * order to reload parameters).
+     */
+    public static final int STOPPED_REASON_RESTART = 2;
+
+    private static final String[] ACCOUNT_SECURITY_KEY_PROJECTION =
+            { EmailContent.AccountColumns.SECURITY_SYNC_KEY };
+
+    private static String sDeviceId = null;
 
     protected final Context mContext;
     // TODO: Make this private if possible. Subclasses must be careful about altering the HostAuth
     // to not screw up any connection caching (use redirectHostAuth).
     protected final HostAuth mHostAuth;
     protected final Account mAccount;
+    private final long mAccountId;
 
-    // Bookkeeping for interrupting a POST. This is primarily for use by Ping (there's currently
+    // Bookkeeping for interrupting a request. This is primarily for use by Ping (there's currently
     // no mechanism for stopping a sync).
     // Access to these variables should be synchronized on this.
-    private HttpPost mPendingPost = null;
+    private HttpUriRequest mPendingRequest = null;
     private boolean mStopped = false;
+    private int mStoppedReason = STOPPED_REASON_NONE;
+
+    /** The protocol version to use, as a double. */
+    private double mProtocolVersion = 0.0d;
+    /** Whether {@link #setProtocolVersion} was last called with a non-null value. */
+    private boolean mProtocolVersionIsSet = false;
 
     /**
-     * We want to reuse {@link EmailClientConnectionManager} across different requests to the same
-     * {@link HostAuth}. Since HostAuths have unique ids, we can use that as the cache key.
-     * All access to the cache must be synchronized in theory, although in practice since we don't
-     * have concurrent requests to the same account it should never come up.
+     * The client for any requests made by this object. This is created lazily, and cleared
+     * whenever our host auth is redirected.
      */
-    private static class ConnectionManagerCache {
-        private final HashMap<Long, EmailClientConnectionManager> mMap =
-                new HashMap<Long, EmailClientConnectionManager>();
+    private HttpClient mClient;
 
-        /**
-         * Get a connection manager from the cache, or create one and add it if needed.
-         * @param context The {@link Context}.
-         * @param hostAuth The {@link HostAuth} to which we want to connect.
-         * @return The connection manager for hostAuth.
-         */
-        public synchronized EmailClientConnectionManager getConnectionManager(
-                final Context context, final HostAuth hostAuth) {
-            EmailClientConnectionManager connectionManager = mMap.get(hostAuth.mId);
-            if (connectionManager == null) {
-                final HttpParams params = new BasicHttpParams();
-                params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
-                params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
-                final boolean ssl = hostAuth.shouldUseSsl();
-                final int port = hostAuth.mPort;
-                connectionManager =
-                        EmailClientConnectionManager.newInstance(context, params, hostAuth);
-                // We don't save managers for validation/autodiscover
-                if (hostAuth.mId != HostAuth.NOT_SAVED) {
-                    mMap.put(hostAuth.mId, connectionManager);
-                }
-            }
-            return connectionManager;
-        }
+    /**
+     * The connection manager for any requests made by this object. This is created lazily, and
+     * cleared whenever our host auth is redirected.
+     */
+    private EmailClientConnectionManager mConnectionManager;
 
-        /**
-         * Remove a connection manager from the cache. This is necessary when a {@link HostAuth} is
-         * redirected or otherwise altered.
-         * TODO: We should uncache when we delete accounts.
-         * @param hostAuth The {@link HostAuth} whose connection manager should be deleted.
-         */
-        public synchronized void uncacheConnectionManager(final HostAuth hostAuth) {
-            mMap.remove(hostAuth.mId);
-        }
-    }
-    private static final ConnectionManagerCache sConnectionManagers = new ConnectionManagerCache();
-
-    protected EasServerConnection(final Context context, final Account account,
+    public EasServerConnection(final Context context, final Account account,
             final HostAuth hostAuth) {
         mContext = context;
         mHostAuth = hostAuth;
         mAccount = account;
+        mAccountId = account.mId;
+        setProtocolVersion(account.mProtocolVersion);
+    }
+
+    public EasServerConnection(final Context context, final Account account) {
+        this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
     protected EmailClientConnectionManager getClientConnectionManager() {
-        return sConnectionManagers.getConnectionManager(mContext, mHostAuth);
+        if (mConnectionManager == null) {
+            mConnectionManager =
+                    EasConnectionCache.instance().getConnectionManager(mContext, mHostAuth);
+        }
+        return mConnectionManager;
     }
 
-    protected void redirectHostAuth(final String newAddress) {
+    public void redirectHostAuth(final String newAddress) {
+        mClient = null;
+        mConnectionManager = null;
         mHostAuth.mAddress = newAddress;
-        sConnectionManagers.uncacheConnectionManager(mHostAuth);
+        if (mHostAuth.isSaved()) {
+            EasConnectionCache.instance().uncacheConnectionManager(mHostAuth);
+            final ContentValues cv = new ContentValues(1);
+            cv.put(EmailContent.HostAuthColumns.ADDRESS, newAddress);
+            mHostAuth.update(mContext, cv);
+        }
     }
 
-    private HttpClient getHttpClient(final EmailClientConnectionManager connectionManager,
-            final long timeout) {
-        final HttpParams params = new BasicHttpParams();
-        HttpConnectionParams.setConnectionTimeout(params, (int)(CONNECTION_TIMEOUT));
-        HttpConnectionParams.setSoTimeout(params, (int)(timeout));
-        HttpConnectionParams.setSocketBufferSize(params, 8192);
-        return new DefaultHttpClient(connectionManager, params);
+    private HttpClient getHttpClient(final long timeout) {
+        if (mClient == null) {
+            final HttpParams params = new BasicHttpParams();
+            HttpConnectionParams.setConnectionTimeout(params, (int)(CONNECTION_TIMEOUT));
+            HttpConnectionParams.setSoTimeout(params, (int)(timeout));
+            HttpConnectionParams.setSocketBufferSize(params, 8192);
+            mClient = new DefaultHttpClient(getClientConnectionManager(), params) {
+                protected BasicHttpProcessor createHttpProcessor() {
+                    final BasicHttpProcessor processor = super.createHttpProcessor();
+                    processor.addRequestInterceptor(new CurlLogger());
+                    return processor;
+                }
+            };
+        }
+        return mClient;
     }
 
     private String makeAuthString() {
@@ -149,16 +199,15 @@ public abstract class EasServerConnection {
     }
 
     private String makeUserString() {
-        String deviceId = "";
-        try {
-            deviceId = Device.getDeviceId(mContext);
-        } catch (final IOException e) {
-            // TODO: Make Device.getDeviceId not throw IOException, if possible.
-            // Otherwise use a better deviceId default.
-            deviceId = "0";
+        if (sDeviceId == null) {
+            sDeviceId = new AccountServiceProxy(mContext).getDeviceId();
+            if (sDeviceId == null) {
+                LogUtils.e(TAG, "Could not get device id, defaulting to '0'");
+                sDeviceId = "0";
+            }
         }
         return "&User=" + Uri.encode(mHostAuth.mLogin) + "&DeviceId=" +
-                deviceId + "&DeviceType=" + DEVICE_TYPE;
+                sDeviceId + "&DeviceType=" + DEVICE_TYPE;
     }
 
     private String makeBaseUriString() {
@@ -167,51 +216,45 @@ public abstract class EasServerConnection {
                 "://" + mHostAuth.mAddress + "/Microsoft-Server-ActiveSync";
     }
 
-    private String makeUriString(final String cmd, final String extra) {
+    public String makeUriString(final String cmd) {
         String uriString = makeBaseUriString();
         if (cmd != null) {
             uriString += "?Cmd=" + cmd + makeUserString();
         }
-        if (extra != null) {
-            uriString += extra;
-        }
         return uriString;
     }
 
-    /**
-     * Get the protocol version for an account, or a default if we can't determine it.
-     * @return The protocol version for account, as a String.
-     */
-    protected String getProtocolVersion() {
-        if (mAccount.mProtocolVersion != null) {
-            return mAccount.mProtocolVersion;
-        }
-        return Eas.DEFAULT_PROTOCOL_VERSION;
+    private String makeUriString(final String cmd, final String extra) {
+        return makeUriString(cmd) + extra;
     }
 
     /**
-     * Set standard HTTP headers, using a policy key if required
-     * @param method the method we are going to send
-     * @param usePolicyKey whether or not a policy key should be sent in the headers
+     * If a sync causes us to update our protocol version, this function must be called so that
+     * subsequent calls to {@link #getProtocolVersion()} will do the right thing.
+     * @return Whether the protocol version changed.
      */
-    private void setHeaders(final HttpRequestBase method, final boolean usePolicyKey) {
-        method.setHeader("Authorization", makeAuthString());
-        method.setHeader("MS-ASProtocolVersion", getProtocolVersion());
-        method.setHeader("User-Agent", USER_AGENT);
-        method.setHeader("Accept-Encoding", "gzip");
-        if (usePolicyKey) {
-            // If there's an account in existence, use its key; otherwise (we're creating the
-            // account), send "0".  The server will respond with code 449 if there are policies
-            // to be enforced
-            final String key;
-            final String accountKey = mAccount.mSecuritySyncKey;
-            if (!TextUtils.isEmpty(accountKey)) {
-                key = accountKey;
-            } else {
-                key = "0";
-            }
-            method.setHeader("X-MS-PolicyKey", key);
+    public boolean setProtocolVersion(String protocolVersionString) {
+        mProtocolVersionIsSet = (protocolVersionString != null);
+        if (protocolVersionString == null) {
+            protocolVersionString = Eas.DEFAULT_PROTOCOL_VERSION;
         }
+        final double oldProtocolVersion = mProtocolVersion;
+        mProtocolVersion = Eas.getProtocolVersionDouble(protocolVersionString);
+        return (oldProtocolVersion != mProtocolVersion);
+    }
+
+    /**
+     * @return The protocol version for this connection.
+     */
+    public double getProtocolVersion() {
+        return mProtocolVersion;
+    }
+
+    /**
+     * @return The useragent string for our client.
+     */
+    public final String getUserAgent() {
+        return USER_AGENT;
     }
 
     /**
@@ -220,13 +263,70 @@ public abstract class EasServerConnection {
      * @throws IOException
      */
     protected EasResponse sendHttpClientOptions() throws IOException {
-        final EmailClientConnectionManager connectionManager = getClientConnectionManager();
         // For OPTIONS, just use the base string and the single header
         final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString()));
         method.setHeader("Authorization", makeAuthString());
-        method.setHeader("User-Agent", USER_AGENT);
-        final HttpClient client = getHttpClient(connectionManager, COMMAND_TIMEOUT);
-        return EasResponse.fromHttpRequest(connectionManager, client, method);
+        method.setHeader("User-Agent", getUserAgent());
+        return EasResponse.fromHttpRequest(getClientConnectionManager(),
+                getHttpClient(COMMAND_TIMEOUT), method);
+    }
+
+    protected void resetAuthorization(final HttpPost post) {
+        post.removeHeaders("Authorization");
+        post.setHeader("Authorization", makeAuthString());
+    }
+
+    /**
+     * Make an {@link HttpPost} for a specific request.
+     * @param uri The uri for this request, as a {@link String}.
+     * @param entity The {@link HttpEntity} for this request.
+     * @param contentType The Content-Type for this request.
+     * @param usePolicyKey Whether or not a policy key should be sent.
+     * @return
+     */
+    public HttpPost makePost(final String uri, final HttpEntity entity, final String contentType,
+            final boolean usePolicyKey) {
+        final HttpPost post = new HttpPost(uri);
+        post.setHeader("Authorization", makeAuthString());
+        post.setHeader("MS-ASProtocolVersion", String.valueOf(mProtocolVersion));
+        post.setHeader("User-Agent", getUserAgent());
+        post.setHeader("Accept-Encoding", "gzip");
+        if (contentType != null) {
+            post.setHeader("Content-Type", contentType);
+        }
+        if (usePolicyKey) {
+            // If there's an account in existence, use its key; otherwise (we're creating the
+            // account), send "0".  The server will respond with code 449 if there are policies
+            // to be enforced
+            final String key;
+            final String accountKey;
+            if (mAccountId == Account.NO_ACCOUNT) {
+                accountKey = null;
+            } else {
+               accountKey = Utility.getFirstRowString(mContext,
+                        ContentUris.withAppendedId(Account.CONTENT_URI, mAccountId),
+                        ACCOUNT_SECURITY_KEY_PROJECTION, null, null, null, 0);
+            }
+            if (!TextUtils.isEmpty(accountKey)) {
+                key = accountKey;
+            } else {
+                key = "0";
+            }
+            post.setHeader("X-MS-PolicyKey", key);
+        }
+        post.setEntity(entity);
+        return post;
+    }
+
+    /**
+     * Make an {@link HttpOptions} request for this connection.
+     * @return The {@link HttpOptions} object.
+     */
+    public HttpOptions makeOptions() {
+        final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString()));
+        method.setHeader("Authorization", makeAuthString());
+        method.setHeader("User-Agent", getUserAgent());
+        return method;
     }
 
     /**
@@ -239,8 +339,6 @@ public abstract class EasServerConnection {
      */
     protected EasResponse sendHttpClientPost(String cmd, final HttpEntity entity,
             final long timeout) throws IOException {
-        final EmailClientConnectionManager connectionManager = getClientConnectionManager();
-        final HttpClient client = getHttpClient(connectionManager, timeout);
         final boolean isPingCommand = cmd.equals("Ping");
 
         // Split the mail sending commands
@@ -255,19 +353,25 @@ public abstract class EasServerConnection {
             msg = true;
         }
 
-        final String us = makeUriString(cmd, extra);
-        final HttpPost method = new HttpPost(URI.create(us));
         // Send the proper Content-Type header; it's always wbxml except for messages when
         // the EAS protocol version is < 14.0
         // If entity is null (e.g. for attachments), don't set this header
-        final String protocolVersion = getProtocolVersion();
-        final Double protocolVersionDouble = Eas.getProtocolVersionDouble(protocolVersion);
-        if (msg && (protocolVersionDouble < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE)) {
-            method.setHeader("Content-Type", "message/rfc822");
+        final String contentType;
+        if (msg && (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE)) {
+            contentType = MimeUtility.MIME_TYPE_RFC822;
         } else if (entity != null) {
-            method.setHeader("Content-Type", "application/vnd.ms-sync.wbxml");
+            contentType = EAS_14_MIME_TYPE;
         }
-        setHeaders(method, !isPingCommand);
+        else {
+            contentType = null;
+        }
+        final String uriString;
+        if (extra == null) {
+            uriString = makeUriString(cmd);
+        } else {
+            uriString = makeUriString(cmd, extra);
+        }
+        final HttpPost method = makePost(uriString, entity, contentType, !isPingCommand);
         // NOTE
         // The next lines are added at the insistence of $VENDOR, who is seeing inappropriate
         // network activity related to the Ping command on some networks with some servers.
@@ -275,31 +379,18 @@ public abstract class EasServerConnection {
         if (isPingCommand) {
             method.setHeader("Connection", "close");
         }
-        method.setEntity(entity);
-
-        synchronized (this) {
-            if (mStopped) {
-                mStopped = false;
-                // If this gets stopped after the POST actually starts, it throws an IOException.
-                // Therefore if we get stopped here, let's throw the same sort of exception, so
-                // callers can just equate IOException with the "this POST got killed for some
-                // reason".
-                throw new IOException("Sync was stopped before POST");
-            }
-           mPendingPost = method;
-        }
-        try {
-            return EasResponse.fromHttpRequest(connectionManager, client, method);
-        } finally {
-            synchronized (this) {
-                mPendingPost = null;
-            }
-        }
+        return executeHttpUriRequest(method, timeout);
     }
 
-    protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
+    public EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
             final long timeout) throws IOException {
-        return sendHttpClientPost(cmd, new ByteArrayEntity(bytes), timeout);
+        final ByteArrayEntity entity;
+        if (bytes == null) {
+            entity = null;
+        } else {
+            entity = new ByteArrayEntity(bytes);
+        }
+        return sendHttpClientPost(cmd, entity, timeout);
     }
 
     protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)
@@ -308,17 +399,220 @@ public abstract class EasServerConnection {
     }
 
     /**
-     * Stop the current request. If we're in the middle of the POST, abort it, otherwise prevent
-     * the next POST from happening. This second part is necessary in cases where the stop request
-     * happens while we're setting up the POST but before we're actually in it.
-     * TODO: We also want to do something reasonable if the stop request comes in after the POST
-     * responds.
+     * Executes an {@link HttpUriRequest}.
+     * Note: this function must not be called by multiple threads concurrently. Only one thread may
+     * send server requests from a particular object at a time.
+     * @param method The post to execute.
+     * @param timeout The timeout to use.
+     * @return The response from the Exchange server.
+     * @throws IOException
      */
-    public synchronized void stop() {
-        if (mPendingPost != null) {
-            mPendingPost.abort();
-        } else {
-            mStopped = true;
+    public EasResponse executeHttpUriRequest(final HttpUriRequest method, final long timeout)
+            throws IOException {
+        // The synchronized blocks are here to support the stop() function, specifically to handle
+        // when stop() is called first. Notably, they are NOT here in order to guard against
+        // concurrent access to this function, which is not supported.
+        synchronized (this) {
+            if (mStopped) {
+                mStopped = false;
+                // If this gets stopped after the POST actually starts, it throws an IOException.
+                // Therefore if we get stopped here, let's throw the same sort of exception, so
+                // callers can equate IOException with "this POST got killed for some reason".
+                throw new IOException("Command was stopped before POST");
+            }
+           mPendingRequest = method;
+        }
+        boolean postCompleted = false;
+        try {
+            final EasResponse response = EasResponse.fromHttpRequest(getClientConnectionManager(),
+                    getHttpClient(timeout), method);
+            postCompleted = true;
+            return response;
+        } finally {
+            synchronized (this) {
+                mPendingRequest = null;
+                if (postCompleted) {
+                    mStoppedReason = STOPPED_REASON_NONE;
+                }
+            }
         }
     }
+
+    protected EasResponse executePost(final HttpPost method) throws IOException {
+        return executeHttpUriRequest(method, COMMAND_TIMEOUT);
+    }
+
+    /**
+     * If called while this object is executing a POST, interrupt it with an {@link IOException}.
+     * Otherwise cause the next attempt to execute a POST to be interrupted with an
+     * {@link IOException}.
+     * @param reason The reason for requesting a stop. This should be one of the STOPPED_REASON_*
+     *               constants defined in this class, other than {@link #STOPPED_REASON_NONE} which
+     *               is used to signify that no stop has occurred.
+     *               This class simply stores the value; subclasses are responsible for checking
+     *               this value when catching the {@link IOException} and responding appropriately.
+     */
+    public synchronized void stop(final int reason) {
+        // Only process legitimate reasons.
+        if (reason >= STOPPED_REASON_ABORT && reason <= STOPPED_REASON_RESTART) {
+            final boolean isMidPost = (mPendingRequest != null);
+            LogUtils.i(TAG, "%s with reason %d", (isMidPost ? "Interrupt" : "Stop next"), reason);
+            mStoppedReason = reason;
+            if (isMidPost) {
+                mPendingRequest.abort();
+            } else {
+                mStopped = true;
+            }
+        }
+    }
+
+    /**
+     * @return The reason supplied to the last call to {@link #stop}, or
+     *         {@link #STOPPED_REASON_NONE} if {@link #stop} hasn't been called since the last
+     *         successful POST.
+     */
+    public synchronized int getStoppedReason() {
+        return mStoppedReason;
+    }
+
+    /**
+     * Try to register our client certificate, if needed.
+     * @return True if we succeeded or didn't need a client cert, false if we failed to register it.
+     */
+    public boolean registerClientCert() {
+        if (mHostAuth.mClientCertAlias != null) {
+            try {
+                getClientConnectionManager().registerClientCert(mContext, mHostAuth);
+            } catch (final CertificateException e) {
+                // The client certificate the user specified is invalid/inaccessible.
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @return Whether {@link #setProtocolVersion} was last called with a non-null value. Note that
+     *         at construction time it is set to whatever protocol version is in the account.
+     */
+    public boolean isProtocolVersionSet() {
+        return mProtocolVersionIsSet;
+    }
+
+    /**
+     * Convenience method for adding a Message to an account's outbox
+     * @param account The {@link Account} from which to send the message.
+     * @param msg The message to send
+     */
+    protected void sendMessage(final Account account, final EmailContent.Message msg) {
+        long mailboxId = Mailbox.findMailboxOfType(mContext, account.mId, Mailbox.TYPE_OUTBOX);
+        // TODO: Improve system mailbox handling.
+        if (mailboxId == Mailbox.NO_MAILBOX) {
+            LogUtils.d(TAG, "No outbox for account %d, creating it", account.mId);
+            final Mailbox outbox =
+                    Mailbox.newSystemMailbox(mContext, account.mId, Mailbox.TYPE_OUTBOX);
+            outbox.save(mContext);
+            mailboxId = outbox.mId;
+        }
+        msg.mMailboxKey = mailboxId;
+        msg.mAccountKey = account.mId;
+        msg.save(mContext);
+        requestSyncForMailbox(new android.accounts.Account(account.mEmailAddress,
+                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
+    }
+
+    /**
+     * Issue a {@link android.content.ContentResolver#requestSync} for a specific mailbox.
+     * @param amAccount The {@link android.accounts.Account} for the account we're pinging.
+     * @param authority The authority for the mailbox that needs to sync.
+     * @param mailboxId The id of the mailbox that needs to sync.
+     */
+    protected static void requestSyncForMailbox(final android.accounts.Account amAccount,
+            final String authority, final long mailboxId) {
+        final Bundle extras = new Bundle(1);
+        extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
+        ContentResolver.requestSync(amAccount, authority, extras);
+    }
+
+    // Curl Logging is copied over from AndroidHttpClient. Just switching to AndroidHttpClient is
+    // not trivial so it's easier to borrow the curl logging code this way.
+
+    /**
+     * Logs cURL commands equivalent to requests.
+     */
+    private class CurlLogger implements HttpRequestInterceptor {
+        @Override
+        public void process(HttpRequest request, HttpContext context) throws IOException {
+            if (request instanceof HttpUriRequest) {
+                if ((Build.TYPE.equals("userdebug") || Build.TYPE.equals("eng"))
+                        &&  Log.isLoggable(TAG, Log.VERBOSE)) {
+                    // Allow us to log auth token on dev devices - this is not a big security risk
+                    // because dev devices have a readable account.db file where all the auth tokens
+                    // are stored.
+                    Log.d(TAG, toCurl((HttpUriRequest) request, true));
+                } else  if (Log.isLoggable(TAG, Log.DEBUG)) {
+                    Log.d(TAG, toCurl((HttpUriRequest) request, false));
+                }
+            }
+        }
+    }
+
+    /**
+     * Generates a cURL command equivalent to the given request.
+     */
+    private static String toCurl(HttpUriRequest request, boolean logAuthToken) throws IOException {
+        StringBuilder builder = new StringBuilder();
+
+        builder.append("curl ");
+
+        for (Header header: request.getAllHeaders()) {
+            builder.append("--header \"");
+            if (!logAuthToken
+                    && (header.getName().equals("Authorization") ||
+                    header.getName().equals("Cookie"))) {
+
+                builder.append(header.getName()).append(": ").append("${token}");
+            } else {
+                builder.append(header.toString().trim());
+            }
+            builder.append("\" ");
+        }
+
+        URI uri = request.getURI();
+
+        // If this is a wrapped request, use the URI from the original
+        // request instead. getURI() on the wrapper seems to return a
+        // relative URI. We want an absolute URI.
+        if (request instanceof RequestWrapper) {
+            HttpRequest original = ((RequestWrapper) request).getOriginal();
+            if (original instanceof HttpUriRequest) {
+                uri = ((HttpUriRequest) original).getURI();
+            }
+        }
+
+        builder.append("\"");
+        builder.append(uri);
+        builder.append("\"");
+
+        if (request instanceof HttpEntityEnclosingRequest) {
+            HttpEntityEnclosingRequest entityRequest =
+                    (HttpEntityEnclosingRequest) request;
+            HttpEntity entity = entityRequest.getEntity();
+            if (entity != null && entity.isRepeatable()) {
+                if (entity.getContentLength() < 1024) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    entity.writeTo(stream);
+
+                    String base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP);
+                    builder.insert(0, "echo '" + base64 + "' | base64 -d > /tmp/$$.bin; ");
+                    builder.append(" --data-binary @/tmp/$$.bin");
+                } else {
+                    builder.append(" [TOO MUCH DATA TO INCLUDE]");
+                }
+            }
+        }
+
+        return builder.toString();
+    }
+
 }
