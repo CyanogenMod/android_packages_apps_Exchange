@@ -27,10 +27,10 @@
     <string name="meeting_recurring" msgid="3134262212606714023">"Quan: <xliff:g id="EVENTDATE">%s</xliff:g> (periòdica)"</string>
     <string name="meeting_allday" msgid="6696389765484663513">"Quan: <xliff:g id="EVENTDATE">%s</xliff:g> (tot el dia)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"Quan: <xliff:g id="EVENTDATE">%s</xliff:g> (tot el dia, periòdic)"</string>
-    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"S\'ha afegit el calendari d\'Exchange"</string>
+    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"S\'ha afegit un calendari d\'Exchange"</string>
     <string name="app_name" msgid="5316597712787122829">"Serveis d\'Exchange"</string>
-    <string name="exception_cancel" msgid="6160117429428313805">"Aquest esdeveniment s\'ha cancel·lat per a: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="exception_updated" msgid="3397583105901142050">"Els detalls d\'aquest esdeveniment han canviat per a: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_cancel" msgid="6160117429428313805">"Aquest esdeveniment s\'ha cancel·lat al dia <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_updated" msgid="3397583105901142050">"Els detalls d\'aquest esdeveniment han canviat al dia <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"No permetis targetes d\'emmagatzematge"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"No permetis aplicacions no signades"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"No permetis instal. d\'aplic. no sign."</string>
@@ -51,7 +51,7 @@
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Requereix l\'encriptació de targetes SD"</string>
     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"No permetis fitxers adjunts"</string>
     <string name="policy_max_attachment_size" msgid="4020279603050888661">"Restringeix la mida del fitxer adjunt"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Permet només sincr. manual en itineràn."</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Permet només sincr. manual en itinerància"</string>
     <string name="policy_require_encryption" msgid="7984702283392885348">"Requereix l\'encriptació del dispositiu"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automàtic"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Un dia"</string>
