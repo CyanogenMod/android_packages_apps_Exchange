@@ -14,10 +14,18 @@
  * limitations under the License.
  */
 
-package com.android.exchange;
+package com.android.exchange.service;
 
-import android.app.Application;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
 
-public class Exchange extends Application {
-    // TODO Investigate whether this class is needed
+/**
+ * The broadcast receiver.  The actual job is done in EmailBroadcastProcessor on a worker thread.
+ */
+public class ExchangeBroadcastReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        ExchangeBroadcastProcessorService.processBroadcastIntent(context, intent);
+    }
 }

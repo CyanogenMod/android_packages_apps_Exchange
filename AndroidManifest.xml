@@ -17,7 +17,7 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.exchange"
-    android:versionCode="500051" >
+    android:versionCode="500031" >
 
     <uses-permission
         android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -62,7 +62,7 @@
     <uses-permission
         android:name="com.android.email.permission.ACCESS_PROVIDER"/>
 
-    <uses-sdk android:targetSdkVersion="18" android:minSdkVersion="14" />
+    <uses-sdk android:targetSdkVersion="17" android:minSdkVersion="14" />
 
     <application
         android:icon="@mipmap/icon"
@@ -75,6 +75,24 @@
             android:name="com.android.emailsync.EmailSyncAlarmReceiver"/>
         <receiver
             android:name="com.android.emailsync.MailboxAlarmReceiver"/>
+
+        <receiver
+            android:name=".service.ExchangeBroadcastReceiver"
+            android:enabled="true">
+            <intent-filter>
+                <action
+                    android:name="android.intent.action.BOOT_COMPLETED" />
+                <action
+                    android:name="android.intent.action.DEVICE_STORAGE_LOW" />
+                <action
+                    android:name="android.intent.action.DEVICE_STORAGE_OK" />
+                <action
+                    android:name="android.accounts.LOGIN_ACCOUNTS_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".service.ExchangeBroadcastProcessorService" />
 
         <!--Required stanza to register the EAS EmailSyncAdapterService with SyncManager -->
         <service

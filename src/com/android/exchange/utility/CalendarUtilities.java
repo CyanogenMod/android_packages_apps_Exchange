@@ -25,6 +25,7 @@ import android.content.Entity.NamedContentValues;
 import android.content.EntityIterator;
 import android.content.res.Resources;
 import android.net.Uri;
+import android.os.RemoteException;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
@@ -32,6 +33,7 @@ import android.provider.CalendarContract.EventsEntity;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Base64;
+import android.util.Log;
 
 import com.android.calendarcommon2.DateException;
 import com.android.calendarcommon2.Duration;
@@ -45,11 +47,11 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
+import com.android.exchange.EasSyncService;
 import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
@@ -1377,29 +1379,26 @@ public class CalendarUtilities {
         }
 
         if (Eas.USER_LOG) {
-            LogUtils.d(Logging.LOG_TAG, "Created rrule: " + rrule);
+            Log.d(Logging.LOG_TAG, "Created rrule: " + rrule);
         }
         return rrule.toString();
     }
 
     /**
      * Create a Calendar in CalendarProvider to which synced Events will be linked
-     * @param context
-     * @param contentResolver
+     * @param service the sync service requesting Calendar creation
      * @param account the account being synced
      * @param mailbox the Exchange mailbox for the calendar
      * @return the unique id of the Calendar
      */
-    static public long createCalendar(final Context context, final ContentResolver contentResolver,
-            final Account account, final Mailbox mailbox) {
+    static public long createCalendar(EasSyncService service, Account account, Mailbox mailbox) {
         // Create a Calendar object
         ContentValues cv = new ContentValues();
         // TODO How will this change if the user changes his account display name?
-        cv.put(Calendars.CALENDAR_DISPLAY_NAME, mailbox.mDisplayName);
+        cv.put(Calendars.CALENDAR_DISPLAY_NAME, account.mDisplayName);
         cv.put(Calendars.ACCOUNT_NAME, account.mEmailAddress);
         cv.put(Calendars.ACCOUNT_TYPE, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         cv.put(Calendars.SYNC_EVENTS, 1);
-        cv.put(Calendars._SYNC_ID, mailbox.mServerId);
         cv.put(Calendars.VISIBLE, 1);
         // Don't show attendee status if we're the organizer
         cv.put(Calendars.CAN_ORGANIZER_RESPOND, 0);
@@ -1410,13 +1409,14 @@ public class CalendarUtilities {
         cv.put(Calendars.ALLOWED_AVAILABILITY, ALLOWED_AVAILABILITIES);
 
         // TODO Coordinate account colors w/ Calendar, if possible
-        int color = new AccountServiceProxy(context).getAccountColor(account.mId);
+        int color = new AccountServiceProxy(service.mContext).getAccountColor(account.mId);
         cv.put(Calendars.CALENDAR_COLOR, color);
         cv.put(Calendars.CALENDAR_TIME_ZONE, Time.getCurrentTimezone());
         cv.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER);
         cv.put(Calendars.OWNER_ACCOUNT, account.mEmailAddress);
 
-        Uri uri = contentResolver.insert(asSyncAdapter(Calendars.CONTENT_URI, account.mEmailAddress,
+        Uri uri = service.mContentResolver.insert(
+                asSyncAdapter(Calendars.CONTENT_URI, account.mEmailAddress,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), cv);
         // We save the id of the calendar into mSyncStatus
         if (uri != null) {
@@ -1982,7 +1982,7 @@ public class CalendarUtilities {
             msg.mAttachments = new ArrayList<Attachment>();
             msg.mAttachments.add(att);
         } catch (IOException e) {
-            LogUtils.w(TAG, "IOException in createMessageForEntity");
+            Log.w(TAG, "IOException in createMessageForEntity");
             return null;
         }
 
@@ -2005,15 +2005,18 @@ public class CalendarUtilities {
      *            there aren't any addressees; if false, return the Message
      *            regardless (addressees will be filled in later)
      * @return a Message with many fields pre-filled (more later)
+     * @throws RemoteException if there is an issue retrieving the Event from
+     *             CalendarProvider
      */
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
-            int messageFlag, String uid, Account account) {
+            int messageFlag, String uid, Account account) throws RemoteException {
         return createMessageForEventId(context, eventId, messageFlag, uid, account,
                 null /* specifiedAttendee */);
     }
 
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
-            int messageFlag, String uid, Account account, String specifiedAttendee) {
+            int messageFlag, String uid, Account account, String specifiedAttendee)
+            throws RemoteException {
         ContentResolver cr = context.getContentResolver();
         EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
                 ContentUris.withAppendedId(Events.CONTENT_URI, eventId), null, null, null, null),
