@@ -28,7 +28,7 @@
     <string name="meeting_allday" msgid="6696389765484663513">"የሚከተለው ሲሆን፤ <xliff:g id="EVENTDATE">%s</xliff:g> (ሁሉም ቀን)"</string>
     <string name="meeting_allday_recurring" msgid="2320264182781062684">"የሚከተለው ሲሆን፤ <xliff:g id="EVENTDATE">%s</xliff:g> (ሁሉም ቀን፣ ተደጋጋሚ)"</string>
     <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"የቀን መቁጠሪያ ልውውጥ ታክሏል"</string>
-    <string name="app_name" msgid="5316597712787122829">"አገልግሎቶች ለዋውጥ"</string>
+    <string name="app_name" msgid="5316597712787122829">"Exchange አገልግሎቶች"</string>
     <string name="exception_cancel" msgid="6160117429428313805">"ይህ ከስተት ለ<xliff:g id="DATE">%s</xliff:g> ተሰርዟል።"</string>
     <string name="exception_updated" msgid="3397583105901142050">"የዚህ ክስተት ዝርዝሮች ለ፡<xliff:g id="DATE">%s</xliff:g> ተለውጠዋል"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"የማከማቻ ካርዶችን አትፍቀድ"</string>

@@ -34,7 +34,7 @@
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"不允許儲存卡"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"不允許未簽署的應用程式"</string>
     <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"不允許未簽署的應用程式安裝程式"</string>
-    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"不允許 WiFi"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"不允許 Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"不允許傳送簡訊"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"不允許 POP3 或 IMAP 帳戶"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"不允許紅外線通訊"</string>
