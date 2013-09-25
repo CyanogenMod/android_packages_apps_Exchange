@@ -33,7 +33,6 @@ import android.provider.CalendarContract.Events;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.util.Xml;
 
 import com.android.emailcommon.TrafficFlags;
@@ -63,8 +62,6 @@ import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AbstractSyncAdapter;
 import com.android.exchange.adapter.AccountSyncAdapter;
 import com.android.exchange.adapter.AttachmentLoader;
-import com.android.exchange.adapter.CalendarSyncAdapter;
-import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.EmailSyncAdapter;
 import com.android.exchange.adapter.FolderSyncParser;
 import com.android.exchange.adapter.GalParser;
@@ -77,6 +74,7 @@ import com.android.exchange.adapter.SettingsParser;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.utility.CalendarUtilities;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
@@ -171,7 +169,6 @@ public class EasSyncService extends AbstractSyncService {
     private boolean mSsl = true;
     private boolean mTrustSsl = false;
     private String mClientCertAlias = null;
-    private int mPort;
 
     public ContentResolver mContentResolver;
     // Whether or not the sync service is valid (usable)
@@ -217,12 +214,34 @@ public class EasSyncService extends AbstractSyncService {
 
     @Override
     public void resetCalendarSyncKey() {
-        CalendarSyncAdapter adapter = new CalendarSyncAdapter(this);
-            try {
-                adapter.setSyncKey("0", false);
-            } catch (IOException e) {
-                // The provider can't be reached; nothing to be done
-            }
+        // resetCalendarSyncKey is declared in AbstractSyncAdapterService,
+        // so we need to define this function, by since CalendarSyncAdapter no longer exists,
+        // we need to remove this:
+//        CalendarSyncAdapter adapter = new CalendarSyncAdapter(this);
+//            try {
+//                adapter.setSyncKey("0", false);
+//            } catch (IOException e) {
+//                // The provider can't be reached; nothing to be done
+//            }
+
+     // For reference, this is what CalendarSyncAdapter.setSyncKey() did:
+//        synchronized (sSyncKeyLock) {
+//            if ("0".equals(syncKey) || !inCommands) {
+//                ContentProviderClient client = mService.mContentResolver
+//                        .acquireContentProviderClient(CalendarContract.CONTENT_URI);
+//                try {
+//                    SyncStateContract.Helpers.set(
+//                            client,
+//                            asSyncAdapter(SyncState.CONTENT_URI, mEmailAddress,
+//                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mAccountManagerAccount,
+//                            syncKey.getBytes());
+//                    userLog("SyncKey set to ", syncKey, " in CalendarProvider");
+//                } catch (RemoteException e) {
+//                    throw new IOException("Can't set SyncKey in CalendarProvider");
+//                }
+//            }
+//            mMailbox.mSyncKey = syncKey;
+//        }
     }
 
     /**
@@ -340,13 +359,13 @@ public class EasSyncService extends AbstractSyncService {
         // If we don't support any of the servers supported versions, throw an exception here
         // This will cause validation to fail
         if (ourVersion == null) {
-            Log.w(TAG, "No supported EAS versions: " + supportedVersions);
+            LogUtils.w(TAG, "No supported EAS versions: " + supportedVersions);
             throw new MessagingException(MessagingException.PROTOCOL_VERSION_UNSUPPORTED);
         } else {
             // Debug code for testing EAS 14.0; disables support for EAS 14.1
             // "adb shell setprop log.tag.Exchange14 VERBOSE"
             if (ourVersion.equals(Eas.SUPPORTED_PROTOCOL_EX2010_SP1) &&
-                    Log.isLoggable("Exchange14", Log.VERBOSE)) {
+                    LogUtils.isLoggable("Exchange14", LogUtils.VERBOSE)) {
                 ourVersion = Eas.SUPPORTED_PROTOCOL_EX2010;
             }
             service.mProtocolVersion = ourVersion;
@@ -489,7 +508,7 @@ public class EasSyncService extends AbstractSyncService {
                         // For validation only, we take 403 as ACCESS_DENIED (the account isn't
                         // authorized, possibly due to device type)
                         resultCode = MessagingException.ACCESS_DENIED;
-                    } else if (EasResponse.isProvisionError(code)) {
+                    } else if (resp.isProvisionError()) {
                         // The device needs to have security policies enforced
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
                     } else if (code == HttpStatus.SC_NOT_FOUND) {
@@ -519,7 +538,7 @@ public class EasSyncService extends AbstractSyncService {
                         }
                         userLog("Validation successful");
                     }
-                } else if (EasResponse.isAuthError(code)) {
+                } else if (resp.isAuthError()) {
                     userLog("Authentication failed");
                     resultCode = resp.isMissingCertificate()
                             ? MessagingException.CLIENT_CERTIFICATE_REQUIRED
@@ -599,7 +618,7 @@ public class EasSyncService extends AbstractSyncService {
      * @param post the HttpPost that was originally sent to the server
      * @return the HttpPost, updated with the redirect location
      */
-    private HttpPost getRedirect(HttpResponse resp, HttpPost post) {
+    private static HttpPost getRedirect(HttpResponse resp, HttpPost post) {
         Header locHeader = resp.getFirstHeader("X-MS-Location");
         if (locHeader != null) {
             String loc = locHeader.getValue();
@@ -632,7 +651,7 @@ public class EasSyncService extends AbstractSyncService {
         int code = resp.getStatus();
         // On a redirect, try the new location
         if (code == EAS_REDIRECT_CODE) {
-            post = getRedirect(resp.mResponse, post);
+            //post = getRedirect(resp.mResponse, post);
             if (post != null) {
                 userLog("Posting autodiscover to redirect: " + post.getURI());
                 return executePostWithTimeout(client, post, COMMAND_TIMEOUT);
@@ -675,8 +694,7 @@ public class EasSyncService extends AbstractSyncService {
      * Use the Exchange 2007 AutoDiscover feature to try to retrieve server information using
      * only an email address and the password
      *
-     * @param userName the user's email address
-     * @param password the user's password
+     * @param context Our {@link Context}.
      * @return a HostAuth ready to be saved in an Account or null (failure)
      */
     public Bundle tryAutodiscover(Context context, HostAuth hostAuth) throws RemoteException {
@@ -706,7 +724,6 @@ public class EasSyncService extends AbstractSyncService {
             mHostAuth = hostAuth;
             mUserName = hostAuth.mLogin;
             mPassword = hostAuth.mPassword;
-            mPort = hostAuth.mPort;
             mSsl = hostAuth.shouldUseSsl();
 
             // Make sure the authentication string is recreated and cached
@@ -862,7 +879,7 @@ public class EasSyncService extends AbstractSyncService {
                 if (name.equals("Error")) {
                     // Should parse the error
                 } else if (name.equals("Redirect")) {
-                    Log.d(TAG, "Redirect: " + parser.nextText());
+                    LogUtils.d(TAG, "Redirect: " + parser.nextText());
                 } else if (name.equals("Settings")) {
                     parseSettings(parser, hostAuth);
                 }
@@ -1076,7 +1093,7 @@ public class EasSyncService extends AbstractSyncService {
             if (status == HttpStatus.SC_OK) {
                 if (!resp.isEmpty()) {
                     InputStream is = resp.getInputStream();
-                    MoveItemsParser p = new MoveItemsParser(is, this);
+                    MoveItemsParser p = new MoveItemsParser(is);
                     p.parse();
                     int statusCode = p.getStatusCode();
                     ContentValues cv = new ContentValues();
@@ -1105,7 +1122,7 @@ public class EasSyncService extends AbstractSyncService {
                         // handled next sync
                     }
                 }
-            } else if (EasResponse.isAuthError(status)) {
+            } else if (resp.isAuthError()) {
                 throw new EasAuthenticationException();
             } else {
                 userLog("Move items request failed, code: " + status);
@@ -1140,7 +1157,7 @@ public class EasSyncService extends AbstractSyncService {
             if (status == HttpStatus.SC_OK) {
                 if (!resp.isEmpty()) {
                     InputStream is = resp.getInputStream();
-                    new MeetingResponseParser(is, this).parse();
+                    new MeetingResponseParser(is).parse();
                     String meetingInfo = msg.mMeetingInfo;
                     if (meetingInfo != null) {
                         String responseRequested = new PackedString(meetingInfo).get(
@@ -1152,7 +1169,7 @@ public class EasSyncService extends AbstractSyncService {
                     }
                     sendMeetingResponseMail(msg, req.mResponse);
                 }
-            } else if (EasResponse.isAuthError(status)) {
+            } else if (resp.isAuthError()) {
                 throw new EasAuthenticationException();
             } else {
                 userLog("Meeting response request failed, code: " + status);
@@ -1224,7 +1241,6 @@ public class EasSyncService extends AbstractSyncService {
         mSsl = hostAuth.shouldUseSsl();
         mTrustSsl = hostAuth.shouldTrustAllServerCerts();
         mClientCertAlias = hostAuth.mClientCertAlias;
-        mPort = hostAuth.mPort;
 
         // Register the new alias, if needed.
         if (mClientCertAlias != null) {
@@ -1275,7 +1291,7 @@ public class EasSyncService extends AbstractSyncService {
         synchronized(getSynchronizer()) {
             hasWakeLock = ExchangeService.isHoldingWakeLock(mMailboxId);
             if (isPingCommand && !hasWakeLock) {
-                Log.e(TAG, "executePostWithTimeout (ping) without holding wakelock");
+                LogUtils.e(TAG, "executePostWithTimeout (ping) without holding wakelock");
             }
             mPendingPost = method;
             long alarmTime = timeout + WATCHDOG_TIMEOUT_ALLOWANCE;
@@ -1679,7 +1695,7 @@ public class EasSyncService extends AbstractSyncService {
             // Send our changes up to the server
             if (mUpsyncFailed) {
                 if (Eas.USER_LOG) {
-                    Log.d(TAG, "Inhibiting upsync this cycle");
+                    LogUtils.d(TAG, "Inhibiting upsync this cycle");
                 }
             } else {
                 target.sendLocalChanges(s);
@@ -1770,9 +1786,9 @@ public class EasSyncService extends AbstractSyncService {
                     }
                 } else {
                     userLog("Sync response error: ", code);
-                    if (EasResponse.isProvisionError(code)) {
+                    if (resp.isProvisionError()) {
                         mExitStatus = EXIT_SECURITY_FAILURE;
-                    } else if (EasResponse.isAuthError(code)) {
+                    } else if (resp.isAuthError()) {
                         mExitStatus = EXIT_LOGIN_FAILURE;
                     } else {
                         mExitStatus = EXIT_IO_ERROR;
@@ -1807,12 +1823,6 @@ public class EasSyncService extends AbstractSyncService {
             setConnectionParameters(ha);
         } catch (CertificateException e) {
             userLog("Couldn't retrieve certificate for connection");
-            try {
-                ExchangeService.callback().syncMailboxStatus(mMailboxId,
-                        EmailServiceStatus.CLIENT_CERTIFICATE_ERROR, 0);
-            } catch (RemoteException e1) {
-                // Don't care if this fails.
-            }
             return false;
         }
 
@@ -1868,11 +1878,17 @@ public class EasSyncService extends AbstractSyncService {
                 } else {
                     AbstractSyncAdapter target;
                     if (mMailbox.mType == Mailbox.TYPE_CONTACTS) {
-                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
-                        target = new ContactsSyncAdapter( this);
+                        // ContactsSyncAdapter is gone, and this class is deprecated.
+                        // Just leaving this commented out here for reference.
+//                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CONTACTS);
+//                        target = new ContactsSyncAdapter(this);
+                        target = null;
                     } else if (mMailbox.mType == Mailbox.TYPE_CALENDAR) {
-                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
-                        target = new CalendarSyncAdapter(this);
+                        // CalendarSyncAdapter is gone, and this class is deprecated.
+                        // Just leaving this commented out here for reference.
+//                        TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_CALENDAR);
+//                        target = new CalendarSyncAdapter(this);
+                        target = null;
                     } else {
                         TrafficStats.setThreadStatsTag(trafficFlags | TrafficFlags.DATA_EMAIL);
                         target = new EmailSyncAdapter(this);
@@ -1883,16 +1899,6 @@ public class EasSyncService extends AbstractSyncService {
                         if (mRequestTime != 0) {
                             userLog("Looping for user request...");
                             mRequestTime = 0;
-                        }
-                        String syncKey = target.getSyncKey();
-                        if (mSyncReason >= ExchangeService.SYNC_CALLBACK_START ||
-                                "0".equals(syncKey)) {
-                            try {
-                                ExchangeService.callback().syncMailboxStatus(mMailboxId,
-                                        EmailServiceStatus.IN_PROGRESS, 0);
-                            } catch (RemoteException e1) {
-                                // Don't care if this fails
-                            }
                         }
                         sync(target);
                     } while (mRequestTime != 0);
@@ -1946,26 +1952,11 @@ public class EasSyncService extends AbstractSyncService {
                     status = EmailServiceStatus.SUCCESS;
                 }
 
-                // Send a callback (doesn't matter how the sync was started)
-                try {
-                    // Unless the user specifically asked for a sync, we don't want to report
-                    // connection issues, as they are likely to be transient.  In this case, we
-                    // simply report success, so that the progress indicator terminates without
-                    // putting up an error banner
-                    if (mSyncReason != ExchangeService.SYNC_UI_REQUEST &&
-                            status == EmailServiceStatus.CONNECTION_ERROR) {
-                        status = EmailServiceStatus.SUCCESS;
-                    }
-                    ExchangeService.callback().syncMailboxStatus(mMailboxId, status, 0);
-                } catch (RemoteException e1) {
-                    // Don't care if this fails
-                }
-
                 // Make sure ExchangeService knows about this
                 ExchangeService.kick("sync finished");
             }
         } catch (ProviderUnavailableException e) {
-            Log.e(TAG, "EmailProvider unavailable; sync ended prematurely");
+            LogUtils.e(TAG, "EmailProvider unavailable; sync ended prematurely");
         }
     }
 }

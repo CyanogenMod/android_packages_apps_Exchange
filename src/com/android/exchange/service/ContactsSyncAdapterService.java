@@ -16,12 +16,6 @@
 
 package com.android.exchange.service;
 
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.Mailbox;
-import com.android.exchange.Eas;
-import com.android.exchange.ExchangeService;
-
 import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
@@ -33,21 +27,34 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
-import android.util.Log;
+
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.Mailbox;
+import com.android.exchange.Eas;
+import com.android.mail.utils.LogUtils;
 
 public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
-    private static final String TAG = "EAS ContactsSyncAdapterService";
-    private static final String[] ID_PROJECTION = new String[] {"_id"};
+    private static final String TAG = "EASContactSyncAdaptSvc";
     private static final String ACCOUNT_AND_TYPE_CONTACTS =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CONTACTS;
+
+    private static final Object sSyncAdapterLock = new Object();
+    private static AbstractThreadedSyncAdapter sSyncAdapter = null;
 
     public ContactsSyncAdapterService() {
         super();
     }
 
     @Override
-    protected AbstractThreadedSyncAdapter newSyncAdapter() {
-        return new SyncAdapterImpl(this);
+    protected AbstractThreadedSyncAdapter getSyncAdapter() {
+        synchronized (sSyncAdapterLock) {
+            if (sSyncAdapter == null) {
+                sSyncAdapter = new SyncAdapterImpl(this);
+            }
+            return sSyncAdapter;
+        }
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
@@ -58,13 +65,12 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            ContactsSyncAdapterService.performSync(getContext(), account, extras, authority,
-                    provider, syncResult);
+            ContactsSyncAdapterService.performSync(getContext(), account, extras);
         }
     }
 
     private static boolean hasDirtyRows(ContentResolver resolver, Uri uri, String dirtyColumn) {
-        Cursor c = resolver.query(uri, ID_PROJECTION, dirtyColumn + "=1", null, null);
+        Cursor c = resolver.query(uri, EmailContent.ID_PROJECTION, dirtyColumn + "=1", null, null);
         try {
             return c.getCount() > 0;
         } finally {
@@ -78,8 +84,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
      * The missing piece at this point is integration with the push/ping mechanism in EAS; this will
      * be put in place at a later time.
      */
-    private static void performSync(Context context, Account account, Bundle extras,
-            String authority, ContentProviderClient provider, SyncResult syncResult) {
+    private static void performSync(Context context, Account account, Bundle extras) {
         ContentResolver cr = context.getContentResolver();
 
         // If we've been asked to do an upload, make sure we've got work to do
@@ -99,32 +104,41 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                 changed = hasDirtyRows(cr, uri, Groups.DIRTY);
             }
             if (!changed) {
-                Log.i(TAG, "Upload sync; no changes");
+                LogUtils.i(TAG, "Upload sync; no changes");
                 return;
             }
         }
 
         // Find the (EmailProvider) account associated with this email address
         final Cursor accountCursor =
-            cr.query(com.android.emailcommon.provider.Account.CONTENT_URI, ID_PROJECTION,
-                AccountColumns.EMAIL_ADDRESS + "=?", new String[] {account.name}, null);
+            cr.query(com.android.emailcommon.provider.Account.CONTENT_URI,
+                    com.android.emailcommon.provider.Account.ID_PROJECTION,
+                    AccountColumns.EMAIL_ADDRESS + "=?",
+                    new String[] {account.name}, null);
         if (accountCursor == null) {
-            Log.e(TAG, "null account cursor in ContactsSyncAdapterService");
+            LogUtils.e(TAG, "null account cursor in ContactsSyncAdapterService");
             return;
         }
 
         try {
             if (accountCursor.moveToFirst()) {
-                final long accountId = accountCursor.getLong(0);
+                final long accountId = accountCursor.getLong(
+                        com.android.emailcommon.provider.Account.ID_PROJECTION_COLUMN);
                 // Now, find the contacts mailbox associated with the account
-                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_PROJECTION,
+                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, Mailbox.ID_PROJECTION,
                         ACCOUNT_AND_TYPE_CONTACTS, new String[] {Long.toString(accountId)}, null);
                 try {
-                     if (mailboxCursor.moveToFirst()) {
-                        Log.i(TAG, "Contact sync requested for " + account.name);
-                        // Ask for a sync from our sync manager
-                        ExchangeService.serviceRequest(mailboxCursor.getLong(0),
-                                ExchangeService.SYNC_UPSYNC);
+                    while (mailboxCursor.moveToNext()) {
+                         LogUtils.i(TAG, "Contact sync requested for " + account.name);
+                         // TODO: Currently just bouncing this to Email sync; eventually streamline.
+                        final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
+                         // TODO: Should we be using the existing extras and just adding our bits?
+                        final Bundle mailboxExtras = new Bundle(4);
+                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
+                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+                        mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
+                        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
                     }
                 } finally {
                     mailboxCursor.close();

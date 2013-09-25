@@ -17,16 +17,19 @@
 
 package com.android.exchange;
 
-import android.util.Log;
-
+import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceProxy;
-import com.android.emailcommon.service.SyncWindow;
+import com.android.mail.utils.LogUtils;
 
 /**
  * Constants used throughout the EAS implementation are stored here.
  *
  */
 public class Eas {
+
+    // For logging.
+    public static final String LOG_TAG = "EAS";
+
     // For debugging
     public static boolean WAIT_DEBUG = false;   // DO NOT CHECK IN WITH THIS SET TO TRUE
     public static boolean DEBUG = false;         // DO NOT CHECK IN WITH THIS SET TO TRUE
@@ -53,10 +56,10 @@ public class Eas {
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
 
     public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE =
-            Configuration.EXCHANGE_ACCOUNT_MANAGER_TYPE;
-    public static final String PROTOCOL = Configuration.EXCHANGE_PROTOCOL;
+            com.android.exchange.Configuration.EXCHANGE_ACCOUNT_MANAGER_TYPE;
+    public static final String PROTOCOL = com.android.exchange.Configuration.EXCHANGE_PROTOCOL;
     public static final String EXCHANGE_SERVICE_INTENT_ACTION =
-            Configuration.EXCHANGE_SERVICE_INTENT_ACTION;
+            com.android.exchange.Configuration.EXCHANGE_SERVICE_INTENT_ACTION;
 
     // From EAS spec
     //                Mail Cal
@@ -69,14 +72,13 @@ public class Eas {
     // 6 3 months ago No   Yes
     // 7 6 months ago No   Yes
 
-    public static final String FILTER_AUTO =  Integer.toString(SyncWindow.SYNC_WINDOW_AUTO);
     // TODO Rationalize this with SYNC_WINDOW_ALL
     public static final String FILTER_ALL = "0";
-    public static final String FILTER_1_DAY = Integer.toString(SyncWindow.SYNC_WINDOW_1_DAY);
-    public static final String FILTER_3_DAYS =  Integer.toString(SyncWindow.SYNC_WINDOW_3_DAYS);
-    public static final String FILTER_1_WEEK =  Integer.toString(SyncWindow.SYNC_WINDOW_1_WEEK);
-    public static final String FILTER_2_WEEKS =  Integer.toString(SyncWindow.SYNC_WINDOW_2_WEEKS);
-    public static final String FILTER_1_MONTH =  Integer.toString(SyncWindow.SYNC_WINDOW_1_MONTH);
+    public static final String FILTER_1_DAY = "1";
+    public static final String FILTER_3_DAYS =  "2";
+    public static final String FILTER_1_WEEK =  "3";
+    public static final String FILTER_2_WEEKS =  "4";
+    public static final String FILTER_1_MONTH =  "5";
     public static final String FILTER_3_MONTHS = "6";
     public static final String FILTER_6_MONTHS = "7";
 
@@ -85,6 +87,8 @@ public class Eas {
 
     public static final String MIME_BODY_PREFERENCE_TEXT = "0";
     public static final String MIME_BODY_PREFERENCE_MIME = "2";
+
+    // These limits must never exceed about 500k which is half the max size of a Binder IPC buffer.
 
     // For EAS 12, we use HTML, so we want a larger size than in EAS 2.5
     public static final String EAS12_TRUNCATION_SIZE = "200000";
@@ -105,7 +109,7 @@ public class Eas {
             if (FILE_LOG || PARSER_LOG) {
                 USER_LOG = true;
             }
-            Log.d("Eas Debug", "Logging: " + (USER_LOG ? "User " : "") +
+            LogUtils.d("Eas Debug", "Logging: " + (USER_LOG ? "User " : "") +
                     (PARSER_LOG ? "Parser " : "") + (FILE_LOG ? "File" : ""));
         }
     }
@@ -123,5 +127,22 @@ public class Eas {
             return SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE;
         }
         throw new IllegalArgumentException("illegal protocol version");
+    }
+
+    /**
+     * Gets the Exchange folder class for a mailbox type (PIM collections have different values
+     * from email), needed when forming the request.
+     * @param mailboxType The type of the mailbox we're interested in, from {@link Mailbox}.
+     * @return The folder class for the mailbox we're interested in.
+     */
+    public static String getFolderClass(final int mailboxType) {
+        switch (mailboxType) {
+            case Mailbox.TYPE_CALENDAR:
+                return "Calendar";
+            case Mailbox.TYPE_CONTACTS:
+                return "Contacts";
+            default:
+                return "Email";
+        }
     }
 }
