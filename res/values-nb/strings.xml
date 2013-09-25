@@ -51,7 +51,7 @@
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"Krev kryptering av SD-kort"</string>
     <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"Ikke tillat vedlegg"</string>
     <string name="policy_max_attachment_size" msgid="4020279603050888661">"Begrens vedleggsstørrelse"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Bare tillat manuell synk. ved streifing"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Bare tillat manuell synk. ved roaming"</string>
     <string name="policy_require_encryption" msgid="7984702283392885348">"Krev enhetskryptering"</string>
     <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatisk"</string>
     <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Én dag"</string>
@@ -59,5 +59,5 @@
     <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Én uke"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"To uker"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Én måned"</string>
-    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Alle"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Siden tidenes morgen"</string>
 </resources>
