@@ -31,7 +31,7 @@ class Misc {
         'U', 'V', 'W', 'X', 'Y', 'Z'
     };
 
-    public static String byteToHexString(byte b, boolean upperCase) {
+    public static String byteToHexString(byte b) {
         StringBuilder sb = new StringBuilder();
         sb.append(UPPER_CASE_DIGITS[(b >> 4) & 0xf]);
         sb.append(UPPER_CASE_DIGITS[b & 0xf]);
@@ -228,6 +228,6 @@ public abstract class UriCodec {
 
     private static void appendHex(StringBuilder sb, byte b) {
         sb.append('%');
-        sb.append(Misc.byteToHexString(b, true));
+        sb.append(Misc.byteToHexString(b));
     }
 }

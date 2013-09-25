@@ -21,9 +21,8 @@ import android.content.res.Resources;
 import android.os.storage.StorageManager;
 
 import com.android.emailcommon.provider.Policy;
-import com.android.exchange.EasSyncService;
 import com.android.exchange.R;
-import com.android.exchange.service.EasAccountValidator;
+import com.android.exchange.eas.EasProvision;
 import com.android.mail.utils.LogUtils;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -415,7 +414,7 @@ public class ProvisionParser extends Parser {
     /**
      * Return true if password is required; otherwise false.
      */
-    private boolean parseSecurityPolicy(XmlPullParser parser, Policy policy)
+    private static boolean parseSecurityPolicy(XmlPullParser parser)
             throws XmlPullParserException, IOException {
         boolean passwordRequired = true;
         while (true) {
@@ -438,7 +437,7 @@ public class ProvisionParser extends Parser {
         return passwordRequired;
     }
 
-    private void parseCharacteristic(XmlPullParser parser, Policy policy)
+    private static void parseCharacteristic(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
         boolean enforceInactivityTimer = true;
         while (true) {
@@ -480,7 +479,7 @@ public class ProvisionParser extends Parser {
         }
     }
 
-    private void parseRegistry(XmlPullParser parser, Policy policy)
+    private static void parseRegistry(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
       while (true) {
           int type = parser.nextTag();
@@ -495,7 +494,7 @@ public class ProvisionParser extends Parser {
       }
     }
 
-    private void parseWapProvisioningDoc(XmlPullParser parser, Policy policy)
+    private static void parseWapProvisioningDoc(XmlPullParser parser, Policy policy)
             throws XmlPullParserException, IOException {
         while (true) {
             int type = parser.nextTag();
@@ -507,7 +506,7 @@ public class ProvisionParser extends Parser {
                     String atype = parser.getAttributeValue(null, "type");
                     if (atype.equals("SecurityPolicy")) {
                         // If a password isn't required, stop here
-                        if (!parseSecurityPolicy(parser, policy)) {
+                        if (!parseSecurityPolicy(parser)) {
                             return;
                         }
                     } else if (atype.equals("Registry")) {
@@ -544,7 +543,7 @@ public class ProvisionParser extends Parser {
                     LogUtils.i(TAG, "Policy status: %s", getValue());
                     break;
                 case Tags.PROVISION_DATA:
-                    if (policyType.equalsIgnoreCase(EasAccountValidator.EAS_2_POLICY_TYPE)) {
+                    if (policyType.equalsIgnoreCase(EasProvision.EAS_2_POLICY_TYPE)) {
                         // Parse the old style XML document
                         parseProvisionDocXml(getValue());
                     } else {

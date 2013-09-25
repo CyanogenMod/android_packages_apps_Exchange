@@ -15,6 +15,8 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.service.EasAttachmentLoader.ProgressCallback;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -23,17 +25,19 @@ import java.io.OutputStream;
  * Parse the result of an ItemOperations command; we use this to load attachments in EAS 14.0
  */
 public class ItemOperationsParser extends Parser {
-    private final AttachmentLoader mAttachmentLoader;
+    private static final int CHUNK_SIZE = 16*1024;
+
     private int mStatusCode = 0;
     private final OutputStream mAttachmentOutputStream;
-    private final int mAttachmentSize;
+    private final long mAttachmentSize;
+    private final ProgressCallback mCallback;
 
-    public ItemOperationsParser(AttachmentLoader loader, InputStream in, OutputStream out, int size)
-            throws IOException {
+    public ItemOperationsParser(final InputStream in, final OutputStream out, final long size,
+            final ProgressCallback callback) throws IOException {
         super(in);
-        mAttachmentLoader = loader;
         mAttachmentOutputStream = out;
         mAttachmentSize = size;
+        mCallback = callback;
     }
 
     public int getStatusCode() {
@@ -46,7 +50,7 @@ public class ItemOperationsParser extends Parser {
                 // Wrap the input stream in our custom base64 input stream
                 Base64InputStream bis = new Base64InputStream(getInput());
                 // Read the attachment
-                mAttachmentLoader.readChunked(bis, mAttachmentOutputStream, mAttachmentSize);
+                readChunked(bis, mAttachmentOutputStream, mAttachmentSize, mCallback);
             } else {
                 skipTag();
             }
@@ -90,5 +94,51 @@ public class ItemOperationsParser extends Parser {
             }
         }
         return res;
+    }
+
+    /**
+     * Read the attachment data in chunks and write the data back out to our attachment file
+     * @param inputStream the InputStream we're reading the attachment from
+     * @param outputStream the OutputStream the attachment will be written to
+     * @param length the number of expected bytes we're going to read
+     * @param callback A {@link ProgressCallback} to use to send progress updates to the UI.
+     * @throws IOException
+     */
+    public static void readChunked(final InputStream inputStream, final OutputStream outputStream,
+            final long length, final ProgressCallback callback) throws IOException {
+        final byte[] bytes = new byte[CHUNK_SIZE];
+        // Loop terminates 1) when EOF is reached or 2) IOException occurs
+        // One of these is guaranteed to occur
+        int totalRead = 0;
+        long lastCallbackPct = -1;
+        int lastCallbackTotalRead = 0;
+        while (true) {
+            final int read = inputStream.read(bytes, 0, CHUNK_SIZE);
+            if (read < 0) {
+                // -1 means EOF
+                break;
+            }
+
+            // Keep track of how much we've read for progress callback
+            totalRead += read;
+            // Write these bytes out
+            outputStream.write(bytes, 0, read);
+
+            // We can't report percentage if data is chunked; the length of incoming data is unknown
+            if (length > 0) {
+                final int pct = (int)((totalRead * 100) / length);
+                // Callback only if we've read at least 1% more and have read more than CHUNK_SIZE
+                // We don't want to spam the Email app
+                if ((pct > lastCallbackPct) && (totalRead > (lastCallbackTotalRead + CHUNK_SIZE))) {
+                    // Report progress back to the UI
+                    callback.doCallback(pct);
+
+                    // TODO: Fix this.
+                    //doProgressCallback(pct);
+                    lastCallbackTotalRead = totalRead;
+                    lastCallbackPct = pct;
+                }
+            }
+        }
     }
 }

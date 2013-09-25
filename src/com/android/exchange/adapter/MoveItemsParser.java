@@ -15,7 +15,7 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.EasSyncService;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,9 +24,10 @@ import java.io.InputStream;
  * Parse the result of a MoveItems command.
  */
 public class MoveItemsParser extends Parser {
-    private final EasSyncService mService;
+    private static final String TAG = "MoveItemsParser";
     private int mStatusCode = 0;
     private String mNewServerId;
+    private String mSourceServerId;
 
     // These are the EAS status codes for MoveItems
     private static final int STATUS_NO_SOURCE_FOLDER = 1;
@@ -42,9 +43,8 @@ public class MoveItemsParser extends Parser {
     public static final int STATUS_CODE_REVERT = 2;
     public static final int STATUS_CODE_RETRY = 3;
 
-    public MoveItemsParser(InputStream in, EasSyncService service) throws IOException {
+    public MoveItemsParser(InputStream in) throws IOException {
         super(in);
-        mService = service;
     }
 
     public int getStatusCode() {
@@ -53,6 +53,10 @@ public class MoveItemsParser extends Parser {
 
     public String getNewServerId() {
         return mNewServerId;
+    }
+
+    public String getSourceServerId() {
+        return mSourceServerId;
     }
 
     public void parseResponse() throws IOException {
@@ -83,11 +87,14 @@ public class MoveItemsParser extends Parser {
                 }
                 if (status != STATUS_SUCCESS) {
                     // There's not much to be done if this fails
-                    mService.userLog("Error in MoveItems: " + status);
+                    LogUtils.i(TAG, "Error in MoveItems: %d", status);
                 }
             } else if (tag == Tags.MOVE_DSTMSGID) {
                 mNewServerId = getValue();
-                mService.userLog("Moved message id is now: " + mNewServerId);
+                LogUtils.i(TAG, "Moved message id is now: %s", mNewServerId);
+            } else if (tag == Tags.MOVE_SRCMSGID) {
+                mSourceServerId = getValue();
+                LogUtils.i(TAG, "Source message id is: %s", mNewServerId);
             } else {
                 skipTag();
             }
