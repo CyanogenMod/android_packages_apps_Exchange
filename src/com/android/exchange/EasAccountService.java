@@ -22,24 +22,27 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.TrafficStats;
+import android.os.RemoteException;
 import android.os.SystemClock;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
+import android.util.Log;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.HostAuthColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
+import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.adapter.AccountSyncAdapter;
@@ -48,7 +51,6 @@ import com.android.exchange.adapter.Parser.EasParserException;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.Header;
@@ -188,7 +190,7 @@ public class EasAccountService extends EasSyncService {
                 ExchangeService.kick("sync finished");
             }
         } catch (ProviderUnavailableException e) {
-            LogUtils.e(TAG, "EmailProvider unavailable; sync ended prematurely");
+            Log.e(TAG, "EmailProvider unavailable; sync ended prematurely");
         }
     }
 
@@ -222,6 +224,13 @@ public class EasAccountService extends EasSyncService {
         MailboxUtilities.checkMailboxConsistency(mContext, mAccount.mId);
         // Initialize exit status to success
         try {
+            try {
+                ExchangeService.callback()
+                    .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.IN_PROGRESS, 0);
+            } catch (RemoteException e1) {
+                // Don't care if this fails
+            }
+
             if (mAccount.mSyncKey == null) {
                 mAccount.mSyncKey = "0";
                 userLog("Account syncKey INIT to 0");
@@ -284,9 +293,9 @@ public class EasAccountService extends EasSyncService {
                      } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
                         // Cause this to re-run
                         throw new IOException("Will retry after a brief hold...");
-                     } else if (resp.isProvisionError()) {
+                     } else if (EasResponse.isProvisionError(code)) {
                          throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
-                     } else if (resp.isAuthError()) {
+                     } else if (EasResponse.isAuthError(code)) {
                          mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                          return;
                      } else {
@@ -337,9 +346,9 @@ public class EasAccountService extends EasSyncService {
                                 continue;
                             }
                         }
-                    } else if (resp.isProvisionError()) {
+                    } else if (EasResponse.isProvisionError(code)) {
                         throw new CommandStatusException(CommandStatus.NEEDS_PROVISIONING);
-                    } else if (resp.isAuthError()) {
+                    } else if (EasResponse.isAuthError(code)) {
                         mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                         return;
                     } else if (code == EAS_REDIRECT_CODE && canHandleAccountMailboxRedirect(resp)) {
@@ -359,6 +368,15 @@ public class EasAccountService extends EasSyncService {
                         WHERE_PUSH_HOLD_NOT_ACCOUNT_MAILBOX,
                         new String[] {Long.toString(mAccount.mId)}) > 0) {
                     userLog("Set push/hold boxes to push...");
+                }
+
+                try {
+                    ExchangeService.callback()
+                        .syncMailboxListStatus(mAccount.mId,
+                                exitStatusToServiceStatus(mExitStatus),
+                                0);
+                } catch (RemoteException e1) {
+                    // Don't care if this fails
                 }
 
                 // Before each run of the pingLoop, if this Account has a PolicySet, make sure it's
@@ -402,11 +420,32 @@ public class EasAccountService extends EasSyncService {
                 }
             } else if (CommandStatus.isDeniedAccess(status)) {
                 mExitStatus = EasSyncService.EXIT_ACCESS_DENIED;
+                try {
+                    ExchangeService.callback().syncMailboxListStatus(mAccount.mId,
+                            EmailServiceStatus.ACCESS_DENIED, 0);
+                } catch (RemoteException e1) {
+                    // Don't care if this fails
+                }
                 return;
             } else {
                 userLog("Unexpected status: " + CommandStatus.toString(status));
                 mExitStatus = EasSyncService.EXIT_EXCEPTION;
             }
+        } catch (IOException e) {
+            // We catch this here to send the folder sync status callback
+            // A folder sync failed callback will get sent from run()
+            try {
+                if (!isStopped()) {
+                    // NOTE: The correct status is CONNECTION_ERROR, but the UI displays this, and
+                    // it's not really appropriate for EAS as this is not unexpected for a ping and
+                    // connection errors are retried in any case
+                    ExchangeService.callback()
+                        .syncMailboxListStatus(mAccount.mId, EmailServiceStatus.SUCCESS, 0);
+                }
+            } catch (RemoteException e1) {
+                // Don't care if this fails
+            }
+            throw e;
         }
     }
 
@@ -473,7 +512,7 @@ public class EasAccountService extends EasSyncService {
      * @param message
      * @return whether this message is likely associated with a NAT failure
      */
-    private static boolean isLikelyNatFailure(String message) {
+    private boolean isLikelyNatFailure(String message) {
         if (message == null) return false;
         if (message.contains("reset by peer")) {
             return true;
@@ -691,7 +730,7 @@ public class EasAccountService extends EasSyncService {
                                 // Act as if we have an IOException (backoff, etc.)
                                 throw new IOException();
                             }
-                        } else if (resp.isAuthError()) {
+                        } else if (EasResponse.isAuthError(code)) {
                             mExitStatus = EasSyncService.EXIT_LOGIN_FAILURE;
                             userLog("Authorization error during Ping: ", code);
                             throw new IOException();
@@ -840,6 +879,22 @@ public class EasAccountService extends EasSyncService {
                 }
             }
         }
-        return pp.getPingStatus();
+        return pp.getSyncStatus();
+    }
+
+    /**
+     * Translate exit status code to service status code (used in callbacks)
+     * @param exitStatus the service's exit status
+     * @return the corresponding service status
+     */
+    private int exitStatusToServiceStatus(int exitStatus) {
+        switch(exitStatus) {
+            case EasSyncService.EXIT_SECURITY_FAILURE:
+                return EmailServiceStatus.SECURITY_FAILURE;
+            case EasSyncService.EXIT_LOGIN_FAILURE:
+                return EmailServiceStatus.LOGIN_FAILED;
+            default:
+                return EmailServiceStatus.SUCCESS;
+        }
     }
 }

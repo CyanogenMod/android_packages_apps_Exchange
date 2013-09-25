@@ -18,11 +18,11 @@
 package com.android.exchange.adapter;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.android.exchange.Eas;
 import com.android.exchange.EasException;
 import com.android.exchange.utility.FileLogger;
-import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.ByteArrayOutputStream;
@@ -40,8 +40,6 @@ import java.util.ArrayList;
 public abstract class Parser {
     private static final boolean LOG_VERBOSE = false;
 
-    private static final String LOG_TAG = "EAS Parser";
-
     // The following constants are Wbxml standard
     public static final int START_DOCUMENT = 0;
     public static final int DONE = 1;
@@ -52,12 +50,12 @@ public abstract class Parser {
     private static final int NOT_FETCHED = Integer.MIN_VALUE;
     private static final int NOT_ENDED = Integer.MIN_VALUE;
     private static final int EOF_BYTE = -1;
+    private boolean logging = false;
+    private boolean capture = false;
+    private String logTag = "EAS Parser";
 
     // Where tags start in a page
     private static final int TAG_BASE = 5;
-
-    private boolean logging = false;
-    private boolean capture = false;
 
     private ArrayList<Integer> captureArray;
 
@@ -112,8 +110,6 @@ public abstract class Parser {
 
     // The value read, as bytes
     public byte[] bytes;
-
-    // TODO: Define a new parse exception type rather than lumping these in as IOExceptions.
 
     /**
      * Generated when the parser comes to EOF prematurely during parsing (i.e. in error)
@@ -180,8 +176,8 @@ public abstract class Parser {
     }
 
     /**
-     * Set the debug state of the parser.  When debugging is on, every token is logged (LogUtils.v)
-     * to the console.
+     * Set the debug state of the parser.  When debugging is on, every token is logged (Log.v) to
+     * the console.
      *
      * @param val the desired state for debug output
      */
@@ -191,6 +187,16 @@ public abstract class Parser {
 
     protected InputStream getInput() {
         return in;
+    }
+
+    /**
+     * Set the tag used for logging.  When debugging is on, every token is logged (Log.v) to
+     * the console.
+     *
+     * @param val the logging tag
+     */
+    public void setLoggingTag(String val) {
+        logTag = val;
     }
 
     /**
@@ -384,9 +390,9 @@ public abstract class Parser {
         if (cr > 0) {
             str = str.substring(0, cr);
         }
-        LogUtils.v(LOG_TAG, str);
+        Log.v(logTag, str);
         if (Eas.FILE_LOG) {
-            FileLogger.log(LOG_TAG, str);
+            FileLogger.log(logTag, str);
         }
     }
 

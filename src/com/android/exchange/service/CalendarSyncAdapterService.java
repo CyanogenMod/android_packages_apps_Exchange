@@ -25,36 +25,33 @@ import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.CalendarContract.Events;
+import android.util.Log;
 
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
-import com.android.mail.utils.LogUtils;
+import com.android.exchange.ExchangeService;
 
 public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
-    private static final String TAG = "EASCalSyncAdaptSvc";
+    private static final String TAG = "EAS CalendarSyncAdapterService";
     private static final String ACCOUNT_AND_TYPE_CALENDAR =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CALENDAR;
     private static final String DIRTY_IN_ACCOUNT =
         Events.DIRTY + "=1 AND " + Events.ACCOUNT_NAME + "=?";
-
-    private static final Object sSyncAdapterLock = new Object();
-    private static AbstractThreadedSyncAdapter sSyncAdapter = null;
+    private static final String[] ID_SYNC_KEY_PROJECTION =
+        new String[] {MailboxColumns.ID, MailboxColumns.SYNC_KEY};
+    private static final int ID_SYNC_KEY_MAILBOX_ID = 0;
+    private static final int ID_SYNC_KEY_SYNC_KEY = 1;
 
     public CalendarSyncAdapterService() {
         super();
     }
 
     @Override
-    protected AbstractThreadedSyncAdapter getSyncAdapter() {
-        synchronized (sSyncAdapterLock) {
-            if (sSyncAdapter == null) {
-                sSyncAdapter = new SyncAdapterImpl(this);
-            }
-            return sSyncAdapter;
-        }
+    protected AbstractThreadedSyncAdapter newSyncAdapter() {
+        return new SyncAdapterImpl(this);
     }
 
     private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
@@ -65,7 +62,8 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            CalendarSyncAdapterService.performSync(getContext(), account, extras);
+            CalendarSyncAdapterService.performSync(getContext(), account, extras, authority,
+                    provider, syncResult);
         }
     }
 
@@ -75,20 +73,17 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
      * The missing piece at this point is integration with the push/ping mechanism in EAS; this will
      * be put in place at a later time.
      */
-    private static void performSync(Context context, Account account, Bundle extras) {
-        final ContentResolver cr = context.getContentResolver();
-        final boolean logging = Eas.USER_LOG;
+    private static void performSync(Context context, Account account, Bundle extras,
+            String authority, ContentProviderClient provider, SyncResult syncResult) {
+        ContentResolver cr = context.getContentResolver();
+        boolean logging = Eas.USER_LOG;
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
-            final Cursor c = cr.query(Events.CONTENT_URI,
+            Cursor c = cr.query(Events.CONTENT_URI,
                     new String[] {Events._ID}, DIRTY_IN_ACCOUNT, new String[] {account.name}, null);
-            if (c == null) {
-                LogUtils.e(TAG, "Null changes cursor in CalendarSyncAdapterService");
-                return;
-            }
             try {
                 if (!c.moveToFirst()) {
                     if (logging) {
-                        LogUtils.d(TAG, "No changes for " + account.name);
+                        Log.d(TAG, "No changes for " + account.name);
                     }
                     return;
                 }
@@ -103,7 +98,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                     EmailContent.ID_PROJECTION, AccountColumns.EMAIL_ADDRESS + "=?",
                     new String[] {account.name}, null);
         if (accountCursor == null) {
-            LogUtils.e(TAG, "Null account cursor in CalendarSyncAdapterService");
+            Log.e(TAG, "Null account cursor in CalendarSyncAdapterService");
             return;
         }
 
@@ -111,22 +106,23 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             if (accountCursor.moveToFirst()) {
                 final long accountId = accountCursor.getLong(0);
                 // Now, find the calendar mailbox associated with the account
-                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, Mailbox.ID_PROJECTION,
+                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, ID_SYNC_KEY_PROJECTION,
                         ACCOUNT_AND_TYPE_CALENDAR, new String[] {Long.toString(accountId)}, null);
                 try {
-                    while (mailboxCursor.moveToNext()) {
+                     if (mailboxCursor.moveToFirst()) {
                         if (logging) {
-                            LogUtils.d(TAG, "Upload sync requested for " + account.name);
+                            Log.d(TAG, "Upload sync requested for " + account.name);
                         }
-                        // TODO: Currently just bouncing this to Email sync; eventually streamline.
-                        final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
-                        // TODO: Should we be using the existing extras and just adding our bits?
-                        final Bundle mailboxExtras = new Bundle(4);
-                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
-                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-                        mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
-                        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
+                        final String syncKey = mailboxCursor.getString(ID_SYNC_KEY_SYNC_KEY);
+                        if ((syncKey == null) || (syncKey.equals("0"))) {
+                            if (logging) {
+                                Log.d(TAG, "Can't sync; mailbox in initial state");
+                            }
+                            return;
+                        }
+                        // Ask for a sync from our sync manager
+                        ExchangeService.serviceRequest(mailboxCursor.getLong(
+                                ID_SYNC_KEY_MAILBOX_ID), ExchangeService.SYNC_UPSYNC);
                     }
                 } finally {
                     mailboxCursor.close();

@@ -21,20 +21,22 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
 import android.os.RemoteException;
+import android.util.Log;
 
 import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.utility.TextUtilities;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.EasSyncService;
+import com.android.exchange.ExchangeService;
 import com.android.exchange.adapter.EmailSyncAdapter.EasEmailSyncParser;
 import com.android.mail.providers.UIProvider;
-import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpStatus;
 
@@ -128,10 +130,15 @@ public class Search {
         } catch (IOException e) {
             svc.userLog("Search exception " + e);
         } finally {
-            // TODO: Handle error states
-            // Set the status of this mailbox to indicate query over
-            statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.NO_SYNC);
-            searchMailbox.update(context, statusValues);
+            try {
+                // TODO: Handle error states
+                // Set the status of this mailbox to indicate query over
+                statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.NO_SYNC);
+                searchMailbox.update(context, statusValues);
+                ExchangeService.callback().syncMailboxStatus(destMailboxId,
+                        EmailServiceStatus.SUCCESS, 100);
+            } catch (RemoteException e) {
+            }
         }
         // Return the total count
         return res;
@@ -166,7 +173,7 @@ public class Search {
                 if (tag == Tags.SEARCH_STATUS) {
                     String status = getValue();
                     if (Eas.USER_LOG) {
-                        LogUtils.d(Logging.LOG_TAG, "Search status: " + status);
+                        Log.d(Logging.LOG_TAG, "Search status: " + status);
                     }
                 } else if (tag == Tags.SEARCH_RESPONSE) {
                     parseResponse();
@@ -213,7 +220,7 @@ public class Search {
                     mService.userLog("Saved " + ops.size() + " search results");
                 }
             } catch (RemoteException e) {
-                LogUtils.d(Logging.LOG_TAG, "RemoteException while saving search results.");
+                Log.d(Logging.LOG_TAG, "RemoteException while saving search results.");
             } catch (OperationApplicationException e) {
             }
 
