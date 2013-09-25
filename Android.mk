@@ -22,7 +22,7 @@ LOCAL_MODULE_TAGS := optional
 
 # Include res dir from emailcommon
 emailcommon_dir := ../Email/emailcommon
-res_dir := res $(emailcommon_dir)/res
+res_dir := res $(emailcommon_dir)/res build/res
 
 LOCAL_RESOURCE_DIR := $(addprefix $(LOCAL_PATH)/, $(res_dir))
 
@@ -34,13 +34,12 @@ LOCAL_SRC_FILES += $(call all-java-files-under, build/src)
 
 LOCAL_STATIC_JAVA_LIBRARIES := android-common com.android.emailcommon com.android.emailsync
 LOCAL_STATIC_JAVA_LIBRARIES += calendar-common
-LOCAL_STATIC_JAVA_LIBRARIES += android-support-v4
 
 LOCAL_PACKAGE_NAME := Exchange2
 LOCAL_OVERRIDES_PACKAGES := Exchange
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
-LOCAL_SDK_VERSION := 18
+LOCAL_SDK_VERSION := 15
 
 LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
 

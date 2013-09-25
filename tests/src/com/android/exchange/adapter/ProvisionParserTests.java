@@ -17,9 +17,7 @@
 package com.android.exchange.adapter;
 
 import com.android.emailcommon.provider.Policy;
-import com.android.exchange.adapter.ProvisionParser;
 
-import android.content.Context;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import java.io.ByteArrayInputStream;
@@ -113,7 +111,7 @@ public class ProvisionParserTests extends SyncAdapterTestCase {
         "</wap-provisioningdoc>";
 
     public void testWapProvisionParser1() throws IOException {
-        ProvisionParser parser = new ProvisionParser(getContext(), mTestInputStream);
+         ProvisionParser parser = new ProvisionParser(mTestInputStream, getTestService());
         parser.parseProvisionDocXml(mWapProvisioningDoc1);
         Policy policy = parser.getPolicy();
         assertNotNull(policy);
@@ -126,7 +124,7 @@ public class ProvisionParserTests extends SyncAdapterTestCase {
     }
 
     public void testWapProvisionParser2() throws IOException {
-        ProvisionParser parser = new ProvisionParser(getContext(), mTestInputStream);
+        ProvisionParser parser = new ProvisionParser(mTestInputStream, getTestService());
         parser.parseProvisionDocXml(mWapProvisioningDoc2);
         Policy policy = parser.getPolicy();
         assertNotNull(policy);
@@ -135,7 +133,7 @@ public class ProvisionParserTests extends SyncAdapterTestCase {
     }
 
     public void testWapProvisionParser3() throws IOException {
-        ProvisionParser parser = new ProvisionParser(getContext(), mTestInputStream);
+        ProvisionParser parser = new ProvisionParser(mTestInputStream, getTestService());
         parser.parseProvisionDocXml(mWapProvisioningDoc3);
         Policy policy = parser.getPolicy();
         assertNotNull(policy);
