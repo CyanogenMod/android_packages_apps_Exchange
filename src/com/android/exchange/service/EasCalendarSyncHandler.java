@@ -1,6 +1,5 @@
 package com.android.exchange.service;
 
-import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -12,7 +11,6 @@ import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.provider.CalendarContract;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
@@ -20,8 +18,6 @@ import android.provider.CalendarContract.Events;
 import android.provider.CalendarContract.EventsEntity;
 import android.provider.CalendarContract.ExtendedProperties;
 import android.provider.CalendarContract.Reminders;
-import android.provider.CalendarContract.SyncState;
-import android.provider.SyncStateContract;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 
@@ -62,8 +58,16 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     private static final int CALENDAR_ID_COLUMN = 0;
 
     /** Content selection for getting a calendar id for an account. */
-    private static final String CALENDAR_SELECTION = Calendars.ACCOUNT_NAME + "=? AND " +
-            Calendars.ACCOUNT_TYPE + "=? AND " + Calendars._SYNC_ID + "=?";
+    private static final String CALENDAR_SELECTION_ACCOUNT_AND_SYNC_ID =
+            Calendars.ACCOUNT_NAME + "=? AND " +
+            Calendars.ACCOUNT_TYPE + "=? AND " +
+            Calendars._SYNC_ID + "=?";
+
+    /** Content selection for getting a calendar id for an account. */
+    private static final String CALENDAR_SELECTION_ACCOUNT_AND_NO_SYNC =
+            Calendars.ACCOUNT_NAME + "=? AND " +
+            Calendars.ACCOUNT_TYPE + "=? AND " +
+            Calendars._SYNC_ID + " IS NULL";
 
     /** The column used to track the timezone of the event. */
     private static final String EVENT_SAVED_TIMEZONE_COLUMN = Events.SYNC_DATA1;
@@ -123,7 +127,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         super(context, contentResolver, account, mailbox, syncExtras, syncResult);
         mAccountManagerAccount = accountManagerAccount;
         final Cursor c = mContentResolver.query(Calendars.CONTENT_URI, CALENDAR_ID_PROJECTION,
-                CALENDAR_SELECTION,
+                CALENDAR_SELECTION_ACCOUNT_AND_SYNC_ID,
                 new String[] {
                         mAccount.mEmailAddress,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE,
@@ -136,8 +140,41 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 if (c.moveToFirst()) {
                     mCalendarId = c.getLong(CALENDAR_ID_COLUMN);
                 } else {
-                    mCalendarId = CalendarUtilities.createCalendar(mContext, mContentResolver,
+                    long id = -1;
+                    // Check if we have a calendar for this account with no server Id. If so, it was
+                    // synced with an older version of the sync adapter before serverId's were
+                    // supported.
+                    final Cursor c1 = mContentResolver.query(Calendars.CONTENT_URI,
+                            CALENDAR_ID_PROJECTION,
+                            CALENDAR_SELECTION_ACCOUNT_AND_NO_SYNC,
+                            new String[] {
+                                    mAccount.mEmailAddress,
+                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE,
+                            }, null);
+                    if (c1 != null) {
+                        try {
+                            if (c1.moveToFirst()) {
+                                id = c1.getLong(CALENDAR_ID_COLUMN);
+                                final ContentValues values = new ContentValues();
+                                values.put(Calendars._SYNC_ID, mMailbox.mServerId);
+                                mContentResolver.update(
+                                        ContentUris.withAppendedId(
+                                                asSyncAdapter(Calendars.CONTENT_URI), id),
+                                        values,
+                                        null, /* where */
+                                        null /* selectionArgs */);
+                            }
+                        } finally {
+                            c1.close();
+                        }
+                    }
+
+                    if (id >= 0) {
+                        mCalendarId = id;
+                    } else {
+                        mCalendarId = CalendarUtilities.createCalendar(mContext, mContentResolver,
                             mAccount, mMailbox);
+                    }
                 }
             } finally {
                 c.close();
