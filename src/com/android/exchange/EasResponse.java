@@ -43,22 +43,19 @@ public class EasResponse {
     // Why is this a 4xx instead of 3xx? Because EAS considers this a "Device misconfigured" error.
     static private final int HTTP_REDIRECT = 451;
 
-    private final HttpResponse mResponse;
+    final HttpResponse mResponse;
     private final HttpEntity mEntity;
     private final int mLength;
     private InputStream mInputStream;
     private boolean mClosed;
 
-    private final int mStatus;
-
     /**
      * Whether or not a certificate was requested by the server and missing.
      * If this is set, it is essentially a 403 whereby the failure was due
      */
-    private final boolean mClientCertRequested;
+    private boolean mClientCertRequested = false;
 
-    private EasResponse(final HttpResponse response,
-            final EmailClientConnectionManager connManager, final long reqTime) {
+    private EasResponse(HttpResponse response) {
         mResponse = response;
         mEntity = (response == null) ? null : mResponse.getEntity();
         if (mEntity !=  null) {
@@ -66,51 +63,22 @@ public class EasResponse {
         } else {
             mLength = 0;
         }
-        int status = response.getStatusLine().getStatusCode();
-        mClientCertRequested =
-                isAuthError(status) && connManager.hasDetectedUnsatisfiedCertReq(reqTime);
-        if (mClientCertRequested) {
-            status = HttpStatus.SC_UNAUTHORIZED;
-            mClosed = true;
-        }
-        mStatus = status;
     }
 
     public static EasResponse fromHttpRequest(
             EmailClientConnectionManager connManager, HttpClient client, HttpUriRequest request)
             throws IOException {
-        final long reqTime = System.currentTimeMillis();
-        final HttpResponse response = client.execute(request);
-        return new EasResponse(response, connManager, reqTime);
-    }
 
-    public boolean isSuccess() {
-        return mStatus == HttpStatus.SC_OK;
-    }
+        long reqTime = System.currentTimeMillis();
+        HttpResponse response = client.execute(request);
+        EasResponse result = new EasResponse(response);
+        if (isAuthError(response.getStatusLine().getStatusCode())
+                && connManager.hasDetectedUnsatisfiedCertReq(reqTime)) {
+            result.mClientCertRequested = true;
+            result.mClosed = true;
+        }
 
-    public boolean isForbidden() {
-        return mStatus == HttpStatus.SC_FORBIDDEN;
-    }
-
-    /**
-     * @return Whether this response indicates an authentication error.
-     */
-    public boolean isAuthError() {
-        return mStatus == HttpStatus.SC_UNAUTHORIZED;
-    }
-
-    /**
-     * @return Whether this response indicates a provisioning error.
-     */
-    public boolean isProvisionError() {
-        return (mStatus == HTTP_NEED_PROVISIONING) || isForbidden();
-    }
-
-    /**
-     * @return Whether this response indicates a redirect error.
-     */
-    public boolean isRedirectError() {
-        return mStatus == HTTP_REDIRECT;
+        return result;
     }
 
     /**
@@ -118,8 +86,26 @@ public class EasResponse {
      * @param code the HTTP code returned by the server
      * @return whether or not the code represents an authentication error
      */
-    private static boolean isAuthError(int code) {
+    public static boolean isAuthError(int code) {
         return (code == HttpStatus.SC_UNAUTHORIZED) || (code == HttpStatus.SC_FORBIDDEN);
+    }
+
+    /**
+     * Determine whether an HTTP code represents a provisioning error
+     * @param code the HTTP code returned by the server
+     * @return whether or not the code represents an provisioning error
+     */
+    public static boolean isProvisionError(int code) {
+        return (code == HTTP_NEED_PROVISIONING) || (code == HttpStatus.SC_FORBIDDEN);
+    }
+
+    /**
+     * Determine whether an HTTP code represents a redirect error.
+     * @param code the HTTP code returned by the server
+     * @return whether or not the code represents a redirect error
+     */
+    public static boolean isRedirectError(final int code) {
+        return (code == HTTP_REDIRECT);
     }
 
     /**
@@ -169,7 +155,9 @@ public class EasResponse {
     }
 
     public int getStatus() {
-        return mStatus;
+        return mClientCertRequested
+                ? HttpStatus.SC_UNAUTHORIZED
+                : mResponse.getStatusLine().getStatusCode();
     }
 
     public boolean isMissingCertificate() {

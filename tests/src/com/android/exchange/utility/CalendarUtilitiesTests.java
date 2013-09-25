@@ -22,7 +22,7 @@ import android.content.res.Resources;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Events;
 import android.test.suitebuilder.annotation.MediumTest;
-import android.test.AndroidTestCase;
+import android.util.Log;
 
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.provider.Account;
@@ -30,12 +30,12 @@ import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.R;
-import com.android.exchange.adapter.CalendarSyncParser;
+import com.android.exchange.adapter.CalendarSyncAdapter;
+import com.android.exchange.adapter.CalendarSyncAdapter.EasCalendarSyncParser;
 import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SyncAdapterTestCase;
 import com.android.exchange.adapter.Tags;
-import com.android.mail.utils.LogUtils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -58,7 +58,7 @@ import java.util.TimeZone;
  * http://www.ietf.org/rfc/rfc2445.txt
  */
 @MediumTest
-public class CalendarUtilitiesTests extends AndroidTestCase {
+public class CalendarUtilitiesTests extends SyncAdapterTestCase<CalendarSyncAdapter> {
 
     // Some prebuilt time zones, Base64 encoded (as they arrive from EAS)
     // More time zones to be added over time
@@ -705,6 +705,43 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
     }
 
     /**
+     * Given a CalendarSyncAdapter and an RRULE, serialize the RRULE via recurrentFromRrule and
+     * then parse the result.  Assert that the resulting RRULE is the same as the original.
+     * @param adapter a CalendarSyncAdapter
+     * @param rrule an RRULE string that will be tested
+     * @throws IOException
+     */
+    private void testSingleRecurrenceFromRrule(CalendarSyncAdapter adapter, String rrule)
+            throws IOException {
+        Serializer s = new Serializer();
+        CalendarUtilities.recurrenceFromRrule(rrule, 0, s);
+        s.done();
+        EasCalendarSyncParser parser = adapter.new EasCalendarSyncParser(
+                new ByteArrayInputStream(s.toByteArray()), adapter);
+        // The first element should be the outer CALENDAR_RECURRENCE tag
+        assertEquals(Tags.CALENDAR_RECURRENCE, parser.nextTag(Parser.START_DOCUMENT));
+        assertEquals(rrule, parser.recurrenceParser());
+    }
+
+    /**
+     * Round-trip test of RRULE handling; we serialize an RRULE and then parse the result; the
+     * result should be identical to the original RRULE
+     */
+    public void testRecurrenceFromRrule() throws IOException {
+        // A test sync adapter we can use throughout the test
+        CalendarSyncAdapter adapter = getTestSyncAdapter(CalendarSyncAdapter.class);
+
+        testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;COUNT=2;INTERVAL=1;BYDAY=MO");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;BYDAY=TU,FR");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;BYDAY=-1SA");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=WEEKLY;BYDAY=3WE,3TH");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=MONTHLY;BYMONTHDAY=17");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=YEARLY;BYMONTHDAY=31;BYMONTH=10");
+        testSingleRecurrenceFromRrule(adapter, "FREQ=YEARLY;BYDAY=1TU;BYMONTH=6");
+    }
+
+    /**
      * For debugging purposes, to help keep track of parsing errors.
      */
     private class UnterminatedBlockException extends IOException {
@@ -843,10 +880,10 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
                 nodst++;
             }
         }
-        LogUtils.d("TimeZoneGeneration",
+        Log.d("TimeZoneGeneration",
                 "Rule: " + rule + ", No DST: " + nodst + ", No rule: " + norule);
         for (String nr: norulelist) {
-            LogUtils.d("TimeZoneGeneration", "No rule: " + nr);
+            Log.d("TimeZoneGeneration", "No rule: " + nr);
         }
         // This is an empirical sanity test; we shouldn't have too many time zones with DST and
         // without a rule.

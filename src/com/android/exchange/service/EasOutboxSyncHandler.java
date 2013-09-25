@@ -1,10 +1,13 @@
 package com.android.exchange.service;
 
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.TrafficStats;
 import android.net.Uri;
+import android.os.Bundle;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.TrafficFlags;
@@ -18,6 +21,7 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
@@ -44,7 +48,7 @@ import java.util.ArrayList;
 /**
  * Performs an Exchange Outbox sync, i.e. sends all mail from the Outbox.
  */
-public class EasOutboxSyncHandler extends EasServerConnection {
+public class EasOutboxSyncHandler extends EasSyncHandler {
     // Value for a message's server id when sending fails.
     public static final int SEND_FAILED = 1;
 
@@ -60,23 +64,24 @@ public class EasOutboxSyncHandler extends EasServerConnection {
     // failure would probably generate an Exception before timing out anyway
     public static final long SEND_MAIL_TIMEOUT = 15 * DateUtils.MINUTE_IN_MILLIS;
 
-    private final Mailbox mMailbox;
     private final File mCacheDir;
 
-    public EasOutboxSyncHandler(final Context context, final Account account,
-            final Mailbox mailbox) {
-        super(context, account);
-        mMailbox = mailbox;
+    public EasOutboxSyncHandler(final Context context, final ContentResolver contentResolver,
+                final Account account, final Mailbox mailbox, final Bundle syncExtras,
+                final SyncResult syncResult) {
+        super(context, contentResolver, account, mailbox, syncExtras, syncResult);
         mCacheDir = context.getCacheDir();
     }
 
-    public void performSync() {
+    @Override
+    public SyncStatus performSync() {
         // Use SMTP flags for sending mail
         TrafficStats.setThreadStatsTag(TrafficFlags.getSmtpFlags(mContext, mAccount));
         // Get a cursor to Outbox messages
         final Cursor c = mContext.getContentResolver().query(Message.CONTENT_URI,
                 Message.CONTENT_PROJECTION, MAILBOX_KEY_AND_NOT_SEND_FAILED,
                 new String[] {Long.toString(mMailbox.mId)}, null);
+        SyncStatus status = SyncStatus.SUCCESS;
         try {
             // Loop through the messages, sending each one
             while (c.moveToNext()) {
@@ -87,19 +92,32 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                     continue;
                 }
 
-                // TODO: Fix -- how do we want to signal to UI that we started syncing?
-                // Note the entire callback mechanism here needs improving.
-                //sendMessageStatus(message.mId, null, EmailServiceStatus.IN_PROGRESS, 0);
+                sendMessageStatus(message.mId, null, EmailServiceStatus.IN_PROGRESS, 0);
 
-                if (!sendOneMessage(message,
-                        SmartSendInfo.getSmartSendInfo(mContext, mAccount, message))) {
-                    break;
+                status = sendOneMessage(message,
+                        SmartSendInfo.getSmartSendInfo(mContext, mAccount, message));
+                // TODO: Improve handling of individual message send responses.
+                switch (status) {
+                    case SUCCESS:
+                        break;
+                    case FAILURE_IO:
+                        break;
+                    case FAILURE_LOGIN:
+                        break;
+                    case FAILURE_SECURITY:
+                        break;
+                    case FAILURE_MESSAGE:
+                        break;
+                    case FAILURE_OTHER:
+                        break;
                 }
             }
         } finally {
             // TODO: Some sort of sendMessageStatus() is needed here.
             c.close();
         }
+
+        return status;
     }
 
     /**
@@ -199,8 +217,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
             String[] cols = Utility.getRowColumns(context, Body.CONTENT_URI, BODY_SOURCE_PROJECTION,
                     WHERE_MESSAGE_KEY, new String[] {Long.toString(message.mId)});
             long refId = 0;
-            // TODO: We can probably just write a smarter query to do this all at once.
-            if (cols != null && cols[0] != null) {
+            if (cols != null) {
                 refId = Long.parseLong(cols[0]);
                 // Then, we need the serverId and mailboxKey of the message
                 cols = Utility.getRowColumns(context, Message.CONTENT_URI, refId,
@@ -389,16 +406,15 @@ public class EasOutboxSyncHandler extends EasServerConnection {
      * @param message The message to send.
      * @param smartSendInfo The SmartSendInfo for this message, or null if we don't have or don't
      *      want to use smart send.
-     * @return Whether or not sending this message succeeded.
-     * TODO: Improve how we handle the types of failures. I've left the old error codes in as TODOs
-     * for future reference.
+     * @return A status value to indicate success or manner of failure for this operation.
      */
-    private boolean sendOneMessage(final Message message, final SmartSendInfo smartSendInfo) {
+    private SyncStatus sendOneMessage(final Message message,
+            final SmartSendInfo smartSendInfo) {
         final File tmpFile;
         try {
             tmpFile = File.createTempFile("eas_", "tmp", mCacheDir);
         } catch (final IOException e) {
-            return false; // TODO: Handle SyncStatus.FAILURE_IO;
+            return SyncStatus.FAILURE_IO;
         }
 
         final EasResponse resp;
@@ -408,14 +424,14 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         final int modeTag = getModeTag(isEas14, smartSendInfo);
         try {
             if (!writeMessageToTempFile(tmpFile, message, smartSendInfo)) {
-                return false; // TODO: Handle SyncStatus.FAILURE_IO;
+                return SyncStatus.FAILURE_IO;
             }
 
             final FileInputStream fileStream;
             try {
                 fileStream = new FileInputStream(tmpFile);
             } catch (final FileNotFoundException e) {
-                return false; // TODO: Handle SyncStatus.FAILURE_IO;
+                return SyncStatus.FAILURE_IO;
             }
             try {
 
@@ -446,7 +462,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                 try {
                     resp = sendHttpClientPost(cmd, entity, SEND_MAIL_TIMEOUT);
                 } catch (final IOException e) {
-                    return false; // TODO: Handle SyncStatus.FAILURE_IO;
+                    return SyncStatus.FAILURE_IO;
                 }
 
             } finally {
@@ -476,29 +492,29 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                         // The parser holds the status
                         final int status = p.getStatus();
                         if (CommandStatus.isNeedsProvisioning(status)) {
-                            return false; // TODO: Handle SyncStatus.FAILURE_SECURITY;
+                            return SyncStatus.FAILURE_SECURITY;
                         } else if (status == CommandStatus.ITEM_NOT_FOUND &&
                                 smartSendInfo != null) {
                             // Let's retry without "smart" commands.
                             return sendOneMessage(message, null);
                         }
                         // TODO: Set syncServerId = SEND_FAILED in DB?
-                        return false; // TODO: Handle SyncStatus.FAILURE_MESSAGE;
+                        return SyncStatus.FAILURE_MESSAGE;
                     } catch (final EmptyStreamException e) {
                         // This is actually fine; an empty stream means SendMail succeeded
                     } catch (final IOException e) {
                         // Parsing failed in some other way.
-                        return false; // TODO: Handle SyncStatus.FAILURE_IO;
+                        return SyncStatus.FAILURE_IO;
                     }
                 }
             } else if (code == HttpStatus.SC_INTERNAL_SERVER_ERROR && smartSendInfo != null) {
                 // Let's retry without "smart" commands.
                 return sendOneMessage(message, null);
             } else {
-                if (resp.isAuthError()) {
-                    return false; // TODO: Handle SyncStatus.FAILURE_LOGIN;
-                } else if (resp.isProvisionError()) {
-                    return false; // TODO: Handle SyncStatus.FAILURE_SECURITY;
+                if (EasResponse.isAuthError(code)) {
+                    return SyncStatus.FAILURE_LOGIN;
+                } else if (EasResponse.isProvisionError(code)) {
+                    return SyncStatus.FAILURE_SECURITY;
                 }
             }
         } finally {
@@ -509,7 +525,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         // Delete the sent message.
         mContext.getContentResolver().delete(
                 ContentUris.withAppendedId(Message.CONTENT_URI, message.mId), null, null);
-        return true;
+        return SyncStatus.SUCCESS;
     }
 
     /**
@@ -545,7 +561,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         return true;
     }
 
-    private static int getModeTag(final boolean isEas14, final SmartSendInfo smartSendInfo) {
+    private int getModeTag(final boolean isEas14, final SmartSendInfo smartSendInfo) {
         if (isEas14) {
             if (smartSendInfo == null) {
                 return Tags.COMPOSE_SEND_MAIL;

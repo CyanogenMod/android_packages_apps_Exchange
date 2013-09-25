@@ -20,15 +20,12 @@ package com.android.exchange.adapter;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.OperationApplicationException;
-import android.os.RemoteException;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
-import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,8 +37,6 @@ import java.io.InputStream;
  *
  */
 public abstract class AbstractSyncParser extends Parser {
-    private static final String TAG = "AbstractSyncParser";
-
     protected Mailbox mMailbox;
     protected Account mAccount;
     protected Context mContext;
@@ -95,8 +90,7 @@ public abstract class AbstractSyncParser extends Parser {
      * Commit any changes found during parsing
      * @throws IOException
      */
-    public abstract void commit() throws IOException, RemoteException,
-            OperationApplicationException;
+    public abstract void commit() throws IOException;
 
     public boolean isLooping() {
         return mLooping;
@@ -124,6 +118,7 @@ public abstract class AbstractSyncParser extends Parser {
         int status;
         boolean moreAvailable = false;
         boolean newSyncKey = false;
+        int interval = mMailbox.mSyncInterval;
         mLooping = false;
         // If we're not at the top of the xml tree, throw an exception
         if (nextTag(START_DOCUMENT) != Tags.SYNC_SYNC) {
@@ -144,7 +139,11 @@ public abstract class AbstractSyncParser extends Parser {
                     if (status == 3 || CommandStatus.isBadSyncKey(status)) {
                         // Must delete all of the data and start over with syncKey of "0"
                         mMailbox.mSyncKey = "0";
-                        wipe();
+                        // Make this a push box through the first sync
+                        // TODO Make frequency conditional on user settings!
+                        mMailbox.mSyncInterval = Mailbox.CHECK_INTERVAL_PUSH;
+                        // TODO: Implement wipe if needed.
+                        //mAdapter.wipe();
                         // Indicate there's more so that we'll start syncing again
                         moreAvailable = true;
                     } else if (status == 16 || status == 5) {
@@ -162,8 +161,7 @@ public abstract class AbstractSyncParser extends Parser {
                         // we sync folders"...
                         throw new IOException();
                     } else if (status == 7) {
-                        // TODO: Fix this. The handling here used to be pretty bogus, and it's not
-                        // obvious that simply forcing another resync makes sense here.
+                        //mService.mUpsyncFailed = true;
                         moreAvailable = true;
                     } else {
                         // Access, provisioning, transient, etc.
@@ -188,6 +186,10 @@ public abstract class AbstractSyncParser extends Parser {
                     mailboxUpdated = true;
                     newSyncKey = true;
                 }
+                // If we were pushing (i.e. auto-start), now we'll become ping-triggered
+                if (mMailbox.mSyncInterval == Mailbox.CHECK_INTERVAL_PUSH) {
+                    mMailbox.mSyncInterval = Mailbox.CHECK_INTERVAL_PING;
+                }
            } else {
                 skipTag();
            }
@@ -199,24 +201,36 @@ public abstract class AbstractSyncParser extends Parser {
         }
 
         // Commit any changes
-        try {
-            commit();
-            if (mailboxUpdated) {
-                mMailbox.update(mContext, cv);
-            }
-        } catch (RemoteException e) {
-            LogUtils.e(TAG, "Failed to commit changes", e);
-        } catch (OperationApplicationException e) {
-            LogUtils.e(TAG, "Failed to commit changes", e);
+        commit();
+
+
+        // TODO: I don't think this is still relevant. Syncing should not trigger changes in the
+        // sync interval.
+        /*
+        // If the sync interval has changed, we need to save it
+        if (mMailbox.mSyncInterval != interval) {
+            cv.put(MailboxColumns.SYNC_INTERVAL, mMailbox.mSyncInterval);
+            mailboxUpdated = true;
+        // If there are changes, and we were bounced from push/ping, try again
+        } else if (mAdapter.mChangeCount > 0 &&
+                mAccount.mSyncInterval == Account.CHECK_INTERVAL_PUSH &&
+                mMailbox.mSyncInterval > 0) {
+            userLog("Changes found to ping loop mailbox ", mMailbox.mDisplayName, ": will ping.");
+            cv.put(MailboxColumns.SYNC_INTERVAL, Mailbox.CHECK_INTERVAL_PING);
+            mailboxUpdated = true;
+            abortSyncs = true;
         }
+         */
+        if (mailboxUpdated) {
+            mMailbox.update(mContext, cv);
+        }
+
         // Let the caller know that there's more to do
         if (moreAvailable) {
             userLog("MoreAvailable");
         }
         return moreAvailable;
     }
-
-    abstract protected void wipe();
 
     void userLog(String ...strings) {
         // TODO: Convert to other logging types?
