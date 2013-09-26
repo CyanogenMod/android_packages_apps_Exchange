@@ -33,7 +33,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
     private static final String[] FETCH_REQUEST_PROJECTION = { SyncColumns.SERVER_ID };
     private static final int FETCH_REQUEST_SERVER_ID = 0;
 
-    private static final String EMAIL_WINDOW_SIZE = "5";
+    private static final int EMAIL_WINDOW_SIZE = 10;
 
     /**
      * List of server ids for messages to fetch from the server.
@@ -133,7 +133,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
                 s.data(Tags.SYNC_DELETES_AS_MOVES, isTrashMailbox ? "0" : "1");
             }
             s.tag(Tags.SYNC_GET_CHANGES);
-            s.data(Tags.SYNC_WINDOW_SIZE, EMAIL_WINDOW_SIZE);
+            s.data(Tags.SYNC_WINDOW_SIZE, String.valueOf(EMAIL_WINDOW_SIZE));
             s.start(Tags.SYNC_OPTIONS);
             // Set the lookback appropriately (EAS calls this a "filter")
             s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
