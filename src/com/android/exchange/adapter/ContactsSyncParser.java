@@ -1,25 +1,20 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentProviderOperation;
+import android.content.ContentProviderOperation.Builder;
 import android.content.ContentProviderResult;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
+import android.content.Entity.NamedContentValues;
 import android.content.EntityIterator;
 import android.content.OperationApplicationException;
-import android.content.ContentProviderOperation.Builder;
-import android.content.Entity.NamedContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.provider.ContactsContract;
-import android.provider.SyncStateContract;
-import android.provider.ContactsContract.Data;
-import android.provider.ContactsContract.Groups;
-import android.provider.ContactsContract.RawContacts;
-import android.provider.ContactsContract.SyncState;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Event;
 import android.provider.ContactsContract.CommonDataKinds.GroupMembership;
@@ -33,6 +28,10 @@ import android.provider.ContactsContract.CommonDataKinds.Relation;
 import android.provider.ContactsContract.CommonDataKinds.StructuredName;
 import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
 import android.provider.ContactsContract.CommonDataKinds.Website;
+import android.provider.ContactsContract.Data;
+import android.provider.ContactsContract.RawContacts;
+import android.provider.ContactsContract.SyncState;
+import android.provider.SyncStateContract;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Base64;
@@ -800,7 +799,7 @@ public class ContactsSyncParser extends AbstractSyncParser {
         private int mContactBackValue = mCount;
         // Make an array big enough for the PIM window (max items we can get)
         private final int[] mContactIndexArray =
-            new int[Integer.parseInt(AbstractSyncAdapter.PIM_WINDOW_SIZE)];
+            new int[EasContactsSyncHandler.PIM_WINDOW_SIZE_CONTACTS];
         private int mContactIndexCount = 0;
         private ContentProviderResult[] mResults = null;
 

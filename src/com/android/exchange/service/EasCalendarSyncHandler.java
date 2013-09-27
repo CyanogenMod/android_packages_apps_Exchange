@@ -226,7 +226,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
     @Override
     protected void setNonInitialSyncOptions(final Serializer s) throws IOException {
-        setPimSyncOptions(s, Eas.FILTER_2_WEEKS);
+        setPimSyncOptions(s, Eas.FILTER_2_WEEKS, PIM_WINDOW_SIZE_CALENDAR);
     }
 
     /**

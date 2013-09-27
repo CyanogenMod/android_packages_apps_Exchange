@@ -76,8 +76,9 @@ import java.io.InputStream;
 public abstract class EasSyncHandler extends EasServerConnection {
     private static final String TAG = "EasSyncHandler";
 
-    /** Window size for PIM (contact & calendar) sync options. */
-    protected static final String PIM_WINDOW_SIZE = "4";
+    /** Window sizes for PIM (contact & calendar) sync options. */
+    public static final int PIM_WINDOW_SIZE_CONTACTS = 10;
+    public static final int PIM_WINDOW_SIZE_CALENDAR = 10;
 
     // TODO: For each type of failure, provide info about why.
     protected static final int SYNC_RESULT_FAILED = -1;
@@ -216,14 +217,17 @@ public abstract class EasSyncHandler extends EasServerConnection {
 
     /**
      * Shared non-initial sync options for PIM (contacts & calendar) objects.
-     * @param s The {@link Serializer} for this sync request.
+     *
+     * @param s The {@link com.android.exchange.adapter.Serializer} for this sync request.
      * @param filter The lookback to use, or null if no lookback is desired.
+     * @param windowSize
      * @throws IOException
      */
-    protected void setPimSyncOptions(final Serializer s, final String filter) throws IOException {
+    protected void setPimSyncOptions(final Serializer s, final String filter, int windowSize)
+            throws IOException {
         s.tag(Tags.SYNC_DELETES_AS_MOVES);
         s.tag(Tags.SYNC_GET_CHANGES);
-        s.data(Tags.SYNC_WINDOW_SIZE, PIM_WINDOW_SIZE);
+        s.data(Tags.SYNC_WINDOW_SIZE, String.valueOf(windowSize));
         s.start(Tags.SYNC_OPTIONS);
         // Set the filter (lookback), if provided
         if (filter != null) {
