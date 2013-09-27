@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.os.RemoteException;
+import android.os.TransactionTooLargeException;
 import android.text.TextUtils;
 import android.util.SparseBooleanArray;
 import android.util.SparseIntArray;
@@ -39,7 +40,6 @@ import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
-import com.android.exchange.ExchangeService;
 import com.android.exchange.service.EasCalendarSyncHandler;
 import com.android.exchange.service.EasContactsSyncHandler;
 import com.android.mail.utils.LogUtils;
@@ -49,6 +49,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Parse the result of a FolderSync command
@@ -124,18 +126,14 @@ public class FolderSyncParser extends AbstractSyncParser {
 
     /** Projection used for changed parents during parent/child fixup. */
     private static final String[] FIXUP_PARENT_PROJECTION =
-            { MailboxColumns.ID, MailboxColumns.DISPLAY_NAME, MailboxColumns.HIERARCHICAL_NAME,
-                    MailboxColumns.FLAGS };
+            { MailboxColumns.ID, MailboxColumns.FLAGS };
     private static final int FIXUP_PARENT_ID_COLUMN = 0;
-    private static final int FIXUP_PARENT_DISPLAY_NAME_COLUMN = 1;
-    private static final int FIXUP_PARENT_HIERARCHICAL_NAME_COLUMN = 2;
-    private static final int FIXUP_PARENT_FLAGS_COLUMN = 3;
+    private static final int FIXUP_PARENT_FLAGS_COLUMN = 1;
 
     /** Projection used for changed children during parent/child fixup. */
     private static final String[] FIXUP_CHILD_PROJECTION =
-            { MailboxColumns.ID, MailboxColumns.DISPLAY_NAME };
+            { MailboxColumns.ID };
     private static final int FIXUP_CHILD_ID_COLUMN = 0;
-    private static final int FIXUP_CHILD_DISPLAY_NAME_COLUMN = 1;
 
     /** Flags that are set or cleared when a mailbox's child status changes. */
     private static final int HAS_CHILDREN_FLAGS =
@@ -148,8 +146,6 @@ public class FolderSyncParser extends AbstractSyncParser {
     long mAccountId;
     @VisibleForTesting
     String mAccountIdAsString;
-    @VisibleForTesting
-    boolean mInUnitTest = false;
 
     private final String[] mBindArguments = new String[2];
 
@@ -159,7 +155,7 @@ public class FolderSyncParser extends AbstractSyncParser {
     /** Indicates whether this sync is an initial FolderSync. */
     private boolean mInitialSync;
     /** List of folder server ids whose children changed with this sync. */
-    private final ArrayList<String> mParentFixupsNeeded = new ArrayList<String>();
+    private final Set<String> mParentFixupsNeeded = new LinkedHashSet<String>();
     /** Indicates whether the sync response provided a different sync key than we had. */
     private boolean mSyncKeyChanged = false;
 
@@ -173,7 +169,7 @@ public class FolderSyncParser extends AbstractSyncParser {
 
     private static final ContentValues UNINITIALIZED_PARENT_KEY = new ContentValues();
 
-    {
+    static {
         UNINITIALIZED_PARENT_KEY.put(MailboxColumns.PARENT_KEY, Mailbox.PARENT_KEY_UNINITIALIZED);
     }
 
@@ -572,16 +568,36 @@ public class FolderSyncParser extends AbstractSyncParser {
         if (mOperations.isEmpty()) {
             return;
         }
-        // Execute the batch; throw IOExceptions if this fails, hoping the issue isn't repeatable
-        // If it IS repeatable, there's no good result, since the folder list will be invalid
-        try {
-            mContentResolver.applyBatch(EmailContent.AUTHORITY, mOperations);
-        } catch (final RemoteException e) {
-            LogUtils.e(TAG, "RemoteException in commit");
-            throw new IOException("RemoteException in commit");
-        } catch (final OperationApplicationException e) {
-            LogUtils.e(TAG, "OperationApplicationException in commit");
-            throw new IOException("OperationApplicationException in commit");
+        int transactionSize = mOperations.size();
+        final ArrayList<ContentProviderOperation> subOps =
+                new ArrayList<ContentProviderOperation>(transactionSize);
+        while (!mOperations.isEmpty()) {
+            subOps.clear();
+            subOps.addAll(mOperations.subList(0, transactionSize));
+            // Try to apply the ops. If the transaction is too large, split it in half and try again
+            // If some other error happens then throw an IOException up the stack.
+            try {
+                mContentResolver.applyBatch(EmailContent.AUTHORITY, subOps);
+                mOperations.removeAll(subOps);
+            } catch (final TransactionTooLargeException e) {
+                // If the transaction is too large, try splitting it.
+                if (transactionSize == 1) {
+                    LogUtils.e(TAG, "Single operation transaction too large");
+                    throw new IOException("Single operation transaction too large");
+                }
+                LogUtils.d(TAG, "Transaction operation count %d too large, halving...",
+                        transactionSize);
+                transactionSize = transactionSize / 2;
+                if (transactionSize < 1) {
+                    transactionSize = 1;
+                }
+            } catch (final RemoteException e) {
+                LogUtils.e(TAG, "RemoteException in commit");
+                throw new IOException("RemoteException in commit");
+            } catch (final OperationApplicationException e) {
+                LogUtils.e(TAG, "OperationApplicationException in commit");
+                throw new IOException("OperationApplicationException in commit");
+            }
         }
         mOperations.clear();
     }
@@ -606,7 +622,7 @@ public class FolderSyncParser extends AbstractSyncParser {
         // and just reset the values inside the loop as necessary.
         final String[] bindArguments = new String[2];
         bindArguments[1] = mAccountIdAsString;
-        final ContentValues cv = new ContentValues(2);
+        final ContentValues cv = new ContentValues(1);
 
         for (final String parentServerId : mParentFixupsNeeded) {
             // Get info about this parent.
@@ -618,19 +634,10 @@ public class FolderSyncParser extends AbstractSyncParser {
                 continue;
             }
             final long parentId;
-            final String parentHierarchicalName;
             final int parentFlags;
             try {
                 if (parentCursor.moveToFirst()) {
                     parentId = parentCursor.getLong(FIXUP_PARENT_ID_COLUMN);
-                    final String hierarchicalName = parentCursor.getString(
-                            FIXUP_PARENT_HIERARCHICAL_NAME_COLUMN);
-                    if (hierarchicalName != null) {
-                        parentHierarchicalName = hierarchicalName;
-                    } else {
-                        parentHierarchicalName = parentCursor.getString(
-                                FIXUP_PARENT_DISPLAY_NAME_COLUMN);
-                    }
                     parentFlags = parentCursor.getInt(FIXUP_PARENT_FLAGS_COLUMN);
                 } else {
                     // TODO: Error handling.
@@ -653,10 +660,6 @@ public class FolderSyncParser extends AbstractSyncParser {
                     cv.put(MailboxColumns.PARENT_KEY, parentId);
                     while (childCursor.moveToNext()) {
                         final long childId = childCursor.getLong(FIXUP_CHILD_ID_COLUMN);
-                        final String childName =
-                                childCursor.getString(FIXUP_CHILD_DISPLAY_NAME_COLUMN);
-                        cv.put(MailboxColumns.HIERARCHICAL_NAME,
-                                parentHierarchicalName + "/" + childName);
                         mOperations.add(ContentProviderOperation.newUpdate(
                                 ContentUris.withAppendedId(Mailbox.CONTENT_URI, childId)).
                                 withValues(cv).build());
@@ -681,9 +684,8 @@ public class FolderSyncParser extends AbstractSyncParser {
                 mOperations.add(ContentProviderOperation.newUpdate(ContentUris.withAppendedId(
                         Mailbox.CONTENT_URI, parentId)).withValues(cv).build());
             }
+            flushOperations();
         }
-
-        flushOperations();
     }
 
     @Override

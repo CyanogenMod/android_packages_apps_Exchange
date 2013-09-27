@@ -165,7 +165,6 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
             if (is != null) {
                 mReader = new BufferedReader(new InputStreamReader(is));
             }
-            mInUnitTest = true;
         }
 
         private void initTagMap() {
