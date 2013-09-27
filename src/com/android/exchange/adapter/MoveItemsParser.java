@@ -15,6 +15,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
@@ -24,7 +25,7 @@ import java.io.InputStream;
  * Parse the result of a MoveItems command.
  */
 public class MoveItemsParser extends Parser {
-    private static final String TAG = "MoveItemsParser";
+    private static final String TAG = Eas.LOG_TAG;
     private int mStatusCode = 0;
     private String mNewServerId;
     private String mSourceServerId;

@@ -40,7 +40,7 @@ import java.util.ArrayList;
 public abstract class Parser {
     private static final boolean LOG_VERBOSE = false;
 
-    private static final String LOG_TAG = "EAS Parser";
+    private static final String LOG_TAG = Eas.LOG_TAG;
 
     // The following constants are Wbxml standard
     public static final int START_DOCUMENT = 0;

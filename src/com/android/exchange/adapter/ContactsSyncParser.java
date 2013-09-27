@@ -51,7 +51,7 @@ import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
 public class ContactsSyncParser extends AbstractSyncParser {
-    private static final String TAG = "ContactsSyncParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final String SERVER_ID_SELECTION = RawContacts.SOURCE_ID + "=?";
     private static final String CLIENT_ID_SELECTION = RawContacts.SYNC1 + "=?";
