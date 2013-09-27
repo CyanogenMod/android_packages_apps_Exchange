@@ -58,7 +58,7 @@ import java.io.InputStream;
  * - Sync MSDN link: http://msdn.microsoft.com/en-us/library/gg675638(v=exchg.80).aspx
  * - The very first time, the client sends a Sync request with SyncKey = 0 and no other parameters.
  *   This initial Sync request simply gets us a real SyncKey.
- *   TODO: We should add the initial Sync to {@link EasAccountSyncHandler}.
+ *   TODO: We should add the initial Sync to EasAccountSyncHandler.
  * - Non-initial Sync requests can be for one or more collections; this implementation does one at
  *   a time. TODO: allow sync for multiple collections to be aggregated?
  * - For each collection, we send SyncKey, ServerId, other modifiers, Options, and Commands. The
@@ -308,8 +308,9 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * Send one Sync POST to the Exchange server, and handle the response.
      * @return One of {@link #SYNC_RESULT_FAILED}, {@link #SYNC_RESULT_MORE_AVAILABLE}, or
      *      {@link #SYNC_RESULT_DONE} as appropriate for the server response.
+     * @param syncResult
      */
-    private int performOneSync() {
+    private int performOneSync(SyncResult syncResult) {
         final String syncKey = getSyncKey();
         if (syncKey == null) {
             return SYNC_RESULT_FAILED;
@@ -322,6 +323,8 @@ public abstract class EasSyncHandler extends EasServerConnection {
             final long timeout = initialSync ? 120 * DateUtils.SECOND_IN_MILLIS : COMMAND_TIMEOUT;
             resp = sendHttpClientPost("Sync", s.toByteArray(), timeout);
         } catch (final IOException e) {
+            LogUtils.e(TAG, "Sync error: ", e);
+            syncResult.stats.numIoExceptions++;
             return SYNC_RESULT_FAILED;
         }
 
@@ -337,12 +340,18 @@ public abstract class EasSyncHandler extends EasServerConnection {
                 } else {
                     result = SYNC_RESULT_DONE;
                 }
-            } else if (resp.isProvisionError()) {
-                return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_SECURITY;
-            } else if (resp.isAuthError()) {
-                return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_LOGIN;
             } else {
-                return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_OTHER;
+                LogUtils.e(TAG, "Sync failed with Status: " + code);
+                if (resp.isProvisionError()) {
+                    syncResult.stats.numAuthExceptions++;
+                    return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_SECURITY;
+                } else if (resp.isAuthError()) {
+                    syncResult.stats.numAuthExceptions++;
+                    return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_LOGIN;
+                } else {
+                    syncResult.stats.numParseExceptions++;
+                    return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_OTHER;
+                }
             }
         } finally {
             resp.close();
@@ -365,30 +374,31 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * In the case of errors, this function should not attempt any retries, but rather should
      * set {@link #mSyncResult} to reflect the problem and let the system SyncManager handle
      * any it.
+     * @param syncResult
      */
-    public final void performSync() {
+    public final void performSync(SyncResult syncResult) {
         // Set up traffic stats bookkeeping.
         final int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
         TrafficStats.setThreadStatsTag(trafficFlags | getTrafficFlag());
 
         // TODO: Properly handle UI status updates.
         //syncMailboxStatus(EmailServiceStatus.IN_PROGRESS, 0);
-        int syncResult = SYNC_RESULT_MORE_AVAILABLE;
+        int result = SYNC_RESULT_MORE_AVAILABLE;
         int loopingCount = 0;
         String key = getSyncKey();
-        while (syncResult == SYNC_RESULT_MORE_AVAILABLE && loopingCount < MAX_LOOPING_COUNT) {
-            syncResult = performOneSync();
+        while (result == SYNC_RESULT_MORE_AVAILABLE && loopingCount < MAX_LOOPING_COUNT) {
+            result = performOneSync(syncResult);
             // TODO: Clear pending request queue.
             ++loopingCount;
             final String newKey = getSyncKey();
-            if (syncResult == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
+            if (result == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
                 LogUtils.wtf(TAG,
                         "Server has more data but we have the same key: %s loopingCount: %d",
                         key, loopingCount);
             }
             key = newKey;
         }
-        if (syncResult == SYNC_RESULT_MORE_AVAILABLE) {
+        if (result == SYNC_RESULT_MORE_AVAILABLE) {
             // TODO: Signal caller that it probably wants to sync again.
         }
     }
