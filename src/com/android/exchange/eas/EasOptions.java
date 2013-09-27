@@ -33,7 +33,7 @@ import java.util.HashSet;
  * version.
  */
 public class EasOptions extends EasOperation {
-    private static final String LOG_TAG = "EasOptions";
+    private static final String LOG_TAG = Eas.LOG_TAG;
 
     /** Result code indicating we successfully got a protocol version. */
     public static final int RESULT_OK = 1;

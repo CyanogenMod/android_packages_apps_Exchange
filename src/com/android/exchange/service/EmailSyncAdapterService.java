@@ -63,7 +63,7 @@ import java.util.HashMap;
  */
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
-    private static final String TAG = "EASEmailSyncAdaptSvc";
+    private static final String TAG = Eas.LOG_TAG;
 
     /**
      * If sync extras do not include a mailbox id, then we want to perform a full sync.

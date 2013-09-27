@@ -87,7 +87,7 @@ import java.util.TimeZone;
  */
 public class EmailSyncAdapter extends AbstractSyncAdapter {
 
-    private static final String TAG = "EmailSyncAdapter";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final int UPDATES_READ_COLUMN = 0;
     private static final int UPDATES_MAILBOX_KEY_COLUMN = 1;
@@ -333,7 +333,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     }
 
     private static class GetItemEstimateParser extends Parser {
-        private static final String TAG = "GetItemEstimateParser";
         private int mEstimate = -1;
 
         public GetItemEstimateParser(InputStream in) throws IOException {
