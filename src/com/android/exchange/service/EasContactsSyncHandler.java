@@ -239,7 +239,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
 
     @Override
     protected void setNonInitialSyncOptions(final Serializer s) throws IOException {
-        setPimSyncOptions(s, null);
+        setPimSyncOptions(s, null, PIM_WINDOW_SIZE_CONTACTS);
     }
 
     /**

@@ -50,8 +50,6 @@ public abstract class AbstractSyncAdapter {
     public static final int DAYS = HOURS*24;
     public static final int WEEKS = DAYS*7;
 
-    protected static final String PIM_WINDOW_SIZE = "4";
-
     private static final long SEPARATOR_ID = Long.MAX_VALUE;
 
     public Mailbox mMailbox;
@@ -94,36 +92,6 @@ public abstract class AbstractSyncAdapter {
 
     public void userLog(String ...strings) {
         mService.userLog(strings);
-    }
-
-    /**
-     * Set sync options common to PIM's (contacts and calendar)
-     * @param protocolVersion the protocol version under which we're syncing
-     * @param filter the filter to use (or null)
-     * @param s the Serializer
-     * @throws IOException
-     */
-    protected void setPimSyncOptions(Double protocolVersion, String filter, Serializer s)
-            throws IOException {
-        s.tag(Tags.SYNC_DELETES_AS_MOVES);
-        s.tag(Tags.SYNC_GET_CHANGES);
-        s.data(Tags.SYNC_WINDOW_SIZE, PIM_WINDOW_SIZE);
-        s.start(Tags.SYNC_OPTIONS);
-        // Set the filter (lookback), if provided
-        if (filter != null) {
-            s.data(Tags.SYNC_FILTER_TYPE, filter);
-        }
-        // Set the truncation amount and body type
-        if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
-            s.start(Tags.BASE_BODY_PREFERENCE);
-            // Plain text
-            s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_TEXT);
-            s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
-            s.end();
-        } else {
-            s.data(Tags.SYNC_TRUNCATION, Eas.EAS2_5_TRUNCATION_SIZE);
-        }
-        s.end();
     }
 
     /**

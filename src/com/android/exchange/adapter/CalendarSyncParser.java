@@ -1321,18 +1321,12 @@ public class CalendarSyncParser extends AbstractSyncParser {
             int offset = 0;
             for (Operation op: ops) {
                 if (op.mSeparator) {
-                    try {
-                        //mService.userLog("Try mini-batch of ", mini.size(), " CPO's");
-                        applyAndCopyResults(contentResolver, authority, mini, result, offset);
-                        mini.clear();
-                        // Save away the offset here; this will need to be subtracted out of the
-                        // value originally set by the adapter
-                        offset = count + 1; // Remember to add 1 for the separator!
-                    } catch (TransactionTooLargeException e1) {
-                        throw new RuntimeException("Can't send transaction; sync stopped.");
-                    } catch (RemoteException e1) {
-                        throw e1;
-                    }
+                    //mService.userLog("Try mini-batch of ", mini.size(), " CPO's");
+                    applyAndCopyResults(contentResolver, authority, mini, result, offset);
+                    mini.clear();
+                    // Save away the offset here; this will need to be subtracted out of the
+                    // value originally set by the adapter
+                    offset = count + 1; // Remember to add 1 for the separator!
                 } else {
                     mini.add(op);
                 }
