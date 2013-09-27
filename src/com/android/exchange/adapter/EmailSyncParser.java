@@ -51,7 +51,7 @@ import java.util.Map;
  * Parser for Sync on an email collection.
  */
 public class EmailSyncParser extends AbstractSyncParser {
-    private static final String TAG = "EmailSyncParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final String WHERE_SERVER_ID_AND_MAILBOX_KEY = EmailContent.SyncColumns.SERVER_ID
             + "=? and " + EmailContent.MessageColumns.MAILBOX_KEY + "=?";

@@ -49,7 +49,7 @@ import java.util.ArrayList;
  * The Mailbox in the Email DB is only useful for serverId and syncInterval.
  */
 public class EasContactsSyncHandler extends EasSyncHandler {
-    private static final String TAG = "EasContactsSyncHandler";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final String MIMETYPE_GROUP_MEMBERSHIP_AND_ID_EQUALS =
             ContactsContract.Data.MIMETYPE + "='" + GroupMembership.CONTENT_ITEM_TYPE + "' AND " +

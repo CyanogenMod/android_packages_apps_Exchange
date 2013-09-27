@@ -74,7 +74,7 @@ import java.io.InputStream;
  *   other necessary cleanups after parsing a Sync response. These are handled in {@link #cleanup}.
  */
 public abstract class EasSyncHandler extends EasServerConnection {
-    private static final String TAG = "EasSyncHandler";
+    private static final String TAG = Eas.LOG_TAG;
 
     /** Window sizes for PIM (contact & calendar) sync options. */
     public static final int PIM_WINDOW_SIZE_CONTACTS = 10;
@@ -375,10 +375,18 @@ public abstract class EasSyncHandler extends EasServerConnection {
         //syncMailboxStatus(EmailServiceStatus.IN_PROGRESS, 0);
         int syncResult = SYNC_RESULT_MORE_AVAILABLE;
         int loopingCount = 0;
+        String key = getSyncKey();
         while (syncResult == SYNC_RESULT_MORE_AVAILABLE && loopingCount < MAX_LOOPING_COUNT) {
             syncResult = performOneSync();
             // TODO: Clear pending request queue.
             ++loopingCount;
+            final String newKey = getSyncKey();
+            if (syncResult == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
+                LogUtils.wtf(TAG,
+                        "Server has more data but we have the same key: %s loopingCount: %d",
+                        key, loopingCount);
+            }
+            key = newKey;
         }
         if (syncResult == SYNC_RESULT_MORE_AVAILABLE) {
             // TODO: Signal caller that it probably wants to sync again.

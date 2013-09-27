@@ -28,6 +28,7 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
+import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
@@ -40,7 +41,7 @@ import java.io.InputStream;
  *
  */
 public abstract class AbstractSyncParser extends Parser {
-    private static final String TAG = "AbstractSyncParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     protected Mailbox mMailbox;
     protected Account mAccount;
@@ -195,6 +196,7 @@ public abstract class AbstractSyncParser extends Parser {
 
         // If we don't have a new sync key, ignore moreAvailable (or we'll loop)
         if (moreAvailable && !newSyncKey) {
+            LogUtils.wtf(TAG, "Looping detected");
             mLooping = true;
         }
 

@@ -12,16 +12,15 @@ import android.net.Uri;
 import android.os.RemoteException;
 import android.os.TransactionTooLargeException;
 import android.provider.CalendarContract;
-import android.provider.SyncStateContract;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
 import android.provider.CalendarContract.ExtendedProperties;
 import android.provider.CalendarContract.Reminders;
 import android.provider.CalendarContract.SyncState;
+import android.provider.SyncStateContract;
 import android.text.format.DateUtils;
 
-import com.android.emailcommon.Logging;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
@@ -36,11 +35,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
-import java.util.TimeZone;
 import java.util.Map.Entry;
+import java.util.TimeZone;
 
 public class CalendarSyncParser extends AbstractSyncParser {
-    private static final String TAG = Logging.LOG_TAG;
+    private static final String TAG = Eas.LOG_TAG;
 
     private final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
     private final TimeZone mLocalTimeZone = TimeZone.getDefault();

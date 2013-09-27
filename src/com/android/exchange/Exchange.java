@@ -21,9 +21,7 @@ import android.app.Application;
 import com.android.mail.utils.LogTag;
 
 public class Exchange extends Application {
-    private static final String LOG_TAG = "Exchange";
-
     static {
-        LogTag.setLogTag(LOG_TAG);
+        LogTag.setLogTag(Eas.LOG_TAG);
     }
 }

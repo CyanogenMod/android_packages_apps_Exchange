@@ -16,6 +16,7 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceConstants;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.MeetingResponseParser;
 import com.android.exchange.adapter.Serializer;
@@ -33,7 +34,7 @@ import java.io.IOException;
  */
 public class EasMeetingResponder extends EasServerConnection {
 
-    private static final String TAG = "EasMeetingResponder";
+    private static final String TAG = Eas.LOG_TAG;
 
     /** Projection for getting the server id for a mailbox. */
     private static final String[] MAILBOX_SERVER_ID_PROJECTION = { MailboxColumns.SERVER_ID };

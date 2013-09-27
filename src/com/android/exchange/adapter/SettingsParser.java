@@ -15,6 +15,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
@@ -29,7 +30,7 @@ import java.io.InputStream;
  */
 public class SettingsParser extends Parser {
 
-    private static final String TAG = "SettingsParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     public SettingsParser(InputStream in) throws IOException {
         super(in);
