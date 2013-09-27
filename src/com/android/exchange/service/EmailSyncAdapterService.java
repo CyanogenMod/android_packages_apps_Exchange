@@ -659,7 +659,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         acct, account, mailbox, extras, syncResult);
                 success = (syncHandler != null);
                 if (syncHandler != null) {
-                    syncHandler.performSync();
+                    syncHandler.performSync(syncResult);
                 }
             } else {
                 success = false;
