@@ -171,7 +171,15 @@ public abstract class EasOperation {
             // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
+                if (registerClientCert()) {
+                    response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
+                } else {
+                    // TODO: Is this the best stat to increment?
+                    if (syncResult != null) {
+                        ++syncResult.stats.numAuthExceptions;
+                    }
+                    return RESULT_CLIENT_CERTIFICATE_REQUIRED;
+                }
             } catch (final IOException e) {
                 // If we were stopped, return the appropriate result code.
                 switch (mConnection.getStoppedReason()) {
