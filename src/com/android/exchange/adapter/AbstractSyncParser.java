@@ -145,6 +145,7 @@ public abstract class AbstractSyncParser extends Parser {
                     if (status == 3 || CommandStatus.isBadSyncKey(status)) {
                         // Must delete all of the data and start over with syncKey of "0"
                         mMailbox.mSyncKey = "0";
+                        newSyncKey = true;
                         wipe();
                         // Indicate there's more so that we'll start syncing again
                         moreAvailable = true;
