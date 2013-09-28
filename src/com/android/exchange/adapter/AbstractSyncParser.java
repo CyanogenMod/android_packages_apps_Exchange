@@ -196,7 +196,7 @@ public abstract class AbstractSyncParser extends Parser {
 
         // If we don't have a new sync key, ignore moreAvailable (or we'll loop)
         if (moreAvailable && !newSyncKey) {
-            LogUtils.wtf(TAG, "Looping detected");
+            LogUtils.e(TAG, "Looping detected");
             mLooping = true;
         }
 
