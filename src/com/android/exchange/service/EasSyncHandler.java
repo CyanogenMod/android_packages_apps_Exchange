@@ -392,7 +392,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
             ++loopingCount;
             final String newKey = getSyncKey();
             if (result == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
-                LogUtils.wtf(TAG,
+                LogUtils.e(TAG,
                         "Server has more data but we have the same key: %s loopingCount: %d",
                         key, loopingCount);
             }
