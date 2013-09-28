@@ -16,6 +16,10 @@
 
 package com.android.exchange.service;
 
+import android.app.Notification;
+import android.app.Notification.Builder;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
@@ -24,6 +28,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SyncResult;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -40,8 +45,11 @@ import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.service.ServiceProxy;
+import com.android.emailcommon.utility.IntentUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
+import com.android.exchange.R.drawable;
+import com.android.exchange.R.string;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.eas.EasFolderSync;
@@ -665,7 +673,44 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 success = false;
             }
             updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
+
+            if (syncResult.stats.numAuthExceptions > 0) {
+                showAuthNotification(account.mId, account.mEmailAddress);
+            }
             return success;
         }
+    }
+    private void showAuthNotification(long accountId, String accountName) {
+        final PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                createAccountSettingsIntent(accountId, accountName),
+                0);
+
+        final Notification notification = new Builder(this)
+                .setContentTitle(this.getString(string.auth_error_notification_title))
+                .setContentText(this.getString(
+                        string.auth_error_notification_text, accountName))
+                .setSmallIcon(drawable.stat_notify_auth)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build();
+
+        final NotificationManager nm = (NotificationManager)
+                this.getSystemService(Context.NOTIFICATION_SERVICE);
+        nm.notify("AuthError", 0, notification);
+    }
+
+    /**
+     * Create and return an intent to display (and edit) settings for a specific account, or -1
+     * for any/all accounts.  If an account name string is provided, a warning dialog will be
+     * displayed as well.
+     */
+    public static Intent createAccountSettingsIntent(long accountId, String accountName) {
+        final Uri.Builder builder = IntentUtilities.createActivityIntentUrlBuilder(
+                IntentUtilities.PATH_SETTINGS);
+        IntentUtilities.setAccountId(builder, accountId);
+        IntentUtilities.setAccountName(builder, accountName);
+        return new Intent(Intent.ACTION_EDIT, builder.build());
     }
 }
