@@ -37,7 +37,8 @@ public class SettingsRedirector extends Activity {
         super.onCreate(savedInstanceState);
         Intent redirect = new Intent(
                 Intent.ACTION_EDIT,
-                IntentUtilities.createActivityIntentUrlBuilder("settings").build());
+                IntentUtilities.createActivityIntentUrlBuilder(IntentUtilities.PATH_SETTINGS)
+                        .build());
         redirect.setFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
         startActivity(redirect);
         finish();
