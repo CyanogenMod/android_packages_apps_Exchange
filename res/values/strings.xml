@@ -203,6 +203,6 @@
     <string name="auth_error_notification_title">Authentication error</string>
 
     <!-- text for notification warning about an authentication error [CHAR LIMIT=60]  -->
-    <string name="auth_error_notification_text">Tap to change settings for account <xliff:g id="account">%s</xliff:g></string>
+    <string name="auth_error_notification_text">Touch to change settings for account <xliff:g id="account">%s</xliff:g></string>
 
 </resources>
