@@ -539,7 +539,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public void onPerformSync(final android.accounts.Account acct, final Bundle extras,
                 final String authority, final ContentProviderClient provider,
                 final SyncResult syncResult) {
-            LogUtils.i(TAG, "performSync: extras = %s", extras.toString());
+            LogUtils.i(TAG, "performSync: %s, %s", acct.toString(), extras.toString());
             TempDirectory.setTempDirectory(EmailSyncAdapterService.this);
 
             // TODO: Perform any connectivity checks, bail early if we don't have proper network
@@ -646,6 +646,12 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 final Bundle extras, final SyncResult syncResult, final boolean isMailboxSync) {
             final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
             if (mailbox == null) {
+                return false;
+            }
+
+            if (mailbox.mAccountKey != account.mId) {
+                LogUtils.e(TAG, "Mailbox does not match account: %s, %s", acct.toString(),
+                        extras.toString());
                 return false;
             }
 
