@@ -15,6 +15,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
@@ -24,7 +25,7 @@ import java.io.InputStream;
  * Parse the result of a MeetingRequest command.
  */
 public class MeetingResponseParser extends Parser {
-    private static final String TAG = "MeetingResponseParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     public MeetingResponseParser(final InputStream in) throws IOException {
         super(in);

@@ -21,6 +21,7 @@ import android.content.res.Resources;
 import android.os.storage.StorageManager;
 
 import com.android.emailcommon.provider.Policy;
+import com.android.exchange.Eas;
 import com.android.exchange.R;
 import com.android.exchange.eas.EasProvision;
 import com.android.mail.utils.LogUtils;
@@ -40,7 +41,7 @@ import java.util.ArrayList;
  * Parse the result of the Provision command
  */
 public class ProvisionParser extends Parser {
-    private static final String TAG = "ProvisionParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     private final Context mContext;
     private Policy mPolicy = null;

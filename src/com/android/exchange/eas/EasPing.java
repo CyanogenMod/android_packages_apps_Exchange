@@ -17,12 +17,10 @@
 package com.android.exchange.eas;
 
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncResult;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.SystemClock;
 import android.text.format.DateUtils;
 
@@ -48,7 +46,7 @@ import java.util.ArrayList;
  * See http://msdn.microsoft.com/en-us/library/ee200913(v=exchg.80).aspx for more details.
  */
 public class EasPing extends EasOperation {
-    private static final String TAG = "EasPing";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
             MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";

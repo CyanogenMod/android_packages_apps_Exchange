@@ -48,7 +48,7 @@ import java.util.UUID;
  * Performs an Exchange Sync for a Calendar collection.
  */
 public class EasCalendarSyncHandler extends EasSyncHandler {
-    private static final String TAG = "EasCalendarSyncHandler";
+    private static final String TAG = Eas.LOG_TAG;
 
     // TODO: Some constants are copied from CalendarSyncAdapter and are still used by the parser.
     // These values need to stay in sync; when the parser is cleaned up, be sure to unify them.

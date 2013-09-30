@@ -64,7 +64,7 @@ import java.util.TimeZone;
 public class CalendarUtilities {
 
     // NOTE: Most definitions in this class are have package visibility for testing purposes
-    private static final String TAG = "CalendarUtility";
+    private static final String TAG = Eas.LOG_TAG;
 
     // Time related convenience constants, in milliseconds
     static final int SECONDS = 1000;

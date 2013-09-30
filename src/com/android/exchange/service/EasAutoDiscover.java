@@ -30,7 +30,7 @@ import java.net.URI;
  * options needed based on just a username and password.
  */
 public class EasAutoDiscover extends EasServerConnection {
-    private static final String TAG = "EasAutoDiscover";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final String AUTO_DISCOVER_SCHEMA_PREFIX =
         "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";

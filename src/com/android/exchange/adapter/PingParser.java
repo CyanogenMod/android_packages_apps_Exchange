@@ -16,6 +16,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
@@ -29,7 +30,7 @@ import java.util.ArrayList;
  * {@link #getHeartbeatInterval()} will contain further detailed results of the parsing.
  */
 public class PingParser extends Parser {
-    private static final String TAG = "PingParser";
+    private static final String TAG = Eas.LOG_TAG;
 
     /** Sentinel value, used when some property doesn't have a meaningful value. */
     public static final int NO_VALUE = -1;
