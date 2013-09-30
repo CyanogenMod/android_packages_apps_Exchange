@@ -18,8 +18,10 @@ package com.android.exchange.service;
 
 import android.content.Context;
 import android.os.AsyncTask;
+import android.util.Log;
 
 import com.android.emailcommon.provider.Account;
+import com.android.exchange.Eas;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.eas.EasPing;
 
@@ -29,6 +31,8 @@ import com.android.exchange.eas.EasPing;
 public class PingTask extends AsyncTask<Void, Void, Void> {
     private final EasPing mOperation;
     private final EmailSyncAdapterService.SyncHandlerSynchronizer mSyncHandlerMap;
+
+    private static final String TAG = Eas.LOG_TAG;
 
     public PingTask(final Context context, final Account account,
             final EmailSyncAdapterService.SyncHandlerSynchronizer syncHandlerMap) {
@@ -57,6 +61,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
         do {
             pingStatus = mOperation.doPing();
         } while (PingParser.shouldPingAgain(pingStatus));
+        Log.i(TAG, "Ping task ending with status: " + pingStatus);
 
         mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
                 pingStatus);
