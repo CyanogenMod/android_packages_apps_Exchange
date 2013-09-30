@@ -33,6 +33,7 @@ import com.android.exchange.adapter.AbstractSyncParser;
 import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.exchange.eas.EasProvision;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpStatus;
@@ -343,8 +344,14 @@ public abstract class EasSyncHandler extends EasServerConnection {
             } else {
                 LogUtils.e(TAG, "Sync failed with Status: " + code);
                 if (resp.isProvisionError()) {
-                    syncResult.stats.numAuthExceptions++;
-                    return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_SECURITY;
+                    final EasProvision provision = new EasProvision(mContext, mAccount.mId, this);
+                    if (provision.provision(syncResult, mAccount.mId)) {
+                        // We handled the provisioning error, so loop.
+                        result = SYNC_RESULT_MORE_AVAILABLE;
+                    } else {
+                        syncResult.stats.numAuthExceptions++;
+                        return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_SECURITY;
+                    }
                 } else if (resp.isAuthError()) {
                     syncResult.stats.numAuthExceptions++;
                     return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_LOGIN;
