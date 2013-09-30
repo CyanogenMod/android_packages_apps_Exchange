@@ -101,7 +101,8 @@ public abstract class EasOperation {
     protected final long mAccountId;
     private final EasServerConnection mConnection;
 
-    private EasOperation(final Context context, final long accountId,
+    // TODO: Make this private again when EasSyncHandler is converted to be a subclass.
+    protected EasOperation(final Context context, final long accountId,
             final EasServerConnection connection) {
         mContext = context;
         mAccountId = accountId;

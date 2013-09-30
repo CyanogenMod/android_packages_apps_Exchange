@@ -16,6 +16,7 @@
 
 package com.android.exchange.eas;
 
+import android.content.Context;
 import android.content.SyncResult;
 
 import com.android.emailcommon.provider.Policy;
@@ -25,6 +26,7 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.ProvisionParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.exchange.service.EasServerConnection;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -88,6 +90,16 @@ public class EasProvision extends EasOperation {
      * to vary how {@link #getRequestEntity} and {@link #handleResponse} work.
      */
     private int mPhase;
+
+    // TODO: Temporary until EasSyncHandler converts to EasOperation.
+    public EasProvision(final Context context, final long accountId,
+            final EasServerConnection connection) {
+        super(context, accountId, connection);
+        mPolicy = null;
+        mPolicyKey = null;
+        mStatus = null;
+        mPhase = 0;
+    }
 
     public EasProvision(final EasOperation parentOperation) {
         super(parentOperation);
