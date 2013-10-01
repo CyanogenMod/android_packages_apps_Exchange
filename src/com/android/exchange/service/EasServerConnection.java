@@ -176,6 +176,7 @@ public class EasServerConnection {
             HttpConnectionParams.setSoTimeout(params, (int)(timeout));
             HttpConnectionParams.setSocketBufferSize(params, 8192);
             mClient = new DefaultHttpClient(getClientConnectionManager(), params) {
+                @Override
                 protected BasicHttpProcessor createHttpProcessor() {
                     final BasicHttpProcessor processor = super.createHttpProcessor();
                     processor.addRequestInterceptor(new CurlLogger());
@@ -525,5 +526,7 @@ public class EasServerConnection {
         final Bundle extras = new Bundle(1);
         extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
         ContentResolver.requestSync(amAccount, authority, extras);
+        LogUtils.i(TAG, "requestSync EasServerConnection requestSyncForMailbox %s, %s",
+                amAccount.toString(), extras.toString());
     }
 }
