@@ -74,6 +74,7 @@ import com.android.exchange.adapter.SettingsParser;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.utility.CalendarUtilities;
+import com.android.exchange.utility.CurlLogger;
 import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -91,6 +92,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.BasicHttpProcessor;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -1260,8 +1262,13 @@ public class EasSyncService extends AbstractSyncService {
         HttpConnectionParams.setConnectionTimeout(params, CONNECTION_TIMEOUT);
         HttpConnectionParams.setSoTimeout(params, timeout);
         HttpConnectionParams.setSocketBufferSize(params, 8192);
-        HttpClient client = new DefaultHttpClient(getClientConnectionManager(), params);
-        return client;
+        return new DefaultHttpClient(getClientConnectionManager(), params) {
+            protected BasicHttpProcessor createHttpProcessor() {
+                final BasicHttpProcessor processor = super.createHttpProcessor();
+                processor.addRequestInterceptor(new CurlLogger());
+                return processor;
+            }
+        };
     }
 
     public EasResponse sendHttpClientPost(String cmd, byte[] bytes) throws IOException {
