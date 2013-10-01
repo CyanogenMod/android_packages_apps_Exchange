@@ -55,22 +55,22 @@ public class Search {
     public static int searchMessages(Context context, long accountId, SearchParams searchParams,
             long destMailboxId) {
         // Sanity check for arguments
-        int offset = searchParams.mOffset;
-        int limit = searchParams.mLimit;
-        String filter = searchParams.mFilter;
+        final int offset = searchParams.mOffset;
+        final int limit = searchParams.mLimit;
+        final String filter = searchParams.mFilter;
         if (limit < 0 || limit > MAX_SEARCH_RESULTS || offset < 0) return 0;
         // TODO Should this be checked in UI?  Are there guidelines for minimums?
         if (filter == null || filter.length() < MIN_QUERY_LENGTH) return 0;
 
         int res = 0;
-        Account account = Account.restoreAccountWithId(context, accountId);
+        final Account account = Account.restoreAccountWithId(context, accountId);
         if (account == null) return res;
-        EasSyncService svc = EasSyncService.setupServiceForAccount(context, account);
+        final EasSyncService svc = EasSyncService.setupServiceForAccount(context, account);
         if (svc == null) return res;
-        Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
+        final Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
         // Sanity check; account might have been deleted?
         if (searchMailbox == null) return res;
-        ContentValues statusValues = new ContentValues();
+        final ContentValues statusValues = new ContentValues(1);
         try {
             // Set the status of this mailbox to indicate query
             statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.LIVE_QUERY);
@@ -78,14 +78,15 @@ public class Search {
 
             svc.mMailbox = searchMailbox;
             svc.mAccount = account;
-            Serializer s = new Serializer();
+            final Serializer s = new Serializer();
             s.start(Tags.SEARCH_SEARCH).start(Tags.SEARCH_STORE);
             s.data(Tags.SEARCH_NAME, "Mailbox");
             s.start(Tags.SEARCH_QUERY).start(Tags.SEARCH_AND);
             s.data(Tags.SYNC_CLASS, "Email");
 
             // If this isn't an inbox search, then include the collection id
-            Mailbox inbox = Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_INBOX);
+            final Mailbox inbox =
+                    Mailbox.restoreMailboxOfType(context, accountId, Mailbox.TYPE_INBOX);
             if (inbox == null) return 0;
             if (searchParams.mMailboxId != inbox.mId) {
                 s.data(Tags.SYNC_COLLECTION_ID, inbox.mServerId);
@@ -107,13 +108,13 @@ public class Search {
             s.data(Tags.BASE_TRUNCATION_SIZE, "20000");
             s.end();                    // BASE_BODY_PREFERENCE
             s.end().end().end().done(); // SEARCH_OPTIONS, SEARCH_STORE, SEARCH_SEARCH
-            EasResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
+            final EasResponse resp = svc.sendHttpClientPost("Search", s.toByteArray());
             try {
-                int code = resp.getStatus();
+                final int code = resp.getStatus();
                 if (code == HttpStatus.SC_OK) {
-                    InputStream is = resp.getInputStream();
+                    final InputStream is = resp.getInputStream();
                     try {
-                        SearchParser sp = new SearchParser(is, svc, filter);
+                        final SearchParser sp = new SearchParser(is, svc, filter);
                         sp.parse();
                         res = sp.getTotalResults();
                     } finally {
