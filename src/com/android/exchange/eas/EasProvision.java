@@ -46,7 +46,7 @@ import java.io.IOException;
  */
 public class EasProvision extends EasOperation {
 
-    private static final String LOG_TAG = "EasProvision";
+    private static final String LOG_TAG = Eas.LOG_TAG;
 
     /** The policy type for versions of EAS prior to 2007. */
     public static final String EAS_2_POLICY_TYPE = "MS-WAP-Provisioning-XML";

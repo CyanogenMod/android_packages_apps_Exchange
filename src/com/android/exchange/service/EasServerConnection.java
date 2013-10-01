@@ -72,7 +72,7 @@ import java.security.cert.CertificateException;
  */
 public class EasServerConnection {
     /** Logging tag. */
-    private static final String TAG = "EasServerConnection";
+    private static final String TAG = Eas.LOG_TAG;
 
     /**
      * Timeout for establishing a connection to the server.

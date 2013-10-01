@@ -36,7 +36,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class Serializer {
-    private static final String TAG = "Serializer";
+    private static final String TAG = Eas.LOG_TAG;
     private static final int BUFFER_SIZE = 16*1024;
     private static final int NOT_PENDING = -1;
 

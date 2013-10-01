@@ -28,7 +28,7 @@ import com.android.mail.utils.LogUtils;
 public class Eas {
 
     // For logging.
-    public static final String LOG_TAG = "EAS";
+    public static final String LOG_TAG = "Exchange";
 
     // For debugging
     public static boolean WAIT_DEBUG = false;   // DO NOT CHECK IN WITH THIS SET TO TRUE

@@ -33,7 +33,7 @@ import java.io.OutputStream;
  * TODO: Add ability to call back to UI when this failed, and generally better handle error cases.
  */
 public class EasAttachmentLoader extends EasServerConnection {
-    private static final String TAG = "EasAttachmentLoader";
+    private static final String TAG = Eas.LOG_TAG;
 
     private final IEmailServiceCallback mCallback;
 

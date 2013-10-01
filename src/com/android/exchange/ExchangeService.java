@@ -24,7 +24,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.database.Cursor;
-import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -33,8 +32,6 @@ import android.os.RemoteException;
 import android.provider.CalendarContract;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
-import android.provider.ContactsContract;
-import android.provider.ContactsContract.RawContacts;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.provider.Account;
@@ -54,13 +51,11 @@ import com.android.emailcommon.service.SearchParams;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.SyncManager;
-import com.android.exchange.adapter.CalendarSyncParser;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.utility.FileLogger;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
 
-import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -78,7 +73,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ExchangeService extends SyncManager {
 
-    private static final String TAG = "ExchangeService";
+    private static final String TAG = Eas.LOG_TAG;
 
     private static final String WHERE_PUSH_OR_PING_NOT_ACCOUNT_MAILBOX =
         MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.TYPE + "!=" +
