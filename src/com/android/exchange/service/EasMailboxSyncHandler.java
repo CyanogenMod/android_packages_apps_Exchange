@@ -47,11 +47,8 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
     }
 
     private String getEmailFilter() {
-        int syncLookback = mMailbox.mSyncLookback;
-        if (syncLookback == SyncWindow.SYNC_WINDOW_ACCOUNT
-                || mMailbox.mType == Mailbox.TYPE_INBOX) {
-            syncLookback = mAccount.mSyncLookback;
-        }
+        final int syncLookback = mMailbox.mSyncLookback == SyncWindow.SYNC_WINDOW_ACCOUNT
+                ? mAccount.mSyncLookback : mMailbox.mSyncLookback;
         switch (syncLookback) {
             case SyncWindow.SYNC_WINDOW_1_DAY:
                 return Eas.FILTER_1_DAY;
