@@ -16,18 +16,6 @@
 
 package com.android.exchange.provider;
 
-import com.android.emailcommon.Configuration;
-import com.android.emailcommon.mail.PackedString;
-import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
-import com.android.emailcommon.service.AccountServiceProxy;
-import com.android.emailcommon.utility.Utility;
-import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
-import com.android.exchange.R;
-import com.android.exchange.provider.GalResult.GalData;
-
 import android.accounts.AccountManager;
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -49,6 +37,19 @@ import android.provider.ContactsContract.Directory;
 import android.provider.ContactsContract.RawContacts;
 import android.text.TextUtils;
 
+import com.android.emailcommon.Configuration;
+import com.android.emailcommon.mail.PackedString;
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.service.AccountServiceProxy;
+import com.android.emailcommon.utility.Utility;
+import com.android.exchange.Eas;
+import com.android.exchange.EasSyncService;
+import com.android.exchange.R;
+import com.android.exchange.provider.GalResult.GalData;
+import com.android.mail.utils.LogUtils;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -57,6 +58,8 @@ import java.util.List;
  * used solely to provide GAL (Global Address Lookup) service to email address adapters
  */
 public class ExchangeDirectoryProvider extends ContentProvider {
+    private static final String TAG = Eas.LOG_TAG;
+
     public static final String EXCHANGE_GAL_AUTHORITY =
             com.android.exchange.Configuration.EXCHANGE_GAL_AUTHORITY;
 
@@ -136,7 +139,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
             if (integer != null) {
                 row[integer] = value;
             } else {
-                System.out.println("Unsupported column: " + columnName);
+                LogUtils.e(TAG, "Unsupported column: " + columnName);
             }
         }
 
@@ -198,6 +201,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
             String sortOrder) {
+        LogUtils.d(TAG, "ExchangeDirectoryProvider: query: %s", uri.toString());
         int match = sURIMatcher.match(uri);
         MatrixCursor cursor;
         Object[] row;
