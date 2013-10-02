@@ -271,7 +271,7 @@ public abstract class EasOperation {
                     // Note that unlike other errors, we do NOT return here; we just keep looping.
                 } else {
                     // All other errors.
-                    LogUtils.e(LOG_TAG, "Generic error");
+                    LogUtils.e(LOG_TAG, "Generic error: " + response.getStatus());
                     if (syncResult != null) {
                         // TODO: Is this the best stat to increment?
                         ++syncResult.stats.numIoExceptions;
