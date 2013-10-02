@@ -29,6 +29,7 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.PingParser;
@@ -228,6 +229,43 @@ public class EasPing extends EasOperation {
             case PingParser.STATUS_SERVER_ERROR:
                 LogUtils.i(TAG, "Server error for account %d", mAccountId);
                 break;
+            case CommandStatus.SERVER_ERROR_RETRY:
+                // Try again later.
+                LogUtils.i(TAG, "Retryable server error for account %d", mAccountId);
+                return RESULT_RESTART;
+
+            // These errors should not happen.
+            case CommandStatus.USER_DISABLED_FOR_SYNC:
+            case CommandStatus.USERS_DISABLED_FOR_SYNC:
+            case CommandStatus.USER_ON_LEGACY_SERVER_CANT_SYNC:
+            case CommandStatus.DEVICE_QUARANTINED:
+            case CommandStatus.ACCESS_DENIED:
+            case CommandStatus.USER_ACCOUNT_DISABLED:
+            case CommandStatus.NOT_PROVISIONABLE_PARTIAL:
+            case CommandStatus.NOT_PROVISIONABLE_LEGACY_DEVICE:
+            case CommandStatus.TOO_MANY_PARTNERSHIPS:
+                LogUtils.e(TAG, "Unexpected error %d on ping", pingStatus);
+                return RESULT_AUTHENTICATION_ERROR;
+
+            // These errors should not happen.
+            case CommandStatus.SYNC_STATE_NOT_FOUND:
+            case CommandStatus.SYNC_STATE_LOCKED:
+            case CommandStatus.SYNC_STATE_CORRUPT:
+            case CommandStatus.SYNC_STATE_EXISTS:
+            case CommandStatus.SYNC_STATE_INVALID:
+            case CommandStatus.NEEDS_PROVISIONING_WIPE:
+            case CommandStatus.NEEDS_PROVISIONING:
+            case CommandStatus.NEEDS_PROVISIONING_REFRESH:
+            case CommandStatus.NEEDS_PROVISIONING_INVALID:
+            case CommandStatus.WTF_INVALID_COMMAND:
+            case CommandStatus.WTF_INVALID_PROTOCOL:
+            case CommandStatus.WTF_DEVICE_CLAIMS_EXTERNAL_MANAGEMENT:
+            case CommandStatus.WTF_UNKNOWN_ITEM_TYPE:
+            case CommandStatus.WTF_REQUIRES_PROXY_WITHOUT_SSL:
+            case CommandStatus.ITEM_NOT_FOUND:
+                LogUtils.e(TAG, "Unexpected error %d on ping", pingStatus);
+                return RESULT_OTHER_FAILURE;
+
             default:
                 break;
         }

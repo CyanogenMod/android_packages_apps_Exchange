@@ -176,6 +176,7 @@ public class EasServerConnection {
             HttpConnectionParams.setSoTimeout(params, (int)(timeout));
             HttpConnectionParams.setSocketBufferSize(params, 8192);
             mClient = new DefaultHttpClient(getClientConnectionManager(), params) {
+                @Override
                 protected BasicHttpProcessor createHttpProcessor() {
                     final BasicHttpProcessor processor = super.createHttpProcessor();
                     processor.addRequestInterceptor(new CurlLogger());

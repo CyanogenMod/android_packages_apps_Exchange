@@ -539,7 +539,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public void onPerformSync(final android.accounts.Account acct, final Bundle extras,
                 final String authority, final ContentProviderClient provider,
                 final SyncResult syncResult) {
-            LogUtils.i(TAG, "performSync: %s, %s", acct.toString(), extras.toString());
+            LogUtils.i(TAG, "onPerformSync: %s, %s", acct.toString(), extras.toString());
             TempDirectory.setTempDirectory(EmailSyncAdapterService.this);
 
             // TODO: Perform any connectivity checks, bail early if we don't have proper network
