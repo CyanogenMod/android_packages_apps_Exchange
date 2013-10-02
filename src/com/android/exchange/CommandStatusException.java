@@ -33,6 +33,8 @@ public class CommandStatusException extends EasException {
 
     public static class CommandStatus {
 
+        public static final int STATUS_MAX = 177;
+
         // Fatal user/provisioning issues (put on security hold)
         public static final int USER_DISABLED_FOR_SYNC = 126;
         public static final int USERS_DISABLED_FOR_SYNC = 127;
