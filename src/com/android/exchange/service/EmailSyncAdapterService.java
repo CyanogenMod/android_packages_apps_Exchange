@@ -362,7 +362,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         AccountCapabilities.FOLDER_SERVER_SEARCH |
                         AccountCapabilities.SANITIZED_HTML |
                         AccountCapabilities.SMART_REPLY |
-                        AccountCapabilities.SERVER_SEARCH |
                         AccountCapabilities.UNDO |
                         AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
             } else {
