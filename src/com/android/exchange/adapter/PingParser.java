@@ -16,6 +16,7 @@
 
 package com.android.exchange.adapter;
 
+import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
@@ -193,7 +194,7 @@ public class PingParser extends Parser {
         while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
             if (tag == Tags.PING_STATUS) {
                 mPingStatus = getValue("Status", mPingStatus, STATUS_EXPIRED,
-                        STATUS_SERVER_ERROR);
+                        CommandStatus.STATUS_MAX);
             } else if (tag == Tags.PING_MAX_FOLDERS) {
                 mMaxFolders = getValue("MaxFolders", mMaxFolders);
             } else if (tag == Tags.PING_FOLDERS) {
