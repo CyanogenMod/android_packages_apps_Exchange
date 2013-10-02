@@ -516,5 +516,7 @@ public abstract class EasOperation {
         final Bundle extras = new Bundle(1);
         extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
         ContentResolver.requestSync(amAccount, authority, extras);
+        LogUtils.i(LOG_TAG, "requestSync EasOperation requestSyncForMailbox %s, %s",
+                amAccount.toString(), extras.toString());
     }
 }
