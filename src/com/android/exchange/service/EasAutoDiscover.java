@@ -88,10 +88,10 @@ public class EasAutoDiscover extends EasServerConnection {
                 // resp is either an authentication error, or a good response.
                 final int code = resp.getStatus();
                 if (code == HttpStatus.SC_UNAUTHORIZED) {
-                    // We actually don't know if this is because it's an actual EAS auth error,
-                    // or just HTTP 401 (e.g. you're just hitting some random server).
-                    // Let's just dump them out of autodiscover in this case.
-                    return null;
+                    final Bundle bundle = new Bundle(1);
+                    bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                            MessagingException.AUTODISCOVER_AUTHENTICATION_FAILED);
+                    return bundle;
                 } else {
                     final HostAuth hostAuth = parseAutodiscover(resp);
                     if (hostAuth != null) {
