@@ -65,7 +65,11 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
+            LogUtils.i(TAG, "onPerformSync Calendar starting %s, %s", account.toString(),
+                    extras.toString());
             CalendarSyncAdapterService.performSync(getContext(), account, extras);
+            LogUtils.i(TAG, "onPerformSync Calendar finished %s, %s", account.toString(),
+                    extras.toString());
         }
     }
 
@@ -127,6 +131,8 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                         mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
                         mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
                         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
+                        LogUtils.i(TAG, "requestSync CalendarSyncAdapter %s, %s",
+                                account.toString(), extras.toString());
                     }
                 } finally {
                     mailboxCursor.close();
