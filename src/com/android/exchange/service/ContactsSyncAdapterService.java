@@ -65,7 +65,11 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
+            LogUtils.i(TAG, "onPerformSync Contacts starting %s, %s", account.toString(),
+                    extras.toString());
             ContactsSyncAdapterService.performSync(getContext(), account, extras);
+            LogUtils.i(TAG, "onPerformSync Contacts ending %s, %s", account.toString(),
+                    extras.toString());
         }
     }
 
@@ -86,7 +90,6 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
      */
     private static void performSync(Context context, Account account, Bundle extras) {
         ContentResolver cr = context.getContentResolver();
-
         // If we've been asked to do an upload, make sure we've got work to do
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
             Uri uri = RawContacts.CONTENT_URI.buildUpon()
@@ -139,6 +142,8 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                         mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
                         mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
                         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
+                        LogUtils.i(TAG, "requestSync ContactsSyncAdapter %s, %s",
+                                account.toString(), extras.toString());
                     }
                 } finally {
                     mailboxCursor.close();

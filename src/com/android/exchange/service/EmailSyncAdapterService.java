@@ -556,6 +556,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 if (!accountCursor.moveToFirst()) {
                     // Could not load account.
                     // TODO: improve error handling.
+                    LogUtils.w(TAG, "onPerformSync: could not load account %s, %s",
+                            acct.toString(), extras.toString());
                     return;
                 }
                 account = new Account();
@@ -574,6 +576,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // If we're just twiddling the push, we do the lightweight thing and just bail.
             if (mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY) {
                 mSyncHandlerMap.modifyPing(account);
+                LogUtils.i(TAG, "onPerformSync: mailbox push only %s, %s",
+                        acct.toString(), extras.toString());
                 return;
             }
 
@@ -622,6 +626,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // TODO: It may make sense to have common error handling here. Two possible mechanisms:
             // 1) performSync return value can signal some useful info.
             // 2) syncResult can contain useful info.
+            LogUtils.i(TAG, "onPerformSync: finished %s, %s", acct.toString(), extras.toString());
         }
 
         /**

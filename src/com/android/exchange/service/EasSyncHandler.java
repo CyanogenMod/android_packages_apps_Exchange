@@ -140,6 +140,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
             }
         }
         // Unknown mailbox type.
+        LogUtils.e(TAG, "Invalid mailbox type %d", mailbox.mType);
         return null;
     }
 
@@ -324,7 +325,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
             final long timeout = initialSync ? 120 * DateUtils.SECOND_IN_MILLIS : COMMAND_TIMEOUT;
             resp = sendHttpClientPost("Sync", s.toByteArray(), timeout);
         } catch (final IOException e) {
-            LogUtils.e(TAG, e, "Sync error: ");
+            LogUtils.e(TAG, e, "Sync error:");
             syncResult.stats.numIoExceptions++;
             return SYNC_RESULT_FAILED;
         }
