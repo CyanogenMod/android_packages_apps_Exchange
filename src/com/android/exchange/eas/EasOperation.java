@@ -44,7 +44,6 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
-import java.util.Locale;
 
 /**
  * Base class for all Exchange operations that use a POST to talk to the server.
@@ -222,9 +221,9 @@ public abstract class EasOperation {
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
                         if (syncResult != null) {
-                            ++syncResult.stats.numParseExceptions;
+                            ++syncResult.stats.numIoExceptions;
                         }
-                        return RESULT_OTHER_FAILURE;
+                        return RESULT_REQUEST_FAILURE;
                     }
                 } else {
                     result = RESULT_OTHER_FAILURE;
