@@ -101,6 +101,14 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             }
         }
 
+        final long extrasMailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, 0);
+        if (extrasMailboxId != 0) {
+            // If we've been given a mailbox, just sync that one and be done. Don't
+            // do a query for the rest of the calendar mailboxes.
+            syncMailbox(account, extrasMailboxId);
+            return;
+        }
+
         // Find the (EmailProvider) account associated with this email address
         final Cursor accountCursor =
             cr.query(com.android.emailcommon.provider.Account.CONTENT_URI,
@@ -121,15 +129,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                     while (mailboxCursor.moveToNext()) {
                         // TODO: Currently just bouncing this to Email sync; eventually streamline.
                         final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
-                        // TODO: Should we be using the existing extras and just adding our bits?
-                        final Bundle mailboxExtras = new Bundle(4);
-                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
-                        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-                        mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
-                        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
-                        LogUtils.i(TAG, "requestSync CalendarSyncAdapter %s, %s",
-                                account.toString(), mailboxExtras.toString());
+                        syncMailbox(account, mailboxId);
                     }
                 } finally {
                     mailboxCursor.close();
@@ -138,5 +138,18 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         } finally {
             accountCursor.close();
         }
+    }
+
+    private static void syncMailbox(Account account, long mailboxId) {
+        // TODO: Should we be using the existing extras and just adding our bits?
+        final Bundle mailboxExtras = new Bundle(4);
+        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
+        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+        mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
+        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
+        LogUtils.i(TAG, "requestSync CalendarSyncAdapter %s, %s",
+                account.toString(), mailboxExtras.toString());
+
     }
 }
