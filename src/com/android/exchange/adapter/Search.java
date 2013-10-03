@@ -40,7 +40,11 @@ import org.apache.http.HttpStatus;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Implementation of server-side search for EAS using the EmailService API
@@ -51,6 +55,14 @@ public class Search {
     private static final int MIN_QUERY_LENGTH = 3;
     // The largest number of results we'll ask for per server request
     private static final int MAX_SEARCH_RESULTS = 100;
+
+    // TODO: move this somewhere more unified
+    // Time format documented at http://msdn.microsoft.com/en-us/library/ee201818(v=exchg.80).aspx
+    private static final SimpleDateFormat DATE_FORMAT;
+    static {
+        DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.US);
+        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
 
     public static int searchMessages(Context context, long accountId, SearchParams searchParams,
             long destMailboxId) {
@@ -93,6 +105,20 @@ public class Search {
             }
 
             s.data(Tags.SEARCH_FREE_TEXT, filter);
+
+            // Add the date window if appropriate
+            if (searchParams.mStartDate != null) {
+                s.start(Tags.SEARCH_GREATER_THAN);
+                s.tag(Tags.EMAIL_DATE_RECEIVED);
+                s.data(Tags.SEARCH_VALUE, DATE_FORMAT.format(searchParams.mStartDate));
+                s.end(); // SEARCH_GREATER_THAN
+            }
+            if (searchParams.mEndDate != null) {
+                s.start(Tags.SEARCH_LESS_THAN);
+                s.tag(Tags.EMAIL_DATE_RECEIVED);
+                s.data(Tags.SEARCH_VALUE, DATE_FORMAT.format(searchParams.mEndDate));
+                s.end(); // SEARCH_LESS_THAN
+            }
             s.end().end();              // SEARCH_AND, SEARCH_QUERY
             s.start(Tags.SEARCH_OPTIONS);
             if (offset == 0) {
