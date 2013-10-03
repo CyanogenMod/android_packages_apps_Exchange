@@ -24,6 +24,7 @@ import android.content.SyncResult;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.telephony.TelephonyManager;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -43,6 +44,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
+import java.util.Locale;
 
 /**
  * Base class for all Exchange operations that use a POST to talk to the server.
@@ -471,15 +473,44 @@ public abstract class EasOperation {
      * @throws IOException
      */
     protected final void addDeviceInformationToSerlializer(final Serializer s) throws IOException {
+        final TelephonyManager tm = (TelephonyManager)mContext.getSystemService(
+                Context.TELEPHONY_SERVICE);
+        final String deviceId;
+        final String phoneNumber;
+        final String operator;
+        if (tm != null) {
+            deviceId = tm.getDeviceId();
+            phoneNumber = tm.getLine1Number();
+            operator = tm.getNetworkOperator();
+        } else {
+            deviceId = null;
+            phoneNumber = null;
+            operator = null;
+        }
+
+        // TODO: Right now, we won't send this information unless the device is provisioned again.
+        // Potentially, this means that our phone number could be out of date if the user
+        // switches sims. Is there something we can do to force a reprovision?
         s.start(Tags.SETTINGS_DEVICE_INFORMATION).start(Tags.SETTINGS_SET);
         s.data(Tags.SETTINGS_MODEL, Build.MODEL);
-        //s.data(Tags.SETTINGS_IMEI, "");
+        if (deviceId != null) {
+            s.data(Tags.SETTINGS_IMEI, tm.getDeviceId());
+        }
+        // TODO: What should we use for friendly name?
         //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
         s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
-        //s.data(Tags.SETTINGS_OS_LANGUAGE, "");
-        //s.data(Tags.SETTINGS_PHONE_NUMBER, "");
-        //s.data(Tags.SETTINGS_MOBILE_OPERATOR, "");
+        if (phoneNumber != null) {
+            s.data(Tags.SETTINGS_PHONE_NUMBER, phoneNumber);
+        }
+        // TODO: Consider setting this, but make sure we know what it's used for.
+        // If the user changes the device's locale and we don't do a reprovision, the server's
+        // idea of the language will be wrong. Since we're not sure what this is used for,
+        // right now we're leaving it out.
+        //s.data(Tags.SETTINGS_OS_LANGUAGE, Locale.getDefault().getDisplayLanguage());
         s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
+        if (operator != null) {
+            s.data(Tags.SETTINGS_MOBILE_OPERATOR, operator);
+        }
         s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
     }
 
