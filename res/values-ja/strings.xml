@@ -60,4 +60,6 @@
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"2週間"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"1か月"</string>
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"すべて"</string>
+    <string name="auth_error_notification_title" msgid="8108639432449021675">"認証エラー"</string>
+    <string name="auth_error_notification_text" msgid="6813530336397532878">"タップして<xliff:g id="ACCOUNT">%s</xliff:g>のアカウント設定を編集します"</string>
 </resources>
