@@ -132,10 +132,9 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                         ACCOUNT_AND_TYPE_CONTACTS, new String[] {Long.toString(accountId)}, null);
                 try {
                     while (mailboxCursor.moveToNext()) {
-                         LogUtils.i(TAG, "Contact sync requested for " + account.name);
-                         // TODO: Currently just bouncing this to Email sync; eventually streamline.
+                        // TODO: Currently just bouncing this to Email sync; eventually streamline.
                         final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
-                         // TODO: Should we be using the existing extras and just adding our bits?
+                        // TODO: Should we be using the existing extras and just adding our bits?
                         final Bundle mailboxExtras = new Bundle(4);
                         mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
                         mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
@@ -143,7 +142,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                         mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
                         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
                         LogUtils.i(TAG, "requestSync ContactsSyncAdapter %s, %s",
-                                account.toString(), extras.toString());
+                                account.toString(), mailboxExtras.toString());
                     }
                 } finally {
                     mailboxCursor.close();
