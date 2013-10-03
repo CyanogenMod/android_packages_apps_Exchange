@@ -73,25 +73,25 @@ public class FolderSyncParser extends AbstractSyncParser {
     private static final SparseIntArray MAILBOX_TYPE_MAP;
     static {
         MAILBOX_TYPE_MAP = new SparseIntArray(11);
-        MAILBOX_TYPE_MAP.put(1,  Mailbox.TYPE_MAIL);       // User-created folder (generic)
-        MAILBOX_TYPE_MAP.put(2,  Mailbox.TYPE_INBOX);      // Default Inbox folder
-        MAILBOX_TYPE_MAP.put(3,  Mailbox.TYPE_DRAFTS);     // Default Drafts folder
-        MAILBOX_TYPE_MAP.put(4,  Mailbox.TYPE_TRASH);      // Default Deleted Items folder
-        MAILBOX_TYPE_MAP.put(5,  Mailbox.TYPE_SENT);       // Default Sent Items folder
-        MAILBOX_TYPE_MAP.put(6,  Mailbox.TYPE_OUTBOX);     // Default Outbox folder
-        //MAILBOX_TYPE_MAP.put(7,  Mailbox.TYPE_TASKS);      // Default Tasks folder
-        MAILBOX_TYPE_MAP.put(8,  Mailbox.TYPE_CALENDAR);   // Default Calendar folder
-        MAILBOX_TYPE_MAP.put(9,  Mailbox.TYPE_CONTACTS);   // Default Contacts folder
-        //MAILBOX_TYPE_MAP.put(10, Mailbox.TYPE_NONE);       // Default Notes folder
-        //MAILBOX_TYPE_MAP.put(11, Mailbox.TYPE_NONE);       // Default Journal folder
-        MAILBOX_TYPE_MAP.put(12, Mailbox.TYPE_MAIL);       // User-created Mail folder
-        MAILBOX_TYPE_MAP.put(13, Mailbox.TYPE_CALENDAR);   // User-created Calendar folder
-        MAILBOX_TYPE_MAP.put(14, Mailbox.TYPE_CONTACTS);   // User-created Contacts folder
-        //MAILBOX_TYPE_MAP.put(15, Mailbox.TYPE_TASKS);      // User-created Tasks folder
-        //MAILBOX_TYPE_MAP.put(16, Mailbox.TYPE_NONE);       // User-created Journal folder
-        //MAILBOX_TYPE_MAP.put(17, Mailbox.TYPE_NONE);       // User-created Notes folder
-        //MAILBOX_TYPE_MAP.put(18, Mailbox.TYPE_NONE);       // Unknown folder type
-        //MAILBOX_TYPE_MAP.put(19, Mailbox.TYPE_NONE);       // Recipient information cache
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_GENERIC,  Mailbox.TYPE_MAIL);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_INBOX,  Mailbox.TYPE_INBOX);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_DRAFTS,  Mailbox.TYPE_DRAFTS);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_DELETED,  Mailbox.TYPE_TRASH);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_SENT,  Mailbox.TYPE_SENT);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_OUTBOX,  Mailbox.TYPE_OUTBOX);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_TASKS,  Mailbox.TYPE_TASKS);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_CALENDAR,  Mailbox.TYPE_CALENDAR);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_CONTACTS,  Mailbox.TYPE_CONTACTS);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_NOTES, Mailbox.TYPE_NONE);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_JOURNAL, Mailbox.TYPE_NONE);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_MAIL, Mailbox.TYPE_MAIL);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_CALENDAR, Mailbox.TYPE_CALENDAR);
+        MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_CONTACTS, Mailbox.TYPE_CONTACTS);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_TASKS, Mailbox.TYPE_TASKS);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_JOURNAL, Mailbox.TYPE_NONE);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_USER_NOTES, Mailbox.TYPE_NONE);
+        //MAILBOX_TYPE_MAP.put(Eas.MAILBOX_TYPE_UNKNOWN, Mailbox.TYPE_NONE);
+        //MAILBOX_TYPE_MAP.put(MAILBOX_TYPE_RECIPIENT_INFORMATION_CACHE, Mailbox.TYPE_NONE);
     }
 
     /** Content selection for all mailboxes belonging to an account. */
@@ -474,6 +474,9 @@ public class FolderSyncParser extends AbstractSyncParser {
         if (name != null && serverId != null && parentId != null) {
             final int mailboxType = MAILBOX_TYPE_MAP.get(type, Mailbox.TYPE_NONE);
             if (mailboxType != Mailbox.TYPE_NONE) {
+                if (type == Eas.MAILBOX_TYPE_CALENDAR && !name.contains(mAccount.mEmailAddress)) {
+                    name = mAccount.mEmailAddress;
+                }
                 addMailboxOp(name, serverId, parentId, mailboxType, true);
             }
         }
