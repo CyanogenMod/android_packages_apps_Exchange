@@ -88,6 +88,30 @@ public class Eas {
     public static final String MIME_BODY_PREFERENCE_TEXT = "0";
     public static final String MIME_BODY_PREFERENCE_MIME = "2";
 
+    // Mailbox Types
+    // Section 2.2.3.170.3 Type (FolderSync)
+    // http://msdn.microsoft.com/en-us/library/gg650877(v=exchg.80).aspx
+    public static final int MAILBOX_TYPE_USER_GENERIC = 1;
+    public static final int MAILBOX_TYPE_INBOX = 2;
+    public static final int MAILBOX_TYPE_DRAFTS = 3;
+    public static final int MAILBOX_TYPE_DELETED = 4;
+    public static final int MAILBOX_TYPE_SENT = 5;
+    public static final int MAILBOX_TYPE_OUTBOX = 6;
+//    public static final int MAILBOX_TYPE_TASKS = 7;
+    public static final int MAILBOX_TYPE_CALENDAR = 8;
+    public static final int MAILBOX_TYPE_CONTACTS = 9;
+//    public static final int MAILBOX_TYPE_NOTES = 10;
+//    public static final int MAILBOX_TYPE_JOURNAL = 11;
+    public static final int MAILBOX_TYPE_USER_MAIL = 12;
+    public static final int MAILBOX_TYPE_USER_CALENDAR = 13;
+    public static final int MAILBOX_TYPE_USER_CONTACTS = 14;
+//    public static final int MAILBOX_TYPE_USER_TASKS = 15;
+//    public static final int MAILBOX_TYPE_USER_JOURNAL = 16;
+//    public static final int MAILBOX_TYPE_USER_NOTES = 17;
+//    public static final int MAILBOX_TYPE_UNKNOWN = 18;
+//    public static final int MAILBOX_TYPE_RECIPIENT_INFORMATION_CACHE = 19;
+
+
     // These limits must never exceed about 500k which is half the max size of a Binder IPC buffer.
 
     // For EAS 12, we use HTML, so we want a larger size than in EAS 2.5
