@@ -60,4 +60,6 @@
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"2주"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"1달"</string>
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"전체"</string>
+    <string name="auth_error_notification_title" msgid="8108639432449021675">"인증 오류"</string>
+    <string name="auth_error_notification_text" msgid="6813530336397532878">"<xliff:g id="ACCOUNT">%s</xliff:g> 계정 설정을 수정하려면 터치하세요."</string>
 </resources>
