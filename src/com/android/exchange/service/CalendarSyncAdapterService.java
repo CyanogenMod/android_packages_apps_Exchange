@@ -119,9 +119,6 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                         ACCOUNT_AND_TYPE_CALENDAR, new String[] {Long.toString(accountId)}, null);
                 try {
                     while (mailboxCursor.moveToNext()) {
-                        if (logging) {
-                            LogUtils.d(TAG, "Upload sync requested for " + account.name);
-                        }
                         // TODO: Currently just bouncing this to Email sync; eventually streamline.
                         final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
                         // TODO: Should we be using the existing extras and just adding our bits?
@@ -132,7 +129,7 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
                         mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
                         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
                         LogUtils.i(TAG, "requestSync CalendarSyncAdapter %s, %s",
-                                account.toString(), extras.toString());
+                                account.toString(), mailboxExtras.toString());
                     }
                 } finally {
                     mailboxCursor.close();
