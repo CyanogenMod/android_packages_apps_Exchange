@@ -108,7 +108,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
     }
 
     @Override
-    protected void setNonInitialSyncOptions(final Serializer s) throws IOException {
+    protected void setNonInitialSyncOptions(final Serializer s, int numWindows) throws IOException {
         // Check for messages that aren't fully loaded.
         addToFetchRequestList();
         // The "empty" case is typical; we send a request for changes, and also specify a sync
@@ -130,7 +130,13 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
                 s.data(Tags.SYNC_DELETES_AS_MOVES, isTrashMailbox ? "0" : "1");
             }
             s.tag(Tags.SYNC_GET_CHANGES);
-            s.data(Tags.SYNC_WINDOW_SIZE, String.valueOf(EMAIL_WINDOW_SIZE));
+
+            final int windowSize = numWindows * EMAIL_WINDOW_SIZE;
+            if (windowSize > MAX_WINDOW_SIZE  + EMAIL_WINDOW_SIZE) {
+                throw new IOException("Max window size reached and still no data");
+            }
+            s.data(Tags.SYNC_WINDOW_SIZE,
+                    String.valueOf(windowSize > MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE));
             s.start(Tags.SYNC_OPTIONS);
             // Set the lookback appropriately (EAS calls this a "filter")
             s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
