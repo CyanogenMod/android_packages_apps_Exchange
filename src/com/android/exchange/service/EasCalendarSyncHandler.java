@@ -225,8 +225,13 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     }
 
     @Override
-    protected void setNonInitialSyncOptions(final Serializer s) throws IOException {
-        setPimSyncOptions(s, Eas.FILTER_2_WEEKS, PIM_WINDOW_SIZE_CALENDAR);
+    protected void setNonInitialSyncOptions(final Serializer s, int numWindows) throws IOException {
+        final int windowSize = numWindows * PIM_WINDOW_SIZE_CALENDAR;
+        if (windowSize > MAX_WINDOW_SIZE  + PIM_WINDOW_SIZE_CALENDAR) {
+            throw new IOException("Max window size reached and still no data");
+        }
+        setPimSyncOptions(s, Eas.FILTER_2_WEEKS,
+                windowSize > MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
     }
 
     /**
