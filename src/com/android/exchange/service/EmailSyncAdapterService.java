@@ -83,6 +83,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private static final long KICK_SYNC_INTERVAL =
             DateUtils.HOUR_IN_MILLIS / DateUtils.SECOND_IN_MILLIS;
 
+    /** Controls whether we do a periodic "kick" to restart the ping. */
+    private static final boolean SCHEDULE_KICK = false;
+
     /**
      * If sync extras do not include a mailbox id, then we want to perform a full sync.
      */
@@ -257,15 +260,17 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     // Whenever we have a running ping, make sure this service stays running.
                     service.startService(new Intent(service, EmailSyncAdapterService.class));
                 }
-                // Schedule a ping kicker for this account.
-                ContentResolver.addPeriodicSync(amAccount, EmailContent.AUTHORITY, extras,
-                           KICK_SYNC_INTERVAL);
+                if (SCHEDULE_KICK) {
+                    ContentResolver.addPeriodicSync(amAccount, EmailContent.AUTHORITY, extras,
+                               KICK_SYNC_INTERVAL);
+                }
             } else {
                 if (pingSyncHandler != null) {
                     pingSyncHandler.stop();
                 }
-                // Stop the ping kicker for this account.
-                ContentResolver.removePeriodicSync(amAccount, EmailContent.AUTHORITY, extras);
+                if (SCHEDULE_KICK) {
+                    ContentResolver.removePeriodicSync(amAccount, EmailContent.AUTHORITY, extras);
+                }
             }
         }
 
