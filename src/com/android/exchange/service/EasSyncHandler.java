@@ -77,6 +77,8 @@ import java.io.InputStream;
 public abstract class EasSyncHandler extends EasServerConnection {
     private static final String TAG = Eas.LOG_TAG;
 
+    public static final int MAX_WINDOW_SIZE = 512;
+
     /** Window sizes for PIM (contact & calendar) sync options. */
     public static final int PIM_WINDOW_SIZE_CONTACTS = 10;
     public static final int PIM_WINDOW_SIZE_CALENDAR = 10;
@@ -196,10 +198,13 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * Add to the {@link Serializer} for this sync the child elements of a Collection needed for a
      * non-initial sync for this collection, OTHER THAN Commands (which are written by
      * {@link #setUpsyncCommands}.
-     * @param s The {@link Serializer} for this sync.
+     *
+     * @param s The {@link com.android.exchange.adapter.Serializer} for this sync.
+     * @param numWindows
      * @throws IOException
      */
-    protected abstract void setNonInitialSyncOptions(final Serializer s) throws IOException;
+    protected abstract void setNonInitialSyncOptions(final Serializer s, int numWindows)
+            throws IOException;
 
     /**
      * Add all Commands to the {@link Serializer} for this Sync request. Strictly speaking, it's
@@ -250,13 +255,15 @@ public abstract class EasSyncHandler extends EasServerConnection {
 
     /**
      * Create and populate the {@link Serializer} for this Sync POST to the Exchange server.
+     *
      * @param syncKey The sync key to use for this request.
      * @param initialSync Whether this sync is the first for this object.
+     * @param numWindows
      * @return The {@link Serializer} for to use for this request.
      * @throws IOException
      */
-    private Serializer buildEasRequest(final String syncKey, final boolean initialSync)
-            throws IOException {
+    private Serializer buildEasRequest(
+            final String syncKey, final boolean initialSync, int numWindows) throws IOException {
         final String className = getFolderClassName();
         LogUtils.i(TAG, "Syncing account %d mailbox %d (class %s) with syncKey %s", mAccount.mId,
                 mMailbox.mId, className, syncKey);
@@ -275,7 +282,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
         if (initialSync) {
             setInitialSyncOptions(s);
         } else {
-            setNonInitialSyncOptions(s);
+            setNonInitialSyncOptions(s, numWindows);
             setUpsyncCommands(s);
         }
         s.end().end().end().done();
@@ -311,8 +318,9 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * @return One of {@link #SYNC_RESULT_FAILED}, {@link #SYNC_RESULT_MORE_AVAILABLE}, or
      *      {@link #SYNC_RESULT_DONE} as appropriate for the server response.
      * @param syncResult
+     * @param numWindows
      */
-    private int performOneSync(SyncResult syncResult) {
+    private int performOneSync(SyncResult syncResult, int numWindows) {
         final String syncKey = getSyncKey();
         if (syncKey == null) {
             return SYNC_RESULT_FAILED;
@@ -321,7 +329,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
 
         final EasResponse resp;
         try {
-            final Serializer s = buildEasRequest(syncKey, initialSync);
+            final Serializer s = buildEasRequest(syncKey, initialSync, numWindows);
             final long timeout = initialSync ? 120 * DateUtils.SECOND_IN_MILLIS : COMMAND_TIMEOUT;
             resp = sendHttpClientPost("Sync", s.toByteArray(), timeout);
         } catch (final IOException e) {
@@ -392,22 +400,22 @@ public abstract class EasSyncHandler extends EasServerConnection {
         // TODO: Properly handle UI status updates.
         //syncMailboxStatus(EmailServiceStatus.IN_PROGRESS, 0);
         int result = SYNC_RESULT_MORE_AVAILABLE;
-        int loopingCount = 0;
+        int numWindows = 0;
         String key = getSyncKey();
-        while (result == SYNC_RESULT_MORE_AVAILABLE && loopingCount < MAX_LOOPING_COUNT) {
-            result = performOneSync(syncResult);
+        while (result == SYNC_RESULT_MORE_AVAILABLE) {
+            result = performOneSync(syncResult, numWindows);
             // TODO: Clear pending request queue.
-            ++loopingCount;
+            ++numWindows;
             final String newKey = getSyncKey();
             if (result == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
                 LogUtils.e(TAG,
-                        "Server has more data but we have the same key: %s loopingCount: %d",
-                        key, loopingCount);
+                        "Server has more data but we have the same key: %s numWindows: %d",
+                        key, numWindows);
+                numWindows++;
+            } else {
+                numWindows = 1;
             }
             key = newKey;
-        }
-        if (result == SYNC_RESULT_MORE_AVAILABLE) {
-            // TODO: Signal caller that it probably wants to sync again.
         }
     }
 }
