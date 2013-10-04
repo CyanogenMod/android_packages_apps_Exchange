@@ -32,7 +32,10 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.CalendarContract;
+import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
@@ -61,6 +64,7 @@ import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * Service for communicating with Exchange servers. There are three main parts of this class:
@@ -72,6 +76,12 @@ import java.util.HashMap;
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     private static final String TAG = Eas.LOG_TAG;
+
+    /**
+     * The amount of time between periodic syncs intended to ensure that push hasn't died.
+     */
+    private static final long KICK_SYNC_INTERVAL =
+            DateUtils.HOUR_IN_MILLIS / DateUtils.SECOND_IN_MILLIS;
 
     /**
      * If sync extras do not include a mailbox id, then we want to perform a full sync.
@@ -181,28 +191,81 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 return;
             }
 
-            // If a ping is currently running, tell it to restart to pick up new params.
-            final PingTask pingSyncHandler = mPingHandlers.get(account.mId);
-            if (pingSyncHandler != null) {
-                pingSyncHandler.restart();
+            // Don't ping for accounts that haven't performed initial sync.
+            if (EmailContent.isInitialSyncKey(account.mSyncKey)) {
                 return;
             }
 
-            // If we're here, then there's neither a sync nor a ping running. Start a new ping.
+            // Determine if this account needs pushes. All of the following must be true:
+            // - The account's sync interval must indicate that it wants push.
+            // - At least one content type must be sync-enabled in the account manager.
+            // - At least one mailbox of a sync-enabled type must have automatic sync enabled.
             final EmailSyncAdapterService service = EmailSyncAdapterService.this;
+            final android.accounts.Account amAccount = new android.accounts.Account(
+                            account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+            boolean pushNeeded = false;
             if (account.mSyncInterval == Account.CHECK_INTERVAL_PUSH) {
-                // TODO: Also check if we have any mailboxes that WANT push.
-                // This account needs to ping.
-                // Note: unlike startSync, we CANNOT allow the caller to do the actual work.
-                // If we return before the ping starts, there's a race condition where another
-                // ping or sync might start first. It only works for startSync because sync is
-                // higher priority than ping (i.e. a ping can't start while a sync is pending)
-                // and only one sync can run at a time.
-                final PingTask pingHandler = new PingTask(service, account, this);
-                mPingHandlers.put(account.mId, pingHandler);
-                pingHandler.start();
-                // Whenever we have a running ping, make sure this service stays running.
-                service.startService(new Intent(service, EmailSyncAdapterService.class));
+                // Determine which content types want sync.
+                final HashSet<String> authsToSync = new HashSet();
+                if (ContentResolver.getSyncAutomatically(amAccount, EmailContent.AUTHORITY)) {
+                    authsToSync.add(EmailContent.AUTHORITY);
+                }
+                if (ContentResolver.getSyncAutomatically(amAccount, CalendarContract.AUTHORITY)) {
+                    authsToSync.add(CalendarContract.AUTHORITY);
+                }
+                if (ContentResolver.getSyncAutomatically(amAccount, ContactsContract.AUTHORITY)) {
+                    authsToSync.add(ContactsContract.AUTHORITY);
+                }
+                // If we have at least one sync-enabled content type, check for syncing mailboxes.
+                if (!authsToSync.isEmpty()) {
+                    final Cursor c = Mailbox.getMailboxesForPush(service.getContentResolver(),
+                            account.mId);
+                    if (c != null) {
+                        try {
+                            while (c.moveToNext()) {
+                                final int mailboxType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
+                                if (authsToSync.contains(Mailbox.getAuthority(mailboxType))) {
+                                    pushNeeded = true;
+                                    break;
+                                }
+                            }
+                        } finally {
+                            c.close();
+                        }
+                    }
+                }
+            }
+
+            // Stop, start, or restart the ping as needed, as well as the ping kicker periodic sync.
+            final PingTask pingSyncHandler = mPingHandlers.get(account.mId);
+            final Bundle extras = new Bundle(1);
+            extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY);
+            if (pushNeeded) {
+                // First start or restart the ping as appropriate.
+                if (pingSyncHandler != null) {
+                    pingSyncHandler.restart();
+                } else {
+                    // Start a new ping.
+                    // Note: unlike startSync, we CANNOT allow the caller to do the actual work.
+                    // If we return before the ping starts, there's a race condition where another
+                    // ping or sync might start first. It only works for startSync because sync is
+                    // higher priority than ping (i.e. a ping can't start while a sync is pending)
+                    // and only one sync can run at a time.
+                    final PingTask pingHandler = new PingTask(service, account, amAccount, this);
+                    mPingHandlers.put(account.mId, pingHandler);
+                    pingHandler.start();
+                    // Whenever we have a running ping, make sure this service stays running.
+                    service.startService(new Intent(service, EmailSyncAdapterService.class));
+                }
+                // Schedule a ping kicker for this account.
+                ContentResolver.addPeriodicSync(amAccount, EmailContent.AUTHORITY, extras,
+                           KICK_SYNC_INTERVAL);
+            } else {
+                if (pingSyncHandler != null) {
+                    pingSyncHandler.stop();
+                }
+                // Stop the ping kicker for this account.
+                ContentResolver.removePeriodicSync(amAccount, EmailContent.AUTHORITY, extras);
             }
         }
 

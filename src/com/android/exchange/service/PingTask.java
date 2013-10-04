@@ -35,8 +35,9 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
     private static final String TAG = Eas.LOG_TAG;
 
     public PingTask(final Context context, final Account account,
+            final android.accounts.Account amAccount,
             final EmailSyncAdapterService.SyncHandlerSynchronizer syncHandlerMap) {
-        mOperation = new EasPing(context, account);
+        mOperation = new EasPing(context, account, amAccount);
         mSyncHandlerMap = syncHandlerMap;
     }
 
