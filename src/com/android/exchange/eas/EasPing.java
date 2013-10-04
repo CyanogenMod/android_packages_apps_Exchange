@@ -88,11 +88,11 @@ public class EasPing extends EasOperation {
      */
     private static final long EXTRA_POST_TIMEOUT_MILLIS = 5 * DateUtils.SECOND_IN_MILLIS;
 
-    public EasPing(final Context context, final Account account) {
+    public EasPing(final Context context, final Account account,
+            final android.accounts.Account amAccount) {
         super(context, account);
         mAccountId = account.mId;
-        mAmAccount = new android.accounts.Account(account.mEmailAddress,
-                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+        mAmAccount = amAccount;
         mPingDuration = account.mPingDuration;
         if (mPingDuration == 0) {
             mPingDuration = DEFAULT_PING_HEARTBEAT;
