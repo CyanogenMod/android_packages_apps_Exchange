@@ -137,7 +137,8 @@ public class EasSync extends EasOperation {
                             // b/10797675
                             // TODO: figure out why and clean this up
                             LogUtils.d(LOG_TAG,
-                                    "Tried to sync mailbox with invalid mailbox sync key");
+                                    "Tried to sync mailbox %d with invalid mailbox sync key",
+                                    mMailboxId);
                             result = -1;
                         } else {
                             result = performOperation(syncResult);
