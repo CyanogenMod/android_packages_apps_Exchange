@@ -136,7 +136,7 @@ public class EasMailboxSyncHandler extends EasSyncHandler {
                 throw new IOException("Max window size reached and still no data");
             }
             s.data(Tags.SYNC_WINDOW_SIZE,
-                    String.valueOf(windowSize > MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE));
+                    String.valueOf(windowSize < MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE));
             s.start(Tags.SYNC_OPTIONS);
             // Set the lookback appropriately (EAS calls this a "filter")
             s.data(Tags.SYNC_FILTER_TYPE, getEmailFilter());
