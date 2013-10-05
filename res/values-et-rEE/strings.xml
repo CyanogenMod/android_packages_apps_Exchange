@@ -60,4 +60,6 @@
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Kaks nädalat"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Üks kuu"</string>
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Kõik"</string>
+    <string name="auth_error_notification_title" msgid="8108639432449021675">"Autentimise viga"</string>
+    <string name="auth_error_notification_text" msgid="6813530336397532878">"Puudutage konto <xliff:g id="ACCOUNT">%s</xliff:g> seadete muutmiseks"</string>
 </resources>

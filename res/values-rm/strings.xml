@@ -87,4 +87,8 @@
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"In mais"</string>
     <!-- no translation found for account_setup_options_mail_window_all (5372861827683632364) -->
     <skip />
+    <!-- no translation found for auth_error_notification_title (8108639432449021675) -->
+    <skip />
+    <!-- no translation found for auth_error_notification_text (6813530336397532878) -->
+    <skip />
 </resources>
