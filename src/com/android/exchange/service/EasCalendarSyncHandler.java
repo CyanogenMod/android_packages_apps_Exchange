@@ -231,7 +231,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             throw new IOException("Max window size reached and still no data");
         }
         setPimSyncOptions(s, Eas.FILTER_2_WEEKS,
-                windowSize > MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
+                windowSize < MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
     }
 
     /**
