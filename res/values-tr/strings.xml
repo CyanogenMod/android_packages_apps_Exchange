@@ -60,4 +60,6 @@
     <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"İki hafta"</string>
     <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Bir ay"</string>
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tümü"</string>
+    <string name="auth_error_notification_title" msgid="8108639432449021675">"Kimlik doğrulama hatası"</string>
+    <string name="auth_error_notification_text" msgid="6813530336397532878">"<xliff:g id="ACCOUNT">%s</xliff:g> ile ilgili hesap ayarlarını düzenlemek için dokunun"</string>
 </resources>
