@@ -243,7 +243,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
         if (windowSize > MAX_WINDOW_SIZE  + PIM_WINDOW_SIZE_CONTACTS) {
             throw new IOException("Max window size reached and still no data");
         }
-        setPimSyncOptions(s, null, windowSize > MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
+        setPimSyncOptions(s, null, windowSize < MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
     }
 
     /**
