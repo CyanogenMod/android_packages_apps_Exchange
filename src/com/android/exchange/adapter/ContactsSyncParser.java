@@ -41,6 +41,7 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.service.EasContactsSyncHandler;
+import com.android.exchange.service.EasSyncHandler;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.mail.utils.LogUtils;
 
@@ -797,9 +798,8 @@ public class ContactsSyncParser extends AbstractSyncParser {
         private static final long serialVersionUID = 1L;
         private int mCount = 0;
         private int mContactBackValue = mCount;
-        // Make an array big enough for the PIM window (max items we can get)
-        private final int[] mContactIndexArray =
-            new int[EasContactsSyncHandler.PIM_WINDOW_SIZE_CONTACTS];
+        // Make an array big enough for the max possible window size.
+        private final int[] mContactIndexArray = new int[EasSyncHandler.MAX_WINDOW_SIZE];
         private int mContactIndexCount = 0;
         private ContentProviderResult[] mResults = null;
 
