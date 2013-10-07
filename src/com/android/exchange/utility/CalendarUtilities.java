@@ -1211,20 +1211,24 @@ public class CalendarUtilities {
 
     /**
      * Write recurrence information to EAS based on the RRULE in CalendarProvider
+     *
      * @param rrule the RRULE, from CalendarProvider
      * @param startTime, the DTSTART of this Event
+     * @param timeZone the time zone of the Event
      * @param s the Serializer we're using to write WBXML data
+     *
      * @throws IOException
      */
     // NOTE: For the moment, we're only parsing recurrence types that are supported by the
     // Calendar app UI, which is a subset of possible recurrence types
     // This code must be updated when the Calendar adds new functionality
-    static public void recurrenceFromRrule(String rrule, long startTime, Serializer s)
+    static public void recurrenceFromRrule(String rrule, long startTime, TimeZone timeZone,
+            Serializer s)
             throws IOException {
         if (Eas.USER_LOG) {
             ExchangeService.log(TAG, "RRULE: " + rrule);
         }
-        String freq = tokenFromRrule(rrule, "FREQ=");
+        final String freq = tokenFromRrule(rrule, "FREQ=");
         // If there's no FREQ=X, then we don't write a recurrence
         // Note that we duplicate s.start(Tags.CALENDAR_RECURRENCE); s.end(); to prevent the
         // possibility of writing out a partial recurrence stanza
@@ -1239,14 +1243,14 @@ public class CalendarUtilities {
                 s.data(Tags.CALENDAR_RECURRENCE_TYPE, "1");
                 // Requires a day of week (whereas RRULE does not)
                 addCountIntervalAndUntil(rrule, s);
-                String byDay = tokenFromRrule(rrule, "BYDAY=");
+                final String byDay = tokenFromRrule(rrule, "BYDAY=");
                 if (byDay != null) {
                     s.data(Tags.CALENDAR_RECURRENCE_DAYOFWEEK, generateEasDayOfWeek(byDay));
                     // Find week number (1-4 and 5 for last)
                     if (byDay.startsWith("-1")) {
                         s.data(Tags.CALENDAR_RECURRENCE_WEEKOFMONTH, "5");
                     } else {
-                        char c = byDay.charAt(0);
+                        final char c = byDay.charAt(0);
                         if (c >= '1' && c <= '4') {
                             s.data(Tags.CALENDAR_RECURRENCE_WEEKOFMONTH, byDay.substring(0, 1));
                         }
@@ -1258,7 +1262,7 @@ public class CalendarUtilities {
                 if (byMonthDay != null) {
                     s.start(Tags.CALENDAR_RECURRENCE);
                     // Special case for last day of month
-                    if (byMonthDay == "-1") {
+                    if (byMonthDay.equals("-1")) {
                         s.data(Tags.CALENDAR_RECURRENCE_TYPE, "3");
                         addCountIntervalAndUntil(rrule, s);
                         s.data(Tags.CALENDAR_RECURRENCE_DAYOFWEEK, "127");
@@ -1270,8 +1274,8 @@ public class CalendarUtilities {
                     }
                     s.end();
                 } else {
-                    String byDay = tokenFromRrule(rrule, "BYDAY=");
-                    String bySetpos = tokenFromRrule(rrule, "BYSETPOS=");
+                    final String byDay = tokenFromRrule(rrule, "BYDAY=");
+                    final String bySetpos = tokenFromRrule(rrule, "BYSETPOS=");
                     if (byDay != null) {
                         s.start(Tags.CALENDAR_RECURRENCE);
                         s.data(Tags.CALENDAR_RECURRENCE_TYPE, "3");
@@ -1282,17 +1286,29 @@ public class CalendarUtilities {
                             addByDay(byDay, s);
                         }
                         s.end();
+                    } else {
+                        // Neither BYDAY or BYMONTHDAY implies it's BYMONTHDAY based on DTSTART
+                        // Calculate the day from the startDate
+                        s.start(Tags.CALENDAR_RECURRENCE);
+                        final GregorianCalendar cal = new GregorianCalendar();
+                        cal.setTimeInMillis(startTime);
+                        cal.setTimeZone(timeZone);
+                        byMonthDay = Integer.toString(cal.get(Calendar.DAY_OF_MONTH));
+                        s.data(Tags.CALENDAR_RECURRENCE_TYPE, "2");
+                        addCountIntervalAndUntil(rrule, s);
+                        s.data(Tags.CALENDAR_RECURRENCE_DAYOFMONTH, byMonthDay);
+                        s.end();
                     }
                 }
             } else if (freq.equals("YEARLY")) {
                 String byMonth = tokenFromRrule(rrule, "BYMONTH=");
                 String byMonthDay = tokenFromRrule(rrule, "BYMONTHDAY=");
-                String byDay = tokenFromRrule(rrule, "BYDAY=");
+                final String byDay = tokenFromRrule(rrule, "BYDAY=");
                 if (byMonth == null && byMonthDay == null) {
                     // Calculate the month and day from the startDate
-                    GregorianCalendar cal = new GregorianCalendar();
+                    final GregorianCalendar cal = new GregorianCalendar();
                     cal.setTimeInMillis(startTime);
-                    cal.setTimeZone(TimeZone.getDefault());
+                    cal.setTimeZone(timeZone);
                     byMonth = Integer.toString(cal.get(Calendar.MONTH) + 1);
                     byMonthDay = Integer.toString(cal.get(Calendar.DAY_OF_MONTH));
                 }
