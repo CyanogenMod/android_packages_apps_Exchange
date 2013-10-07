@@ -272,7 +272,8 @@ public abstract class EasOperation {
                     // Note that unlike other errors, we do NOT return here; we just keep looping.
                 } else {
                     // All other errors.
-                    LogUtils.e(LOG_TAG, "Generic error: " + response.getStatus());
+                    LogUtils.e(LOG_TAG, "Generic error for operation %s: status %d, result %d",
+                            getCommand(), response.getStatus(), result);
                     if (syncResult != null) {
                         // TODO: Is this the best stat to increment?
                         ++syncResult.stats.numIoExceptions;
@@ -339,9 +340,10 @@ public abstract class EasOperation {
 
     /**
      * Get the name of the operation, used as the "Cmd=XXX" query param in the request URI. Note
-     * that if you override {@link #getRequestUri}, then this function may be unused, but it's
-     * abstract in order to make it impossible to omit for the subclasses that do need it.
-     * @return The name of the command for this operation as defined by the EAS protocol.
+     * that if you override {@link #getRequestUri}, then this function may be unused for normal
+     * operation, but all subclasses should return something non-null for use with logging.
+     * @return The name of the command for this operation as defined by the EAS protocol, or for
+     *         commands that don't need it, a suitable descriptive name for logging.
      */
     protected abstract String getCommand();
 
