@@ -67,9 +67,13 @@ public class EasOptions extends EasOperation {
         return mProtocolVersion;
     }
 
+    /**
+     * Note that this operation does not actually use this name when forming the request.
+     * @return A useful name for logging this operation.
+     */
     @Override
     protected String getCommand() {
-        return null;
+        return "OPTIONS";
     }
 
     @Override
