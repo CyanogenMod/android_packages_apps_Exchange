@@ -162,6 +162,7 @@ public class EasFolderSync extends EasOperation {
                         response.getInputStream(), mAccount, mStatusOnly).parse();
             } catch (final CommandStatusException e) {
                 final int status = e.mStatus;
+                LogUtils.d(LOG_TAG, "EasFolderSync.handleResponse status %d", status);
                 if (CommandStatusException.CommandStatus.isNeedsProvisioning(status)) {
                     return RESULT_PROVISIONING_ERROR;
                 }
