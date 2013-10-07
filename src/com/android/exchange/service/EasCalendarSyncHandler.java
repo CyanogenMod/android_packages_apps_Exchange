@@ -492,7 +492,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
             final String rrule = entityValues.getAsString(Events.RRULE);
             if (rrule != null) {
-                CalendarUtilities.recurrenceFromRrule(rrule, startTime, s);
+                CalendarUtilities.recurrenceFromRrule(rrule, startTime, localTimeZone, s);
             }
 
             // Handle associated data EXCEPT for attendees, which have to be grouped
