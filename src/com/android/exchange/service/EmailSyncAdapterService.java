@@ -208,17 +208,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                             account.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
             boolean pushNeeded = false;
             if (account.mSyncInterval == Account.CHECK_INTERVAL_PUSH) {
-                // Determine which content types want sync.
-                final HashSet<String> authsToSync = new HashSet();
-                if (ContentResolver.getSyncAutomatically(amAccount, EmailContent.AUTHORITY)) {
-                    authsToSync.add(EmailContent.AUTHORITY);
-                }
-                if (ContentResolver.getSyncAutomatically(amAccount, CalendarContract.AUTHORITY)) {
-                    authsToSync.add(CalendarContract.AUTHORITY);
-                }
-                if (ContentResolver.getSyncAutomatically(amAccount, ContactsContract.AUTHORITY)) {
-                    authsToSync.add(ContactsContract.AUTHORITY);
-                }
+                final HashSet<String> authsToSync = getAuthsToSync(amAccount);
                 // If we have at least one sync-enabled content type, check for syncing mailboxes.
                 if (!authsToSync.isEmpty()) {
                     final Cursor c = Mailbox.getMailboxesForPush(service.getContentResolver(),
@@ -632,16 +622,23 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             } finally {
                 accountCursor.close();
             }
-            // Get the mailbox that we want to sync.
-            // There are four possibilities for Mailbox.SYNC_EXTRA_MAILBOX_ID:
-            // 1) Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY: Restart push if appropriate.
-            // 2) Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY: Sync only the account data.
-            // 3) Not present: Perform a full account sync.
-            // 4) Non-negative value: It's an actual mailbox id, sync that mailbox only.
-            final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, FULL_ACCOUNT_SYNC);
 
-            // If we're just twiddling the push, we do the lightweight thing and just bail.
-            if (mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY) {
+            // Figure out what we want to sync, based on the extras and our account sync status.
+            final boolean isInitialSync = EmailContent.isInitialSyncKey(account.mSyncKey);
+            final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID,
+                    Mailbox.NO_MAILBOX);
+            final int mailboxType = extras.getInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE,
+                    Mailbox.TYPE_NONE);
+
+            // A "full sync" means no specific mailbox or type filter was requested.
+            final boolean isFullSync = (mailboxId == Mailbox.NO_MAILBOX &&
+                    mailboxType == Mailbox.TYPE_NONE);
+            // A FolderSync is necessary for full sync, initial sync, and account only sync.
+            final boolean isFolderSync = (isFullSync || isInitialSync ||
+                    mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY);
+
+            // If we're just twiddling the push, we do the lightweight thing and bail early.
+            if (mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY && !isFolderSync) {
                 mSyncHandlerMap.modifyPing(account);
                 LogUtils.i(TAG, "onPerformSync: mailbox push only %s, %s",
                         acct.toString(), extras.toString());
@@ -651,40 +648,50 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // Do the bookkeeping for starting a sync, including stopping a ping if necessary.
             mSyncHandlerMap.startSync(account.mId);
 
-            // Perform email upsync for this account. Moves first, then state changes.
-            EasMoveItems move = new EasMoveItems(context, account);
-            move.upsyncMovedMessages(syncResult);
-            // TODO: EasSync should eventually handle both up and down; for now, it's used purely
-            // for upsync.
-            EasSync upsync = new EasSync(context, account);
-            upsync.upsync(syncResult);
+            // Perform a FolderSync if necessary.
+            if (isFolderSync) {
+                final EasFolderSync folderSync = new EasFolderSync(context, account);
+                folderSync.doFolderSync(syncResult);
+            }
 
-            // TODO: Should we refresh the account here? It may have changed while waiting for any
+            // Perform email upsync for this account. Moves first, then state changes.
+            if (!isInitialSync) {
+                EasMoveItems move = new EasMoveItems(context, account);
+                move.upsyncMovedMessages(syncResult);
+                // TODO: EasSync should eventually handle both up and down; for now, it's used
+                // purely for upsync.
+                EasSync upsync = new EasSync(context, account);
+                upsync.upsync(syncResult);
+            }
+
+            // TODO: Should we refresh account here? It may have changed while waiting for any
             // pings to stop. It may not matter since the things that may have been twiddled might
             // not affect syncing.
 
-            if (mailboxId == FULL_ACCOUNT_SYNC ||
-                    mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY) {
-                final EasFolderSync folderSync = new EasFolderSync(context, account);
-                folderSync.doFolderSync(syncResult);
-
-                if (mailboxId == FULL_ACCOUNT_SYNC) {
+            if (mailboxId != Mailbox.NO_MAILBOX) {
+                // Sync the mailbox that was explicitly requested.
+                syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, null, true);
+            } else if (mailboxId != Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY) {
+                // We have to sync multiple folders.
+                final Cursor c;
+                if (isFullSync) {
                     // Full account sync includes all mailboxes that participate in system sync.
-                    final Cursor c = Mailbox.getMailboxIdsForSync(cr, account.mId);
-                    if (c != null) {
-                        try {
-                            while (c.moveToNext()) {
-                                syncMailbox(context, cr, acct, account, c.getLong(0), extras,
-                                        syncResult, false);
-                            }
-                        } finally {
-                            c.close();
+                    c = Mailbox.getMailboxIdsForSync(cr, account.mId);
+                } else {
+                    // Type-filtered sync should only get the mailboxes of a specific type.
+                    c = Mailbox.getMailboxIdsForSyncByType(cr, account.mId, mailboxType);
+                }
+                if (c != null) {
+                    try {
+                        final HashSet<String> authsToSync = getAuthsToSync(acct);
+                        while (c.moveToNext()) {
+                            syncMailbox(context, cr, acct, account, c.getLong(0), extras,
+                                    syncResult, authsToSync, false);
                         }
+                    } finally {
+                        c.close();
                     }
                 }
-            } else {
-                // Sync the mailbox that was explicitly requested.
-                syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, true);
             }
 
             // Clean up the bookkeeping, including restarting ping if necessary.
@@ -715,7 +722,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         private boolean syncMailbox(final Context context, final ContentResolver cr,
                 final android.accounts.Account acct, final Account account, final long mailboxId,
-                final Bundle extras, final SyncResult syncResult, final boolean isMailboxSync) {
+                final Bundle extras, final SyncResult syncResult, final HashSet<String> authsToSync,
+                final boolean isMailboxSync) {
             final Mailbox mailbox = Mailbox.restoreMailboxWithId(context, mailboxId);
             if (mailbox == null) {
                 return false;
@@ -724,6 +732,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             if (mailbox.mAccountKey != account.mId) {
                 LogUtils.e(TAG, "Mailbox does not match account: %s, %s", acct.toString(),
                         extras.toString());
+                return false;
+            }
+            if (authsToSync != null && !authsToSync.contains(Mailbox.getAuthority(mailbox.mType))) {
+                // We are asking for an account sync, but this mailbox type is not configured for
+                // sync.
                 return false;
             }
 
@@ -790,5 +803,24 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         IntentUtilities.setAccountId(builder, accountId);
         IntentUtilities.setAccountName(builder, accountName);
         return new Intent(Intent.ACTION_EDIT, builder.build());
+    }
+
+    /**
+     * Determine which content types are set to sync for an account.
+     * @param account The account whose sync settings we're looking for.
+     * @return The authorities for the content types we want to sync for account.
+     */
+    private static HashSet<String> getAuthsToSync(final android.accounts.Account account) {
+        final HashSet<String> authsToSync = new HashSet();
+        if (ContentResolver.getSyncAutomatically(account, EmailContent.AUTHORITY)) {
+            authsToSync.add(EmailContent.AUTHORITY);
+        }
+        if (ContentResolver.getSyncAutomatically(account, CalendarContract.AUTHORITY)) {
+            authsToSync.add(CalendarContract.AUTHORITY);
+        }
+        if (ContentResolver.getSyncAutomatically(account, ContactsContract.AUTHORITY)) {
+            authsToSync.add(ContactsContract.AUTHORITY);
+        }
+        return authsToSync;
     }
 }

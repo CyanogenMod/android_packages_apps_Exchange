@@ -29,7 +29,6 @@ import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
 
 import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
@@ -112,59 +111,23 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
             }
         }
 
-        // Find the (EmailProvider) account associated with this email address
-        final Cursor accountCursor =
-            cr.query(com.android.emailcommon.provider.Account.CONTENT_URI,
-                    com.android.emailcommon.provider.Account.ID_PROJECTION,
-                    AccountColumns.EMAIL_ADDRESS + "=?",
-                    new String[] {account.name}, null);
-        if (accountCursor == null) {
-            LogUtils.e(TAG, "null account cursor in ContactsSyncAdapterService");
-            return;
+        // Forward the sync request to the EmailSyncAdapterService.
+        final Bundle mailExtras = new Bundle(4);
+        mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+        mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
+        if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, false)) {
+            mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
         }
-
         final long extrasMailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, 0);
-        final boolean expedited = extras.getBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, false);
         if (extrasMailboxId != 0) {
-            // If we've been given a mailbox, just sync that one and be done. Don't
-            // do a query for the rest of the calendar mailboxes.
-            syncMailbox(account, expedited, extrasMailboxId);
-            return;
+            // If we've been given a mailbox, specify a sync for just that mailbox.
+            mailExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, extrasMailboxId);
+        } else {
+            // Otherwise, specify a sync for all calendars.
+            mailExtras.putInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE, Mailbox.TYPE_CONTACTS);
         }
-
-        try {
-            if (accountCursor.moveToFirst()) {
-                final long accountId = accountCursor.getLong(
-                        com.android.emailcommon.provider.Account.ID_PROJECTION_COLUMN);
-                // Now, find the contacts mailbox associated with the account
-                final Cursor mailboxCursor = cr.query(Mailbox.CONTENT_URI, Mailbox.ID_PROJECTION,
-                        ACCOUNT_AND_TYPE_CONTACTS, new String[] {Long.toString(accountId)}, null);
-                try {
-                    while (mailboxCursor.moveToNext()) {
-                        // TODO: Currently just bouncing this to Email sync; eventually streamline.
-                        final long mailboxId = mailboxCursor.getLong(Mailbox.ID_PROJECTION_COLUMN);
-                        syncMailbox(account, expedited, mailboxId);
-                    }
-                } finally {
-                    mailboxCursor.close();
-                }
-            }
-        } finally {
-            accountCursor.close();
-        }
-    }
-
-    private static void syncMailbox(Account account, boolean expedited, long mailboxId) {
-        // TODO: Should we be using the existing extras and just adding our bits?
-        final Bundle mailboxExtras = new Bundle(4);
-        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-        mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
-        if (expedited) {
-            mailboxExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-        }
-        mailboxExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
-        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailboxExtras);
+        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailExtras);
         LogUtils.i(TAG, "requestSync ContactsSyncAdapter %s, %s",
-                account.toString(), mailboxExtras.toString());
+                account.toString(), mailExtras.toString());
     }
 }
