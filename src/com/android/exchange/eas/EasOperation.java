@@ -176,6 +176,7 @@ public abstract class EasOperation {
                 if (registerClientCert()) {
                     response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
                 } else {
+                    LogUtils.e(LOG_TAG, "Problem registering client cert");
                     // TODO: Is this the best stat to increment?
                     if (syncResult != null) {
                         ++syncResult.stats.numAuthExceptions;
@@ -247,6 +248,7 @@ public abstract class EasOperation {
                         continue;
                     }
                     if (syncResult != null) {
+                        LogUtils.e(LOG_TAG, "Issue with provisioning");
                         // TODO: Is this the best stat to increment?
                         ++syncResult.stats.numAuthExceptions;
                     }
