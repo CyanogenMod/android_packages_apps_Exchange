@@ -418,13 +418,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 return AccountCapabilities.SYNCABLE_FOLDERS |
                         AccountCapabilities.SERVER_SEARCH |
                         AccountCapabilities.FOLDER_SERVER_SEARCH |
-                        AccountCapabilities.SANITIZED_HTML |
                         AccountCapabilities.SMART_REPLY |
                         AccountCapabilities.UNDO |
                         AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
             } else {
                 return AccountCapabilities.SYNCABLE_FOLDERS |
-                        AccountCapabilities.SANITIZED_HTML |
                         AccountCapabilities.SMART_REPLY |
                         AccountCapabilities.UNDO |
                         AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
