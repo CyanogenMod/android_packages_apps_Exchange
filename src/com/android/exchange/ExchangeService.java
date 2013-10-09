@@ -93,14 +93,12 @@ public class ExchangeService extends SyncManager {
             AccountCapabilities.SYNCABLE_FOLDERS |
             AccountCapabilities.SERVER_SEARCH |
             AccountCapabilities.FOLDER_SERVER_SEARCH |
-            AccountCapabilities.SANITIZED_HTML |
             AccountCapabilities.SMART_REPLY |
             AccountCapabilities.SERVER_SEARCH |
             AccountCapabilities.UNDO;
 
     private static final int EAS_2_CAPABILITIES =
             AccountCapabilities.SYNCABLE_FOLDERS |
-            AccountCapabilities.SANITIZED_HTML |
             AccountCapabilities.SMART_REPLY |
             AccountCapabilities.UNDO;
 
