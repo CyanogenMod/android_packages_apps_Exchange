@@ -25,6 +25,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -44,6 +45,8 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Base class for all Exchange operations that use a POST to talk to the server.
@@ -536,7 +539,7 @@ public abstract class EasOperation {
         msg.mAccountKey = account.mId;
         msg.save(mContext);
         requestSyncForMailbox(new android.accounts.Account(account.mEmailAddress,
-                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
+                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mailboxId);
     }
 
     /**
@@ -546,11 +549,36 @@ public abstract class EasOperation {
      * @param mailboxId The id of the mailbox that needs to sync.
      */
     protected static void requestSyncForMailbox(final android.accounts.Account amAccount,
-            final String authority, final long mailboxId) {
-        final Bundle extras = new Bundle(1);
-        extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
-        ContentResolver.requestSync(amAccount, authority, extras);
+            final long mailboxId) {
+        final Bundle extras = Mailbox.createSyncBundle(mailboxId);
+        ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
         LogUtils.i(LOG_TAG, "requestSync EasOperation requestSyncForMailbox %s, %s",
+                amAccount.toString(), extras.toString());
+    }
+
+    protected static void requestSyncForMailboxes(final android.accounts.Account amAccount,
+            final ArrayList<Long> mailboxIds) {
+        final Bundle extras = Mailbox.createSyncBundle(mailboxIds);
+        ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
+        LogUtils.i(LOG_TAG, "requestSync EasOperation requestSyncForMailboxes  %s, %s",
+                amAccount.toString(), extras.toString());
+    }
+
+    /**
+     * RequestNoOpSync
+     * This requests a sync for a particular authority purely so that that account
+     * in settings will recognize that it is trying to sync, and will display the
+     * appropriate UI. In fact, all exchange data syncing actually happens through the
+     * EmailSyncAdapterService.
+     * @param amAccount
+     * @param authority
+     */
+    protected static void requestNoOpSync(final android.accounts.Account amAccount,
+            final String authority) {
+        final Bundle extras = new Bundle(1);
+        extras.putBoolean(Mailbox.SYNC_EXTRA_NOOP, true);
+        ContentResolver.requestSync(amAccount, authority, extras);
+        LogUtils.i(LOG_TAG, "requestSync EasOperation requestNoOpSync %s, %s",
                 amAccount.toString(), extras.toString());
     }
 }
