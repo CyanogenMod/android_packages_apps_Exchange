@@ -523,8 +523,7 @@ public class EasServerConnection {
      */
     protected static void requestSyncForMailbox(final android.accounts.Account amAccount,
             final String authority, final long mailboxId) {
-        final Bundle extras = new Bundle(1);
-        extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, mailboxId);
+        final Bundle extras = Mailbox.createSyncBundle(mailboxId);
         ContentResolver.requestSync(amAccount, authority, extras);
         LogUtils.i(TAG, "requestSync EasServerConnection requestSyncForMailbox %s, %s",
                 amAccount.toString(), extras.toString());
