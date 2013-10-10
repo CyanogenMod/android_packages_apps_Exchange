@@ -741,6 +741,15 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 return false;
             }
 
+            if (mailbox.mType == Mailbox.TYPE_DRAFTS) {
+                // TODO: Because we don't have bidirectional sync working, trying to downsync
+                // the drafts folder is confusing. b/11158759
+                // For now, just disable all syncing of DRAFTS type folders.
+                // Automatic syncing should always be disabled, but we also stop it here to ensure
+                // that we won't sync even if the user attempts to force a sync from the UI.
+                LogUtils.d(TAG, "Skipping sync of DRAFTS folder");
+                return false;
+            }
             final boolean success;
             // Non-mailbox syncs are whole account syncs initiated by the AccountManager and are
             // treated as background syncs.
@@ -748,7 +757,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             final ContentValues cv = new ContentValues(2);
             updateMailbox(context, mailbox, cv, isMailboxSync ?
                     EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND);
-
             if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
                 final EasOutboxSyncHandler outboxSyncHandler =
                         new EasOutboxSyncHandler(context, account, mailbox);
