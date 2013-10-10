@@ -33,8 +33,7 @@ public class ExchangeBroadcastReceiver extends BroadcastReceiver {
                 final Bundle bundle = new Bundle(3);
                 bundle.putBoolean(ContentResolver.SYNC_EXTRAS_IGNORE_SETTINGS, true);
                 bundle.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-                bundle.putLong(
-                        Mailbox.SYNC_EXTRA_MAILBOX_ID, Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY);
+                bundle.putBoolean(Mailbox.SYNC_EXTRA_ACCOUNT_ONLY, true);
                 ContentResolver.requestSync(account, EmailContent.AUTHORITY, bundle);
             }
         }
