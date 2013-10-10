@@ -113,9 +113,6 @@ public class FetchMessageParser extends Parser {
                 case Tags.BASE_DATA:
                     body = getValue();
                     break;
-                case Tags.BASE_TRUNCATED:
-                    mService.userLog("Shouldn't be there, the request is fetching the whole mail.");
-                    break;
                 default:
                     skipTag();
             }
