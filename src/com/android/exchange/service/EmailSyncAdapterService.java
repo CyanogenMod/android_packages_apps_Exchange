@@ -232,7 +232,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // Stop, start, or restart the ping as needed, as well as the ping kicker periodic sync.
             final PingTask pingSyncHandler = mPingHandlers.get(account.mId);
             final Bundle extras = new Bundle(1);
-            extras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY);
+            extras.putBoolean(Mailbox.SYNC_EXTRA_PUSH_ONLY, true);
             if (pushNeeded) {
                 // First start or restart the ping as appropriate.
                 if (pingSyncHandler != null) {
@@ -623,20 +623,20 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             // Figure out what we want to sync, based on the extras and our account sync status.
             final boolean isInitialSync = EmailContent.isInitialSyncKey(account.mSyncKey);
-            final long mailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID,
-                    Mailbox.NO_MAILBOX);
+            final long[] mailboxIds = Mailbox.getMailboxIdsFromBundle(extras);
             final int mailboxType = extras.getInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE,
                     Mailbox.TYPE_NONE);
 
             // A "full sync" means no specific mailbox or type filter was requested.
-            final boolean isFullSync = (mailboxId == Mailbox.NO_MAILBOX &&
-                    mailboxType == Mailbox.TYPE_NONE);
+            final boolean isFullSync = (mailboxIds == null && mailboxType == Mailbox.TYPE_NONE);
+
             // A FolderSync is necessary for full sync, initial sync, and account only sync.
-            final boolean isFolderSync = (isFullSync || isInitialSync ||
-                    mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY);
+            final boolean accountOnly = Mailbox.isAccountOnlyExtras(extras);
+            final boolean pushOnly = Mailbox.isPushOnlyExtras(extras);
+            final boolean isFolderSync = (isFullSync || isInitialSync || accountOnly);
 
             // If we're just twiddling the push, we do the lightweight thing and bail early.
-            if (mailboxId == Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY && !isFolderSync) {
+            if (pushOnly && !isFolderSync) {
                 mSyncHandlerMap.modifyPing(account);
                 LogUtils.i(TAG, "onPerformSync: mailbox push only %s, %s",
                         acct.toString(), extras.toString());
@@ -666,10 +666,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // pings to stop. It may not matter since the things that may have been twiddled might
             // not affect syncing.
 
-            if (mailboxId != Mailbox.NO_MAILBOX) {
+            if (mailboxIds != null) {
                 // Sync the mailbox that was explicitly requested.
-                syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, null, true);
-            } else if (mailboxId != Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY) {
+                for (final long mailboxId : mailboxIds) {
+                    syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, null,
+                            true);
+                }
+            } else if (accountOnly) {
                 // We have to sync multiple folders.
                 final Cursor c;
                 if (isFullSync) {
