@@ -79,6 +79,11 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
      * be put in place at a later time.
      */
     private static void performSync(Context context, Account account, Bundle extras) {
+        if (extras.getBoolean(Mailbox.SYNC_EXTRA_NOOP, false)) {
+            LogUtils.d(TAG, "No-op sync requested, done");
+            return;
+        }
+
         final ContentResolver cr = context.getContentResolver();
         final boolean logging = Eas.USER_LOG;
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
@@ -101,19 +106,20 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         // Forward the sync request to the EmailSyncAdapterService.
-        final Bundle mailExtras = new Bundle(4);
+        final long [] mailboxIds = Mailbox.getMailboxIdsFromBundle(extras);
+        final Bundle mailExtras;
+        if (mailboxIds == null) {
+            // We weren't given any particular mailboxId, specify a sync for all calendars.
+            mailExtras = new Bundle();
+            mailExtras.putInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE, Mailbox.TYPE_CALENDAR);
+        } else {
+            // Otherwise, add all of the mailboxes specified in the original sync extras.
+            mailExtras = Mailbox.createSyncBundle(mailboxIds);
+        }
         mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
         mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
         if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, false)) {
             mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-        }
-        final long extrasMailboxId = extras.getLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, 0);
-        if (extrasMailboxId != 0) {
-            // If we've been given a mailbox, specify a sync for just that mailbox.
-            mailExtras.putLong(Mailbox.SYNC_EXTRA_MAILBOX_ID, extrasMailboxId);
-        } else {
-            // Otherwise, specify a sync for all calendars.
-            mailExtras.putInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE, Mailbox.TYPE_CALENDAR);
         }
         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailExtras);
         LogUtils.i(TAG, "requestSync CalendarSyncAdapter %s, %s",
