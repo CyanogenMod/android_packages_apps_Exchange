@@ -64,6 +64,8 @@
 
     <uses-sdk android:targetSdkVersion="18" android:minSdkVersion="14" />
 
+    <!-- additional uses -->
+
     <application
         android:icon="@mipmap/icon"
         android:label="@string/app_name"
