@@ -21,7 +21,10 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncResult;
 import android.database.Cursor;
+import android.os.Bundle;
 import android.os.SystemClock;
+import android.provider.CalendarContract;
+import android.provider.ContactsContract;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -41,6 +44,9 @@ import org.apache.http.HttpEntity;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Performs an Exchange Ping, which is the command for receiving push notifications.
@@ -323,6 +329,10 @@ public class EasPing extends EasOperation {
     private void requestSyncForSyncList(final ArrayList<String> syncList) {
         final String[] bindArguments = new String[2];
         bindArguments[0] = Long.toString(mAccountId);
+
+        final ArrayList<Long> mailboxIds = new ArrayList<Long>();
+        final HashSet<Integer> contentTypes = new HashSet<Integer>();
+
         for (final String serverId : syncList) {
             bindArguments[1] = serverId;
             // TODO: Rather than one query per ping mailbox, do it all in one?
@@ -376,27 +386,49 @@ public class EasPing extends EasOperation {
                     }
                     */
                 if (c.moveToFirst()) {
-                    requestSyncForMailbox(mAmAccount,
-                            Mailbox.getAuthority(c.getInt(Mailbox.CONTENT_TYPE_COLUMN)),
-                            c.getLong(Mailbox.CONTENT_ID_COLUMN));
+                    final long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
+                    final int contentType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
+                    mailboxIds.add(mailboxId);
+                    contentTypes.add(contentType);
                 }
             } finally {
                 c.close();
             }
         }
+
+        for (final int type : contentTypes) {
+            switch (type) {
+                case Mailbox.TYPE_CALENDAR:
+                case Mailbox.TYPE_CONTACTS:
+                    // Ask for a no-op sync so that we'll see calendar or contacts
+                    // syncing in settings.
+                    requestNoOpSync(mAmAccount, Mailbox.getAuthority(type));
+                default:
+                    // Do nothing, we're already doing an Email sync.
+            }
+        }
+        // Ask the EmailSyncAdapter to sync all of these mailboxes, whether they're regular
+        // mailboxes or calendar or contacts.
+        requestSyncForMailboxes(mAmAccount, mailboxIds);
     }
 
     /**
      * Issue a {@link ContentResolver#requestSync} to trigger a FolderSync for an account.
      */
     private void requestFolderSync() {
-        requestSyncForMailbox(mAmAccount, EmailContent.AUTHORITY,
-                Mailbox.SYNC_EXTRA_MAILBOX_ID_ACCOUNT_ONLY);
+        final Bundle extras = new Bundle(1);
+        extras.putBoolean(Mailbox.SYNC_EXTRA_ACCOUNT_ONLY, true);
+        ContentResolver.requestSync(mAmAccount, EmailContent.AUTHORITY, extras);
+        LogUtils.i(LOG_TAG, "requestFolderSync EasOperation %s, %s",
+                mAmAccount.toString(), extras.toString());
     }
 
     public static void requestPing(final android.accounts.Account amAccount) {
-        requestSyncForMailbox(amAccount, EmailContent.AUTHORITY,
-                Mailbox.SYNC_EXTRA_MAILBOX_ID_PUSH_ONLY);
+        final Bundle extras = new Bundle(1);
+        extras.putBoolean(Mailbox.SYNC_EXTRA_PUSH_ONLY, true);
+        ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
+        LogUtils.i(LOG_TAG, "requestPing EasOperation %s, %s",
+                amAccount.toString(), extras.toString());
     }
 
 }
