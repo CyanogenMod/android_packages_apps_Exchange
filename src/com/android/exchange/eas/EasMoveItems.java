@@ -30,6 +30,7 @@ public class EasMoveItems extends EasOperation {
     /** Result code indicating that no moved messages were found for this account. */
     public final static int RESULT_NO_MESSAGES = 0;
     public final static int RESULT_OK = 1;
+    public final static int RESULT_EMPTY_RESPONSE = 2;
 
     private static class MoveResponse {
         public final String sourceMessageId;
@@ -69,6 +70,9 @@ public class EasMoveItems extends EasOperation {
                 status = mResponse.moveStatus;
             } else {
                 // TODO: Perhaps not all errors should be retried?
+                // Notably, if the server returns 200 with an empty response, we retry. This is
+                // how the previous version worked, and I can't find documentation about what this
+                // response state really means.
                 status = MoveItemsParser.STATUS_CODE_RETRY;
             }
             final int index = status - 1;
@@ -112,8 +116,9 @@ public class EasMoveItems extends EasOperation {
             final String newMessageId = parser.getNewServerId();
             final int status = parser.getStatusCode();
             mResponse = new MoveResponse(sourceMessageId, newMessageId, status);
+            return RESULT_OK;
         }
-        return RESULT_OK;
+        return RESULT_EMPTY_RESPONSE;
     }
 
     private void processResponse(final MessageMove request, final MoveResponse response) {
