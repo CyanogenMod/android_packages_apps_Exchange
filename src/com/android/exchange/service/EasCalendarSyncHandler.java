@@ -271,7 +271,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
         // Delete any orphaned exceptions
         for (final long orphan : orphanedExceptions) {
-            LogUtils.d(TAG, "Deleted orphaned exception: %d", orphan);
+            LogUtils.i(TAG, "Deleted orphaned exception: %d", orphan);
             mContentResolver.delete(asSyncAdapter(
                     ContentUris.withAppendedId(Events.CONTENT_URI, orphan)), null, null);
         }
@@ -309,7 +309,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 CalendarUtilities.createMessageForEntity(mContext, entity,
                         Message.FLAG_OUTGOING_MEETING_DECLINE, clientId, mAccount);
         if (msg != null) {
-            LogUtils.d(TAG, "Queueing declined response to %s", msg.mTo);
+            LogUtils.i(TAG, "Queueing declined response to %s", msg.mTo);
             mOutgoingMailList.add(msg);
         }
     }
@@ -693,7 +693,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     final Message msg = CalendarUtilities.createMessageForEntity(mContext, exEntity,
                             flag, clientId, mAccount);
                     if (msg != null) {
-                        LogUtils.d(TAG, "Queueing exception update to %s", msg.mTo);
+                        LogUtils.i(TAG, "Queueing exception update to %s", msg.mTo);
                         mOutgoingMailList.add(msg);
                     }
                 }
@@ -743,7 +743,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 CalendarUtilities.createMessageForEventId(mContext, eventId,
                         Message.FLAG_OUTGOING_MEETING_INVITE, clientId, mAccount);
             if (msg != null) {
-                LogUtils.d(TAG, "Queueing invitation to %s", msg.mTo);
+                LogUtils.i(TAG, "Queueing invitation to %s", msg.mTo);
                 mOutgoingMailList.add(msg);
             }
             // Make a list out of our tokenized attendees, if we have any
@@ -790,7 +790,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                         removedAttendee);
                 if (cancelMsg != null) {
                     // Just send it to the removed attendee
-                    LogUtils.d(TAG, "Queueing cancellation to removed attendee %s", cancelMsg.mTo);
+                    LogUtils.i(TAG, "Queueing cancellation to removed attendee %s", cancelMsg.mTo);
                     mOutgoingMailList.add(cancelMsg);
                 }
             }
@@ -837,7 +837,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     final Message msg = CalendarUtilities.createMessageForEventId(mContext, eventId,
                             messageFlag, clientId, mAccount);
                     if (msg != null) {
-                        LogUtils.d(TAG, "Queueing invitation reply to %s", msg.mTo);
+                        LogUtils.i(TAG, "Queueing invitation reply to %s", msg.mTo);
                         mOutgoingMailList.add(msg);
                     }
                 }
@@ -886,7 +886,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
         if (first) {
             s.start(Tags.SYNC_COMMANDS);
-            LogUtils.d(TAG, "Sending Calendar changes to the server");
+            LogUtils.i(TAG, "Sending Calendar changes to the server");
         }
 
         final boolean selfOrganizer = organizerEmail.equalsIgnoreCase(mAccount.mEmailAddress);
@@ -899,7 +899,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         final long eventId = entityValues.getAsLong(Events._ID);
         if (serverId == null) {
             // This is a new event; create a clientId
-            LogUtils.d(TAG, "Creating new event with clientId: %s", clientId);
+            LogUtils.i(TAG, "Creating new event with clientId: %s", clientId);
             s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
             // And save it in the Event as the local id
             final ContentValues cv = new ContentValues(2);
@@ -909,14 +909,14 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, eventId)),
                     cv, null, null);
         } else if (entityValues.getAsInteger(Events.DELETED) == 1) {
-            LogUtils.d(TAG, "Deleting event with serverId: %s", serverId);
+            LogUtils.i(TAG, "Deleting event with serverId: %s", serverId);
             s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
             mDeletedIdList.add(eventId);
             if (selfOrganizer) {
                 final Message msg = CalendarUtilities.createMessageForEventId(mContext,
                         eventId, Message.FLAG_OUTGOING_MEETING_CANCEL, null, mAccount);
                 if (msg != null) {
-                    LogUtils.d(TAG, "Queueing cancellation to %s", msg.mTo);
+                    LogUtils.i(TAG, "Queueing cancellation to %s", msg.mTo);
                     mOutgoingMailList.add(msg);
                 }
             } else {
@@ -925,7 +925,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             // For deletions, we don't need to add application data, so just bail here.
             return true;
         } else {
-            LogUtils.d(TAG, "Upsync change to event with serverId: %s", serverId);
+            LogUtils.i(TAG, "Upsync change to event with serverId: %s", serverId);
             s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, serverId);
             // Save to the ContentResolver.
             final String version = getEntityVersion(entityValues);

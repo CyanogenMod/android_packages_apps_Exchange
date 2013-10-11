@@ -114,7 +114,7 @@ public class EasOptions extends EasOperation {
         // The string is a comma separated list of EAS versions in ascending order
         // e.g. 1.0,2.0,2.5,12.0,12.1,14.0,14.1
         final String supportedVersions = versionHeader.getValue();
-        LogUtils.d(LOG_TAG, "Server supports versions: %s", supportedVersions);
+        LogUtils.i(LOG_TAG, "Server supports versions: %s", supportedVersions);
         final String[] supportedVersionsArray = supportedVersions.split(",");
         // Find the most recent version we support
         String newProtocolVersion = null;

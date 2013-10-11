@@ -78,7 +78,7 @@ public class EasConnectionCache {
      */
     private EmailClientConnectionManager createConnectionManager(final Context context,
             final HostAuth hostAuth) {
-        LogUtils.d(Eas.LOG_TAG, "Creating connection for HostAuth %d", hostAuth.mId);
+        LogUtils.i(Eas.LOG_TAG, "Creating connection for HostAuth %d", hostAuth.mId);
         final HttpParams params = new BasicHttpParams();
         params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
         params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
@@ -94,7 +94,7 @@ public class EasConnectionCache {
      */
     private synchronized EmailClientConnectionManager getCachedConnectionManager(
             final Context context, final HostAuth hostAuth) {
-        LogUtils.d(Eas.LOG_TAG, "Reusing cached connection for HostAuth %d", hostAuth.mId);
+        LogUtils.i(Eas.LOG_TAG, "Reusing cached connection for HostAuth %d", hostAuth.mId);
         EmailClientConnectionManager connectionManager = mConnectionMap.get(hostAuth.mId);
         if (connectionManager == null) {
             connectionManager = createConnectionManager(context, hostAuth);
@@ -130,7 +130,7 @@ public class EasConnectionCache {
      * @param hostAuth The {@link HostAuth} whose connection manager should be deleted.
      */
     public synchronized void uncacheConnectionManager(final HostAuth hostAuth) {
-        LogUtils.d(Eas.LOG_TAG, "Uncaching connection for HostAuth %d", hostAuth.mId);
+        LogUtils.i(Eas.LOG_TAG, "Uncaching connection for HostAuth %d", hostAuth.mId);
         mConnectionMap.remove(hostAuth.mId);
     }
 }

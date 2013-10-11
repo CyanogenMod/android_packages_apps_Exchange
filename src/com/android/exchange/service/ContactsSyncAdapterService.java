@@ -27,7 +27,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
-import android.util.Log;
 
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
@@ -65,14 +64,11 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            if (LogUtils.isLoggable(TAG, Log.DEBUG)) {
-                LogUtils.d(TAG, "onPerformSync Contacts starting %s, %s", account.toString(),
-                        extras.toString());
-            } else {
-                LogUtils.i(TAG, "onPerformSync Contacts starting %s", extras.toString());
-            }
+            LogUtils.i(TAG, "onPerformSync Contacts starting %s, %s", account.toString(),
+                    extras.toString());
             ContactsSyncAdapterService.performSync(getContext(), account, extras);
-            LogUtils.d(TAG, "onPerformSync Contacts finished");
+            LogUtils.i(TAG, "onPerformSync Contacts ending %s, %s", account.toString(),
+                    extras.toString());
         }
     }
 
@@ -114,7 +110,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                 changed = hasDirtyRows(cr, uri, Groups.DIRTY);
             }
             if (!changed) {
-                LogUtils.d(TAG, "Upload sync; no changes");
+                LogUtils.i(TAG, "Upload sync; no changes");
                 return;
             }
         }
@@ -136,6 +132,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
             mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
         }
         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailExtras);
-        LogUtils.d(TAG, "requestSync ContactsSyncAdapter %s", mailExtras.toString());
+        LogUtils.i(TAG, "requestSync ContactsSyncAdapter %s, %s",
+                account.toString(), mailExtras.toString());
     }
 }
