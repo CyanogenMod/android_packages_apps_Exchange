@@ -525,7 +525,7 @@ public class EasServerConnection {
             final String authority, final long mailboxId) {
         final Bundle extras = Mailbox.createSyncBundle(mailboxId);
         ContentResolver.requestSync(amAccount, authority, extras);
-        LogUtils.d(TAG, "requestSync EasServerConnection requestSyncForMailbox %s, %s",
+        LogUtils.i(TAG, "requestSync EasServerConnection requestSyncForMailbox %s, %s",
                 amAccount.toString(), extras.toString());
     }
 }

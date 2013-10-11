@@ -88,14 +88,14 @@ public class MoveItemsParser extends Parser {
                 }
                 if (status != STATUS_SUCCESS) {
                     // There's not much to be done if this fails
-                    LogUtils.w(TAG, "Error in MoveItems: %d", status);
+                    LogUtils.i(TAG, "Error in MoveItems: %d", status);
                 }
             } else if (tag == Tags.MOVE_DSTMSGID) {
                 mNewServerId = getValue();
-                LogUtils.d(TAG, "Moved message id is now: %s", mNewServerId);
+                LogUtils.i(TAG, "Moved message id is now: %s", mNewServerId);
             } else if (tag == Tags.MOVE_SRCMSGID) {
                 mSourceServerId = getValue();
-                LogUtils.d(TAG, "Source message id is: %s", mNewServerId);
+                LogUtils.i(TAG, "Source message id is: %s", mNewServerId);
             } else {
                 skipTag();
             }
