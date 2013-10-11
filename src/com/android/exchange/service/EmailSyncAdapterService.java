@@ -672,7 +672,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, null,
                             true);
                 }
-            } else if (accountOnly) {
+            } else if (!accountOnly) {
                 // We have to sync multiple folders.
                 final Cursor c;
                 if (isFullSync) {
