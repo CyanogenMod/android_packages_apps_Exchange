@@ -18,10 +18,20 @@ package com.android.exchange;
 
 import android.app.Application;
 
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.MailboxUtilities;
 import com.android.mail.utils.LogTag;
 
 public class Exchange extends Application {
     static {
         LogTag.setLogTag(Eas.LOG_TAG);
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        EmailContent.init(this);
+        getContentResolver().call(EmailContent.CONTENT_URI, MailboxUtilities.FIX_PARENT_KEYS_METHOD,
+                "", null);
     }
 }
