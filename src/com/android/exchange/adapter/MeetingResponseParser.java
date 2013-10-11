@@ -36,10 +36,10 @@ public class MeetingResponseParser extends Parser {
             if (tag == Tags.MREQ_STATUS) {
                 int status = getValueInt();
                 if (status != 1) {
-                    LogUtils.i(TAG, "Error in meeting response: %d", status);
+                    LogUtils.w(TAG, "Error in meeting response: %d", status);
                 }
             } else if (tag == Tags.MREQ_CAL_ID) {
-                LogUtils.i(TAG, "Meeting response calender id: %s", getValue());
+                LogUtils.d(TAG, "Meeting response calender id: %s", getValue());
             } else {
                 skipTag();
             }
