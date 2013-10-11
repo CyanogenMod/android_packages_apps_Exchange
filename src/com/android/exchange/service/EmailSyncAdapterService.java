@@ -36,6 +36,7 @@ import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
+import android.util.Log;
 
 import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
@@ -530,7 +531,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     @Override
     public void onCreate() {
-        LogUtils.i(TAG, "onCreate()");
+        LogUtils.v(TAG, "onCreate()");
         super.onCreate();
         startService(new Intent(this, EmailSyncAdapterService.class));
         // Restart push for all accounts that need it.
@@ -540,7 +541,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     @Override
     public void onDestroy() {
-        LogUtils.i(TAG, "onDestroy()");
+        LogUtils.v(TAG, "onDestroy()");
         super.onDestroy();
         for (PingTask task : mSyncHandlerMap.mPingHandlers.values()) {
             if (task != null) {
@@ -594,7 +595,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public void onPerformSync(final android.accounts.Account acct, final Bundle extras,
                 final String authority, final ContentProviderClient provider,
                 final SyncResult syncResult) {
-            LogUtils.i(TAG, "onPerformSync: %s, %s", acct.toString(), extras.toString());
+            if (LogUtils.isLoggable(TAG, Log.DEBUG)) {
+                LogUtils.d(TAG, "onPerformSync: %s, %s", acct.toString(), extras.toString());
+            } else {
+                LogUtils.i(TAG, "onPerformSync: %s", extras.toString());
+            }
             TempDirectory.setTempDirectory(EmailSyncAdapterService.this);
 
             // TODO: Perform any connectivity checks, bail early if we don't have proper network
@@ -611,8 +616,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 if (!accountCursor.moveToFirst()) {
                     // Could not load account.
                     // TODO: improve error handling.
-                    LogUtils.w(TAG, "onPerformSync: could not load account %s, %s",
-                            acct.toString(), extras.toString());
+                    LogUtils.w(TAG, "onPerformSync: could not load account");
                     return;
                 }
                 account = new Account();
@@ -638,8 +642,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // If we're just twiddling the push, we do the lightweight thing and bail early.
             if (pushOnly && !isFolderSync) {
                 mSyncHandlerMap.modifyPing(account);
-                LogUtils.i(TAG, "onPerformSync: mailbox push only %s, %s",
-                        acct.toString(), extras.toString());
+                LogUtils.d(TAG, "onPerformSync: mailbox push only");
                 return;
             }
 
@@ -701,7 +704,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // TODO: It may make sense to have common error handling here. Two possible mechanisms:
             // 1) performSync return value can signal some useful info.
             // 2) syncResult can contain useful info.
-            LogUtils.i(TAG, "onPerformSync: finished %s, %s", acct.toString(), extras.toString());
+            LogUtils.d(TAG, "onPerformSync: finished");
         }
 
         /**
