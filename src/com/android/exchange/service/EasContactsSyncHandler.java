@@ -683,14 +683,14 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                 final ArrayList<Integer> groupIds = new ArrayList<Integer>();
                 if (first) {
                     s.start(Tags.SYNC_COMMANDS);
-                    LogUtils.i(TAG, "Sending Contacts changes to the server");
+                    LogUtils.d(TAG, "Sending Contacts changes to the server");
                     first = false;
                 }
                 if (serverId == null) {
                     // This is a new contact; create a clientId
                     final String clientId =
                             "new_" + mMailbox.mId + '_' + System.currentTimeMillis();
-                    LogUtils.i(TAG, "Creating new contact with clientId: %s", clientId);
+                    LogUtils.d(TAG, "Creating new contact with clientId: %s", clientId);
                     s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
                     // And save it in the raw contact
                     cidValues.put(ContactsContract.RawContacts.SYNC1, clientId);
@@ -699,13 +699,13 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                             cidValues, null, null);
                 } else {
                     if (entityValues.getAsInteger(ContactsContract.RawContacts.DELETED) == 1) {
-                        LogUtils.i(TAG, "Deleting contact with serverId: %s", serverId);
+                        LogUtils.d(TAG, "Deleting contact with serverId: %s", serverId);
                         s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
                         mDeletedContacts.add(
                                 entityValues.getAsLong(ContactsContract.RawContacts._ID));
                         continue;
                     }
-                    LogUtils.i(TAG, "Upsync change to contact with serverId: %s", serverId);
+                    LogUtils.d(TAG, "Upsync change to contact with serverId: %s", serverId);
                     s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, serverId);
                 }
                 s.start(Tags.SYNC_APPLICATION_DATA);

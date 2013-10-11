@@ -578,7 +578,7 @@ public abstract class EasOperation {
         final Bundle extras = new Bundle(1);
         extras.putBoolean(Mailbox.SYNC_EXTRA_NOOP, true);
         ContentResolver.requestSync(amAccount, authority, extras);
-        LogUtils.i(LOG_TAG, "requestSync EasOperation requestNoOpSync %s, %s",
+        LogUtils.d(LOG_TAG, "requestSync EasOperation requestNoOpSync %s, %s",
                 amAccount.toString(), extras.toString());
     }
 }
