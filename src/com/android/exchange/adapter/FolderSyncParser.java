@@ -289,7 +289,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                     final Cursor c = getServerIdCursor(serverId);
                     try {
                         if (c.moveToFirst()) {
-                            LogUtils.i(TAG, "Deleting %s", serverId);
+                            LogUtils.d(TAG, "Deleting %s", serverId);
                             final long mailboxId = c.getLong(MAILBOX_ID_COLUMNS_ID);
                             mOperations.add(ContentProviderOperation.newDelete(
                                     ContentUris.withAppendedId(Mailbox.CONTENT_URI,
@@ -514,7 +514,7 @@ public class FolderSyncParser extends AbstractSyncParser {
             try {
                 // If we find the mailbox (using serverId), make the change
                 if (c.moveToFirst()) {
-                    LogUtils.i(TAG, "Updating %s", serverId);
+                    LogUtils.d(TAG, "Updating %s", serverId);
                     final ContentValues cv = new ContentValues();
                     // Store the new parent key.
                     cv.put(Mailbox.PARENT_SERVER_ID, parentId);
