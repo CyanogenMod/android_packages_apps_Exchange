@@ -25,6 +25,7 @@ import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.CalendarContract.Events;
+import android.util.Log;
 
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
@@ -64,11 +65,14 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void onPerformSync(Account account, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
-            LogUtils.i(TAG, "onPerformSync Calendar starting %s, %s", account.toString(),
-                    extras.toString());
+            if (LogUtils.isLoggable(TAG, Log.DEBUG)) {
+                LogUtils.d(TAG, "onPerformSync Calendar starting %s, %s", account.toString(),
+                        extras.toString());
+            } else {
+                LogUtils.i(TAG, "onPerformSync Calendar starting %s", extras.toString());
+            }
             CalendarSyncAdapterService.performSync(getContext(), account, extras);
-            LogUtils.i(TAG, "onPerformSync Calendar finished %s, %s", account.toString(),
-                    extras.toString());
+            LogUtils.d(TAG, "onPerformSync Calendar finished");
         }
     }
 
@@ -122,7 +126,6 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
         }
         ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailExtras);
-        LogUtils.i(TAG, "requestSync CalendarSyncAdapter %s, %s",
-                account.toString(), mailExtras.toString());
+        LogUtils.d(TAG, "requestSync CalendarSyncAdapter %s", mailExtras.toString());
     }
 }
