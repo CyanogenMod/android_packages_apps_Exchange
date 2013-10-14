@@ -45,7 +45,7 @@ public class SettingsParser extends Parser {
         while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
             if (tag == Tags.SETTINGS_STATUS) {
                 int status = getValueInt();
-                LogUtils.i(TAG, "Settings status = %d", status);
+                LogUtils.d(TAG, "Settings status = %d", status);
                 if (status == 1) {
                     res = true;
                 } else {
@@ -74,7 +74,7 @@ public class SettingsParser extends Parser {
     public void parseSet() throws IOException {
         while (nextTag(Tags.SETTINGS_SET) != END) {
             if (tag == Tags.SETTINGS_STATUS) {
-                LogUtils.i(TAG, "Set status = %d", getValueInt());
+                LogUtils.d(TAG, "Set status = %d", getValueInt());
             } else {
                 skipTag();
             }
