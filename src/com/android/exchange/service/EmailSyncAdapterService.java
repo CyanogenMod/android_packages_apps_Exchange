@@ -84,7 +84,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             DateUtils.HOUR_IN_MILLIS / DateUtils.SECOND_IN_MILLIS;
 
     /** Controls whether we do a periodic "kick" to restart the ping. */
-    private static final boolean SCHEDULE_KICK = false;
+    private static final boolean SCHEDULE_KICK = true;
 
     /**
      * If sync extras do not include a mailbox id, then we want to perform a full sync.
