@@ -58,6 +58,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
 
     @Override
     protected Void doInBackground(Void... params) {
+        Log.i(TAG, "Ping task starting");
         int pingStatus;
         do {
             pingStatus = mOperation.doPing();

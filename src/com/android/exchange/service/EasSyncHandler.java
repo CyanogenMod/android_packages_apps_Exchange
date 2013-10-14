@@ -265,7 +265,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
     private Serializer buildEasRequest(
             final String syncKey, final boolean initialSync, int numWindows) throws IOException {
         final String className = getFolderClassName();
-        LogUtils.i(TAG, "Syncing account %d mailbox %d (class %s) with syncKey %s", mAccount.mId,
+        LogUtils.d(TAG, "Syncing account %d mailbox %d (class %s) with syncKey %s", mAccount.mId,
                 mMailbox.mId, className, syncKey);
 
         final Serializer s = new Serializer();
