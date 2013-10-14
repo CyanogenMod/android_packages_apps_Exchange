@@ -566,7 +566,7 @@ public class CalendarSyncParser extends AbstractSyncParser {
             }
             // Tell UI that we don't have any attendees
             cv.put(Events.HAS_ATTENDEE_DATA, "0");
-            LogUtils.i(TAG, "Maximum number of attendees exceeded; redacting");
+            LogUtils.d(TAG, "Maximum number of attendees exceeded; redacting");
         } else if (numAttendees > 0) {
             StringBuilder sb = new StringBuilder();
             for (ContentValues attendee: attendeeValues) {
@@ -882,7 +882,7 @@ public class CalendarSyncParser extends AbstractSyncParser {
             ops.newReminder(reminderMins, exceptionStart);
         }
         if (attendeesRedacted) {
-            LogUtils.i(TAG, "Attendees redacted in this exception");
+            LogUtils.d(TAG, "Attendees redacted in this exception");
         }
     }
 

@@ -203,7 +203,7 @@ public class PingParser extends Parser {
                 }
                 parsePingFolders();
                 final int count = mSyncList.size();
-                LogUtils.i(TAG, "Folders has %d elements", count);
+                LogUtils.d(TAG, "Folders has %d elements", count);
                 if (count == 0) {
                     throw new IOException("Folders was empty");
                 }
