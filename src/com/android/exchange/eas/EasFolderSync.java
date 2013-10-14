@@ -101,7 +101,7 @@ public class EasFolderSync extends EasOperation {
         if (mStatusOnly) {
             return RESULT_WRONG_OPERATION;
         }
-        LogUtils.i(LOG_TAG, "Performing sync for account %d", mAccount.mId);
+        LogUtils.d(LOG_TAG, "Performing sync for account %d", mAccount.mId);
         return performOperation(syncResult);
     }
 
@@ -115,7 +115,7 @@ public class EasFolderSync extends EasOperation {
             writeResultCode(bundle, RESULT_OTHER_FAILURE);
             return bundle;
         }
-        LogUtils.i(LOG_TAG, "Performing validation");
+        LogUtils.d(LOG_TAG, "Performing validation");
 
         if (!registerClientCert()) {
             bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
