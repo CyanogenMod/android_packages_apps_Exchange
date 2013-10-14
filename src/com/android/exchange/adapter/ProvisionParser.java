@@ -535,13 +535,13 @@ public class ProvisionParser extends Parser {
             switch (tag) {
                 case Tags.PROVISION_POLICY_TYPE:
                     policyType = getValue();
-                    LogUtils.i(TAG, "Policy type: %s", policyType);
+                    LogUtils.d(TAG, "Policy type: %s", policyType);
                     break;
                 case Tags.PROVISION_POLICY_KEY:
                     mSecuritySyncKey = getValue();
                     break;
                 case Tags.PROVISION_STATUS:
-                    LogUtils.i(TAG, "Policy status: %s", getValue());
+                    LogUtils.d(TAG, "Policy status: %s", getValue());
                     break;
                 case Tags.PROVISION_DATA:
                     if (policyType.equalsIgnoreCase(EasProvision.EAS_2_POLICY_TYPE)) {
@@ -571,7 +571,7 @@ public class ProvisionParser extends Parser {
     private void parseDeviceInformation() throws IOException {
         while (nextTag(Tags.SETTINGS_DEVICE_INFORMATION) != END) {
             if (tag == Tags.SETTINGS_STATUS) {
-                LogUtils.i(TAG, "DeviceInformation status: %s", getValue());
+                LogUtils.d(TAG, "DeviceInformation status: %s", getValue());
             } else {
                 skipTag();
             }
@@ -588,7 +588,7 @@ public class ProvisionParser extends Parser {
             switch (tag) {
                 case Tags.PROVISION_STATUS:
                     int status = getValueInt();
-                    LogUtils.i(TAG, "Provision status: %d", status);
+                    LogUtils.d(TAG, "Provision status: %d", status);
                     res = (status == 1);
                     break;
                 case Tags.SETTINGS_DEVICE_INFORMATION:
