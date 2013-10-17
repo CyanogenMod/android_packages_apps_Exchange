@@ -187,8 +187,9 @@ public class EasProvision extends EasOperation {
                 || version == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
             final EasSettings settingsOperation = new EasSettings(this);
             if (!settingsOperation.sendDeviceInformation(syncResult)) {
-                // If the Settings command failed, so do we.
-                return false;
+                // TODO: Do something more useful when the settings command fails.
+                // The consequence here is that the server will not have device info.
+                // However, this is NOT a provisioning failure.
             }
         }
 
