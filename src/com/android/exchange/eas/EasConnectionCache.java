@@ -17,6 +17,7 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
+import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.utility.EmailClientConnectionManager;
@@ -46,7 +47,12 @@ import java.util.HashMap;
  */
 public class EasConnectionCache {
 
+    /** The max length of time we want to keep a connection in the cache. */
+    private static final long MAX_LIFETIME = 10 * DateUtils.MINUTE_IN_MILLIS;
+
     private final HashMap<Long, EmailClientConnectionManager> mConnectionMap;
+    /** The creation time of connections in mConnectionMap. */
+    private final HashMap<Long, Long> mConnectionCreationTimes;
 
     private static final ConnPerRoute sConnPerRoute = new ConnPerRoute() {
         @Override
@@ -68,6 +74,7 @@ public class EasConnectionCache {
 
     private EasConnectionCache() {
         mConnectionMap = new HashMap<Long, EmailClientConnectionManager>();
+        mConnectionCreationTimes = new HashMap<Long, Long>();
     }
 
     /**
@@ -88,17 +95,30 @@ public class EasConnectionCache {
     /**
      * Get the correct {@link EmailClientConnectionManager} for a {@link HostAuth} from our cache.
      * If it's not in the cache, create and add it.
+     * If the cached connection is old, recreate it.
      * @param context The {@link Context}.
      * @param hostAuth The {@link HostAuth} to which we want to connect.
      * @return The {@link EmailClientConnectionManager} for hostAuth.
      */
     private synchronized EmailClientConnectionManager getCachedConnectionManager(
             final Context context, final HostAuth hostAuth) {
-        LogUtils.d(Eas.LOG_TAG, "Reusing cached connection for HostAuth %d", hostAuth.mId);
         EmailClientConnectionManager connectionManager = mConnectionMap.get(hostAuth.mId);
+        final long now = System.currentTimeMillis();
+        if (connectionManager != null) {
+            final long lifetime = now - mConnectionCreationTimes.get(hostAuth.mId);
+            if (lifetime > MAX_LIFETIME) {
+                LogUtils.d(Eas.LOG_TAG, "Aging out connection for HostAuth %d", hostAuth.mId);
+                uncacheConnectionManager(hostAuth);
+                connectionManager = null;
+            }
+        }
         if (connectionManager == null) {
+            LogUtils.d(Eas.LOG_TAG, "Creating new connection for HostAuth %d", hostAuth.mId);
             connectionManager = createConnectionManager(context, hostAuth);
             mConnectionMap.put(hostAuth.mId, connectionManager);
+            mConnectionCreationTimes.put(hostAuth.mId, now);
+        } else {
+            LogUtils.d(Eas.LOG_TAG, "Reusing cached connection for HostAuth %d", hostAuth.mId);
         }
         return connectionManager;
     }
@@ -131,6 +151,11 @@ public class EasConnectionCache {
      */
     public synchronized void uncacheConnectionManager(final HostAuth hostAuth) {
         LogUtils.d(Eas.LOG_TAG, "Uncaching connection for HostAuth %d", hostAuth.mId);
+        EmailClientConnectionManager connectionManager = mConnectionMap.get(hostAuth.mId);
+        if (connectionManager != null) {
+            connectionManager.shutdown();
+        }
         mConnectionMap.remove(hostAuth.mId);
+        mConnectionCreationTimes.remove(hostAuth.mId);
     }
 }
