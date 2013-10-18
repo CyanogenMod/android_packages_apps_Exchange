@@ -45,6 +45,7 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
@@ -61,6 +62,7 @@ import com.android.exchange.eas.EasMoveItems;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
 import com.android.exchange.eas.EasSync;
+import com.android.mail.providers.UIProvider;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
 
@@ -630,6 +632,14 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             final long[] mailboxIds = Mailbox.getMailboxIdsFromBundle(extras);
             final int mailboxType = extras.getInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE,
                     Mailbox.TYPE_NONE);
+            final boolean hasCallbackMethod =
+                    extras.containsKey(EmailServiceStatus.SYNC_EXTRAS_CALLBACK_METHOD);
+            if (hasCallbackMethod && mailboxIds != null) {
+                for (long mailboxId : mailboxIds) {
+                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
+                            EmailServiceStatus.IN_PROGRESS, 0, UIProvider.LastSyncResult.SUCCESS);
+                }
+            }
 
             // A "full sync" means no specific mailbox or type filter was requested.
             final boolean isFullSync = (mailboxIds == null && mailboxType == Mailbox.TYPE_NONE);
@@ -670,10 +680,30 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // not affect syncing.
 
             if (mailboxIds != null) {
+                long numIoExceptions = 0;
+                long numAuthExceptions = 0;
                 // Sync the mailbox that was explicitly requested.
                 for (final long mailboxId : mailboxIds) {
                     syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, null,
                             true);
+                    if (hasCallbackMethod) {
+                        final int result;
+                        if (syncResult.hasError()) {
+                            if (syncResult.stats.numIoExceptions > numIoExceptions) {
+                                result = UIProvider.LastSyncResult.CONNECTION_ERROR;
+                                numIoExceptions = syncResult.stats.numIoExceptions;
+                            } else if (syncResult.stats.numAuthExceptions> numAuthExceptions) {
+                                result = UIProvider.LastSyncResult.AUTH_ERROR;
+                                numAuthExceptions= syncResult.stats.numAuthExceptions;
+                            }  else {
+                                result = UIProvider.LastSyncResult.INTERNAL_ERROR;
+                            }
+                        } else {
+                            result = UIProvider.LastSyncResult.SUCCESS;
+                        }
+                        EmailServiceStatus.syncMailboxStatus(
+                                cr, extras, mailboxId,EmailServiceStatus.SUCCESS, 0, result);
+                    }
                 }
             } else if (!accountOnly) {
                 // We have to sync multiple folders.
