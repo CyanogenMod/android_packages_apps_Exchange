@@ -18,12 +18,13 @@ package com.android.exchange.service;
 
 import android.content.Context;
 import android.os.AsyncTask;
-import android.util.Log;
 
 import com.android.emailcommon.provider.Account;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.PingParser;
+import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
+import com.android.mail.utils.LogUtils;
 
 /**
  * Thread management class for Ping operations.
@@ -58,15 +59,32 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
 
     @Override
     protected Void doInBackground(Void... params) {
-        Log.i(TAG, "Ping task starting");
+        LogUtils.i(TAG, "Ping task starting for %d", mOperation.getAccountId());
         int pingStatus;
-        do {
-            pingStatus = mOperation.doPing();
-        } while (PingParser.shouldPingAgain(pingStatus));
-        Log.i(TAG, "Ping task ending with status: " + pingStatus);
+        try {
+            do {
+                pingStatus = mOperation.doPing();
+            } while (PingParser.shouldPingAgain(pingStatus));
+        } catch (final Exception e) {
+            // TODO: This is hacky, try to be cleaner.
+            // If we get any sort of exception here, treat it like the ping returned a connection
+            // failure.
+            LogUtils.e(TAG, e, "Ping exception for account %d", mOperation.getAccountId());
+            pingStatus = EasOperation.RESULT_REQUEST_FAILURE;
+        }
+        LogUtils.i(TAG, "Ping task ending with status: %d", pingStatus);
 
         mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
                 pingStatus);
         return null;
+    }
+
+    @Override
+    protected void onCancelled (Void result) {
+        // TODO: This is also hacky, should have a separate result code at minimum.
+        // If the ping is cancelled, make sure it reports something to the sync adapter.
+        LogUtils.w(TAG, "Ping cancelled for %d", mOperation.getAccountId());
+        mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
+                EasOperation.RESULT_REQUEST_FAILURE);
     }
 }
