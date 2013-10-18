@@ -130,12 +130,6 @@ public class EasServerConnection {
      */
     private HttpClient mClient;
 
-    /**
-     * The connection manager for any requests made by this object. This is created lazily, and
-     * cleared whenever our host auth is redirected.
-     */
-    private EmailClientConnectionManager mConnectionManager;
-
     public EasServerConnection(final Context context, final Account account,
             final HostAuth hostAuth) {
         mContext = context;
@@ -150,16 +144,11 @@ public class EasServerConnection {
     }
 
     protected EmailClientConnectionManager getClientConnectionManager() {
-        if (mConnectionManager == null) {
-            mConnectionManager =
-                    EasConnectionCache.instance().getConnectionManager(mContext, mHostAuth);
-        }
-        return mConnectionManager;
+        return EasConnectionCache.instance().getConnectionManager(mContext, mHostAuth);
     }
 
     public void redirectHostAuth(final String newAddress) {
         mClient = null;
-        mConnectionManager = null;
         mHostAuth.mAddress = newAddress;
         if (mHostAuth.isSaved()) {
             EasConnectionCache.instance().uncacheConnectionManager(mHostAuth);
@@ -403,6 +392,7 @@ public class EasServerConnection {
      */
     public EasResponse executeHttpUriRequest(final HttpUriRequest method, final long timeout)
             throws IOException {
+        LogUtils.d(TAG, "EasServerConnection about to make request %s", method.getRequestLine());
         // The synchronized blocks are here to support the stop() function, specifically to handle
         // when stop() is called first. Notably, they are NOT here in order to guard against
         // concurrent access to this function, which is not supported.
