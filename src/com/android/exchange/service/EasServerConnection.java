@@ -130,6 +130,11 @@ public class EasServerConnection {
      */
     private HttpClient mClient;
 
+    /**
+     * This is used only to check when our client needs to be refreshed.
+     */
+    private EmailClientConnectionManager mClientConnectionManager;
+
     public EasServerConnection(final Context context, final Account account,
             final HostAuth hostAuth) {
         mContext = context;
@@ -144,7 +149,13 @@ public class EasServerConnection {
     }
 
     protected EmailClientConnectionManager getClientConnectionManager() {
-        return EasConnectionCache.instance().getConnectionManager(mContext, mHostAuth);
+        final EmailClientConnectionManager connManager =
+                EasConnectionCache.instance().getConnectionManager(mContext, mHostAuth);
+        if (mClientConnectionManager != connManager) {
+            mClientConnectionManager = connManager;
+            mClient = null;
+        }
+        return connManager;
     }
 
     public void redirectHostAuth(final String newAddress) {
