@@ -70,6 +70,7 @@
         android:icon="@mipmap/icon"
         android:label="@string/app_name"
         android:name="Exchange"
+        android:requiredAccountType="com.android.exchange"
         android:theme="@android:style/Theme.Holo.Light"
         >
 
