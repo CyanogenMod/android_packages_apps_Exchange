@@ -25,7 +25,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -46,7 +45,6 @@ import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Base class for all Exchange operations that use a POST to talk to the server.
@@ -197,7 +195,11 @@ public abstract class EasOperation {
                         break;
                 }
                 // If we're here, then we had a IOException that's not from a stop request.
-                LogUtils.e(LOG_TAG, e, "Exception while sending request");
+                String message = e.getMessage();
+                if (message == null) {
+                    message = "(no message)";
+                }
+                LogUtils.i(LOG_TAG, "IOException while sending request: %s", message);
                 if (syncResult != null) {
                     ++syncResult.stats.numIoExceptions;
                 }
@@ -545,7 +547,6 @@ public abstract class EasOperation {
     /**
      * Issue a {@link android.content.ContentResolver#requestSync} for a specific mailbox.
      * @param amAccount The {@link android.accounts.Account} for the account we're pinging.
-     * @param authority The authority for the mailbox that needs to sync.
      * @param mailboxId The id of the mailbox that needs to sync.
      */
     protected static void requestSyncForMailbox(final android.accounts.Account amAccount,
