@@ -82,7 +82,7 @@ public class Search {
         final Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
         // Sanity check; account might have been deleted?
         if (searchMailbox == null) return res;
-        final ContentValues statusValues = new ContentValues(1);
+        final ContentValues statusValues = new ContentValues(2);
         try {
             // Set the status of this mailbox to indicate query
             statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.LIVE_QUERY);
@@ -157,6 +157,7 @@ public class Search {
         } finally {
             // TODO: Handle error states
             // Set the status of this mailbox to indicate query over
+            statusValues.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
             statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.NO_SYNC);
             searchMailbox.update(context, statusValues);
         }
