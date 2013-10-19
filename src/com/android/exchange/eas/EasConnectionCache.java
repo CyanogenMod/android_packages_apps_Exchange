@@ -85,7 +85,7 @@ public class EasConnectionCache {
      */
     private EmailClientConnectionManager createConnectionManager(final Context context,
             final HostAuth hostAuth) {
-        LogUtils.d(Eas.LOG_TAG, "Creating connection for HostAuth %d", hostAuth.mId);
+        LogUtils.d(Eas.LOG_TAG, "Creating new connection manager for HostAuth %d", hostAuth.mId);
         final HttpParams params = new BasicHttpParams();
         params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
         params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
@@ -107,18 +107,19 @@ public class EasConnectionCache {
         if (connectionManager != null) {
             final long lifetime = now - mConnectionCreationTimes.get(hostAuth.mId);
             if (lifetime > MAX_LIFETIME) {
-                LogUtils.d(Eas.LOG_TAG, "Aging out connection for HostAuth %d", hostAuth.mId);
+                LogUtils.d(Eas.LOG_TAG, "Aging out connection manager for HostAuth %d",
+                        hostAuth.mId);
                 uncacheConnectionManager(hostAuth);
                 connectionManager = null;
             }
         }
         if (connectionManager == null) {
-            LogUtils.d(Eas.LOG_TAG, "Creating new connection for HostAuth %d", hostAuth.mId);
             connectionManager = createConnectionManager(context, hostAuth);
             mConnectionMap.put(hostAuth.mId, connectionManager);
             mConnectionCreationTimes.put(hostAuth.mId, now);
         } else {
-            LogUtils.d(Eas.LOG_TAG, "Reusing cached connection for HostAuth %d", hostAuth.mId);
+            LogUtils.d(Eas.LOG_TAG, "Reusing cached connection manager for HostAuth %d",
+                    hostAuth.mId);
         }
         return connectionManager;
     }
@@ -150,7 +151,7 @@ public class EasConnectionCache {
      * @param hostAuth The {@link HostAuth} whose connection manager should be deleted.
      */
     public synchronized void uncacheConnectionManager(final HostAuth hostAuth) {
-        LogUtils.d(Eas.LOG_TAG, "Uncaching connection for HostAuth %d", hostAuth.mId);
+        LogUtils.d(Eas.LOG_TAG, "Uncaching connection manager for HostAuth %d", hostAuth.mId);
         EmailClientConnectionManager connectionManager = mConnectionMap.get(hostAuth.mId);
         if (connectionManager != null) {
             connectionManager.shutdown();

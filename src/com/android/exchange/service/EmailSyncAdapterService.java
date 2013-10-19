@@ -295,7 +295,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // TODO: if (pingStatus == PingParser.STATUS_FAILED), notify UI.
             // TODO: if (pingStatus == PingParser.STATUS_REQUEST_TOO_MANY_FOLDERS), notify UI.
 
-            if (pingStatus == EasOperation.RESULT_REQUEST_FAILURE) {
+            // TODO: Should this just re-request ping if status < 0? This would do the wrong thing
+            // for e.g. auth errors, though.
+            if (pingStatus == EasOperation.RESULT_REQUEST_FAILURE ||
+                    pingStatus == EasOperation.RESULT_OTHER_FAILURE) {
                 // Request a new ping through the SyncManager. This will do the right thing if the
                 // exception was due to loss of network connectivity, etc. (i.e. it will wait for
                 // network to restore and then request it).
