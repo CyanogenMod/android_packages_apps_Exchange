@@ -736,6 +736,12 @@ public class EmailSyncParser extends AbstractSyncParser {
                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mMailbox.mId);
     }
 
+    @Override
+    public boolean parse() throws IOException, CommandStatusException {
+        final boolean result = super.parse();
+        return result || fetchNeeded();
+    }
+
     /**
      * Commit all changes. This results in a Binder IPC call which has constraint on the size of
      * the data, the docs say it currently 1MB. We set a limit to the size of the message we fetch
@@ -797,10 +803,10 @@ public class EmailSyncParser extends AbstractSyncParser {
             // If we find one, we do two things atomically: 1) set the body text for the
             // message, and 2) mark the message loaded (i.e. completely loaded)
             if (id != null) {
-                userLog("Fetched body successfully for ", id);
+                LogUtils.i(TAG, "Fetched body successfully for %s", id);
                 final String[] bindArgument = new String[] {id};
                 ops.add(ContentProviderOperation.newUpdate(EmailContent.Body.CONTENT_URI)
-                        .withSelection(EmailContent.Body.MESSAGE_KEY + "=?", bindArgument)
+                        .withSelection(EmailContent.Body.SELECTION_BY_MESSAGE_KEY, bindArgument)
                         .withValue(EmailContent.Body.TEXT_CONTENT, msg.mText)
                         .build());
                 ops.add(ContentProviderOperation.newUpdate(EmailContent.Message.CONTENT_URI)
