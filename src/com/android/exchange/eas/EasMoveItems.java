@@ -124,9 +124,23 @@ public class EasMoveItems extends EasOperation {
     private void processResponse(final MessageMove request, final MoveResponse response) {
         // TODO: Eventually this should use a transaction.
         // TODO: Improve how the parser reports statuses and how we handle them here.
-        if (!response.sourceMessageId.equals(request.getServerId())) {
-            // TODO: This is bad, but I think we need to respect the response anyway.
-            LogUtils.e(LOG_TAG, "Got a response for a message we didn't request");
+
+        final String sourceMessageId;
+
+        if (response.sourceMessageId == null) {
+            // The response didn't contain SrcMsgId, despite it being required.
+            LogUtils.e(LOG_TAG,
+                    "MoveItems response for message %d has no SrcMsgId, using request's server id",
+                    request.getMessageId());
+            sourceMessageId = request.getServerId();
+        } else {
+            sourceMessageId = response.sourceMessageId;
+            if (!sourceMessageId.equals(request.getServerId())) {
+                // TODO: This is bad, but we still need to process the response. Just log for now.
+                LogUtils.e(LOG_TAG,
+                        "MoveItems response for message %d has SrcMsgId != request's server id",
+                        request.getMessageId());
+            }
         }
 
         final ContentValues cv = new ContentValues(1);
@@ -134,8 +148,7 @@ public class EasMoveItems extends EasOperation {
             // Restore the old mailbox id
             cv.put(EmailContent.MessageColumns.MAILBOX_KEY, request.getSourceFolderKey());
         } else if (response.moveStatus == MoveItemsParser.STATUS_CODE_SUCCESS) {
-            if (response.newMessageId != null
-                    && !response.newMessageId.equals(response.sourceMessageId)) {
+            if (response.newMessageId != null && !response.newMessageId.equals(sourceMessageId)) {
                 cv.put(EmailContent.SyncColumns.SERVER_ID, response.newMessageId);
             }
         }
