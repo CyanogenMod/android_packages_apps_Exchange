@@ -36,10 +36,12 @@ import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.mail.utils.LogUtils;
+import com.google.common.collect.Sets;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -373,14 +375,14 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         boolean hasAttendees = false;
         final boolean isChange = entityValues.containsKey(Events._SYNC_ID);
         final boolean allDay =
-            CalendarUtilities.getIntegerValueAsBoolean(entityValues, Events.ALL_DAY);
+                CalendarUtilities.getIntegerValueAsBoolean(entityValues, Events.ALL_DAY);
         final TimeZone localTimeZone = TimeZone.getDefault();
 
         // NOTE: Exchange 2003 (EAS 2.5) seems to require the "exception deleted" and "exception
         // start time" data before other data in exceptions.  Failure to do so results in a
         // status 6 error during sync
         if (isException) {
-           // Send exception deleted flag if necessary
+            // Send exception deleted flag if necessary
             final Integer deleted = entityValues.getAsInteger(Events.DELETED);
             final boolean isDeleted = deleted != null && deleted == 1;
             final Integer eventStatus = entityValues.getAsInteger(Events.STATUS);
@@ -406,8 +408,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             Long originalTime = entityValues.getAsLong(Events.ORIGINAL_INSTANCE_TIME);
             if (originalTime != null) {
                 final boolean originalAllDay =
-                    CalendarUtilities.getIntegerValueAsBoolean(entityValues,
-                            Events.ORIGINAL_ALL_DAY);
+                        CalendarUtilities.getIntegerValueAsBoolean(entityValues,
+                                Events.ORIGINAL_ALL_DAY);
                 if (originalAllDay) {
                     // For all day events, we need our local all-day time
                     originalTime =
@@ -494,132 +496,131 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             if (rrule != null) {
                 CalendarUtilities.recurrenceFromRrule(rrule, startTime, localTimeZone, s);
             }
+        }
+        // Handle associated data EXCEPT for attendees, which have to be grouped
+        final ArrayList<Entity.NamedContentValues> subValues = entity.getSubValues();
+        // The earliest of the reminders for this Event; we can only send one reminder...
+        int earliestReminder = -1;
+        for (final Entity.NamedContentValues ncv: subValues) {
+            final Uri ncvUri = ncv.uri;
+            final ContentValues ncvValues = ncv.values;
+            if (ncvUri.equals(ExtendedProperties.CONTENT_URI)) {
+                final String propertyName = ncvValues.getAsString(ExtendedProperties.NAME);
+                final String propertyValue = ncvValues.getAsString(ExtendedProperties.VALUE);
+                if (TextUtils.isEmpty(propertyValue)) {
+                    continue;
+                }
+                if (propertyName.equals(EXTENDED_PROPERTY_CATEGORIES)) {
+                    // Send all the categories back to the server
+                    // We've saved them as a String of delimited tokens
+                    final StringTokenizer st =
+                            new StringTokenizer(propertyValue, CATEGORY_TOKENIZER_DELIMITER);
+                    if (st.countTokens() > 0) {
+                        s.start(Tags.CALENDAR_CATEGORIES);
+                        while (st.hasMoreTokens()) {
+                            s.data(Tags.CALENDAR_CATEGORY, st.nextToken());
+                        }
+                        s.end();
+                    }
+                }
+            } else if (ncvUri.equals(Reminders.CONTENT_URI)) {
+                Integer mins = ncvValues.getAsInteger(Reminders.MINUTES);
+                if (mins != null) {
+                    // -1 means "default", which for Exchange, is 30
+                    if (mins < 0) {
+                        mins = 30;
+                    }
+                    // Save this away if it's the earliest reminder (greatest minutes)
+                    if (mins > earliestReminder) {
+                        earliestReminder = mins;
+                    }
+                }
+            }
+        }
 
-            // Handle associated data EXCEPT for attendees, which have to be grouped
-            final ArrayList<Entity.NamedContentValues> subValues = entity.getSubValues();
-            // The earliest of the reminders for this Event; we can only send one reminder...
-            int earliestReminder = -1;
-            for (final Entity.NamedContentValues ncv: subValues) {
-                final Uri ncvUri = ncv.uri;
-                final ContentValues ncvValues = ncv.values;
-                if (ncvUri.equals(ExtendedProperties.CONTENT_URI)) {
-                    final String propertyName = ncvValues.getAsString(ExtendedProperties.NAME);
-                    final String propertyValue = ncvValues.getAsString(ExtendedProperties.VALUE);
-                    if (TextUtils.isEmpty(propertyValue)) {
+        // If we have a reminder, send it to the server
+        if (earliestReminder >= 0) {
+            s.data(Tags.CALENDAR_REMINDER_MINS_BEFORE, Integer.toString(earliestReminder));
+        }
+
+        // We've got to send a UID, unless this is an exception.  If the event is new, we've
+        // generated one; if not, we should have gotten one from extended properties.
+        if (clientId != null) {
+            s.data(Tags.CALENDAR_UID, clientId);
+        }
+
+        // Handle attendee data here; keep track of organizer and stream it afterward
+        String organizerName = null;
+        String organizerEmail = null;
+        for (final Entity.NamedContentValues ncv: subValues) {
+            final Uri ncvUri = ncv.uri;
+            final ContentValues ncvValues = ncv.values;
+            if (ncvUri.equals(Attendees.CONTENT_URI)) {
+                final Integer relationship =
+                        ncvValues.getAsInteger(Attendees.ATTENDEE_RELATIONSHIP);
+                // If there's no relationship, we can't create this for EAS
+                // Similarly, we need an attendee email for each invitee
+                if (relationship != null && ncvValues.containsKey(Attendees.ATTENDEE_EMAIL)) {
+                    // Organizer isn't among attendees in EAS
+                    if (relationship == Attendees.RELATIONSHIP_ORGANIZER) {
+                        organizerName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
+                        organizerEmail = ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
                         continue;
                     }
-                    if (propertyName.equals(EXTENDED_PROPERTY_CATEGORIES)) {
-                        // Send all the categories back to the server
-                        // We've saved them as a String of delimited tokens
-                        final StringTokenizer st =
-                            new StringTokenizer(propertyValue, CATEGORY_TOKENIZER_DELIMITER);
-                        if (st.countTokens() > 0) {
-                            s.start(Tags.CALENDAR_CATEGORIES);
-                            while (st.hasMoreTokens()) {
-                                s.data(Tags.CALENDAR_CATEGORY, st.nextToken());
-                            }
-                            s.end();
-                        }
+                    if (!hasAttendees) {
+                        s.start(Tags.CALENDAR_ATTENDEES);
+                        hasAttendees = true;
                     }
-                } else if (ncvUri.equals(Reminders.CONTENT_URI)) {
-                    Integer mins = ncvValues.getAsInteger(Reminders.MINUTES);
-                    if (mins != null) {
-                        // -1 means "default", which for Exchange, is 30
-                        if (mins < 0) {
-                            mins = 30;
-                        }
-                        // Save this away if it's the earliest reminder (greatest minutes)
-                        if (mins > earliestReminder) {
-                            earliestReminder = mins;
-                        }
+                    s.start(Tags.CALENDAR_ATTENDEE);
+                    final String attendeeEmail =
+                            ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
+                    String attendeeName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
+                    if (attendeeName == null) {
+                        attendeeName = attendeeEmail;
                     }
+                    s.data(Tags.CALENDAR_ATTENDEE_NAME, attendeeName);
+                    s.data(Tags.CALENDAR_ATTENDEE_EMAIL, attendeeEmail);
+                    if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+                        s.data(Tags.CALENDAR_ATTENDEE_TYPE, "1"); // Required
+                    }
+                    s.end(); // Attendee
                 }
             }
+        }
+        if (hasAttendees) {
+            s.end();  // Attendees
+        }
 
-            // If we have a reminder, send it to the server
-            if (earliestReminder >= 0) {
-                s.data(Tags.CALENDAR_REMINDER_MINS_BEFORE, Integer.toString(earliestReminder));
-            }
+        // Get busy status from availability
+        final int availability = entityValues.getAsInteger(Events.AVAILABILITY);
+        final int busyStatus = CalendarUtilities.busyStatusFromAvailability(availability);
+        s.data(Tags.CALENDAR_BUSY_STATUS, Integer.toString(busyStatus));
 
-            // We've got to send a UID, unless this is an exception.  If the event is new, we've
-            // generated one; if not, we should have gotten one from extended properties.
-            if (clientId != null) {
-                s.data(Tags.CALENDAR_UID, clientId);
-            }
+        // Meeting status, 0 = appointment, 1 = meeting, 3 = attendee
+        // In JB, organizer won't be an attendee
+        if (organizerEmail == null && entityValues.containsKey(Events.ORGANIZER)) {
+            organizerEmail = entityValues.getAsString(Events.ORGANIZER);
+        }
+        if (mAccount.mEmailAddress.equalsIgnoreCase(organizerEmail)) {
+            s.data(Tags.CALENDAR_MEETING_STATUS, hasAttendees ? "1" : "0");
+        } else {
+            s.data(Tags.CALENDAR_MEETING_STATUS, "3");
+        }
 
-            // Handle attendee data here; keep track of organizer and stream it afterward
-            String organizerName = null;
-            String organizerEmail = null;
-            for (final Entity.NamedContentValues ncv: subValues) {
-                final Uri ncvUri = ncv.uri;
-                final ContentValues ncvValues = ncv.values;
-                if (ncvUri.equals(Attendees.CONTENT_URI)) {
-                    final Integer relationship =
-                            ncvValues.getAsInteger(Attendees.ATTENDEE_RELATIONSHIP);
-                    // If there's no relationship, we can't create this for EAS
-                    // Similarly, we need an attendee email for each invitee
-                    if (relationship != null && ncvValues.containsKey(Attendees.ATTENDEE_EMAIL)) {
-                        // Organizer isn't among attendees in EAS
-                        if (relationship == Attendees.RELATIONSHIP_ORGANIZER) {
-                            organizerName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
-                            organizerEmail = ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
-                            continue;
-                        }
-                        if (!hasAttendees) {
-                            s.start(Tags.CALENDAR_ATTENDEES);
-                            hasAttendees = true;
-                        }
-                        s.start(Tags.CALENDAR_ATTENDEE);
-                        final String attendeeEmail =
-                                ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
-                        String attendeeName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
-                        if (attendeeName == null) {
-                            attendeeName = attendeeEmail;
-                        }
-                        s.data(Tags.CALENDAR_ATTENDEE_NAME, attendeeName);
-                        s.data(Tags.CALENDAR_ATTENDEE_EMAIL, attendeeEmail);
-                        if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
-                            s.data(Tags.CALENDAR_ATTENDEE_TYPE, "1"); // Required
-                        }
-                        s.end(); // Attendee
-                     }
-                }
-            }
-            if (hasAttendees) {
-                s.end();  // Attendees
-            }
+        // For Exchange 2003, only upsync if the event is new
+        if (((getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) || !isChange) &&
+                organizerName != null) {
+            s.data(Tags.CALENDAR_ORGANIZER_NAME, organizerName);
+        }
 
-            // Get busy status from availability
-            final int availability = entityValues.getAsInteger(Events.AVAILABILITY);
-            final int busyStatus = CalendarUtilities.busyStatusFromAvailability(availability);
-            s.data(Tags.CALENDAR_BUSY_STATUS, Integer.toString(busyStatus));
-
-            // Meeting status, 0 = appointment, 1 = meeting, 3 = attendee
-            // In JB, organizer won't be an attendee
-            if (organizerEmail == null && entityValues.containsKey(Events.ORGANIZER)) {
-                organizerEmail = entityValues.getAsString(Events.ORGANIZER);
-            }
-            if (mAccount.mEmailAddress.equalsIgnoreCase(organizerEmail)) {
-                s.data(Tags.CALENDAR_MEETING_STATUS, hasAttendees ? "1" : "0");
-            } else {
-                s.data(Tags.CALENDAR_MEETING_STATUS, "3");
-            }
-
-            // For Exchange 2003, only upsync if the event is new
-            if (((getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) || !isChange) &&
-                    organizerName != null) {
-                s.data(Tags.CALENDAR_ORGANIZER_NAME, organizerName);
-            }
-
-            // NOTE: Sensitivity must NOT be sent to the server for exceptions in Exchange 2003
-            // The result will be a status 6 failure during sync
-            final Integer visibility = entityValues.getAsInteger(Events.ACCESS_LEVEL);
-            if (visibility != null) {
-                s.data(Tags.CALENDAR_SENSITIVITY, decodeVisibility(visibility));
-            } else {
-                // Default to private if not set
-                s.data(Tags.CALENDAR_SENSITIVITY, "1");
-            }
+        // NOTE: Sensitivity must NOT be sent to the server for exceptions in Exchange 2003
+        // The result will be a status 6 failure during sync
+        final Integer visibility = entityValues.getAsInteger(Events.ACCESS_LEVEL);
+        if (visibility != null) {
+            s.data(Tags.CALENDAR_SENSITIVITY, decodeVisibility(visibility));
+        } else {
+            // Default to private if not set
+            s.data(Tags.CALENDAR_SENSITIVITY, "1");
         }
     }
 
@@ -655,12 +656,6 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 // attendees about it
                 final long exEventId = exValues.getAsLong(Events._ID);
 
-                // Copy subvalues into the exception; otherwise, we won't see the
-                // attendees when preparing the message
-                for (final Entity.NamedContentValues ncv: entity.getSubValues()) {
-                    exEntity.addSubValue(ncv.uri, ncv.values);
-                }
-
                 final int flag;
                 if ((getInt(exValues, Events.DELETED) == 1) ||
                         (getInt(exValues, Events.STATUS) == Events.STATUS_CANCELED)) {
@@ -695,6 +690,35 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     if (msg != null) {
                         LogUtils.d(TAG, "Queueing exception update to %s", msg.mTo);
                         mOutgoingMailList.add(msg);
+                    }
+
+                    // Also send out a cancellation email to removed attendees
+                    final Entity removedEntity = new Entity(exValues);
+                    final Set<String> exAttendeeEmails = Sets.newHashSet();
+                    // Find all the attendees from the updated event
+                    for (final Entity.NamedContentValues ncv: exEntity.getSubValues()) {
+                        if (ncv.uri.equals(Attendees.CONTENT_URI)) {
+                            exAttendeeEmails.add(ncv.values.getAsString(Attendees.ATTENDEE_EMAIL));
+                        }
+                    }
+                    // Find the ones left out from the previous event and add them to the new entity
+                    for (final Entity.NamedContentValues ncv: entity.getSubValues()) {
+                        if (ncv.uri.equals(Attendees.CONTENT_URI)) {
+                            final String attendeeEmail =
+                                    ncv.values.getAsString(Attendees.ATTENDEE_EMAIL);
+                            if (!exAttendeeEmails.contains(attendeeEmail)) {
+                                removedEntity.addSubValue(ncv.uri, ncv.values);
+                            }
+                        }
+                    }
+
+                    // Now send a cancellation email
+                    final Message removedMessage =
+                            CalendarUtilities.createMessageForEntity(mContext, removedEntity,
+                                    Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, mAccount);
+                    if (removedMessage != null) {
+                        LogUtils.d(TAG, "Queueing cancellation for removed attendees");
+                        mOutgoingMailList.add(removedMessage);
                     }
                 }
             }
