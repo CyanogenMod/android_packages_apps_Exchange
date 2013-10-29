@@ -400,12 +400,11 @@ public abstract class EasSyncHandler extends EasServerConnection {
         // TODO: Properly handle UI status updates.
         //syncMailboxStatus(EmailServiceStatus.IN_PROGRESS, 0);
         int result = SYNC_RESULT_MORE_AVAILABLE;
-        int numWindows = 0;
+        int numWindows = 1;
         String key = getSyncKey();
         while (result == SYNC_RESULT_MORE_AVAILABLE) {
             result = performOneSync(syncResult, numWindows);
             // TODO: Clear pending request queue.
-            ++numWindows;
             final String newKey = getSyncKey();
             if (result == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
                 LogUtils.e(TAG,
