@@ -238,7 +238,7 @@ public class EasSync extends EasOperation {
         return sb.toString();
     }
 
-    private final void addOneCollectionToRequest(final Serializer s, final int collectionType,
+    private void addOneCollectionToRequest(final Serializer s, final int collectionType,
             final String mailboxServerId, final String mailboxSyncKey,
             final List<MessageStateChange> stateChanges) throws IOException {
 
@@ -248,7 +248,13 @@ public class EasSync extends EasOperation {
         }
         s.data(Tags.SYNC_SYNC_KEY, mailboxSyncKey);
         s.data(Tags.SYNC_COLLECTION_ID, mailboxServerId);
-        s.data(Tags.SYNC_GET_CHANGES, "0");
+        if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            // Exchange 2003 doesn't understand the concept of setting this flag to false. The
+            // documentation indicates that its presence alone, with no value, requests a two-way
+            // sync.
+            // TODO: handle downsync here so we don't need this at all
+            s.data(Tags.SYNC_GET_CHANGES, "0");
+        }
         s.start(Tags.SYNC_COMMANDS);
         for (final MessageStateChange change : stateChanges) {
             s.start(Tags.SYNC_CHANGE);
