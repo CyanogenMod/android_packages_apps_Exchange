@@ -516,8 +516,16 @@ public abstract class EasOperation {
         if (deviceId != null) {
             s.data(Tags.SETTINGS_IMEI, tm.getDeviceId());
         }
-        // TODO: What should we use for friendly name?
-        //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
+        // Set the device friendly name, if we have one.
+        // TODO: Longer term, this should be done without a provider call.
+        final Bundle bundle = mContext.getContentResolver().call(
+                EmailContent.CONTENT_URI, EmailContent.DEVICE_FRIENDLY_NAME, null, null);
+        if (bundle != null) {
+            final String friendlyName = bundle.getString(EmailContent.DEVICE_FRIENDLY_NAME);
+            if (!TextUtils.isEmpty(friendlyName)) {
+                s.data(Tags.SETTINGS_FRIENDLY_NAME, friendlyName);
+            }
+        }
         s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
         if (phoneNumber != null) {
             s.data(Tags.SETTINGS_PHONE_NUMBER, phoneNumber);
