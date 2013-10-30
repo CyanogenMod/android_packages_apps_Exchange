@@ -25,6 +25,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -489,7 +490,18 @@ public abstract class EasOperation {
         if (tm != null) {
             deviceId = tm.getDeviceId();
             phoneNumber = tm.getLine1Number();
-            operator = tm.getNetworkOperator();
+            // TODO: This is not perfect and needs to be improved, for at least two reasons:
+            // 1) SIM cards can override this name.
+            // 2) We don't resend this info to the server when we change networks.
+            final String operatorName = tm.getNetworkOperatorName();
+            final String operatorNumber = tm.getNetworkOperator();
+            if (!TextUtils.isEmpty(operatorName) && !TextUtils.isEmpty(operatorNumber)) {
+                operator = operatorName + " (" + operatorNumber + ")";
+            } else if (!TextUtils.isEmpty(operatorName)) {
+                operator = operatorName;
+            } else {
+                operator = operatorNumber;
+            }
         } else {
             deviceId = null;
             phoneNumber = null;
