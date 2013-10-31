@@ -26,6 +26,7 @@ import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Parser.EmptyStreamException;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
@@ -496,9 +497,16 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                 return sendOneMessage(message, null);
             } else {
                 if (resp.isAuthError()) {
+                    LogUtils.d(LogUtils.TAG, "Got auth error from server during outbox sync");
                     return false; // TODO: Handle SyncStatus.FAILURE_LOGIN;
                 } else if (resp.isProvisionError()) {
+                    LogUtils.d(LogUtils.TAG, "Got provision error from server during outbox sync.");
                     return false; // TODO: Handle SyncStatus.FAILURE_SECURITY;
+                } else {
+                    // TODO: Handle some other error
+                    LogUtils.d(LogUtils.TAG,
+                            "Got other HTTP error from server during outbox sync: %d", code);
+                    return false;
                 }
             }
         } finally {
