@@ -125,7 +125,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
         if (mailboxIds == null) {
             // We weren't given any particular mailboxId, specify a sync for all contacts.
             mailExtras = new Bundle();
-            mailExtras.putInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE, Mailbox.TYPE_CALENDAR);
+            mailExtras.putInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE, Mailbox.TYPE_CONTACTS);
         } else {
             // Otherwise, add all of the mailboxes specified in the original sync extras.
             mailExtras = Mailbox.createSyncBundle(mailboxIds);
