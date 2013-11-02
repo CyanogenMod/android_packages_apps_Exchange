@@ -75,7 +75,13 @@ public class EasMoveItems extends EasOperation {
                 // response state really means.
                 status = MoveItemsParser.STATUS_CODE_RETRY;
             }
-            final int index = status - 1;
+            final int index;
+            if (status <= 0) {
+                LogUtils.e(LOG_TAG, "MoveItems gave us an invalid status %d", status);
+                index = MoveItemsParser.STATUS_CODE_RETRY - 1;
+            } else {
+                index = status - 1;
+            }
             messageIds[index][counts[index]] = mMove.getMessageId();
             ++counts[index];
         }
