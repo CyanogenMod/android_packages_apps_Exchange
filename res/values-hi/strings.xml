@@ -32,8 +32,8 @@
     <string name="exception_cancel" msgid="6160117429428313805">"यह ईवेंट इसके लिए रद्द कर दिया गया है: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="3397583105901142050">"इस ईवेंट का विवरण इसके लिए ‍बदल दिया गया है: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"संग्रहण कार्ड को अनुमति न दें"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"अहस्ताक्षरित एप्स की अनुमति न दें"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"अहस्ता. एप्लि. इंस्‍टॉलर को अनुमति न दें"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"अहस्ताक्षरित ऐप्स  की अनुमति न दें"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"अहस्ता. ऐप्स इंस्‍टॉलर को अनुमति न दें"</string>
     <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Wi-Fi की अनुमति न दें"</string>
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"पाठ संदेश सेवा की अनुमति न दें"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"POP3 या IMAP खातों को अनुमति न दें"</string>
@@ -44,8 +44,8 @@
     <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"इंटरनेट साझाकरण की अनुमति न दें"</string>
     <string name="policy_require_smime" msgid="673557150920820590">"SMIME संदेश आवश्‍यक"</string>
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Bluetooth का उपयोग प्रतिबंधित करें"</string>
-    <string name="policy_app_blacklist" msgid="8169194058285873461">"निर्दिष्ट एप्स की अनुमति न दें"</string>
-    <string name="policy_app_whitelist" msgid="3670572644342165306">"केवल निर्दिष्ट एप्स की अनुमति दें"</string>
+    <string name="policy_app_blacklist" msgid="8169194058285873461">"निर्दिष्ट ऐप्स  की अनुमति न दें"</string>
+    <string name="policy_app_whitelist" msgid="3670572644342165306">"केवल निर्दिष्ट ऐप्स  की अनुमति दें"</string>
     <string name="policy_text_truncation" msgid="1783448050735715818">"पाठ ईमेल का आकार प्रतिबंधित करें"</string>
     <string name="policy_html_truncation" msgid="102158408055486343">"HTML ईमेल का आकार प्रतिबंधित करें"</string>
     <string name="policy_require_sd_encryption" msgid="366468398301273342">"SD कार्ड एन्‍क्रिप्शन आवश्‍यक"</string>
