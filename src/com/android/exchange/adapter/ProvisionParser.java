@@ -18,7 +18,8 @@ package com.android.exchange.adapter;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.res.Resources;
-import android.os.storage.StorageManager;
+import android.os.Environment;
+import android.support.v4.content.ContextCompat;
 
 import com.android.emailcommon.provider.Policy;
 import com.android.exchange.Eas;
@@ -31,10 +32,9 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 /**
@@ -616,31 +616,8 @@ public class ProvisionParser extends Parser {
      * TODO: Rewrite this when an appropriate API is available from the framework
      */
     private boolean hasRemovableStorage() {
-        try {
-            StorageManager sm = (StorageManager)mContext.getSystemService(Context.STORAGE_SERVICE);
-            Class<?> svClass = Class.forName("android.os.storage.StorageVolume");
-            Class<?> svManager = Class.forName("android.os.storage.StorageManager");
-            Method gvl = svManager.getDeclaredMethod("getVolumeList");
-            Object[] volumeList = (Object[]) gvl.invoke(sm);
-            for (Object volume: volumeList) {
-                Method isRemovable = svClass.getDeclaredMethod("isRemovable");
-                Method getDescription = svClass.getDeclaredMethod("getDescription");
-                String desc = (String)getDescription.invoke(volume);
-                if ((Boolean)isRemovable.invoke(volume)) {
-                    log("Removable: " + desc);
-                    return true;
-                } else {
-                    log("Not Removable: " + desc);
-                }
-            }
-            return false;
-        } catch (ClassNotFoundException e) {
-        } catch (NoSuchMethodException e) {
-        } catch (IllegalArgumentException e) {
-        } catch (IllegalAccessException e) {
-        } catch (InvocationTargetException e) {
-        }
-        // To be safe, we'll always indicate that there IS removable storage
-        return true;
+        final File[] cacheDirs = ContextCompat.getExternalCacheDirs(mContext);
+        return Environment.isExternalStorageRemovable()
+                || (cacheDirs != null && cacheDirs.length > 1);
     }
 }
