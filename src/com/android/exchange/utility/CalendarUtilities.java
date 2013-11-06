@@ -1520,7 +1520,7 @@ public class CalendarUtilities {
         int attendeeStatus;
         switch (responseType) {
             case RESPONSE_TYPE_NOT_RESPONDED:
-                attendeeStatus = Attendees.ATTENDEE_STATUS_NONE;
+                attendeeStatus = Attendees.ATTENDEE_STATUS_INVITED;
                 break;
             case RESPONSE_TYPE_ACCEPTED:
                 attendeeStatus = Attendees.ATTENDEE_STATUS_ACCEPTED;
