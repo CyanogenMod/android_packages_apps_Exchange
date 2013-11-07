@@ -474,6 +474,12 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                 row[contactIdIndex] = contactId;
             }
 
+            if (lookupIndex != -1) {
+                // We use the packed string as our lookup key; it contains ALL of the gal data
+                // We do this because we are not able to provide a stable id to ContactsProvider
+                row[lookupIndex] = Uri.encode(galDataRow.toPackedString());
+            }
+
             if (isPhoneFilter) {
                 final Set<String> uniqueNumbers = new HashSet<String>();
 
@@ -505,11 +511,6 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                 if (idIndex != -1) {
                     row[idIndex] = id;
                 }
-                if (lookupIndex != -1) {
-                    // We use the packed string as our lookup key; it contains ALL of the gal data
-                    // We do this because we are not able to provide a stable id to ContactsProvider
-                    row[lookupIndex] = Uri.encode(galDataRow.toPackedString());
-                }
                 sortedResultsMap.put(new GalSortKey(sortName, id), row.clone());
                 id++;
             }
@@ -524,7 +525,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
     }
 
     private void addPhoneInfo(List<PhoneInfo> phones, String number, int type) {
-        if (number != null) {
+        if (!TextUtils.isEmpty(number)) {
             phones.add(new PhoneInfo(number, type));
         }
     }
