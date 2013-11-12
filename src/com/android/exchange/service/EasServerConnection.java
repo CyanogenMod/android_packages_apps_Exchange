@@ -79,7 +79,11 @@ public class EasServerConnection {
      */
     protected static final long COMMAND_TIMEOUT = 30 * DateUtils.SECOND_IN_MILLIS;
 
-    private static final String DEVICE_TYPE = "Android";
+    // Exchange server only accepts letter and digital as device type. Trim all
+    // other characters.
+    private static final String DEVICE_TYPE =
+            (Build.BRAND + Build.MODEL).replaceAll("[^a-zA-Z0-9]", "");
+
     private static final String USER_AGENT = DEVICE_TYPE + '/' + Build.VERSION.RELEASE + '-' +
         Eas.CLIENT_VERSION;
 
