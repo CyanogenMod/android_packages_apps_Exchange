@@ -90,6 +90,12 @@ public class EasAttachmentLoader extends EasServerConnection {
                     0);
             return;
         }
+        if (attachment.mLocation == null) {
+            LogUtils.e(TAG, "Attachment %d lacks a location", attachmentId);
+            doStatusCallback(callback, -1, attachmentId, EmailServiceStatus.ATTACHMENT_NOT_FOUND,
+                    0);
+            return;
+        }
         final Account account = Account.restoreAccountWithId(context, attachment.mAccountKey);
         if (account == null) {
             LogUtils.d(TAG, "Attachment %d has bad account key %d", attachment.mId,
