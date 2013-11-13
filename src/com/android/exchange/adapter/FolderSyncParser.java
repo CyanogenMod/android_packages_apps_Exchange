@@ -230,6 +230,7 @@ public class FolderSyncParser extends AbstractSyncParser {
                     if (CommandStatus.isDeniedAccess(status) ||
                             CommandStatus.isNeedsProvisioning(status) ||
                             (mAccount.mId == Account.NOT_SAVED)) {
+                        LogUtils.e(LogUtils.TAG, "FolderSync: Unknown status: " + status);
                         throw new CommandStatusException(status);
                     // Note that we need to catch both old-style (Eas.FOLDER_STATUS_INVALID_KEY)
                     // and EAS 14 style command status

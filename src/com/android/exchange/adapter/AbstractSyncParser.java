@@ -168,6 +168,7 @@ public abstract class AbstractSyncParser extends Parser {
                         // obvious that simply forcing another resync makes sense here.
                         moreAvailable = true;
                     } else {
+                        LogUtils.e(LogUtils.TAG, "Sync: Unknown status: " + status);
                         // Access, provisioning, transient, etc.
                         throw new CommandStatusException(status);
                     }
