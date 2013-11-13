@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.net.TrafficStats;
 import android.net.Uri;
 import android.text.format.DateUtils;
+import android.util.Log;
 
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.internet.Rfc822Output;
@@ -533,6 +534,7 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         try {
             fileStream = new FileOutputStream(tmpFile);
         } catch (final FileNotFoundException e) {
+            Log.e(LogUtils.TAG, "Failed to create message file", e);
             return false;
         }
         try {
@@ -541,15 +543,16 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                     smartSend ? smartSendInfo.mRequiredAtts : null;
             Rfc822Output.writeTo(mContext, message, fileStream, smartSend, true, attachments);
         } catch (final Exception e) {
-            // TODO: Handle file write errors.
+            Log.e(LogUtils.TAG, "Failed to write message file", e);
+            return false;
         } finally {
             try {
                 fileStream.close();
             } catch (final IOException e) {
-                // TODO: Should we do anything here, or is it ok to just proceed?
+                // should not happen
+                Log.e(LogUtils.TAG, "Failed to close file - should not happen", e);
             }
         }
-
         return true;
     }
 
