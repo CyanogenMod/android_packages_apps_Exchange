@@ -16,6 +16,7 @@
 
 package com.android.exchange.service;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.Notification.Builder;
 import android.app.NotificationManager;
@@ -32,6 +33,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
@@ -79,6 +81,10 @@ import java.util.HashSet;
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     private static final String TAG = Eas.LOG_TAG;
+
+    private static final String EXTRA_START_PING = "START_PING";
+    private static final String EXTRA_ACCOUNT_ID = "ACCOUNT_ID";
+    private static final long SYNC_ERROR_BACKOFF_MILLIS = 5 * DateUtils.MINUTE_IN_MILLIS;
 
     /**
      * The amount of time between periodic syncs intended to ensure that push hasn't died.
@@ -190,7 +196,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          * wants to push.
          * @param account The account whose ping is being modified.
          */
-        public synchronized void modifyPing(final Account account) {
+        public synchronized void modifyPing(final boolean lastSyncHadError,
+                final Account account) {
             // If a sync is currently running, it will start a ping when it's done, so there's no
             // need to do anything right now.
             if (isRunningSync(account.mId)) {
@@ -247,11 +254,28 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     // ping or sync might start first. It only works for startSync because sync is
                     // higher priority than ping (i.e. a ping can't start while a sync is pending)
                     // and only one sync can run at a time.
-                    final PingTask pingHandler = new PingTask(service, account, amAccount, this);
-                    mPingHandlers.put(account.mId, pingHandler);
-                    pingHandler.start();
-                    // Whenever we have a running ping, make sure this service stays running.
-                    service.startService(new Intent(service, EmailSyncAdapterService.class));
+                    if (lastSyncHadError) {
+                        // Schedule an alarm to set up the ping in 5 minutes
+                        final Intent intent = new Intent(service, EmailSyncAdapterService.class);
+                        intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
+                        intent.putExtra(EXTRA_START_PING, true);
+                        intent.putExtra(EXTRA_ACCOUNT_ID, account.mId);
+                        final PendingIntent pi = PendingIntent.getService(
+                                EmailSyncAdapterService.this, 0, intent,
+                                PendingIntent.FLAG_ONE_SHOT);
+                        final AlarmManager am = (AlarmManager)getSystemService(
+                                Context.ALARM_SERVICE);
+                        final long atTime = SystemClock.elapsedRealtime() +
+                                SYNC_ERROR_BACKOFF_MILLIS;
+                        am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, atTime, pi);
+                    } else {
+                        final PingTask pingHandler = new PingTask(service, account, amAccount,
+                                this);
+                        mPingHandlers.put(account.mId, pingHandler);
+                        pingHandler.start();
+                        // Whenever we have a running ping, make sure this service stays running.
+                        service.startService(new Intent(service, EmailSyncAdapterService.class));
+                    }
                 }
                 if (SCHEDULE_KICK) {
                     ContentResolver.addPeriodicSync(amAccount, EmailContent.AUTHORITY, extras,
@@ -271,10 +295,17 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
          * Updates the synchronization bookkeeping when a sync is done.
          * @param account The account whose sync just finished.
          */
-        public synchronized void syncComplete(final Account account) {
+        public synchronized void syncComplete(final boolean lastSyncHadError,
+                final Account account) {
+            LogUtils.d(TAG, "syncComplete, err: " + lastSyncHadError);
             mPingHandlers.remove(account.mId);
             // Syncs can interrupt pings, so we should check if we need to start one now.
-            modifyPing(account);
+            // If the last sync had a fatal error, we will not immediately recreate the ping.
+            // Instead, we'll set an alarm that will restart them in a few minutes. This prevents
+            // a battery draining spin if there is some kind of protocol error or other
+            // non-transient failure. (Actually, immediately pinging even for a transient error
+            // isn't great)
+            modifyPing(lastSyncHadError, account);
             stopServiceIfNoPings();
             notifyAll();
         }
@@ -514,7 +545,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     while (c.moveToNext()) {
                         final Account account = new Account();
                         account.restore(c);
-                        mSyncHandlerMap.modifyPing(account);
+                        mSyncHandlerMap.modifyPing(false, account);
                     }
                 } finally {
                     c.close();
@@ -575,6 +606,15 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 // if accounts disappear out from under us.
                 LogUtils.d(TAG, "Forced shutdown, killing process");
                 System.exit(-1);
+            } else if (intent.getBooleanExtra(EXTRA_START_PING, false)) {
+                LogUtils.d(TAG, "Restarting ping from alarm");
+                // We've been woken up by an alarm to restart our ping. This happens if a sync
+                // fails, rather that instantly starting the ping, we'll hold off for a few minutes.
+                final long accountId = intent.getLongExtra(EXTRA_ACCOUNT_ID, -1);
+                if (accountId != -1) {
+                    final Account account = Account.restoreAccountWithId(this, accountId);
+                    mSyncHandlerMap.modifyPing(false, account);
+                }
             }
         }
         return super.onStartCommand(intent, flags, startId);
@@ -659,7 +699,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             // If we're just twiddling the push, we do the lightweight thing and bail early.
             if (pushOnly && !isFolderSync) {
-                mSyncHandlerMap.modifyPing(account);
+                mSyncHandlerMap.modifyPing(false, account);
                 LogUtils.d(TAG, "onPerformSync: mailbox push only");
                 return;
             }
@@ -687,6 +727,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // pings to stop. It may not matter since the things that may have been twiddled might
             // not affect syncing.
 
+            boolean lastSyncHadError = false;
             if (mailboxIds != null) {
                 long numIoExceptions = 0;
                 long numAuthExceptions = 0;
@@ -727,8 +768,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     try {
                         final HashSet<String> authsToSync = getAuthsToSync(acct);
                         while (c.moveToNext()) {
-                            syncMailbox(context, cr, acct, account, c.getLong(0), extras,
-                                    syncResult, authsToSync, false);
+                            boolean success = syncMailbox(context, cr, acct, account, c.getLong(0),
+                                    extras, syncResult, authsToSync, false);
+                            if (!success) {
+                                lastSyncHadError = true;
+                            }
                         }
                     } finally {
                         c.close();
@@ -737,7 +781,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             }
 
             // Clean up the bookkeeping, including restarting ping if necessary.
-            mSyncHandlerMap.syncComplete(account);
+            mSyncHandlerMap.syncComplete(lastSyncHadError, account);
 
             // TODO: It may make sense to have common error handling here. Two possible mechanisms:
             // 1) performSync return value can signal some useful info.
@@ -806,9 +850,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             } else if(mailbox.isSyncable()) {
                 final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
                         acct, account, mailbox, extras, syncResult);
-                success = (syncHandler != null);
                 if (syncHandler != null) {
-                    syncHandler.performSync(syncResult);
+                    success = syncHandler.performSync(syncResult);
+                } else {
+                    success = false;
                 }
             } else {
                 success = false;
