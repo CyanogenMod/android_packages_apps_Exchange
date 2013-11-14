@@ -392,7 +392,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
      * any it.
      * @param syncResult
      */
-    public final void performSync(SyncResult syncResult) {
+    public final boolean performSync(SyncResult syncResult) {
         // Set up traffic stats bookkeeping.
         final int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
         TrafficStats.setThreadStatsTag(trafficFlags | getTrafficFlag());
@@ -416,5 +416,6 @@ public abstract class EasSyncHandler extends EasServerConnection {
             }
             key = newKey;
         }
+        return result == SYNC_RESULT_DONE;
     }
 }
