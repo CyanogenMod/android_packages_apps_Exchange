@@ -30,6 +30,7 @@ import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 
+import java.security.cert.CertificateException;
 import java.util.HashMap;
 
 /**
@@ -84,12 +85,18 @@ public class EasConnectionCache {
      * @return The {@link EmailClientConnectionManager} for hostAuth.
      */
     private EmailClientConnectionManager createConnectionManager(final Context context,
-            final HostAuth hostAuth) {
+            final HostAuth hostAuth)
+            throws CertificateException {
         LogUtils.d(Eas.LOG_TAG, "Creating new connection manager for HostAuth %d", hostAuth.mId);
         final HttpParams params = new BasicHttpParams();
         params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
         params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
-        return EmailClientConnectionManager.newInstance(context, params, hostAuth);
+        final EmailClientConnectionManager mgr =
+                EmailClientConnectionManager.newInstance(context, params, hostAuth);
+
+        mgr.registerClientCert(context, hostAuth);
+
+        return mgr;
     }
 
     /**
@@ -101,7 +108,8 @@ public class EasConnectionCache {
      * @return The {@link EmailClientConnectionManager} for hostAuth.
      */
     private synchronized EmailClientConnectionManager getCachedConnectionManager(
-            final Context context, final HostAuth hostAuth) {
+            final Context context, final HostAuth hostAuth)
+            throws CertificateException {
         EmailClientConnectionManager connectionManager = mConnectionMap.get(hostAuth.mId);
         final long now = System.currentTimeMillis();
         if (connectionManager != null) {
@@ -132,7 +140,8 @@ public class EasConnectionCache {
      * @return The {@link EmailClientConnectionManager} for hostAuth.
      */
     public EmailClientConnectionManager getConnectionManager(
-            final Context context, final HostAuth hostAuth) {
+            final Context context, final HostAuth hostAuth)
+            throws CertificateException {
         final EmailClientConnectionManager connectionManager;
         // We only cache the connection manager for persisted HostAuth objects, i.e. objects
         // whose ids are permanent and won't get reused by other transient HostAuth objects.

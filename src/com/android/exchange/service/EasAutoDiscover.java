@@ -24,6 +24,7 @@ import org.xmlpull.v1.XmlSerializer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.security.cert.CertificateException;
 
 /**
  * Performs Autodiscover for Exchange servers. This feature tries to find all the configuration
@@ -197,6 +198,9 @@ public class EasAutoDiscover extends EasServerConnection {
         try {
             resp = executePost(post);
         } catch (final IOException e) {
+            return null;
+        } catch (final CertificateException e) {
+            // TODO: Raise this error to the user or something
             return null;
         }
 
