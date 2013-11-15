@@ -41,6 +41,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 
 /**
@@ -449,6 +450,8 @@ public class EasOutboxSyncHandler extends EasServerConnection {
                     resp = sendHttpClientPost(cmd, entity, SEND_MAIL_TIMEOUT);
                 } catch (final IOException e) {
                     return false; // TODO: Handle SyncStatus.FAILURE_IO;
+                } catch (final CertificateException e) {
+                    return false;
                 }
 
             } finally {
