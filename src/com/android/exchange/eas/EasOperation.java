@@ -45,6 +45,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 
 /**
@@ -175,16 +176,7 @@ public abstract class EasOperation {
             // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                if (registerClientCert()) {
-                    response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
-                } else {
-                    LogUtils.e(LOG_TAG, "Problem registering client cert");
-                    // TODO: Is this the best stat to increment?
-                    if (syncResult != null) {
-                        ++syncResult.stats.numAuthExceptions;
-                    }
-                    return RESULT_CLIENT_CERTIFICATE_REQUIRED;
-                }
+                response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
             } catch (final IOException e) {
                 // If we were stopped, return the appropriate result code.
                 switch (mConnection.getStoppedReason()) {
@@ -205,6 +197,14 @@ public abstract class EasOperation {
                     ++syncResult.stats.numIoExceptions;
                 }
                 return RESULT_REQUEST_FAILURE;
+            } catch (final CertificateException e) {
+                LogUtils.i(LOG_TAG, "CertificateException while sending request: %s",
+                        e.getMessage());
+                if (syncResult != null) {
+                    // TODO: Is this the best stat to increment?
+                    ++syncResult.stats.numAuthExceptions;
+                }
+                return RESULT_CLIENT_CERTIFICATE_REQUIRED;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
                 // TODO: Switch away from ISEs.

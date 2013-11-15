@@ -40,6 +40,7 @@ import org.apache.http.HttpStatus;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.cert.CertificateException;
 
 /**
  * Base class for syncing a single collection from an Exchange server. A "collection" is a single
@@ -335,6 +336,10 @@ public abstract class EasSyncHandler extends EasServerConnection {
         } catch (final IOException e) {
             LogUtils.e(TAG, e, "Sync error:");
             syncResult.stats.numIoExceptions++;
+            return SYNC_RESULT_FAILED;
+        } catch (final CertificateException e) {
+            LogUtils.e(TAG, e, "Certificate error:");
+            syncResult.stats.numAuthExceptions++;
             return SYNC_RESULT_FAILED;
         }
 
