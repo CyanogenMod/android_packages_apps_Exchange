@@ -1043,6 +1043,7 @@ public class ContactsSyncParser extends AbstractSyncParser {
             if (cv != null && cvCompareString(cv, Event.START_DATE, birthday)) {
                 return;
             }
+            // TODO: Store the date in the format expected by EAS servers.
             long millis = Utility.parseEmailDateTimeToMillis(birthday);
             GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
             cal.setTimeInMillis(millis);
