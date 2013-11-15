@@ -41,7 +41,13 @@ import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Performs an Exchange sync for contacts.
@@ -331,6 +337,55 @@ public class EasContactsSyncHandler extends EasSyncHandler {
         }
     }
 
+
+    // This is to catch when the contacts provider has a date in this particular wrong format.
+    private static final SimpleDateFormat SHORT_DATE_FORMAT;
+    // Array of formats we check when parsing dates from the contacts provider.
+    private static final DateFormat[] DATE_FORMATS;
+    static {
+        SHORT_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        SHORT_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+        //TODO: We only handle two formatting types. The default contacts app will work with this
+        // but any other contacts apps might not. We can try harder to handle those guys too.
+        DATE_FORMATS = new DateFormat[] { Eas.DATE_FORMAT, SHORT_DATE_FORMAT };
+    }
+
+    /**
+     * Helper to add a date to the upsync. It reads the date as a string from the
+     * {@link ContentValues} that we got from the provider, tries to parse it using various formats,
+     * and formats it correctly to send to the server. If it can't parse it, it will omit the date
+     * in the upsync; since Birthdays (the only date currently supported by this class) can be
+     * ghosted, this means that any date changes on the client will NOT be reflected on the server.
+     * @param s The {@link Serializer} for this sync request
+     * @param cv The {@link ContentValues} with the data for this string.
+     * @param column The column name in cv to find the string.
+     * @param tag The tag to use when adding to s.
+     * @throws IOException
+     */
+    private static void sendDateData(final Serializer s, final ContentValues cv,
+            final String column, final int tag) throws IOException {
+        if (cv.containsKey(column)) {
+            final String value = cv.getAsString(column);
+            if (!TextUtils.isEmpty(value)) {
+                Date date;
+                // Check all the formats we know about to see if one of them works.
+                for (final DateFormat format : DATE_FORMATS) {
+                    try {
+                        date = format.parse(value);
+                        if (date != null) {
+                            // We got a legit date for this format, so send it up.
+                            s.data(tag, Eas.DATE_FORMAT.format(date));
+                            return;
+                        }
+                    } catch (final ParseException e) {
+                        // The date didn't match this particular format; keep looping.
+                    }
+                }
+            }
+        }
+    }
+
+
     /**
      * Add a nickname to the upsync.
      * @param s The {@link Serializer} for this sync request.
@@ -576,7 +631,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
      */
     private static void sendBirthday(final Serializer s, final ContentValues cv)
             throws IOException {
-        sendStringData(s, cv, Event.START_DATE, Tags.CONTACTS_BIRTHDAY);
+        sendDateData(s, cv, Event.START_DATE, Tags.CONTACTS_BIRTHDAY);
     }
 
     /**
