@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.cert.CertificateException;
 
 /**
  * Loads attachments from the Exchange server.
@@ -176,6 +177,10 @@ public class EasAttachmentLoader extends EasServerConnection {
             return sendHttpClientPost(cmd, bytes);
         } catch (final IOException e) {
             LogUtils.w(TAG, "IOException while loading attachment from server: %s", e.getMessage());
+            return null;
+        } catch (final CertificateException e) {
+            LogUtils.w(TAG, "CertificateException while loading attachment from server: %s",
+                    e.getMessage());
             return null;
         }
     }
