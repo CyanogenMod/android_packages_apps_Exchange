@@ -21,6 +21,10 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.mail.utils.LogUtils;
 
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.TimeZone;
+
 /**
  * Constants used throughout the EAS implementation are stored here.
  *
@@ -168,5 +172,12 @@ public class Eas {
             default:
                 return "Email";
         }
+    }
+
+    // Time format documented at http://msdn.microsoft.com/en-us/library/ee201818(v=exchg.80).aspx
+    public static final SimpleDateFormat DATE_FORMAT;
+    static {
+        DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.US);
+        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 }
