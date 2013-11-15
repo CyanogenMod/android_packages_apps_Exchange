@@ -28,6 +28,7 @@ import com.android.mail.utils.LogUtils;
 import org.apache.http.HttpStatus;
 
 import java.io.IOException;
+import java.security.cert.CertificateException;
 
 /**
  * Responds to a meeting request, both notifying the EAS server and sending email.
@@ -106,6 +107,8 @@ public class EasMeetingResponder extends EasServerConnection {
             responder.sendResponse(msg, mailboxServerId, easResponse);
         } catch (final IOException e) {
             LogUtils.e(TAG, "IOException: %s", e.getMessage());
+        } catch (final CertificateException e) {
+            LogUtils.e(TAG, "CertificateException: %s", e.getMessage());
         }
     }
 
@@ -187,7 +190,7 @@ public class EasMeetingResponder extends EasServerConnection {
      * @throws IOException
      */
     private void sendResponse(final Message msg, final String mailboxServerId, final int response)
-            throws IOException {
+            throws IOException, CertificateException {
         final Serializer s = new Serializer();
         s.start(Tags.MREQ_MEETING_RESPONSE).start(Tags.MREQ_REQUEST);
         s.data(Tags.MREQ_USER_RESPONSE, Integer.toString(response));
