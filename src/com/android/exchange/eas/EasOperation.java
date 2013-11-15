@@ -33,6 +33,7 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
@@ -220,20 +221,40 @@ public abstract class EasOperation {
                 final int result;
                 // First off, the success case.
                 if (response.isSuccess()) {
+                    int responseResult;
                     try {
-                        result = handleResponse(response, syncResult);
-                        if (result >= 0) {
-                            return result;
-                        }
+                        responseResult = handleResponse(response, syncResult);
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
                         if (syncResult != null) {
                             ++syncResult.stats.numIoExceptions;
                         }
                         return RESULT_REQUEST_FAILURE;
+                    } catch (final CommandStatusException e) {
+                        // For some operations (notably Sync & FolderSync), errors are signaled in
+                        // the payload of the response. These will have a HTTP 200 response, and the
+                        // error condition is only detected during response parsing.
+                        // The various parsers handle this by throwing a CommandStatusException.
+                        // TODO: Consider having the parsers return the errors instead of throwing.
+                        final int status = e.mStatus;
+                        LogUtils.e(LOG_TAG, "CommandStatusException: %s, %d", getCommand(), status);
+                        if (CommandStatusException.CommandStatus.isNeedsProvisioning(status)) {
+                            responseResult = RESULT_PROVISIONING_ERROR;
+                        } else if (CommandStatusException.CommandStatus.isDeniedAccess(status)) {
+                            responseResult = RESULT_FORBIDDEN;
+                        } else {
+                            responseResult = RESULT_OTHER_FAILURE;
+                        }
                     }
+                    result = responseResult;
                 } else {
                     result = RESULT_OTHER_FAILURE;
+                }
+
+                // Non-negative results indicate success. Return immediately and bypass the error
+                // handling.
+                if (result >= 0) {
+                    return result;
                 }
 
                 // If this operation has distinct handling for 403 errors, do that.
@@ -251,6 +272,8 @@ public abstract class EasOperation {
                     if (handleProvisionError(syncResult, mAccountId)) {
                         // The provisioning error has been taken care of, so we should re-do this
                         // request.
+                        LogUtils.d(LOG_TAG, "Provisioning error handled during %s, retrying",
+                                getCommand());
                         continue;
                     }
                     if (syncResult != null) {
@@ -376,7 +399,7 @@ public abstract class EasOperation {
      * @throws IOException
      */
     protected abstract int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException;
+            throws IOException, CommandStatusException;
 
     /**
      * The following functions may be overriden by a subclass, but most operations will not need
