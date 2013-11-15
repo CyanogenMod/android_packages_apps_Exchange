@@ -1982,6 +1982,15 @@ public class ExchangeService extends Service implements Runnable {
     @Override
     public void onDestroy() {
         log("!!! EAS ExchangeService, onDestroy");
+        // Stop receivers
+        if (mConnectivityReceiver != null) {
+            unregisterReceiver(mConnectivityReceiver);
+            mConnectivityReceiver = null;
+        }
+        if (mBackgroundDataSettingReceiver != null) {
+            unregisterReceiver(mBackgroundDataSettingReceiver);
+            mBackgroundDataSettingReceiver = null;
+        }
         // Handle shutting down off the UI thread
         Utility.runAsync(new Runnable() {
             @Override
@@ -2146,9 +2155,11 @@ public class ExchangeService extends Service implements Runnable {
                 // Stop receivers
                 if (mConnectivityReceiver != null) {
                     unregisterReceiver(mConnectivityReceiver);
+                    mConnectivityReceiver = null;
                 }
                 if (mBackgroundDataSettingReceiver != null) {
                     unregisterReceiver(mBackgroundDataSettingReceiver);
+                    mBackgroundDataSettingReceiver = null;
                 }
 
                 // Unregister observers
