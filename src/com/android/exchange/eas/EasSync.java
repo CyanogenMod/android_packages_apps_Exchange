@@ -183,7 +183,7 @@ public class EasSync extends EasOperation {
 
     @Override
     protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+            throws IOException, CommandStatusException {
         final Account account = Account.restoreAccountWithId(mContext, mAccountId);
         if (account == null) {
             // TODO: Make this some other error type, since the account is just gone now.
@@ -200,9 +200,6 @@ public class EasSync extends EasOperation {
             mMessageUpdateStatus = parser.getMessageStatuses();
         } catch (final Parser.EmptyStreamException e) {
             // This indicates a compressed response which was empty, which is OK.
-        } catch (final CommandStatusException e) {
-            // TODO: This is the wrong error type.
-            return RESULT_OTHER_FAILURE;
         }
         return 0;
     }
