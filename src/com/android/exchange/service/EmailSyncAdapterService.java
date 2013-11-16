@@ -83,7 +83,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private static final String TAG = Eas.LOG_TAG;
 
     private static final String EXTRA_START_PING = "START_PING";
-    private static final String EXTRA_ACCOUNT_ID = "ACCOUNT_ID";
+    private static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
     private static final long SYNC_ERROR_BACKOFF_MILLIS = 5 * DateUtils.MINUTE_IN_MILLIS;
 
     /**
@@ -259,7 +259,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         final Intent intent = new Intent(service, EmailSyncAdapterService.class);
                         intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
                         intent.putExtra(EXTRA_START_PING, true);
-                        intent.putExtra(EXTRA_ACCOUNT_ID, account.mId);
+                        intent.putExtra(EXTRA_PING_ACCOUNT, amAccount);
                         final PendingIntent pi = PendingIntent.getService(
                                 EmailSyncAdapterService.this, 0, intent,
                                 PendingIntent.FLAG_ONE_SHOT);
@@ -610,11 +610,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 LogUtils.d(TAG, "Restarting ping from alarm");
                 // We've been woken up by an alarm to restart our ping. This happens if a sync
                 // fails, rather that instantly starting the ping, we'll hold off for a few minutes.
-                final long accountId = intent.getLongExtra(EXTRA_ACCOUNT_ID, -1);
-                if (accountId != -1) {
-                    final Account account = Account.restoreAccountWithId(this, accountId);
-                    mSyncHandlerMap.modifyPing(false, account);
-                }
+                final android.accounts.Account account =
+                        intent.getParcelableExtra(EXTRA_PING_ACCOUNT);
+                EasPing.requestPing(account);
             }
         }
         return super.onStartCommand(intent, flags, startId);
