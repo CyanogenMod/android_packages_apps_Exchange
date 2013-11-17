@@ -17,6 +17,7 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.HostAuth;
@@ -30,6 +31,7 @@ import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 
+import java.security.cert.CertificateException;
 import java.util.HashMap;
 
 /**
@@ -82,14 +84,21 @@ public class EasConnectionCache {
      * @param context The {@link Context}.
      * @param hostAuth The {@link HostAuth} to which we want to connect.
      * @return The {@link EmailClientConnectionManager} for hostAuth.
+     * @throws CertificateException If an error occurs registering the client certificate.
      */
     private EmailClientConnectionManager createConnectionManager(final Context context,
-            final HostAuth hostAuth) {
+            final HostAuth hostAuth) throws CertificateException {
         LogUtils.d(Eas.LOG_TAG, "Creating new connection manager for HostAuth %d", hostAuth.mId);
         final HttpParams params = new BasicHttpParams();
         params.setIntParameter(ConnManagerPNames.MAX_TOTAL_CONNECTIONS, 25);
         params.setParameter(ConnManagerPNames.MAX_CONNECTIONS_PER_ROUTE, sConnPerRoute);
-        return EmailClientConnectionManager.newInstance(context, params, hostAuth);
+        EmailClientConnectionManager connectionManager =
+                EmailClientConnectionManager.newInstance(context, params, hostAuth);
+        // Register the client certificate if needed
+        if (!TextUtils.isEmpty(hostAuth.mClientCertAlias)) {
+            connectionManager.registerClientCert(context, hostAuth);
+        }
+        return connectionManager;
     }
 
     /**
@@ -99,9 +108,10 @@ public class EasConnectionCache {
      * @param context The {@link Context}.
      * @param hostAuth The {@link HostAuth} to which we want to connect.
      * @return The {@link EmailClientConnectionManager} for hostAuth.
+     * @throws CertificateException If an error occurs registering the client certificate.
      */
     private synchronized EmailClientConnectionManager getCachedConnectionManager(
-            final Context context, final HostAuth hostAuth) {
+            final Context context, final HostAuth hostAuth) throws CertificateException {
         EmailClientConnectionManager connectionManager = mConnectionMap.get(hostAuth.mId);
         final long now = System.currentTimeMillis();
         if (connectionManager != null) {
@@ -130,9 +140,10 @@ public class EasConnectionCache {
      * @param context The {@link Context}.
      * @param hostAuth The {@link HostAuth} to which we want to connect.
      * @return The {@link EmailClientConnectionManager} for hostAuth.
+     * @throws CertificateException If an error occurs registering the client certificate.
      */
     public EmailClientConnectionManager getConnectionManager(
-            final Context context, final HostAuth hostAuth) {
+            final Context context, final HostAuth hostAuth) throws CertificateException {
         final EmailClientConnectionManager connectionManager;
         // We only cache the connection manager for persisted HostAuth objects, i.e. objects
         // whose ids are permanent and won't get reused by other transient HostAuth objects.

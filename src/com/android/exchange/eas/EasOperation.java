@@ -44,6 +44,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 
 import java.io.IOException;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 
 /**
@@ -174,10 +175,10 @@ public abstract class EasOperation {
             // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                if (registerClientCert()) {
+                try {
                     response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
-                } else {
-                    LogUtils.e(LOG_TAG, "Problem registering client cert");
+                } catch (CertificateException cex) {
+                    LogUtils.e(LOG_TAG, "Problem registering client cert: %s", cex.getMessage());
                     // TODO: Is this the best stat to increment?
                     if (syncResult != null) {
                         ++syncResult.stats.numAuthExceptions;
