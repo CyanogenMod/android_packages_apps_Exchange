@@ -18,8 +18,9 @@ package com.android.exchange;
 
 /**
  * Requests for mailbox actions are handled by subclasses of this abstract class.
- * Three subclasses are now defined: PartRequest (attachment load), MeetingResponseRequest
- * (respond to a meeting invitation), and MessageMoveRequest (move a message to another folder)
+ * Four subclasses are now defined: PartRequest (attachment load), MeetingResponseRequest
+ * (respond to a meeting invitation), MessageMoveRequest (move a message to another folder)
+ * and FetchMessageRequest (get the entire message)
  */
 public abstract class Request {
     public final long mTimeStamp = System.currentTimeMillis();

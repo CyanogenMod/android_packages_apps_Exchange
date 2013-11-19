@@ -62,6 +62,7 @@ import com.android.exchange.adapter.AttachmentLoader;
 import com.android.exchange.adapter.CalendarSyncAdapter;
 import com.android.exchange.adapter.ContactsSyncAdapter;
 import com.android.exchange.adapter.EmailSyncAdapter;
+import com.android.exchange.adapter.FetchMessageParser;
 import com.android.exchange.adapter.FolderSyncParser;
 import com.android.exchange.adapter.GalParser;
 import com.android.exchange.adapter.MeetingResponseParser;
@@ -1159,6 +1160,116 @@ public class EasSyncService extends AbstractSyncService {
     }
 
     /**
+     * The FetchMessageRequest is basically our wrapper for the Fetch service call
+     *
+     * Request:
+     * <?xml version="1.0" encoding="utf-8"?>
+     * <ItemOperations>
+     *     <Fetch>
+     *         <Store>Mailbox</Store>
+     *         <airsync:CollectionId>collectionId</airsync:CollectionId>
+     *         <airsync:ServerId>serverId</airsync:ServerId>
+     *         <Options>
+     *             <airsyncbase:BodyPreference>
+     *                 <airsyncbase:Type>1</airsyncbase:Type>
+     *                 <airsyncbase:TruncationSize>size</airsyncbase:TruncationSize>
+     *                 <airsyncbase:AllOrNone>0</airsyncbase:AllOrNone>
+     *             </airsyncbase:BodyPreference>
+     *         </Options>
+     *     </Fetch>
+     * </ItemOperations>
+     *
+     * @param req the request (message id, sync size)
+     * @param protocolVersion the version of email account protocol
+     * @throws IOException
+     */
+    protected void fetchMessageRequest(FetchMessageRequest req, Double protocolVersion)
+            throws IOException {
+        // Retrieve the message; punt if either are null
+        Message msg = Message.restoreMessageWithId(mContext, req.mMessageId);
+        String serverId = "";
+        long mailbox = -1;
+        if (msg == null){
+            userLog("Retrive msg faild, mMessageId:" + req.mMessageId);
+            return;
+        }
+        Uri qreryUri = ContentUris.withAppendedId(Message.CONTENT_URI, msg.mId);
+        String[] projection = new String[] { SyncColumns.SERVER_ID, MessageColumns.MAILBOX_KEY };
+        Cursor c = mContentResolver.query(qreryUri, projection, null, null, null);
+        if (c == null) {
+            throw new ProviderUnavailableException();
+        } else {
+            if (c.moveToFirst()) {
+                serverId = c.getString(0);
+                mailbox = c.getLong(1);
+            }
+            c.close();
+            c = null;
+        }
+        if (TextUtils.isEmpty(serverId) || mailbox < 0) return;
+        Mailbox box = Mailbox.restoreMailboxWithId(mContext, mailbox);
+
+        Serializer s = new Serializer();
+
+        s.start(Tags.ITEMS_ITEMS).start(Tags.ITEMS_FETCH);
+        s.data(Tags.ITEMS_STORE, "Mailbox");
+        s.data(Tags.SYNC_COLLECTION_ID, box.mServerId);
+        s.data(Tags.SYNC_SERVER_ID, msg.mServerId);
+        s.start(Tags.ITEMS_OPTIONS);
+        if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            s.start(Tags.BASE_BODY_PREFERENCE);
+            s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
+            s.end();
+        } else {
+            s.data(Tags.SYNC_MIME_SUPPORT, Eas.MIME_BODY_PREFERENCE_MIME);
+            s.start(Tags.BASE_BODY_PREFERENCE);
+            s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_MIME);
+            s.end();
+        }
+        s.end().end().end().done();
+        EasResponse resp = sendHttpClientPost("ItemOperations",
+                new ByteArrayEntity(s.toByteArray()), COMMAND_TIMEOUT);
+        try {
+            int status = resp.getStatus();
+            if (status == HttpStatus.SC_OK) {
+                if (!resp.isEmpty()) {
+                    InputStream is = resp.getInputStream();
+                    FetchMessageParser parser = new FetchMessageParser(is, this, msg);
+                    parser.parse();
+                    try {
+                        if (parser.getStatusCode() == FetchMessageParser.STATUS_CODE_SUCCESS) {
+                            parser.commit(mContentResolver);
+                            ExchangeService.callback().loadMessageStatus(msg.mId,
+                                    EmailServiceStatus.SUCCESS, 100);
+                        } else {
+                            ExchangeService.callback().loadMessageStatus(msg.mId,
+                                    EmailServiceStatus.CONNECTION_ERROR, 100);
+                        }
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    try {
+                        ExchangeService.callback().loadMessageStatus(msg.mId,
+                                EmailServiceStatus.CONNECTION_ERROR, 100);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else {
+                userLog("Fetch entire mail(messageId:" + msg.mId + ") response error: ", status);
+                if (EasResponse.isAuthError(status)) {
+                    throw new EasAuthenticationException();
+                } else {
+                    throw new IOException();
+                }
+            }
+        } finally {
+            resp.close();
+        }
+    }
+
+    /**
      * Using mUserName and mPassword, lazily create the strings that are commonly used in our HTTP
      * POSTs, including the authentication header string, the base URI we use to communicate with
      * EAS, and the user information string (user, deviceId, and deviceType)
@@ -1635,6 +1746,8 @@ public class EasSyncService extends AbstractSyncService {
                     sendMeetingResponse((MeetingResponseRequest)req);
                 } else if (req instanceof MessageMoveRequest) {
                     messageMoveRequest((MessageMoveRequest)req);
+                } else if (req instanceof FetchMessageRequest) {
+                    fetchMessageRequest((FetchMessageRequest)req, mProtocolVersionDouble);
                 }
 
                 // If there's an exception handling the request, we'll throw it

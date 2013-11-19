@@ -78,6 +78,7 @@ public class Eas {
 
     public static final String BODY_PREFERENCE_TEXT = "1";
     public static final String BODY_PREFERENCE_HTML = "2";
+    public static final String BODY_PREFERENCE_MIME = "4";
 
     public static final String MIME_BODY_PREFERENCE_TEXT = "0";
     public static final String MIME_BODY_PREFERENCE_MIME = "2";
