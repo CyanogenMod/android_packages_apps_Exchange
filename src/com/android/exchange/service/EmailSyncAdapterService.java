@@ -204,6 +204,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 return;
             }
 
+            // Don't ping if we're on security hold.
+            if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+                return;
+            }
+
             // Don't ping for accounts that haven't performed initial sync.
             if (EmailContent.isInitialSyncKey(account.mSyncKey)) {
                 return;
@@ -706,74 +711,82 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             mSyncHandlerMap.startSync(account.mId);
 
             // Perform a FolderSync if necessary.
+            // TODO: We permit FolderSync even during security hold, because it's necessary to
+            // resolve some holds. Ideally we would only do it for the holds that require it.
             if (isFolderSync) {
                 final EasFolderSync folderSync = new EasFolderSync(context, account);
                 folderSync.doFolderSync(syncResult);
             }
 
-            // Perform email upsync for this account. Moves first, then state changes.
-            if (!isInitialSync) {
-                EasMoveItems move = new EasMoveItems(context, account);
-                move.upsyncMovedMessages(syncResult);
-                // TODO: EasSync should eventually handle both up and down; for now, it's used
-                // purely for upsync.
-                EasSync upsync = new EasSync(context, account);
-                upsync.upsync(syncResult);
-            }
-
-            // TODO: Should we refresh account here? It may have changed while waiting for any
-            // pings to stop. It may not matter since the things that may have been twiddled might
-            // not affect syncing.
-
             boolean lastSyncHadError = false;
-            if (mailboxIds != null) {
-                long numIoExceptions = 0;
-                long numAuthExceptions = 0;
-                // Sync the mailbox that was explicitly requested.
-                for (final long mailboxId : mailboxIds) {
-                    syncMailbox(context, cr, acct, account, mailboxId, extras, syncResult, null,
-                            true);
-                    if (hasCallbackMethod) {
-                        final int result;
-                        if (syncResult.hasError()) {
-                            if (syncResult.stats.numIoExceptions > numIoExceptions) {
-                                result = UIProvider.LastSyncResult.CONNECTION_ERROR;
-                                numIoExceptions = syncResult.stats.numIoExceptions;
-                            } else if (syncResult.stats.numAuthExceptions> numAuthExceptions) {
-                                result = UIProvider.LastSyncResult.AUTH_ERROR;
-                                numAuthExceptions= syncResult.stats.numAuthExceptions;
-                            }  else {
-                                result = UIProvider.LastSyncResult.INTERNAL_ERROR;
-                            }
-                        } else {
-                            result = UIProvider.LastSyncResult.SUCCESS;
+
+            if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) == 0) {
+                // Perform email upsync for this account. Moves first, then state changes.
+                if (!isInitialSync) {
+                    EasMoveItems move = new EasMoveItems(context, account);
+                    move.upsyncMovedMessages(syncResult);
+                    // TODO: EasSync should eventually handle both up and down; for now, it's used
+                    // purely for upsync.
+                    EasSync upsync = new EasSync(context, account);
+                    upsync.upsync(syncResult);
+                }
+
+                // TODO: Should we refresh account here? It may have changed while waiting for any
+                // pings to stop. It may not matter since the things that may have been twiddled
+                // might not affect syncing.
+
+                if (mailboxIds != null) {
+                    long numIoExceptions = 0;
+                    long numAuthExceptions = 0;
+                    // Sync the mailbox that was explicitly requested.
+                    for (final long mailboxId : mailboxIds) {
+                        final boolean success = syncMailbox(context, cr, acct, account, mailboxId,
+                                extras, syncResult, null, true);
+                        if (!success) {
+                            lastSyncHadError = true;
                         }
-                        EmailServiceStatus.syncMailboxStatus(
-                                cr, extras, mailboxId,EmailServiceStatus.SUCCESS, 0, result);
+                        if (hasCallbackMethod) {
+                            final int result;
+                            if (syncResult.hasError()) {
+                                if (syncResult.stats.numIoExceptions > numIoExceptions) {
+                                    result = UIProvider.LastSyncResult.CONNECTION_ERROR;
+                                    numIoExceptions = syncResult.stats.numIoExceptions;
+                                } else if (syncResult.stats.numAuthExceptions> numAuthExceptions) {
+                                    result = UIProvider.LastSyncResult.AUTH_ERROR;
+                                    numAuthExceptions= syncResult.stats.numAuthExceptions;
+                                }  else {
+                                    result = UIProvider.LastSyncResult.INTERNAL_ERROR;
+                                }
+                            } else {
+                                result = UIProvider.LastSyncResult.SUCCESS;
+                            }
+                            EmailServiceStatus.syncMailboxStatus(
+                                    cr, extras, mailboxId,EmailServiceStatus.SUCCESS, 0, result);
+                        }
                     }
-                }
-            } else if (!accountOnly && !pushOnly) {
-                // We have to sync multiple folders.
-                final Cursor c;
-                if (isFullSync) {
-                    // Full account sync includes all mailboxes that participate in system sync.
-                    c = Mailbox.getMailboxIdsForSync(cr, account.mId);
-                } else {
-                    // Type-filtered sync should only get the mailboxes of a specific type.
-                    c = Mailbox.getMailboxIdsForSyncByType(cr, account.mId, mailboxType);
-                }
-                if (c != null) {
-                    try {
-                        final HashSet<String> authsToSync = getAuthsToSync(acct);
-                        while (c.moveToNext()) {
-                            boolean success = syncMailbox(context, cr, acct, account, c.getLong(0),
-                                    extras, syncResult, authsToSync, false);
-                            if (!success) {
-                                lastSyncHadError = true;
+                } else if (!accountOnly && !pushOnly) {
+                    // We have to sync multiple folders.
+                    final Cursor c;
+                    if (isFullSync) {
+                        // Full account sync includes all mailboxes that participate in system sync.
+                        c = Mailbox.getMailboxIdsForSync(cr, account.mId);
+                    } else {
+                        // Type-filtered sync should only get the mailboxes of a specific type.
+                        c = Mailbox.getMailboxIdsForSyncByType(cr, account.mId, mailboxType);
+                    }
+                    if (c != null) {
+                        try {
+                            final HashSet<String> authsToSync = getAuthsToSync(acct);
+                            while (c.moveToNext()) {
+                                boolean success = syncMailbox(context, cr, acct, account,
+                                        c.getLong(0), extras, syncResult, authsToSync, false);
+                                if (!success) {
+                                    lastSyncHadError = true;
+                                }
                             }
+                        } finally {
+                            c.close();
                         }
-                    } finally {
-                        c.close();
                     }
                 }
             }
@@ -820,8 +833,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             }
             if (authsToSync != null && !authsToSync.contains(Mailbox.getAuthority(mailbox.mType))) {
                 // We are asking for an account sync, but this mailbox type is not configured for
-                // sync.
-                return false;
+                // sync. Do NOT treat this as a sync error for ping backoff purposes.
+                return true;
             }
 
             if (mailbox.mType == Mailbox.TYPE_DRAFTS) {
@@ -830,8 +843,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 // For now, just disable all syncing of DRAFTS type folders.
                 // Automatic syncing should always be disabled, but we also stop it here to ensure
                 // that we won't sync even if the user attempts to force a sync from the UI.
+                // Do NOT treat as a sync error for ping backoff purposes.
                 LogUtils.d(TAG, "Skipping sync of DRAFTS folder");
-                return false;
+                return true;
             }
             final boolean success;
             // Non-mailbox syncs are whole account syncs initiated by the AccountManager and are
