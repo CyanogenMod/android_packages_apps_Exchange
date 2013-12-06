@@ -183,7 +183,7 @@ public class EasSync extends EasOperation {
 
     @Override
     protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+            throws IOException, CommandStatusException {
         final Account account = Account.restoreAccountWithId(mContext, mAccountId);
         if (account == null) {
             // TODO: Make this some other error type, since the account is just gone now.
@@ -200,9 +200,6 @@ public class EasSync extends EasOperation {
             mMessageUpdateStatus = parser.getMessageStatuses();
         } catch (final Parser.EmptyStreamException e) {
             // This indicates a compressed response which was empty, which is OK.
-        } catch (final CommandStatusException e) {
-            // TODO: This is the wrong error type.
-            return RESULT_OTHER_FAILURE;
         }
         return 0;
     }
@@ -238,7 +235,7 @@ public class EasSync extends EasOperation {
         return sb.toString();
     }
 
-    private final void addOneCollectionToRequest(final Serializer s, final int collectionType,
+    private void addOneCollectionToRequest(final Serializer s, final int collectionType,
             final String mailboxServerId, final String mailboxSyncKey,
             final List<MessageStateChange> stateChanges) throws IOException {
 
@@ -248,7 +245,13 @@ public class EasSync extends EasOperation {
         }
         s.data(Tags.SYNC_SYNC_KEY, mailboxSyncKey);
         s.data(Tags.SYNC_COLLECTION_ID, mailboxServerId);
-        s.data(Tags.SYNC_GET_CHANGES, "0");
+        if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            // Exchange 2003 doesn't understand the concept of setting this flag to false. The
+            // documentation indicates that its presence alone, with no value, requests a two-way
+            // sync.
+            // TODO: handle downsync here so we don't need this at all
+            s.data(Tags.SYNC_GET_CHANGES, "0");
+        }
         s.start(Tags.SYNC_COMMANDS);
         for (final MessageStateChange change : stateChanges) {
             s.start(Tags.SYNC_CHANGE);

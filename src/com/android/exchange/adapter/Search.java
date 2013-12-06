@@ -40,11 +40,7 @@ import org.apache.http.HttpStatus;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
 
 /**
  * Implementation of server-side search for EAS using the EmailService API
@@ -55,14 +51,6 @@ public class Search {
     private static final int MIN_QUERY_LENGTH = 3;
     // The largest number of results we'll ask for per server request
     private static final int MAX_SEARCH_RESULTS = 100;
-
-    // TODO: move this somewhere more unified
-    // Time format documented at http://msdn.microsoft.com/en-us/library/ee201818(v=exchg.80).aspx
-    private static final SimpleDateFormat DATE_FORMAT;
-    static {
-        DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.US);
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-    }
 
     public static int searchMessages(Context context, long accountId, SearchParams searchParams,
             long destMailboxId) {
@@ -82,7 +70,7 @@ public class Search {
         final Mailbox searchMailbox = Mailbox.restoreMailboxWithId(context, destMailboxId);
         // Sanity check; account might have been deleted?
         if (searchMailbox == null) return res;
-        final ContentValues statusValues = new ContentValues(1);
+        final ContentValues statusValues = new ContentValues(2);
         try {
             // Set the status of this mailbox to indicate query
             statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.LIVE_QUERY);
@@ -110,13 +98,13 @@ public class Search {
             if (searchParams.mStartDate != null) {
                 s.start(Tags.SEARCH_GREATER_THAN);
                 s.tag(Tags.EMAIL_DATE_RECEIVED);
-                s.data(Tags.SEARCH_VALUE, DATE_FORMAT.format(searchParams.mStartDate));
+                s.data(Tags.SEARCH_VALUE, Eas.DATE_FORMAT.format(searchParams.mStartDate));
                 s.end(); // SEARCH_GREATER_THAN
             }
             if (searchParams.mEndDate != null) {
                 s.start(Tags.SEARCH_LESS_THAN);
                 s.tag(Tags.EMAIL_DATE_RECEIVED);
-                s.data(Tags.SEARCH_VALUE, DATE_FORMAT.format(searchParams.mEndDate));
+                s.data(Tags.SEARCH_VALUE, Eas.DATE_FORMAT.format(searchParams.mEndDate));
                 s.end(); // SEARCH_LESS_THAN
             }
             s.end().end();              // SEARCH_AND, SEARCH_QUERY
@@ -157,6 +145,7 @@ public class Search {
         } finally {
             // TODO: Handle error states
             // Set the status of this mailbox to indicate query over
+            statusValues.put(Mailbox.SYNC_TIME, System.currentTimeMillis());
             statusValues.put(Mailbox.UI_SYNC_STATUS, UIProvider.SyncStatus.NO_SYNC);
             searchMailbox.update(context, statusValues);
         }

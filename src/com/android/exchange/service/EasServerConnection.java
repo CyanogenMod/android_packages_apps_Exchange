@@ -149,7 +149,7 @@ public class EasServerConnection {
     }
 
     protected EmailClientConnectionManager getClientConnectionManager()
-            throws CertificateException {
+        throws CertificateException {
         final EmailClientConnectionManager connManager =
                 EasConnectionCache.instance().getConnectionManager(mContext, mHostAuth);
         if (mClientConnectionManager != connManager) {
@@ -255,10 +255,9 @@ public class EasServerConnection {
     /**
      * Send an http OPTIONS request to server.
      * @return The {@link EasResponse} from the Exchange server.
-     * @throws CertificateException If an error occurs registering the client certificate.
      * @throws IOException
      */
-    protected EasResponse sendHttpClientOptions() throws CertificateException, IOException {
+    protected EasResponse sendHttpClientOptions() throws IOException, CertificateException {
         // For OPTIONS, just use the base string and the single header
         final HttpOptions method = new HttpOptions(URI.create(makeBaseUriString()));
         method.setHeader("Authorization", makeAuthString());
@@ -331,11 +330,10 @@ public class EasServerConnection {
      * @param entity The {@link HttpEntity} containing the payload of the message.
      * @param timeout The timeout for this POST.
      * @return The response from the Exchange server.
-     * @throws CertificateException If an error occurs registering the client certificate.
      * @throws IOException
      */
     protected EasResponse sendHttpClientPost(String cmd, final HttpEntity entity,
-            final long timeout) throws CertificateException, IOException {
+            final long timeout) throws IOException, CertificateException {
         final boolean isPingCommand = cmd.equals("Ping");
 
         // Split the mail sending commands
@@ -380,7 +378,7 @@ public class EasServerConnection {
     }
 
     public EasResponse sendHttpClientPost(final String cmd, final byte[] bytes,
-            final long timeout) throws CertificateException, IOException {
+            final long timeout) throws IOException, CertificateException {
         final ByteArrayEntity entity;
         if (bytes == null) {
             entity = null;
@@ -391,7 +389,7 @@ public class EasServerConnection {
     }
 
     protected EasResponse sendHttpClientPost(final String cmd, final byte[] bytes)
-            throws CertificateException, IOException {
+            throws IOException, CertificateException {
         return sendHttpClientPost(cmd, bytes, COMMAND_TIMEOUT);
     }
 
@@ -402,11 +400,10 @@ public class EasServerConnection {
      * @param method The post to execute.
      * @param timeout The timeout to use.
      * @return The response from the Exchange server.
-     * @throws CertificateException If an error occurs registering the client certificate.
      * @throws IOException
      */
     public EasResponse executeHttpUriRequest(final HttpUriRequest method, final long timeout)
-            throws CertificateException, IOException {
+            throws IOException, CertificateException {
         LogUtils.d(TAG, "EasServerConnection about to make request %s", method.getRequestLine());
         // The synchronized blocks are here to support the stop() function, specifically to handle
         // when stop() is called first. Notably, they are NOT here in order to guard against
@@ -438,7 +435,7 @@ public class EasServerConnection {
     }
 
     protected EasResponse executePost(final HttpPost method)
-            throws CertificateException, IOException {
+            throws IOException, CertificateException {
         return executeHttpUriRequest(method, COMMAND_TIMEOUT);
     }
 

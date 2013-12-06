@@ -25,6 +25,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -32,6 +33,7 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
@@ -175,16 +177,7 @@ public abstract class EasOperation {
             // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                try {
-                    response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
-                } catch (CertificateException cex) {
-                    LogUtils.e(LOG_TAG, "Problem registering client cert: %s", cex.getMessage());
-                    // TODO: Is this the best stat to increment?
-                    if (syncResult != null) {
-                        ++syncResult.stats.numAuthExceptions;
-                    }
-                    return RESULT_CLIENT_CERTIFICATE_REQUIRED;
-                }
+                response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
             } catch (final IOException e) {
                 // If we were stopped, return the appropriate result code.
                 switch (mConnection.getStoppedReason()) {
@@ -205,6 +198,14 @@ public abstract class EasOperation {
                     ++syncResult.stats.numIoExceptions;
                 }
                 return RESULT_REQUEST_FAILURE;
+            } catch (final CertificateException e) {
+                LogUtils.i(LOG_TAG, "CertificateException while sending request: %s",
+                        e.getMessage());
+                if (syncResult != null) {
+                    // TODO: Is this the best stat to increment?
+                    ++syncResult.stats.numAuthExceptions;
+                }
+                return RESULT_CLIENT_CERTIFICATE_REQUIRED;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
                 // TODO: Switch away from ISEs.
@@ -220,20 +221,40 @@ public abstract class EasOperation {
                 final int result;
                 // First off, the success case.
                 if (response.isSuccess()) {
+                    int responseResult;
                     try {
-                        result = handleResponse(response, syncResult);
-                        if (result >= 0) {
-                            return result;
-                        }
+                        responseResult = handleResponse(response, syncResult);
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
                         if (syncResult != null) {
                             ++syncResult.stats.numIoExceptions;
                         }
                         return RESULT_REQUEST_FAILURE;
+                    } catch (final CommandStatusException e) {
+                        // For some operations (notably Sync & FolderSync), errors are signaled in
+                        // the payload of the response. These will have a HTTP 200 response, and the
+                        // error condition is only detected during response parsing.
+                        // The various parsers handle this by throwing a CommandStatusException.
+                        // TODO: Consider having the parsers return the errors instead of throwing.
+                        final int status = e.mStatus;
+                        LogUtils.e(LOG_TAG, "CommandStatusException: %s, %d", getCommand(), status);
+                        if (CommandStatusException.CommandStatus.isNeedsProvisioning(status)) {
+                            responseResult = RESULT_PROVISIONING_ERROR;
+                        } else if (CommandStatusException.CommandStatus.isDeniedAccess(status)) {
+                            responseResult = RESULT_FORBIDDEN;
+                        } else {
+                            responseResult = RESULT_OTHER_FAILURE;
+                        }
                     }
+                    result = responseResult;
                 } else {
                     result = RESULT_OTHER_FAILURE;
+                }
+
+                // Non-negative results indicate success. Return immediately and bypass the error
+                // handling.
+                if (result >= 0) {
+                    return result;
                 }
 
                 // If this operation has distinct handling for 403 errors, do that.
@@ -251,6 +272,8 @@ public abstract class EasOperation {
                     if (handleProvisionError(syncResult, mAccountId)) {
                         // The provisioning error has been taken care of, so we should re-do this
                         // request.
+                        LogUtils.d(LOG_TAG, "Provisioning error handled during %s, retrying",
+                                getCommand());
                         continue;
                     }
                     if (syncResult != null) {
@@ -376,7 +399,7 @@ public abstract class EasOperation {
      * @throws IOException
      */
     protected abstract int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException;
+            throws IOException, CommandStatusException;
 
     /**
      * The following functions may be overriden by a subclass, but most operations will not need
@@ -490,7 +513,18 @@ public abstract class EasOperation {
         if (tm != null) {
             deviceId = tm.getDeviceId();
             phoneNumber = tm.getLine1Number();
-            operator = tm.getNetworkOperator();
+            // TODO: This is not perfect and needs to be improved, for at least two reasons:
+            // 1) SIM cards can override this name.
+            // 2) We don't resend this info to the server when we change networks.
+            final String operatorName = tm.getNetworkOperatorName();
+            final String operatorNumber = tm.getNetworkOperator();
+            if (!TextUtils.isEmpty(operatorName) && !TextUtils.isEmpty(operatorNumber)) {
+                operator = operatorName + " (" + operatorNumber + ")";
+            } else if (!TextUtils.isEmpty(operatorName)) {
+                operator = operatorName;
+            } else {
+                operator = operatorNumber;
+            }
         } else {
             deviceId = null;
             phoneNumber = null;
@@ -505,8 +539,16 @@ public abstract class EasOperation {
         if (deviceId != null) {
             s.data(Tags.SETTINGS_IMEI, tm.getDeviceId());
         }
-        // TODO: What should we use for friendly name?
-        //s.data(Tags.SETTINGS_FRIENDLY_NAME, "Friendly Name");
+        // Set the device friendly name, if we have one.
+        // TODO: Longer term, this should be done without a provider call.
+        final Bundle bundle = mContext.getContentResolver().call(
+                EmailContent.CONTENT_URI, EmailContent.DEVICE_FRIENDLY_NAME, null, null);
+        if (bundle != null) {
+            final String friendlyName = bundle.getString(EmailContent.DEVICE_FRIENDLY_NAME);
+            if (!TextUtils.isEmpty(friendlyName)) {
+                s.data(Tags.SETTINGS_FRIENDLY_NAME, friendlyName);
+            }
+        }
         s.data(Tags.SETTINGS_OS, "Android " + Build.VERSION.RELEASE);
         if (phoneNumber != null) {
             s.data(Tags.SETTINGS_PHONE_NUMBER, phoneNumber);

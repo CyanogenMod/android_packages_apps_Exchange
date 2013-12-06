@@ -17,7 +17,7 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.exchange"
-    android:versionCode="500058" >
+    android:versionCode="500060" >
 
     <uses-permission
         android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -62,7 +62,7 @@
     <uses-permission
         android:name="com.android.email.permission.ACCESS_PROVIDER"/>
 
-    <uses-sdk android:targetSdkVersion="18" android:minSdkVersion="14" />
+    <uses-sdk android:targetSdkVersion="19" android:minSdkVersion="14" />
 
     <!-- additional uses -->
 

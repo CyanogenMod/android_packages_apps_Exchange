@@ -105,10 +105,10 @@ public class EasMeetingResponder extends EasServerConnection {
         final EasMeetingResponder responder = new EasMeetingResponder(context, account);
         try {
             responder.sendResponse(msg, mailboxServerId, easResponse);
-        } catch (final CertificateException cex) {
-            LogUtils.e(TAG, "Problem registering client cert: %s", cex.getMessage());
         } catch (final IOException e) {
             LogUtils.e(TAG, "IOException: %s", e.getMessage());
+        } catch (final CertificateException e) {
+            LogUtils.e(TAG, "CertificateException: %s", e.getMessage());
         }
     }
 
@@ -187,11 +187,10 @@ public class EasMeetingResponder extends EasServerConnection {
      * @param msg The email message for the meeting invitation.
      * @param mailboxServerId The server id for the mailbox that msg is in.
      * @param response The EAS value for the user's response.
-     * @throws CertificateException If an error occurs registering the client certificate.
      * @throws IOException
      */
     private void sendResponse(final Message msg, final String mailboxServerId, final int response)
-            throws CertificateException, IOException {
+            throws IOException, CertificateException {
         final Serializer s = new Serializer();
         s.start(Tags.MREQ_MEETING_RESPONSE).start(Tags.MREQ_REQUEST);
         s.data(Tags.MREQ_USER_RESPONSE, Integer.toString(response));

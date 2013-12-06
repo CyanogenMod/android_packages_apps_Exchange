@@ -155,24 +155,11 @@ public class EasFolderSync extends EasOperation {
 
     @Override
     protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+            throws IOException, CommandStatusException {
         if (!response.isEmpty()) {
-            try {
-                new FolderSyncParser(mContext, mContext.getContentResolver(),
-                        response.getInputStream(), mAccount, mStatusOnly).parse();
-            } catch (final CommandStatusException e) {
-                final int status = e.mStatus;
-                LogUtils.d(LOG_TAG, "EasFolderSync.handleResponse status %d", status);
-                if (CommandStatusException.CommandStatus.isNeedsProvisioning(status)) {
-                    return RESULT_PROVISIONING_ERROR;
-                }
-                if (CommandStatusException.CommandStatus.isDeniedAccess(status)) {
-                    return RESULT_FORBIDDEN;
-                }
-                return RESULT_OTHER_FAILURE;
-            }
+            new FolderSyncParser(mContext, mContext.getContentResolver(),
+                    response.getInputStream(), mAccount, mStatusOnly).parse();
         }
-
         return RESULT_OK;
     }
 

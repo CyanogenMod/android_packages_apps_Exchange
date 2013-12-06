@@ -197,9 +197,10 @@ public class EasAutoDiscover extends EasServerConnection {
         final EasResponse resp;
         try {
             resp = executePost(post);
-        } catch (final CertificateException e) {
-            return null;
         } catch (final IOException e) {
+            return null;
+        } catch (final CertificateException e) {
+            // TODO: Raise this error to the user or something
             return null;
         }
 

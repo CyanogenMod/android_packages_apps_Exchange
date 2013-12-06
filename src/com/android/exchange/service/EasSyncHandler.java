@@ -85,12 +85,11 @@ public abstract class EasSyncHandler extends EasServerConnection {
     public static final int PIM_WINDOW_SIZE_CALENDAR = 10;
 
     // TODO: For each type of failure, provide info about why.
+    protected static final int SYNC_RESULT_DENIED = -3;
+    protected static final int SYNC_RESULT_PROVISIONING_ERROR = -2;
     protected static final int SYNC_RESULT_FAILED = -1;
     protected static final int SYNC_RESULT_DONE = 0;
     protected static final int SYNC_RESULT_MORE_AVAILABLE = 1;
-
-    /** Maximum number of Sync requests we'll send to the Exchange server in one sync attempt. */
-    private static final int MAX_LOOPING_COUNT = 100;
 
     protected final ContentResolver mContentResolver;
     protected final Mailbox mMailbox;
@@ -309,6 +308,15 @@ public abstract class EasSyncHandler extends EasServerConnection {
         } catch (final IOException e) {
             return SYNC_RESULT_FAILED;
         } catch (final CommandStatusException e) {
+            // TODO: This is basically copied from EasOperation, will go away when this merges.
+            final int status = e.mStatus;
+            LogUtils.e(TAG, "CommandStatusException: %d", status);
+            if (CommandStatusException.CommandStatus.isNeedsProvisioning(status)) {
+               return SYNC_RESULT_PROVISIONING_ERROR;
+            }
+            if (CommandStatusException.CommandStatus.isDeniedAccess(status)) {
+                return SYNC_RESULT_DENIED;
+            }
             return SYNC_RESULT_FAILED;
         }
         return SYNC_RESULT_DONE;
@@ -333,47 +341,56 @@ public abstract class EasSyncHandler extends EasServerConnection {
             final Serializer s = buildEasRequest(syncKey, initialSync, numWindows);
             final long timeout = initialSync ? 120 * DateUtils.SECOND_IN_MILLIS : COMMAND_TIMEOUT;
             resp = sendHttpClientPost("Sync", s.toByteArray(), timeout);
-        } catch (final CertificateException cex) {
-            LogUtils.e(TAG, "Problem registering client cert: %s", cex.getMessage());
-            syncResult.stats.numAuthExceptions++;
-            return SYNC_RESULT_FAILED;
         } catch (final IOException e) {
             LogUtils.e(TAG, e, "Sync error:");
             syncResult.stats.numIoExceptions++;
+            return SYNC_RESULT_FAILED;
+        } catch (final CertificateException e) {
+            LogUtils.e(TAG, e, "Certificate error:");
+            syncResult.stats.numAuthExceptions++;
             return SYNC_RESULT_FAILED;
         }
 
         final int result;
         try {
+            final int responseResult;
             final int code = resp.getStatus();
             if (code == HttpStatus.SC_OK) {
                 // A successful sync can have an empty response -- this indicates no change.
                 // In the case of a compressed stream, resp will be non-empty, but parse() handles
                 // that case.
                 if (!resp.isEmpty()) {
-                    result = parse(resp);
+                    responseResult = parse(resp);
                 } else {
-                    result = SYNC_RESULT_DONE;
+                    responseResult = SYNC_RESULT_DONE;
                 }
             } else {
                 LogUtils.e(TAG, "Sync failed with Status: " + code);
-                if (resp.isProvisionError()) {
-                    final EasProvision provision = new EasProvision(mContext, mAccount.mId, this);
-                    if (provision.provision(syncResult, mAccount.mId)) {
-                        // We handled the provisioning error, so loop.
-                        result = SYNC_RESULT_MORE_AVAILABLE;
-                    } else {
-                        syncResult.stats.numAuthExceptions++;
-                        return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_SECURITY;
-                    }
-                } else if (resp.isAuthError()) {
-                    syncResult.stats.numAuthExceptions++;
-                    return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_LOGIN;
-                } else {
-                    syncResult.stats.numParseExceptions++;
-                    return SYNC_RESULT_FAILED; // TODO: Handle SyncStatus.FAILURE_OTHER;
-                }
+                responseResult = SYNC_RESULT_FAILED;
             }
+
+            if (responseResult == SYNC_RESULT_DONE
+                    || responseResult == SYNC_RESULT_MORE_AVAILABLE) {
+                result = responseResult;
+            } else if (resp.isProvisionError()
+                    || responseResult == SYNC_RESULT_PROVISIONING_ERROR) {
+                final EasProvision provision = new EasProvision(mContext, mAccount.mId, this);
+                if (provision.provision(syncResult, mAccount.mId)) {
+                    // We handled the provisioning error, so loop.
+                    LogUtils.d(TAG, "Provisioning error handled during sync, retrying");
+                    result = SYNC_RESULT_MORE_AVAILABLE;
+                } else {
+                    syncResult.stats.numAuthExceptions++;
+                    result = SYNC_RESULT_FAILED;
+                }
+            } else if (resp.isAuthError() || responseResult == SYNC_RESULT_DENIED) {
+                syncResult.stats.numAuthExceptions++;
+                result = SYNC_RESULT_FAILED;
+            } else {
+                syncResult.stats.numParseExceptions++;
+                result = SYNC_RESULT_FAILED;
+            }
+
         } finally {
             resp.close();
         }
@@ -390,14 +407,14 @@ public abstract class EasSyncHandler extends EasServerConnection {
     /**
      * Perform the sync, updating {@link #mSyncResult} as appropriate (which was passed in from
      * the system SyncManager and will be read by it on the way out).
-     * This function can send multiple Sync messages to the Exchange server, up to
-     * {@link #MAX_LOOPING_COUNT}, due to the server replying to a Sync request with MoreAvailable.
+     * This function can send multiple Sync messages to the Exchange server, due to the server
+     * replying to a Sync request with MoreAvailable.
      * In the case of errors, this function should not attempt any retries, but rather should
      * set {@link #mSyncResult} to reflect the problem and let the system SyncManager handle
      * any it.
      * @param syncResult
      */
-    public final void performSync(SyncResult syncResult) {
+    public final boolean performSync(SyncResult syncResult) {
         // Set up traffic stats bookkeeping.
         final int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
         TrafficStats.setThreadStatsTag(trafficFlags | getTrafficFlag());
@@ -405,12 +422,11 @@ public abstract class EasSyncHandler extends EasServerConnection {
         // TODO: Properly handle UI status updates.
         //syncMailboxStatus(EmailServiceStatus.IN_PROGRESS, 0);
         int result = SYNC_RESULT_MORE_AVAILABLE;
-        int numWindows = 0;
+        int numWindows = 1;
         String key = getSyncKey();
         while (result == SYNC_RESULT_MORE_AVAILABLE) {
             result = performOneSync(syncResult, numWindows);
             // TODO: Clear pending request queue.
-            ++numWindows;
             final String newKey = getSyncKey();
             if (result == SYNC_RESULT_MORE_AVAILABLE && key.equals(newKey)) {
                 LogUtils.e(TAG,
@@ -422,5 +438,6 @@ public abstract class EasSyncHandler extends EasServerConnection {
             }
             key = newKey;
         }
+        return result == SYNC_RESULT_DONE;
     }
 }

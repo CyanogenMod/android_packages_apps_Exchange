@@ -91,6 +91,12 @@ public class EasAttachmentLoader extends EasServerConnection {
                     0);
             return;
         }
+        if (attachment.mLocation == null) {
+            LogUtils.e(TAG, "Attachment %d lacks a location", attachmentId);
+            doStatusCallback(callback, -1, attachmentId, EmailServiceStatus.ATTACHMENT_NOT_FOUND,
+                    0);
+            return;
+        }
         final Account account = Account.restoreAccountWithId(context, attachment.mAccountKey);
         if (account == null) {
             LogUtils.d(TAG, "Attachment %d has bad account key %d", attachment.mId,
@@ -169,11 +175,12 @@ public class EasAttachmentLoader extends EasServerConnection {
                 bytes = null;
             }
             return sendHttpClientPost(cmd, bytes);
-        } catch (final CertificateException cex) {
-            LogUtils.e(TAG, "Problem registering client cert: %s", cex.getMessage());
-            return null;
         } catch (final IOException e) {
             LogUtils.w(TAG, "IOException while loading attachment from server: %s", e.getMessage());
+            return null;
+        } catch (final CertificateException e) {
+            LogUtils.w(TAG, "CertificateException while loading attachment from server: %s",
+                    e.getMessage());
             return null;
         }
     }
