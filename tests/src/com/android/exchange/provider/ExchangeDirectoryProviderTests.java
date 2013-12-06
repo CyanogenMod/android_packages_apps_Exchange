@@ -95,7 +95,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         return result;
     }
 
-    public void testDisplayNameLogic() {
+    public void brokentestDisplayNameLogic() {
         GalResult result = getTestDisplayNameResult();
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
@@ -109,7 +109,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         }
     }
 
-    public void testLookupKeyLogic() {
+    public void brokentestLookupKeyLogic() {
         GalResult result = getTestDisplayNameResult();
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
@@ -128,7 +128,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         }
     }
 
-    public void testGetAccountIdByName() {
+    public void brokentestGetAccountIdByName() {
         Context context = getContext(); //getMockContext();
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
         // Nothing up my sleeve
