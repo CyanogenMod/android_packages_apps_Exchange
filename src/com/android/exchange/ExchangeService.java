@@ -37,6 +37,7 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
@@ -46,6 +47,7 @@ import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.IEmailServiceCallback.Stub;
 import com.android.emailcommon.service.SearchParams;
+import com.android.emailcommon.service.SyncSize;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.SyncManager;
@@ -155,6 +157,68 @@ public class ExchangeService extends SyncManager {
         @Override
         public void sendMeetingResponse(long messageId, int response) throws RemoteException {
             sendMessageRequest(new MeetingResponseRequest(messageId, response));
+        }
+
+        @Override
+        public void loadMore(long messageId) throws RemoteException {
+            SyncManager exchangeService = INSTANCE;
+            if (exchangeService == null) {
+                log("load message from view, the exchange service is null");
+                return;
+            }
+
+            checkExchangeServiceServiceRunning();
+            Message msg = Message.restoreMessageWithId(exchangeService, messageId);
+            if (msg == null) {
+                log("load message from view, the message is null");
+                return;
+            }
+
+            Account account = Account.restoreAccountWithId(exchangeService, msg.mAccountKey);
+            if (account == null) {
+                log("load message from view, the account of this message is null");
+                return;
+            }
+
+            Mailbox mailbox = Mailbox.restoreMailboxWithId(exchangeService, msg.mMailboxKey);
+            if (mailbox == null) {
+                log("load message from view, the mailbox of this message is null");
+                return;
+            }
+
+            // This is a user request and we're being held, release the hold; this allows us to
+            // try again (the hold might have been specific to this account and released already)
+            if (onSyncDisabledHold(account)) {
+                releaseSyncHolds(exchangeService, AbstractSyncService.EXIT_ACCESS_DENIED, account);
+                log("User requested sync of account in sync disabled hold; releasing");
+            } else if (onSecurityHold(account)) {
+                releaseSyncHolds(exchangeService, AbstractSyncService.EXIT_SECURITY_FAILURE,
+                        account);
+                log("User requested sync of account in security hold; releasing");
+            }
+            if (sConnectivityHold) {
+                return;
+            }
+            if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
+                // We're using SERVER_ID to indicate an error condition (it has no other use for
+                // sent mail)  Upon request to sync the Outbox, we clear this so that all messages
+                // are candidates for sending.
+                ContentValues cv = new ContentValues();
+                cv.put(SyncColumns.SERVER_ID, 0);
+                exchangeService.getContentResolver().update(Message.CONTENT_URI,
+                        cv, WHERE_MAILBOX_KEY, new String[] {Long.toString(msg.mMailboxKey)});
+                // Clear the error state; the Outbox sync will be started from checkMailboxes
+                exchangeService.mSyncErrorMap.remove(msg.mMailboxKey);
+                kick("start outbox");
+                // Outbox can't be synced in EAS
+                return;
+            } else if (!isSyncable(mailbox)) {
+                return;
+            }
+
+            FetchMessageRequest msgRequest
+                    = new FetchMessageRequest(messageId, SyncSize.SYNC_SIZE_ENTIRE_MAIL);
+            startManualSync(msg.mMailboxKey, ExchangeService.SYNC_UI_REQUEST, msgRequest);
         }
 
         /**
