@@ -578,8 +578,9 @@ public class EasSyncService extends AbstractSyncService {
                     } else {
                         // If not, set the proper code (the account will not be created)
                         resultCode = MessagingException.SECURITY_POLICIES_UNSUPPORTED;
+                        boolean hasPolicy = (pp != null && pp.getPolicy() != null);
                         bundle.putParcelable(EmailServiceProxy.VALIDATE_BUNDLE_POLICY_SET,
-                                pp.getPolicy());
+                                hasPolicy ? pp.getPolicy() : Policy.NO_POLICY);
                     }
                 } else if (CommandStatus.isDeniedAccess(status)) {
                     userLog("Denied access: ", CommandStatus.toString(status));
