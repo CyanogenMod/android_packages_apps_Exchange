@@ -339,13 +339,13 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                 GalContactRow.addEmailAddress(cursor, galProjection, contactId,
                         accountName, displayName, ps.get(GalData.EMAIL_ADDRESS));
                 GalContactRow.addPhoneRow(cursor, galProjection, contactId,
-                        displayName, displayName, Phone.TYPE_HOME, ps.get(GalData.HOME_PHONE));
+                        accountName, displayName, Phone.TYPE_HOME, ps.get(GalData.HOME_PHONE));
                 GalContactRow.addPhoneRow(cursor, galProjection, contactId,
-                        displayName, displayName, Phone.TYPE_WORK, ps.get(GalData.WORK_PHONE));
+                        accountName, displayName, Phone.TYPE_WORK, ps.get(GalData.WORK_PHONE));
                 GalContactRow.addPhoneRow(cursor, galProjection, contactId,
-                        displayName, displayName, Phone.TYPE_MOBILE, ps.get(GalData.MOBILE_PHONE));
-                GalContactRow.addNameRow(cursor, galProjection, contactId, displayName,
-                        ps.get(GalData.FIRST_NAME), ps.get(GalData.LAST_NAME), displayName);
+                        accountName, displayName, Phone.TYPE_MOBILE, ps.get(GalData.MOBILE_PHONE));
+                GalContactRow.addNameRow(cursor, galProjection, contactId, accountName,
+                        displayName, ps.get(GalData.FIRST_NAME), ps.get(GalData.LAST_NAME));
                 return cursor;
             }
         }
