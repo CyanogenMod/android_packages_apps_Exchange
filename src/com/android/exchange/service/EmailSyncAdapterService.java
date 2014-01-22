@@ -95,11 +95,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     /** Controls whether we do a periodic "kick" to restart the ping. */
     private static final boolean SCHEDULE_KICK = true;
 
-    /**
-     * If sync extras do not include a mailbox id, then we want to perform a full sync.
-     */
-    private static final long FULL_ACCOUNT_SYNC = Mailbox.NO_MAILBOX;
-
     /** Projection used for getting email address for an account. */
     private static final String[] ACCOUNT_EMAIL_PROJECTION = { AccountColumns.EMAIL_ADDRESS };
 
