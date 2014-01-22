@@ -307,7 +307,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertNotNull(msg);
 
         // Now check some of the fields of the message
-        assertEquals(Address.pack(new Address[] {new Address(ORGANIZER)}), msg.mTo);
+        assertEquals(Address.toHeader(new Address[] {new Address(ORGANIZER)}), msg.mTo);
         Resources resources = getContext().getResources();
         String accept = resources.getString(R.string.meeting_accepted, title);
         assertEquals(accept, msg.mSubject);
@@ -353,7 +353,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertNotNull(msg);
 
         // Now check some of the fields of the message
-        assertEquals(Address.pack(new Address[] {new Address(ATTENDEE)}), msg.mTo);
+        assertEquals(Address.toHeader(new Address[] {new Address(ATTENDEE)}), msg.mTo);
         assertEquals(title, msg.mSubject);
 
         // And make sure we have an attachment
@@ -415,7 +415,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertNotNull(msg);
 
         // Now check some of the fields of the message
-        assertEquals(Address.pack(new Address[] {new Address(ATTENDEE)}), msg.mTo);
+        assertEquals(Address.toHeader(new Address[] {new Address(ATTENDEE)}), msg.mTo);
         assertEquals(title, msg.mSubject);
 
         // And make sure we have an attachment
@@ -481,7 +481,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertNotNull(msg);
 
         // Now check some of the fields of the message
-        assertEquals(Address.pack(new Address[] {new Address(ATTENDEE)}), msg.mTo);
+        assertEquals(Address.toHeader(new Address[] {new Address(ATTENDEE)}), msg.mTo);
         assertEquals(title, msg.mSubject);
 
         // And make sure we have an attachment
@@ -562,7 +562,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertNotNull(msg);
 
         // Now check some of the fields of the message
-        assertEquals(Address.pack(new Address[] {new Address(ATTENDEE)}), msg.mTo);
+        assertEquals(Address.toHeader(new Address[] {new Address(ATTENDEE)}), msg.mTo);
         String cancel = getContext().getResources().getString(R.string.meeting_canceled, title);
         assertEquals(cancel, msg.mSubject);
 

@@ -1974,7 +1974,7 @@ public class CalendarUtilities {
             for (Address address: toList) {
                 toArray[i++] = address;
             }
-            msg.mTo = Address.pack(toArray);
+            msg.mTo = Address.toHeader(toArray);
 
             ics.writeTag("CLASS", "PUBLIC");
             ics.writeTag("STATUS", (messageFlag == Message.FLAG_OUTGOING_MEETING_CANCEL) ?

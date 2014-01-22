@@ -523,20 +523,20 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         attachmentsParser(atts, msg);
                         break;
                     case Tags.EMAIL_TO:
-                        msg.mTo = Address.pack(Address.parse(getValue()));
+                        msg.mTo = Address.toHeader(Address.parse(getValue()));
                         break;
                     case Tags.EMAIL_FROM:
                         Address[] froms = Address.parse(getValue());
                         if (froms != null && froms.length > 0) {
                             msg.mDisplayName = froms[0].toFriendly();
                         }
-                        msg.mFrom = Address.pack(froms);
+                        msg.mFrom = Address.toHeader(froms);
                         break;
                     case Tags.EMAIL_CC:
-                        msg.mCc = Address.pack(Address.parse(getValue()));
+                        msg.mCc = Address.toHeader(Address.parse(getValue()));
                         break;
                     case Tags.EMAIL_REPLY_TO:
-                        msg.mReplyTo = Address.pack(Address.parse(getValue()));
+                        msg.mReplyTo = Address.toHeader(Address.parse(getValue()));
                         break;
                     case Tags.EMAIL_DATE_RECEIVED:
                         msg.mTimeStamp = Utility.parseEmailDateTimeToMillis(getValue());
