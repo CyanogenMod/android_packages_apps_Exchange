@@ -40,7 +40,6 @@ import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Log;
 
-import com.android.emailcommon.Api;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
@@ -65,7 +64,6 @@ import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
 import com.android.exchange.eas.EasSync;
 import com.android.mail.providers.UIProvider;
-import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashMap;
@@ -439,79 +437,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void sendMail(final long accountId) {}
-
-        @Override
-        public int getCapabilities(final Account acct) {
-            String easVersion = acct.mProtocolVersion;
-            Double easVersionDouble = 2.5D;
-            if (easVersion != null) {
-                try {
-                    easVersionDouble = Double.parseDouble(easVersion);
-                } catch (NumberFormatException e) {
-                    // Stick with 2.5
-                }
-            }
-            if (easVersionDouble >= 12.0D) {
-                return AccountCapabilities.SYNCABLE_FOLDERS |
-                        AccountCapabilities.SERVER_SEARCH |
-                        AccountCapabilities.FOLDER_SERVER_SEARCH |
-                        AccountCapabilities.SMART_REPLY |
-                        AccountCapabilities.UNDO |
-                        AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
-            } else {
-                return AccountCapabilities.SYNCABLE_FOLDERS |
-                        AccountCapabilities.SMART_REPLY |
-                        AccountCapabilities.UNDO |
-                        AccountCapabilities.DISCARD_CONVERSATION_DRAFTS;
-            }
-        }
-
-        @Override
-        public void serviceUpdated(final String emailAddress) {
-            // Not required for EAS
-        }
-
-        // All IEmailService messages below are UNCALLED in Email.
-        // TODO: Remove.
-        @Deprecated
-        @Override
-        public int getApiLevel() {
-            return Api.LEVEL;
-        }
-
-        @Deprecated
-        @Override
-        public void startSync(long mailboxId, boolean userRequest, int deltaMessageCount) {}
-
-        @Deprecated
-        @Override
-        public void stopSync(long mailboxId) {}
-
-        @Deprecated
-        @Override
-        public void loadMore(long messageId) {}
-
-        @Deprecated
-        @Override
-        public boolean createFolder(long accountId, String name) {
-            return false;
-        }
-
-        @Deprecated
-        @Override
-        public boolean deleteFolder(long accountId, String name) {
-            return false;
-        }
-
-        @Deprecated
-        @Override
-        public boolean renameFolder(long accountId, String oldName, String newName) {
-            return false;
-        }
-
-        @Deprecated
-        @Override
-        public void hostChanged(long accountId) {}
     };
 
     public EmailSyncAdapterService() {
