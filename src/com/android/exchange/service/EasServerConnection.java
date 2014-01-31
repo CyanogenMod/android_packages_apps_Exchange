@@ -39,6 +39,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.eas.EasConnectionCache;
 import com.android.exchange.utility.CurlLogger;
+import com.android.exchange.utility.WbxmlResponseLogger;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -181,6 +182,7 @@ public class EasServerConnection {
                 protected BasicHttpProcessor createHttpProcessor() {
                     final BasicHttpProcessor processor = super.createHttpProcessor();
                     processor.addRequestInterceptor(new CurlLogger());
+                    processor.addResponseInterceptor(new WbxmlResponseLogger());
                     return processor;
                 }
             };
