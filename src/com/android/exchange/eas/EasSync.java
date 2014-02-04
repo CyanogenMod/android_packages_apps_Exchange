@@ -104,8 +104,8 @@ public class EasSync extends EasOperation {
      * @return Number of messages successfully synced, or -1 if we encountered an error.
      */
     public final int upsync(final SyncResult syncResult) {
-        final List<MessageStateChange> changes = MessageStateChange.getChanges(mContext, mAccountId,
-                        getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE);
+        final List<MessageStateChange> changes = MessageStateChange.getChanges(mContext,
+                getAccountId(), getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE);
         if (changes == null) {
             return 0;
         }
@@ -184,17 +184,12 @@ public class EasSync extends EasOperation {
     @Override
     protected int handleResponse(final EasResponse response, final SyncResult syncResult)
             throws IOException, CommandStatusException {
-        final Account account = Account.restoreAccountWithId(mContext, mAccountId);
-        if (account == null) {
-            // TODO: Make this some other error type, since the account is just gone now.
-            return RESULT_OTHER_FAILURE;
-        }
         final Mailbox mailbox = Mailbox.restoreMailboxWithId(mContext, mMailboxId);
         if (mailbox == null) {
             return RESULT_OTHER_FAILURE;
         }
         final EmailSyncParser parser = new EmailSyncParser(mContext, mContext.getContentResolver(),
-                response.getInputStream(), mailbox, account);
+                response.getInputStream(), mailbox, mAccount);
         try {
             parser.parse();
             mMessageUpdateStatus = parser.getMessageStatuses();

@@ -53,7 +53,7 @@ public class EasMoveItems extends EasOperation {
 
     // TODO: Allow multiple messages in one request. Requires parser changes.
     public int upsyncMovedMessages(final SyncResult syncResult) {
-        final List<MessageMove> moves = MessageMove.getMoves(mContext, mAccountId);
+        final List<MessageMove> moves = MessageMove.getMoves(mContext, getAccountId());
         if (moves == null) {
             return RESULT_NO_MESSAGES;
         }

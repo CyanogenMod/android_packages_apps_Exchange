@@ -21,6 +21,7 @@ import android.content.SyncResult;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
@@ -95,9 +96,9 @@ public class EasProvision extends EasOperation {
     private int mPhase;
 
     // TODO: Temporary until EasSyncHandler converts to EasOperation.
-    public EasProvision(final Context context, final long accountId,
+    public EasProvision(final Context context, final Account account,
             final EasServerConnection connection) {
-        super(context, accountId, connection);
+        super(context, account, connection);
         mPolicy = null;
         mPolicyKey = null;
         mStatus = null;
