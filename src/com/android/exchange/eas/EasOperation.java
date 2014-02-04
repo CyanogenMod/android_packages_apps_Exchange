@@ -56,15 +56,45 @@ import java.util.ArrayList;
  * a request, handling common errors, and setting fields on the {@link SyncResult} if there is one.
  * This class abstracts the connection handling from its subclasses and callers.
  *
- * A subclass must implement the abstract functions below that create the request and parse the
- * response. There are also a set of functions that a subclass may override if it's substantially
- * different from the "normal" operation (e.g. most requests use the same request URI, but auto
- * discover deviates since it's not account-specific), but the default implementation should suffice
- * for most. The subclass must also define a public function which calls {@link #performOperation},
- * possibly doing nothing other than that. (I chose to force subclasses to do this, rather than
- * provide that function in the base class, in order to force subclasses to consider, for example,
- * whether it needs a {@link SyncResult} parameter, and what the proper name for the "doWork"
- * function ought to be for the subclass.)
+ * {@link #performOperation} calls various abstract functions to create the request and parse the
+ * response. For the most part subclasses can implement just these bits of functionality and rely
+ * on {@link #performOperation} to do all the boilerplate etc.
+ *
+ * There are also a set of functions that a subclass may override if it's substantially
+ * different from the "normal" operation (e.g. autodiscover deviates from the standard URI since
+ * it's not account-specific so it needs to override {@link #getRequestUri()}), but the default
+ * implementations of these functions should suffice for most operations.
+ *
+ * Some subclasses may need to override {@link #performOperation} to add validation and results
+ * processing around a call to super.performOperation. Subclasses should avoid doing too much more
+ * than wrapping some handling around the chained call; if you find that's happening, it's likely
+ * a sign that the base class needs to be enhanced.
+ *
+ * One notable reason this wrapping happens is for operations that need to return a result directly
+ * to their callers (as opposed to simply writing the results to the provider, as is common with
+ * sync operations). This happens for example in
+ * {@link com.android.emailcommon.service.IEmailService} message handlers. In such cases, due to
+ * how {@link com.android.exchange.service.EasService} uses this class, the subclass needs to
+ * store the result as a member variable and then provide an accessor to read the result. Since
+ * different operations have different results (or none at all), there is no function in the base
+ * class for this.
+ *
+ * Note that it is not practical to avoid the race between when an operation loads its account data
+ * and when it uses it, as that would require some form of locking in the provider. There are three
+ * interesting situations where this might happen, and that this class must handle:
+ *
+ * 1) Deleted from provider: Any subsequent provider access should return an error. Operations
+ *    must detect this and terminate with an error.
+ * 2) Account sync settings change: Generally only affects Ping. We interrupt the operation and
+ *    load the new settings before proceeding.
+ * 3) Sync suspended due to hold: A special case of the previous, and affects all operations, but
+ *    fortunately doesn't need special handling here. Correct provider functionality must generate
+ *    write failures, so the handling for #1 should cover this case as well.
+ *
+ * This class attempts to defer loading of account data as long as possible -- ideally we load
+ * immediately before the network request -- but does not proactively check for changes after that.
+ * This approach is a a practical balance between minimizing the race without adding too much
+ * complexity beyond what's required.
  */
 public abstract class EasOperation {
     public static final String LOG_TAG = Eas.LOG_TAG;
@@ -93,42 +123,94 @@ public abstract class EasOperation {
     public static final int RESULT_CLIENT_CERTIFICATE_REQUIRED = -8;
     /** Error code indicating we don't have a protocol version in common with the server. */
     public static final int RESULT_PROTOCOL_VERSION_UNSUPPORTED = -9;
+    /** Error code indicating the account could not be loaded from the provider. */
+    public static final int RESULT_ACCOUNT_ID_INVALID = -10;
     /** Error code indicating some other failure. */
-    public static final int RESULT_OTHER_FAILURE = -10;
+    public static final int RESULT_OTHER_FAILURE = -11;
 
     protected final Context mContext;
 
-    /**
-     * The account id for this operation.
-     * NOTE: You will be tempted to add a reference to the {@link Account} here. Resist.
-     * It's too easy for that to lead to creep and stale data.
-     */
-    protected final long mAccountId;
-    private final EasServerConnection mConnection;
+    /** The provider id for the account this operation is on. */
+    private final long mAccountId;
 
-    // TODO: Make this private again when EasSyncHandler is converted to be a subclass.
-    protected EasOperation(final Context context, final long accountId,
-            final EasServerConnection connection) {
+    /** The cached {@link Account} state; can be null if it hasn't been loaded yet. */
+    protected Account mAccount;
+
+    /** The connection to use for this operation. This is created when {@link #mAccount} is set. */
+    private EasServerConnection mConnection;
+
+    /**
+     * Constructor which defers loading of account and connection info.
+     * @param context
+     * @param accountId
+     */
+    protected EasOperation(final Context context, final long accountId) {
         mContext = context;
         mAccountId = accountId;
+    }
+
+    // TODO: Make this private again when EasSyncHandler is converted to be a subclass.
+    protected EasOperation(final Context context, final Account account,
+            final EasServerConnection connection) {
+        this(context, account.mId);
+        mAccount = account;
         mConnection = connection;
     }
 
     protected EasOperation(final Context context, final Account account, final HostAuth hostAuth) {
-        this(context, account.mId, new EasServerConnection(context, account, hostAuth));
+        this(context, account, new EasServerConnection(context, account, hostAuth));
     }
 
     protected EasOperation(final Context context, final Account account) {
-        this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        this(context, account, account.getOrCreateHostAuthRecv(context));
     }
 
     /**
      * This constructor is for use by operations that are created by other operations, e.g.
-     * {@link EasProvision}.
+     * {@link EasProvision}. It reuses the account and connection of its parent.
      * @param parentOperation The {@link EasOperation} that is creating us.
      */
     protected EasOperation(final EasOperation parentOperation) {
-        this(parentOperation.mContext, parentOperation.mAccountId, parentOperation.mConnection);
+        mContext = parentOperation.mContext;
+        mAccountId = parentOperation.mAccountId;
+        mAccount = parentOperation.mAccount;
+        mConnection = parentOperation.mConnection;
+    }
+
+    /**
+     * Some operations happen before the account exists (e.g. account validation).
+     * These operations cannot use {@link #loadAccount}, so instead we make a dummy account and
+     * supply a temporary {@link HostAuth}.
+     * @param hostAuth
+     */
+    protected final void setDummyAccount(final HostAuth hostAuth) {
+        mAccount = new Account();
+        mAccount.mEmailAddress = hostAuth.mLogin;
+        mConnection = new EasServerConnection(mContext, mAccount, hostAuth);
+    }
+
+    /**
+     * Loads (or reloads) the {@link Account} for this operation, and sets up our connection to the
+     * server.
+     * @param allowReload If false, do not perform a load if we already have an {@link Account}
+     *                    (i.e. just keep the existing one); otherwise allow replacement of the
+     *                    account. Note that this can result in a valid Account being replaced with
+     *                    null if the account no longer exists.
+     * @return Whether we now have a valid {@link Account} object.
+     */
+    public final boolean loadAccount(final boolean allowReload) {
+        if (mAccount == null || allowReload) {
+            mAccount = Account.restoreAccountWithId(mContext, getAccountId());
+            if (mAccount != null) {
+                mConnection = new EasServerConnection(mContext, mAccount,
+                        mAccount.getOrCreateHostAuthRecv(mContext));
+            }
+        }
+        return (mAccount != null);
+    }
+
+    public final long getAccountId() {
+        return mAccountId;
     }
 
     /**
@@ -169,7 +251,14 @@ public abstract class EasOperation {
      *                   be written to for this sync; otherwise null.
      * @return A result code for the outcome of this operation, as described above.
      */
-    protected final int performOperation(final SyncResult syncResult) {
+    public int performOperation(final SyncResult syncResult) {
+        // Make sure the account is loaded if it hasn't already been.
+        if (!loadAccount(false)) {
+            LogUtils.i(LOG_TAG, "Failed to load account %d before sending request for operation %s",
+                    getAccountId(), getCommand());
+            return RESULT_ACCOUNT_ID_INVALID;
+        }
+
         // We handle server redirects by looping, but we need to protect against too much looping.
         int redirectCount = 0;
 
@@ -269,7 +358,7 @@ public abstract class EasOperation {
 
                 // Handle provisioning errors.
                 if (result == RESULT_PROVISIONING_ERROR || response.isProvisionError()) {
-                    if (handleProvisionError(syncResult, mAccountId)) {
+                    if (handleProvisionError(syncResult, getAccountId())) {
                         // The provisioning error has been taken care of, so we should re-do this
                         // request.
                         LogUtils.d(LOG_TAG, "Provisioning error handled during %s, retrying",
@@ -331,8 +420,9 @@ public abstract class EasOperation {
      * @param protocolVersion The new protocol version to use, as a string.
      */
     protected final void setProtocolVersion(final String protocolVersion) {
-        if (mConnection.setProtocolVersion(protocolVersion) && mAccountId != Account.NOT_SAVED) {
-            final Uri uri = ContentUris.withAppendedId(Account.CONTENT_URI, mAccountId);
+        final long accountId = getAccountId();
+        if (mConnection.setProtocolVersion(protocolVersion) && accountId != Account.NOT_SAVED) {
+            final Uri uri = ContentUris.withAppendedId(Account.CONTENT_URI, accountId);
             final ContentValues cv = new ContentValues(2);
             if (getProtocolVersion() >= 12.0) {
                 final int oldFlags = Utility.getFirstRowInt(mContext, uri,
