@@ -56,7 +56,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         result.addGalData(4, "Dan Dolphin", "dan@dolphin.com");
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
-        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, false, null);
+        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, null, 20, false, false);
         assertNotNull(c);
         assertEquals(MatrixCursor.class, c.getClass());
         assertEquals(4, c.getCount());
@@ -99,7 +99,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         GalResult result = getTestDisplayNameResult();
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
-        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, false, null);
+        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, null, 20, false, false);
         assertNotNull(c);
         assertEquals(MatrixCursor.class, c.getClass());
         assertEquals(DISPLAY_NAME_TEST_FIELDS.length, c.getCount());
@@ -113,7 +113,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         GalResult result = getTestDisplayNameResult();
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
-        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, false, null);
+        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, null, 20, false, false);
         assertNotNull(c);
         assertEquals(MatrixCursor.class, c.getClass());
         assertEquals(DISPLAY_NAME_TEST_FIELDS.length, c.getCount());
@@ -195,16 +195,16 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         assertEquals(ret, -1);
     }
 
-    public void testNameComparatorLhsNoStringLhsWins() {
+    public void testNameComparatorLhsNoStringLhsGreaterId() {
         final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey(null, 2);
         final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
 
         final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
         final int ret = comparator.compare(lhs, rhs);
-        assertEquals(ret, 1);
+        assertEquals(ret, -1);
     }
 
-    public void testNameComparatorLhsNoStringRhsWins() {
+    public void testNameComparatorLhsNoStringRhsGreaterId() {
         final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey(null, 1);
         final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
 
@@ -213,7 +213,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         assertEquals(ret, -1);
     }
 
-    public void testNameComparatorRhsNoStringLhsWins() {
+    public void testNameComparatorRhsNoStringLhsGreaterId() {
         final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
         final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey(null, 1);
 
@@ -222,13 +222,13 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         assertEquals(ret, 1);
     }
 
-    public void testNameComparatorRhsNoStringRhsWins() {
+    public void testNameComparatorRhsNoStringRhsGreaterId() {
         final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
         final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey(null, 2);
 
         final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
         final int ret = comparator.compare(lhs, rhs);
-        assertEquals(ret, -1);
+        assertEquals(ret, 1);
     }
 
     public void testNameComparatorNoStringsLhsWins() {
