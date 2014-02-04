@@ -143,4 +143,110 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         assertEquals((Long)acctFoo.mId, provider.mAccountIdMap.get("foo@android.com"));
         assertEquals((Long)acctBar.mId, provider.mAccountIdMap.get("bar@android.com"));
     }
+
+    /**
+     * The purpose of these next tests are to test the ExchangeDirectoryProvider. NameComparator comparison function
+     * and not the Collator class. This means that we can test only with Western strings.
+     * Note that there is a loose assumption that IDs always exist. If this is a valid
+     * assumption, we should enforce it in the ExchangeDirectoryProvider.GalSortKey class or in the compare function.
+     */
+    public void testNameComparatorEqualsStringLhsIdGreater() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, 1);
+    }
+
+    public void testNameComparatorEqualsStringRhsIdGreater() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, -1);
+    }
+
+    public void testNameComparatorEqualsEverythingEqual() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, 0);
+    }
+
+    public void testNameComparatorLhsGreaterString() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("B", 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, 1);
+    }
+
+    public void testNameComparatorRhsGreaterString() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("B", 2);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, -1);
+    }
+
+    public void testNameComparatorLhsNoStringLhsWins() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey(null, 2);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, 1);
+    }
+
+    public void testNameComparatorLhsNoStringRhsWins() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey(null, 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, -1);
+    }
+
+    public void testNameComparatorRhsNoStringLhsWins() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 2);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey(null, 1);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, 1);
+    }
+
+    public void testNameComparatorRhsNoStringRhsWins() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey("A", 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey(null, 2);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, -1);
+    }
+
+    public void testNameComparatorNoStringsLhsWins() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey(null, 2);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey(null, 1);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, 1);
+    }
+
+    public void testNameComparatorNoStringsRhsWins() {
+        final ExchangeDirectoryProvider.GalSortKey lhs = new ExchangeDirectoryProvider.GalSortKey(null, 1);
+        final ExchangeDirectoryProvider.GalSortKey rhs = new ExchangeDirectoryProvider.GalSortKey(null, 2);
+
+        final ExchangeDirectoryProvider. NameComparator comparator = new ExchangeDirectoryProvider. NameComparator();
+        final int ret = comparator.compare(lhs, rhs);
+        assertEquals(ret, -1);
+    }
+
 }
