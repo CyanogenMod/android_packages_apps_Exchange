@@ -62,7 +62,7 @@ public class EasSettings extends EasOperation {
     protected HttpEntity getRequestEntity() throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.SETTINGS_SETTINGS);
-        addDeviceInformationToSerlializer(s);
+        addDeviceInformationToSerializer(s);
         s.end().done();
         return makeEntity(s);
     }
