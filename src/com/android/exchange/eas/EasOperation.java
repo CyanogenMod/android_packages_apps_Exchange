@@ -502,14 +502,16 @@ public abstract class EasOperation {
     /**
      * Add the device information to the current request.
      * @param s The {@link Serializer} for our current request.
-     * @throws IOException
+     * @param context The {@link Context} for current device.
+     * @param userAgent The user agent string that our connection use.
      */
-    protected final void addDeviceInformationToSerlializer(final Serializer s) throws IOException {
-        final TelephonyManager tm = (TelephonyManager)mContext.getSystemService(
-                Context.TELEPHONY_SERVICE);
+    protected static void expandedAddDeviceInformationToSerializer(final Serializer s,
+            final Context context, final String userAgent) throws IOException {
         final String deviceId;
         final String phoneNumber;
         final String operator;
+        final TelephonyManager tm = (TelephonyManager)context.getSystemService(
+                Context.TELEPHONY_SERVICE);
         if (tm != null) {
             deviceId = tm.getDeviceId();
             phoneNumber = tm.getLine1Number();
@@ -541,10 +543,10 @@ public abstract class EasOperation {
         }
         // Set the device friendly name, if we have one.
         // TODO: Longer term, this should be done without a provider call.
-        final Bundle bundle = mContext.getContentResolver().call(
+        final Bundle deviceName = context.getContentResolver().call(
                 EmailContent.CONTENT_URI, EmailContent.DEVICE_FRIENDLY_NAME, null, null);
-        if (bundle != null) {
-            final String friendlyName = bundle.getString(EmailContent.DEVICE_FRIENDLY_NAME);
+        if (deviceName != null) {
+            final String friendlyName = deviceName.getString(EmailContent.DEVICE_FRIENDLY_NAME);
             if (!TextUtils.isEmpty(friendlyName)) {
                 s.data(Tags.SETTINGS_FRIENDLY_NAME, friendlyName);
             }
@@ -558,11 +560,21 @@ public abstract class EasOperation {
         // idea of the language will be wrong. Since we're not sure what this is used for,
         // right now we're leaving it out.
         //s.data(Tags.SETTINGS_OS_LANGUAGE, Locale.getDefault().getDisplayLanguage());
-        s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
+        s.data(Tags.SETTINGS_USER_AGENT, userAgent);
         if (operator != null) {
             s.data(Tags.SETTINGS_MOBILE_OPERATOR, operator);
         }
         s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
+    }
+
+    /**
+     * Add the device information to the current request.
+     * @param s The {@link Serializer} that contains the payload for this request.
+     */
+    protected final void addDeviceInformationToSerializer(final Serializer s)
+            throws IOException {
+        final String userAgent = getUserAgent();
+        expandedAddDeviceInformationToSerializer(s, mContext, userAgent);
     }
 
     /**
