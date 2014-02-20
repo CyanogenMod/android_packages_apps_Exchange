@@ -20,6 +20,7 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
@@ -33,6 +34,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+@MediumTest
 public class SyncAdapterTestCase<T extends AbstractSyncAdapter> extends AndroidTestCase {
     public Context mContext;
     public Context mProviderContext;

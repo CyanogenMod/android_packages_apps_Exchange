@@ -20,11 +20,13 @@ import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailsync.PartRequest;
 
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
 /**
  * You can run this entire test case with:
  *   runtest -c com.android.exchange.RequestTests exchange
  */
+@SmallTest
 public class RequestTests extends AndroidTestCase {
 
     public void testPartRequestEquals() {
