@@ -91,8 +91,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
             mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
                     pingStatus);
         } else {
-            // TODO: Fix the pushEnabled param.
-            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), false);
+            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId());
         }
         return null;
     }
@@ -106,8 +105,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
             mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
                     EasOperation.RESULT_REQUEST_FAILURE);
         } else {
-            // TODO: Fix the pushEnabled param.
-            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), false);
+            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId());
         }
     }
 }
