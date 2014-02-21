@@ -242,8 +242,7 @@ public class EasService extends Service {
         try {
             return operation.performOperation();
         } finally {
-            // TODO: Fix pushEnabled param
-            mSynchronizer.syncEnd(accountId, false);
+            mSynchronizer.syncEnd(accountId);
         }
     }
 
