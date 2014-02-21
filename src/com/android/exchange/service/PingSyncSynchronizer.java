@@ -79,6 +79,12 @@ public class PingSyncSynchronizer {
         private PingTask mPingTask;
 
         /**
+         * Tracks whether this account wants to get push notifications, based on calls to
+         * {@link #pushModify} and {@link #pushStop} (i.e. it tracks the last requested push state).
+         */
+        private boolean mPushEnabled;
+
+        /**
          * The number of syncs that are blocked waiting for the current operation to complete.
          * Unlike Pings, sync operations do not start their own tasks and are assumed to run in
          * whatever thread calls into this class.
@@ -94,6 +100,7 @@ public class PingSyncSynchronizer {
          */
         public AccountSyncState(final Lock lock) {
             mPingTask = null;
+            mPushEnabled = false;
             mSyncCount = 0;
             mCondition = lock.newCondition();
         }
@@ -125,17 +132,16 @@ public class PingSyncSynchronizer {
         /**
          * Update bookkeeping when a sync completes. This includes signaling pending ops to
          * go ahead, or starting the ping if appropriate and there are no waiting ops.
-         * @param pushEnabled Whether this account is configured for push.
          * @return Whether this account is now idle.
          */
-        public boolean syncEnd(final boolean pushEnabled) {
+        public boolean syncEnd() {
             --mSyncCount;
             if (mSyncCount > 0) {
                 LogUtils.d(TAG, "Signalling a pending sync to proceed.");
                 mCondition.signal();
                 return false;
             } else {
-                if (pushEnabled) {
+                if (mPushEnabled) {
                     // TODO: Start the ping task
                     return false;
                 }
@@ -145,16 +151,15 @@ public class PingSyncSynchronizer {
 
         /**
          * Update bookkeeping when the ping task terminates, including signaling any waiting ops.
-         * @param pushEnabled Whether this account is configured for push.
          * @return Whether this account is now idle.
          */
-        public boolean pingEnd(final boolean pushEnabled) {
+        public boolean pingEnd() {
             mPingTask = null;
             if (mSyncCount > 0) {
                 mCondition.signal();
                 return false;
             } else {
-                if (pushEnabled) {
+                if (mPushEnabled) {
                     // TODO: request a push-only sync.
                     return false;
                 }
@@ -166,6 +171,7 @@ public class PingSyncSynchronizer {
          * Modifies or starts a ping for this account if no syncs are running.
          */
         public void pushModify() {
+            mPushEnabled = true;
             if (mSyncCount == 0) {
                 if (mPingTask == null) {
                     // No ping, no running syncs -- start a new ping.
@@ -183,6 +189,7 @@ public class PingSyncSynchronizer {
          * Stop the currently running ping.
          */
         public void pushStop() {
+            mPushEnabled = false;
             if (mPingTask != null) {
                 mPingTask.stop();
             }
@@ -263,7 +270,7 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void syncEnd(final long accountId, final boolean pushEnabled) {
+    public void syncEnd(final long accountId) {
         mLock.lock();
         try {
             LogUtils.d(TAG, "PSS syncEnd for account %d", accountId);
@@ -272,7 +279,7 @@ public class PingSyncSynchronizer {
                 LogUtils.w(TAG, "PSS syncEnd for account %d but no state found", accountId);
                 return;
             }
-            if (accountState.syncEnd(pushEnabled)) {
+            if (accountState.syncEnd()) {
                 removeAccount(accountId);
             }
         } finally {
@@ -280,7 +287,7 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void pingEnd(final long accountId, final boolean pushEnabled) {
+    public void pingEnd(final long accountId) {
         mLock.lock();
         try {
             LogUtils.d(TAG, "PSS pingEnd for account %d", accountId);
@@ -289,7 +296,7 @@ public class PingSyncSynchronizer {
                 LogUtils.w(TAG, "PSS pingEnd for account %d but no state found", accountId);
                 return;
             }
-            if (accountState.pingEnd(pushEnabled)) {
+            if (accountState.pingEnd()) {
                 removeAccount(accountId);
             }
         } finally {
