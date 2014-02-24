@@ -19,13 +19,19 @@ package com.android.exchange.service;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SyncResult;
+import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.CalendarContract;
+import android.provider.ContactsContract;
+import android.text.TextUtils;
 
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
+import com.android.emailcommon.service.ServiceProxy;
 import com.android.exchange.Eas;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasOperation;
@@ -40,8 +46,21 @@ public class EasService extends Service {
 
     private static final String TAG = Eas.LOG_TAG;
 
+    /**
+     * The content authorities that can be synced for EAS accounts. Initialization must wait until
+     * after we have a chance to call {@link EmailContent#init} (and, for future content types,
+     * possibly other initializations) because that's how we can know what the email authority is.
+     */
+    private static String[] AUTHORITIES_TO_SYNC;
+
+    /** Bookkeeping for ping tasks & sync threads management. */
     private final PingSyncSynchronizer mSynchronizer;
 
+    /**
+     * Implementation of the IEmailService interface.
+     * For the most part these calls should consist of creating the correct {@link EasOperation}
+     * class and calling {@link #doOperation} with it.
+     */
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
         @Override
         public void sendMail(final long accountId) {}
@@ -94,6 +113,49 @@ public class EasService extends Service {
         }
     };
 
+    /**
+     * Content selection string for getting all accounts that are configured for push.
+     * TODO: Add protocol check so that we don't get e.g. IMAP accounts here.
+     * (Not currently necessary but eventually will be.)
+     */
+    private static final String PUSH_ACCOUNTS_SELECTION =
+            EmailContent.AccountColumns.SYNC_INTERVAL +
+                    "=" + Integer.toString(Account.CHECK_INTERVAL_PUSH);
+
+    /** {@link AsyncTask} to restart pings for all accounts that need it. */
+    private class RestartPingsTask extends AsyncTask<Void, Void, Void> {
+        private boolean mHasRestartedPing = false;
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            final Cursor c = EasService.this.getContentResolver().query(Account.CONTENT_URI,
+                    Account.CONTENT_PROJECTION, PUSH_ACCOUNTS_SELECTION, null, null);
+            if (c != null) {
+                try {
+                    while (c.moveToNext()) {
+                        final Account account = new Account();
+                        account.restore(c);
+                        if (EasService.this.pingNeededForAccount(account)) {
+                            mHasRestartedPing = true;
+                            EasService.this.mSynchronizer.pushModify(account.mId);
+                        }
+                    }
+                } finally {
+                    c.close();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            if (!mHasRestartedPing) {
+                LogUtils.d(TAG, "RestartPingsTask did not start any pings.");
+                EasService.this.mSynchronizer.stopServiceIfIdle();
+            }
+        }
+    }
+
     public EasService() {
         super();
         mSynchronizer = new PingSyncSynchronizer(this);
@@ -101,17 +163,50 @@ public class EasService extends Service {
 
     @Override
     public void onCreate() {
+<<<<<<< HEAD
         // TODO: Restart all pings that are needed.
+=======
+        super.onCreate();
+        EmailContent.init(this);
+        AUTHORITIES_TO_SYNC = new String[] {
+                EmailContent.AUTHORITY,
+                CalendarContract.AUTHORITY,
+                ContactsContract.AUTHORITY
+        };
+
+        // Restart push for all accounts that need it. Because this requires DB loads, we do it in
+        // an AsyncTask, and we startService to ensure that we stick around long enough for the
+        // task to complete. The task will stop the service if necessary after it's done.
+        startService(new Intent(this, EasService.class));
+        new RestartPingsTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+>>>>>>> c3ad5a3... Flesh out EasService some, and start using it.
     }
 
     @Override
     public void onDestroy() {
-        // TODO: Stop all running pings.
+        mSynchronizer.stopAllPings();
     }
 
     @Override
     public IBinder onBind(final Intent intent) {
         return mBinder;
+    }
+
+    @Override
+    public int onStartCommand(final Intent intent, final int flags, final int startId) {
+        if (intent != null &&
+                TextUtils.equals(Eas.EXCHANGE_SERVICE_INTENT_ACTION, intent.getAction())) {
+            if (intent.getBooleanExtra(ServiceProxy.EXTRA_FORCE_SHUTDOWN, false)) {
+                // We've been asked to forcibly shutdown. This happens if email accounts are
+                // deleted, otherwise we can get errors if services are still running for
+                // accounts that are now gone.
+                // TODO: This is kind of a hack, it would be nicer if we could handle it correctly
+                // if accounts disappear out from under us.
+                LogUtils.d(TAG, "Forced shutdown, killing process");
+                System.exit(-1);
+            }
+        }
+        return START_STICKY;
     }
 
     public int doOperation(final EasOperation operation, final SyncResult syncResult,
