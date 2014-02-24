@@ -177,7 +177,7 @@ public class PingSyncSynchronizer {
                     // No ping, no running syncs -- start a new ping.
                     // TODO: Fix this.
                     //mPingTask = new PingTask();
-                    mPingTask.start();
+                    //mPingTask.start();
                 } else {
                     // Ping is already running, so tell it to restart to pick up any new params.
                     mPingTask.restart();
@@ -322,6 +322,36 @@ public class PingSyncSynchronizer {
             final AccountSyncState accountState = getAccountState(accountId, false);
             if (accountState != null) {
                 accountState.pushStop();
+            }
+        } finally {
+            mLock.unlock();
+        }
+    }
+
+    /**
+     * Stops our service if our map contains no active accounts.
+     */
+    public void stopServiceIfIdle() {
+        mLock.lock();
+        try {
+            LogUtils.d(TAG, "PSS stopIfIdle");
+            if (mAccountStateMap.size() == 0) {
+                LogUtils.i(TAG, "PSS has no active accounts; stopping service.");
+                mService.stopSelf();
+            }
+        } finally {
+            mLock.unlock();
+        }
+    }
+
+    /**
+     * Tells all running ping tasks to stop.
+     */
+    public void stopAllPings() {
+        mLock.lock();
+        try {
+            for (int i = 0; i < mAccountStateMap.size(); ++i) {
+                mAccountStateMap.valueAt(i).pushStop();
             }
         } finally {
             mLock.unlock();

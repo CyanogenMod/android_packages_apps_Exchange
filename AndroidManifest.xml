@@ -79,6 +79,17 @@
         <receiver
             android:name="com.android.emailsync.MailboxAlarmReceiver"/>
 
+        <service
+                android:name="com.android.exchange.service.EasService"
+                android:exported="true">
+<!-- TODO: Switch this from EmailSyncAdapterService
+            <intent-filter>
+                <action
+                        android:name="com.android.email.EXCHANGE_INTENT" />
+            </intent-filter>
+-->
+        </service>
+
         <!--Required stanza to register the EAS EmailSyncAdapterService with SyncManager -->
         <service
             android:name="com.android.exchange.service.EmailSyncAdapterService"

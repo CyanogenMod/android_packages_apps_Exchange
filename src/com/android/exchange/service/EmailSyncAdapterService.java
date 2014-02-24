@@ -22,17 +22,20 @@ import android.app.Notification.Builder;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.AbstractThreadedSyncAdapter;
+import android.content.ComponentName;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.os.SystemClock;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
@@ -79,6 +82,16 @@ import java.util.HashSet;
 public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     private static final String TAG = Eas.LOG_TAG;
+
+    /**
+     * Temporary while converting to EasService. Do not check in set to true.
+     * When true, delegates various operations to {@link EasService}, for use while developing the
+     * new service.
+     * The two following fields are used to support what happens when this is true.
+     */
+    private static final boolean DELEGATE_TO_EAS_SERVICE = false;
+    private IEmailService mEasService;
+    private ServiceConnection mConnection;
 
     private static final String EXTRA_START_PING = "START_PING";
     private static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
@@ -362,6 +375,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public Bundle validate(final HostAuth hostAuth) {
             LogUtils.d(TAG, "IEmailService.validate");
+            if (mEasService != null) {
+                try {
+                    return mEasService.validate(hostAuth);
+                } catch (final RemoteException re) {
+                    LogUtils.e(TAG, re, "While asking EasService to handle validate");
+                }
+            }
             return new EasFolderSync(EmailSyncAdapterService.this, hostAuth).doValidate();
         }
 
@@ -375,6 +395,14 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void updateFolderList(final long accountId) {
             LogUtils.d(TAG, "IEmailService.updateFolderList: %d", accountId);
+            if (mEasService != null) {
+                try {
+                    mEasService.updateFolderList(accountId);
+                    return;
+                } catch (final RemoteException re) {
+                    LogUtils.e(TAG, re, "While asking EasService to updateFolderList");
+                }
+            }
             final String emailAddress = getEmailAddressForAccount(accountId);
             if (emailAddress != null) {
                 final Bundle extras = new Bundle(1);
@@ -498,6 +526,21 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         // Restart push for all accounts that need it.
         new RestartPingsTask(getContentResolver(), mSyncHandlerMap).executeOnExecutor(
                 AsyncTask.THREAD_POOL_EXECUTOR);
+        if (DELEGATE_TO_EAS_SERVICE) {
+            // TODO: This block is temporary to support the transition to EasService.
+            mConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name,  IBinder binder) {
+                    mEasService = IEmailService.Stub.asInterface(binder);
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+                    mEasService = null;
+                }
+            };
+            bindService(new Intent(this, EasService.class), mConnection, Context.BIND_AUTO_CREATE);
+        }
     }
 
     @Override
@@ -508,6 +551,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             if (task != null) {
                 task.stop();
             }
+        }
+        if (DELEGATE_TO_EAS_SERVICE) {
+            // TODO: This block is temporary to support the transition to EasService.
+            unbindService(mConnection);
         }
     }
 
