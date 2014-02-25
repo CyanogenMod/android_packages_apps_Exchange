@@ -465,6 +465,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public void sendMail(final long accountId) {}
+
+        @Override
+        public void pushModify(final long accountId) {}
     };
 
     public EmailSyncAdapterService() {

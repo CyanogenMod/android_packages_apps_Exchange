@@ -78,6 +78,17 @@ public class EasService extends Service {
         }
 
         @Override
+        public void pushModify(final long accountId) {
+            LogUtils.d(TAG, "IEmailService.pushModify: %d", accountId);
+            final Account account = Account.restoreAccountWithId(EasService.this, accountId);
+            if (pingNeededForAccount(account)) {
+                mSynchronizer.pushModify(accountId);
+            } else {
+                mSynchronizer.pushStop(accountId);
+            }
+        }
+
+        @Override
         public Bundle validate(final HostAuth hostAuth) {
             final EasFolderSync operation = new EasFolderSync(EasService.this, hostAuth);
             doOperation(operation, null, "IEmailService.validate");
