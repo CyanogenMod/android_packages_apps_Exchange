@@ -288,7 +288,9 @@ public class EasServerConnection {
         post.setHeader("MS-ASProtocolVersion", String.valueOf(mProtocolVersion));
         post.setHeader("User-Agent", getUserAgent());
         post.setHeader("Accept-Encoding", "gzip");
-        if (contentType != null) {
+        // If there is no entity, we should not be setting a content-type since this will
+        // result in a 400 from the server in the case of loading an attachment.
+        if (contentType != null && entity != null) {
             post.setHeader("Content-Type", contentType);
         }
         if (usePolicyKey) {
@@ -358,8 +360,7 @@ public class EasServerConnection {
             contentType = MimeUtility.MIME_TYPE_RFC822;
         } else if (entity != null) {
             contentType = EAS_14_MIME_TYPE;
-        }
-        else {
+        } else {
             contentType = null;
         }
         final String uriString;

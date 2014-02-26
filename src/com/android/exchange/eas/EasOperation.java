@@ -105,6 +105,13 @@ public abstract class EasOperation {
     /** Message MIME type for EAS version 14 and later. */
     private static final String EAS_14_MIME_TYPE = "application/vnd.ms-sync.wbxml";
 
+    /**
+     * EasOperation error codes below.  All subclasses should try to create error codes
+     * that do not overlap these codes or the codes of other subclasses. The error
+     * code values for each subclass should start in a different 100 range (i.e. -100,
+     * -200, etc...).
+     */
+
     /** Error code indicating the operation was cancelled via {@link #abort}. */
     public static final int RESULT_ABORT = -1;
     /** Error code indicating the operation was cancelled via {@link #restart}. */
