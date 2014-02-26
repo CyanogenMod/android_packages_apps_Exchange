@@ -62,6 +62,7 @@ import com.android.exchange.R.string;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.adapter.Search;
 import com.android.exchange.eas.EasFolderSync;
+import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasMoveItems;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
@@ -423,12 +424,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         @Override
-        public void loadAttachment(final IEmailServiceCallback callback, final long attachmentId,
-                final boolean background) {
+        public void loadAttachment(final IEmailServiceCallback callback, final long accountId,
+                final long attachmentId, final boolean background) {
             LogUtils.d(TAG, "IEmailService.loadAttachment: %d", attachmentId);
             // TODO: Prevent this from happening in parallel with a sync?
-            EasAttachmentLoader.loadAttachment(EmailSyncAdapterService.this, attachmentId,
-                    callback);
+            final EasLoadAttachment operation = new EasLoadAttachment(EmailSyncAdapterService.this,
+                    accountId, attachmentId, callback);
+            operation.performOperation(null);
         }
 
         @Override

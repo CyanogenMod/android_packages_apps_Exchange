@@ -38,6 +38,7 @@ import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.service.ServiceProxy;
 import com.android.exchange.Eas;
 import com.android.exchange.eas.EasFolderSync;
+import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
 import com.android.mail.utils.LogUtils;
 
@@ -73,9 +74,12 @@ public class EasService extends Service {
         public void sendMail(final long accountId) {}
 
         @Override
-        public void loadAttachment(final IEmailServiceCallback callback, final long attachmentId,
-                final boolean background) {
+        public void loadAttachment(final IEmailServiceCallback callback, final long accountId,
+                final long attachmentId, final boolean background) {
             LogUtils.d(TAG, "IEmailService.loadAttachment: %d", attachmentId);
+            final EasLoadAttachment operation = new EasLoadAttachment(EasService.this, accountId,
+                    attachmentId, callback);
+            doOperation(operation, null, "IEmailService.loadAttachment");
         }
 
         @Override
