@@ -17,12 +17,8 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
-import android.content.SyncResult;
-import android.os.Bundle;
-import android.telephony.TelephonyManager;
 
 import com.android.emailcommon.provider.Account;
-import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.exchange.Eas;
@@ -113,20 +109,20 @@ public class EasProvision extends EasOperation {
         mPhase = 0;
     }
 
-    private int performInitialRequest(final SyncResult syncResult) {
+    private int performInitialRequest() {
         mPhase = PHASE_INITIAL;
-        return performOperation(syncResult);
+        return performOperation();
     }
 
-    private void performAckRequestForWipe(final SyncResult syncResult) {
+    private void performAckRequestForWipe() {
         mPhase = PHASE_WIPE;
-        performOperation(syncResult);
+        performOperation();
     }
 
-    private int performAckRequest(final SyncResult syncResult, final boolean isPartial) {
+    private int performAckRequest(final boolean isPartial) {
         mPhase = PHASE_ACKNOWLEDGE;
         mStatus = isPartial ? PROVISION_STATUS_PARTIAL : PROVISION_STATUS_OK;
-        return performOperation(syncResult);
+        return performOperation();
     }
 
     /**
@@ -134,10 +130,10 @@ public class EasProvision extends EasOperation {
      * @return The {@link Policy} if we support it, or null otherwise.
      */
     public final Policy test() {
-        int result = performInitialRequest(null);
+        int result = performInitialRequest();
         if (result == RESULT_POLICY_UNSUPPORTED) {
             // Check if the server will permit partial policies.
-            result = performAckRequest(null, true);
+            result = performAckRequest(true);
         }
         if (result == RESULT_POLICY_SUPPORTED) {
             // The server is ok with us not supporting everything, so clear the unsupported ones.
@@ -149,19 +145,18 @@ public class EasProvision extends EasOperation {
 
     /**
      * Get the required policy from the server and enforce it.
-     * @param syncResult The {@link SyncResult}, if anym for this operation.
-     * @param accountId The id for the account for this request.
      * @return Whether we succeeded in provisioning this account.
      */
-    public final boolean provision(final SyncResult syncResult, final long accountId) {
-        final int result = performInitialRequest(syncResult);
+    public final boolean provision() {
+        final int result = performInitialRequest();
+        final long accountId = getAccountId();
 
         if (result < 0) {
             return false;
         }
 
         if (result == RESULT_REMOTE_WIPE) {
-            performAckRequestForWipe(syncResult);
+            performAckRequestForWipe();
             LogUtils.i(LOG_TAG, "Executing remote wipe");
             PolicyServiceProxy.remoteWipe(mContext);
             return false;
@@ -175,8 +170,7 @@ public class EasProvision extends EasOperation {
         }
 
         // Acknowledge to the server and make sure all's well.
-        if (performAckRequest(syncResult, result == RESULT_POLICY_UNSUPPORTED) ==
-                RESULT_POLICY_UNSUPPORTED) {
+        if (performAckRequest(result == RESULT_POLICY_UNSUPPORTED) == RESULT_POLICY_UNSUPPORTED) {
             return false;
         }
 
@@ -190,7 +184,7 @@ public class EasProvision extends EasOperation {
         if (version == Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE
                 || version == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
             final EasSettings settingsOperation = new EasSettings(this);
-            if (!settingsOperation.sendDeviceInformation(syncResult)) {
+            if (!settingsOperation.sendDeviceInformation()) {
                 // TODO: Do something more useful when the settings command fails.
                 // The consequence here is that the server will not have device info.
                 // However, this is NOT a provisioning failure.
@@ -266,8 +260,7 @@ public class EasProvision extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+    protected int handleResponse(final EasResponse response) throws IOException {
         final ProvisionParser pp = new ProvisionParser(mContext, response.getInputStream());
         // If this is the response for a remote wipe ack, it doesn't have anything useful in it.
         // Just go ahead and return now.
@@ -302,7 +295,7 @@ public class EasProvision extends EasOperation {
     }
 
     @Override
-    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+    protected boolean handleProvisionError() {
         // If we get a provisioning error while doing provisioning, we should not recurse.
         return false;
     }

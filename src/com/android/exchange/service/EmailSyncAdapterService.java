@@ -430,7 +430,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // TODO: Prevent this from happening in parallel with a sync?
             final EasLoadAttachment operation = new EasLoadAttachment(EmailSyncAdapterService.this,
                     accountId, attachmentId, callback);
-            operation.performOperation(null);
+            operation.performOperation();
         }
 
         @Override
@@ -469,7 +469,26 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public void sendMail(final long accountId) {}
 
         @Override
-        public void pushModify(final long accountId) {}
+        public void pushModify(final long accountId) {
+            LogUtils.d(TAG, "IEmailService.pushModify");
+            if (mEasService != null) {
+                try {
+                    mEasService.pushModify(accountId);
+                    return;
+                } catch (final RemoteException re) {
+                    LogUtils.e(TAG, re, "While asking EasService to handle pushModify");
+                }
+            }
+            final Account account = Account.restoreAccountWithId(EmailSyncAdapterService.this,
+                    accountId);
+            if (account != null) {
+                mSyncHandlerMap.modifyPing(false, account);
+            }
+        }
+
+        @Override
+        public void sync(final long accountId, final boolean updateFolderList,
+                final int mailboxType, final long[] folders) {}
     };
 
     public EmailSyncAdapterService() {
@@ -674,38 +693,59 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             // If we're just twiddling the push, we do the lightweight thing and bail early.
             if (pushOnly && !isFolderSync) {
-                mSyncHandlerMap.modifyPing(false, account);
                 LogUtils.d(TAG, "onPerformSync: mailbox push only");
+                if (mEasService != null) {
+                    try {
+                        mEasService.pushModify(account.mId);
+                        return;
+                    } catch (final RemoteException re) {
+                        LogUtils.e(TAG, re, "While trying to pushModify within onPerformSync");
+                    }
+                }
+                mSyncHandlerMap.modifyPing(false, account);
                 return;
             }
 
             // Do the bookkeeping for starting a sync, including stopping a ping if necessary.
             mSyncHandlerMap.startSync(account.mId);
-
-            // Perform a FolderSync if necessary.
-            // TODO: We permit FolderSync even during security hold, because it's necessary to
-            // resolve some holds. Ideally we would only do it for the holds that require it.
-            if (isFolderSync) {
-                final EasFolderSync folderSync = new EasFolderSync(context, account);
-                folderSync.doFolderSync(syncResult);
-            }
-
             boolean lastSyncHadError = false;
 
-            if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) == 0) {
+            try {
+                // Perform a FolderSync if necessary.
+                // TODO: We permit FolderSync even during security hold, because it's necessary to
+                // resolve some holds. Ideally we would only do it for the holds that require it.
+                if (isFolderSync) {
+                    final EasFolderSync folderSync = new EasFolderSync(context, account);
+                    final int result = folderSync.doFolderSync();
+                    if (result < 0) {
+                        EasFolderSync.writeResultToSyncResult(result, syncResult);
+                        return;
+                    }
+                }
+
+                // Do not permit further syncs if we're on security hold.
+                if ((account.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+                    return;
+                }
+
                 // Perform email upsync for this account. Moves first, then state changes.
                 if (!isInitialSync) {
                     EasMoveItems move = new EasMoveItems(context, account);
-                    move.upsyncMovedMessages(syncResult);
+                    final int moveResult = move.upsyncMovedMessages();
+                    if (moveResult < 0) {
+                        EasMoveItems.writeResultToSyncResult(moveResult, syncResult);
+                        return;
+                    }
+
                     // TODO: EasSync should eventually handle both up and down; for now, it's used
                     // purely for upsync.
                     EasSync upsync = new EasSync(context, account);
-                    upsync.upsync(syncResult);
+                    final int upsyncResult = upsync.upsync();
+                    if (upsyncResult < 0) {
+                        EasSync.writeResultToSyncResult(upsyncResult, syncResult);
+                        return;
+                    }
                 }
-
-                // TODO: Should we refresh account here? It may have changed while waiting for any
-                // pings to stop. It may not matter since the things that may have been twiddled
-                // might not affect syncing.
 
                 if (mailboxIds != null) {
                     long numIoExceptions = 0;
@@ -761,15 +801,15 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         }
                     }
                 }
+            } finally {
+                // Clean up the bookkeeping, including restarting ping if necessary.
+                mSyncHandlerMap.syncComplete(lastSyncHadError, account);
+
+                // TODO: It may make sense to have common error handling here. Two possibilities:
+                // 1) performSync return value can signal some useful info.
+                // 2) syncResult can contain useful info.
+                LogUtils.d(TAG, "onPerformSync: finished");
             }
-
-            // Clean up the bookkeeping, including restarting ping if necessary.
-            mSyncHandlerMap.syncComplete(lastSyncHadError, account);
-
-            // TODO: It may make sense to have common error handling here. Two possible mechanisms:
-            // 1) performSync return value can signal some useful info.
-            // 2) syncResult can contain useful info.
-            LogUtils.d(TAG, "onPerformSync: finished");
         }
 
         /**

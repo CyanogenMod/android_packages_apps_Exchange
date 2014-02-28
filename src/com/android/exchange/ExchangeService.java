@@ -177,12 +177,14 @@ public class ExchangeService extends SyncManager {
         }
 
         @Override
-        public void sendMail(long accountId) throws RemoteException {
-        }
+        public void sendMail(long accountId) throws RemoteException {}
 
         @Override
-        public void pushModify(long accountId) throws RemoteException {
-        }
+        public void pushModify(long accountId) throws RemoteException {}
+
+        @Override
+        public void sync(final long accountId, final boolean updateFolderList,
+                final int mailboxType, final long[] folders) {}
     };
 
     /**

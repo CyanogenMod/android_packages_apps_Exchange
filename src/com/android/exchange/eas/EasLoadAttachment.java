@@ -17,7 +17,6 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
-import android.content.SyncResult;
 import android.os.RemoteException;
 
 import com.android.emailcommon.provider.EmailContent;
@@ -25,7 +24,6 @@ import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.utility.AttachmentUtilities;
-import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.ItemOperationsParser;
@@ -147,11 +145,10 @@ public final class EasLoadAttachment extends EasOperation {
 
     /**
      * Finish encoding attachment names for Exchange 2003.
-     * @param syncResult The {@link SyncResult} that stores the result of the operation.
      * @return A {@link EmailServiceStatus} code that indicates the result of the operation.
      */
     @Override
-    public int performOperation(final SyncResult syncResult) {
+    public int performOperation() {
         mAttachment = EmailContent.Attachment.restoreAttachmentWithId(mContext, mAttachmentId);
         if (mAttachment == null) {
             LogUtils.e(LOG_TAG, "Could not load attachment %d", mAttachmentId);
@@ -178,7 +175,7 @@ public final class EasLoadAttachment extends EasOperation {
         doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachment.mId,
                 EmailServiceStatus.IN_PROGRESS, 0);
 
-        final int return_value = super.performOperation(syncResult);
+        final int return_value = super.performOperation();
 
         // Last callback to report results.  Note that we are using the status member variable
         // to keep track of the status to be returned as super.performOperation() is not designed
@@ -270,12 +267,10 @@ public final class EasLoadAttachment extends EasOperation {
     /**
      * Read the {@link EasResponse} and extract the attachment data, saving it to the provider.
      * @param response The (successful) {@link EasResponse} containing the attachment data.
-     * @param syncResult The {@link SyncResult} that stores the result of the operation.
      * @return A status code, from {@link EmailServiceStatus}, for this load.
      */
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException, CommandStatusException {
+    protected int handleResponse(final EasResponse response) {
         // Some very basic error checking on the response object first.
         // Our base class should be responsible for checking these errors but if the error
         // checking is done in the override functions, we can be more specific about

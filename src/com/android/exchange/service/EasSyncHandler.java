@@ -375,7 +375,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
             } else if (resp.isProvisionError()
                     || responseResult == SYNC_RESULT_PROVISIONING_ERROR) {
                 final EasProvision provision = new EasProvision(mContext, mAccount, this);
-                if (provision.provision(syncResult, mAccount.mId)) {
+                if (provision.provision()) {
                     // We handled the provisioning error, so loop.
                     LogUtils.d(TAG, "Provisioning error handled during sync, retrying");
                     result = SYNC_RESULT_MORE_AVAILABLE;
