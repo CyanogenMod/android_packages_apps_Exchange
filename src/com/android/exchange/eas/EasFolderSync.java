@@ -17,7 +17,6 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
-import android.content.SyncResult;
 import android.os.Bundle;
 
 import com.android.emailcommon.mail.MessagingException;
@@ -99,12 +98,12 @@ public class EasFolderSync extends EasOperation {
     }
 
     @Override
-    public int performOperation(final SyncResult syncResult) {
+    public int performOperation() {
         if (mStatusOnly) {
             return validate();
         } else {
             LogUtils.d(LOG_TAG, "Performing FolderSync for account %d", getAccountId());
-            return super.performOperation(syncResult);
+            return super.performOperation();
         }
     }
 
@@ -119,10 +118,9 @@ public class EasFolderSync extends EasOperation {
     /**
      * Perform a folder sync.
      * TODO: Remove this function when transition to EasService is complete.
-     * @param syncResult The {@link SyncResult} object for this sync operation.
      * @return A result code, either from above or from the base class.
      */
-    public int doFolderSync(final SyncResult syncResult) {
+    public int doFolderSync() {
         if (mStatusOnly) {
             return RESULT_WRONG_OPERATION;
         }
@@ -130,7 +128,7 @@ public class EasFolderSync extends EasOperation {
         // This intentionally calls super.performOperation -- calling our performOperation
         // will simply end up calling super.performOperation anyway. This is part of the transition
         // to EasService and will go away when this function is deleted.
-        return super.performOperation(syncResult);
+        return super.performOperation();
     }
 
     /**
@@ -155,7 +153,7 @@ public class EasFolderSync extends EasOperation {
 
         if (shouldGetProtocolVersion()) {
             final EasOptions options = new EasOptions(this);
-            final int result = options.getProtocolVersionFromServer(null);
+            final int result = options.getProtocolVersionFromServer();
             if (result != EasOptions.RESULT_OK) {
                 writeResultCode(mValidationResult, result);
                 return result;
@@ -168,7 +166,7 @@ public class EasFolderSync extends EasOperation {
 
         // This is intentionally a call to super.performOperation. This is a helper function for
         // our version of perfomOperation so calling that function would infinite loop.
-        final int result = super.performOperation(null);
+        final int result = super.performOperation();
         writeResultCode(mValidationResult, result);
         return result;
     }
@@ -198,7 +196,7 @@ public class EasFolderSync extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
+    protected int handleResponse(final EasResponse response)
             throws IOException, CommandStatusException {
         if (!response.isEmpty()) {
             new FolderSyncParser(mContext, mContext.getContentResolver(),
@@ -213,7 +211,7 @@ public class EasFolderSync extends EasOperation {
     }
 
     @Override
-    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+    protected boolean handleProvisionError() {
         if (mStatusOnly) {
             final EasProvision provisionOperation = new EasProvision(this);
             mPolicy = provisionOperation.test();
@@ -221,7 +219,7 @@ public class EasFolderSync extends EasOperation {
             // no need to re-run the operation.
             return false;
         }
-        return super.handleProvisionError(syncResult, accountId);
+        return super.handleProvisionError();
     }
 
     /**

@@ -19,7 +19,6 @@ package com.android.exchange.service;
 import android.app.Service;
 import android.content.ContentResolver;
 import android.content.Intent;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -79,14 +78,18 @@ public class EasService extends Service {
             LogUtils.d(TAG, "IEmailService.loadAttachment: %d", attachmentId);
             final EasLoadAttachment operation = new EasLoadAttachment(EasService.this, accountId,
                     attachmentId, callback);
-            doOperation(operation, null, "IEmailService.loadAttachment");
+            doOperation(operation, "IEmailService.loadAttachment");
         }
 
         @Override
         public void updateFolderList(final long accountId) {
             final EasFolderSync operation = new EasFolderSync(EasService.this, accountId);
-            doOperation(operation, null, "IEmailService.updateFolderList");
+            doOperation(operation, "IEmailService.updateFolderList");
         }
+
+        @Override
+        public void sync(final long accountId, final boolean updateFolderList,
+                final int mailboxType, final long[] folders) {}
 
         @Override
         public void pushModify(final long accountId) {
@@ -102,7 +105,7 @@ public class EasService extends Service {
         @Override
         public Bundle validate(final HostAuth hostAuth) {
             final EasFolderSync operation = new EasFolderSync(EasService.this, hostAuth);
-            doOperation(operation, null, "IEmailService.validate");
+            doOperation(operation, "IEmailService.validate");
             return operation.getValidationResult();
         }
 
@@ -227,8 +230,7 @@ public class EasService extends Service {
         return START_STICKY;
     }
 
-    public int doOperation(final EasOperation operation, final SyncResult syncResult,
-            final String loggingName) {
+    public int doOperation(final EasOperation operation, final String loggingName) {
         final Account account = operation.getAccount();
         final long accountId = account.getId();
         LogUtils.d(TAG, "%s: %d", loggingName, accountId);
@@ -239,7 +241,7 @@ public class EasService extends Service {
         // it in the finally block below.
         // On the other hand, even for SAs, it doesn't hurt to get a wakelock here.
         try {
-            return operation.performOperation(syncResult);
+            return operation.performOperation();
         } finally {
             mSynchronizer.syncEnd(account);
         }

@@ -19,7 +19,6 @@ package com.android.exchange.eas;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -102,7 +101,7 @@ public class EasPing extends EasOperation {
 
     public final int doPing() {
         final long startTime = SystemClock.elapsedRealtime();
-        final int result = performOperation(null);
+        final int result = performOperation();
         if (result == RESULT_RESTART) {
             return PingParser.STATUS_EXPIRED;
         } else  if (result == RESULT_REQUEST_FAILURE) {
@@ -176,8 +175,7 @@ public class EasPing extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+    protected int handleResponse(final EasResponse response) throws IOException {
         if (response.isEmpty()) {
             // TODO this should probably not be an IOException, maybe something more descriptive?
             throw new IOException("Empty ping response");

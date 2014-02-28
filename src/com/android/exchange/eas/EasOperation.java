@@ -132,8 +132,10 @@ public abstract class EasOperation {
     public static final int RESULT_PROTOCOL_VERSION_UNSUPPORTED = -9;
     /** Error code indicating the account could not be loaded from the provider. */
     public static final int RESULT_ACCOUNT_ID_INVALID = -10;
+    /** Error code indicating a hard data layer error. */
+    public static final int RESULT_HARD_DATA_FAILURE = -11;
     /** Error code indicating some other failure. */
-    public static final int RESULT_OTHER_FAILURE = -11;
+    public static final int RESULT_OTHER_FAILURE = -12;
 
     protected final Context mContext;
 
@@ -258,11 +260,9 @@ public abstract class EasOperation {
      * negative result code, which will be handled the same as if it had been indicated in the HTTP
      * response code.
      *
-     * @param syncResult If this operation is a sync, the {@link SyncResult} object that should
-     *                   be written to for this sync; otherwise null.
      * @return A result code for the outcome of this operation, as described above.
      */
-    public int performOperation(final SyncResult syncResult) {
+    public int performOperation() {
         // Make sure the account is loaded if it hasn't already been.
         if (!loadAccount(false)) {
             LogUtils.i(LOG_TAG, "Failed to load account %d before sending request for operation %s",
@@ -294,26 +294,16 @@ public abstract class EasOperation {
                     message = "(no message)";
                 }
                 LogUtils.i(LOG_TAG, "IOException while sending request: %s", message);
-                if (syncResult != null) {
-                    ++syncResult.stats.numIoExceptions;
-                }
                 return RESULT_REQUEST_FAILURE;
             } catch (final CertificateException e) {
                 LogUtils.i(LOG_TAG, "CertificateException while sending request: %s",
                         e.getMessage());
-                if (syncResult != null) {
-                    // TODO: Is this the best stat to increment?
-                    ++syncResult.stats.numAuthExceptions;
-                }
                 return RESULT_CLIENT_CERTIFICATE_REQUIRED;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
                 // TODO: Switch away from ISEs.
                 LogUtils.e(LOG_TAG, e, "Exception while sending request");
-                if (syncResult != null) {
-                    syncResult.databaseError = true;
-                }
-                return RESULT_OTHER_FAILURE;
+                return RESULT_HARD_DATA_FAILURE;
             }
 
             // The POST completed, so process the response.
@@ -323,12 +313,9 @@ public abstract class EasOperation {
                 if (response.isSuccess()) {
                     int responseResult;
                     try {
-                        responseResult = handleResponse(response, syncResult);
+                        responseResult = handleResponse(response);
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
-                        if (syncResult != null) {
-                            ++syncResult.stats.numIoExceptions;
-                        }
                         return RESULT_REQUEST_FAILURE;
                     } catch (final CommandStatusException e) {
                         // For some operations (notably Sync & FolderSync), errors are signaled in
@@ -360,26 +347,17 @@ public abstract class EasOperation {
                 // If this operation has distinct handling for 403 errors, do that.
                 if (result == RESULT_FORBIDDEN || (response.isForbidden() && handleForbidden())) {
                     LogUtils.e(LOG_TAG, "Forbidden response");
-                    if (syncResult != null) {
-                        // TODO: Is this the best stat to increment?
-                        ++syncResult.stats.numAuthExceptions;
-                    }
                     return RESULT_FORBIDDEN;
                 }
 
                 // Handle provisioning errors.
                 if (result == RESULT_PROVISIONING_ERROR || response.isProvisionError()) {
-                    if (handleProvisionError(syncResult, getAccountId())) {
+                    if (handleProvisionError()) {
                         // The provisioning error has been taken care of, so we should re-do this
                         // request.
                         LogUtils.d(LOG_TAG, "Provisioning error handled during %s, retrying",
                                 getCommand());
                         continue;
-                    }
-                    if (syncResult != null) {
-                        LogUtils.e(LOG_TAG, "Issue with provisioning");
-                        // TODO: Is this the best stat to increment?
-                        ++syncResult.stats.numAuthExceptions;
                     }
                     return RESULT_PROVISIONING_ERROR;
                 }
@@ -387,9 +365,6 @@ public abstract class EasOperation {
                 // Handle authentication errors.
                 if (response.isAuthError()) {
                     LogUtils.e(LOG_TAG, "Authentication error");
-                    if (syncResult != null) {
-                        ++syncResult.stats.numAuthExceptions;
-                    }
                     if (response.isMissingCertificate()) {
                         return RESULT_CLIENT_CERTIFICATE_REQUIRED;
                     }
@@ -405,10 +380,6 @@ public abstract class EasOperation {
                     // All other errors.
                     LogUtils.e(LOG_TAG, "Generic error for operation %s: status %d, result %d",
                             getCommand(), response.getStatus(), result);
-                    if (syncResult != null) {
-                        // TODO: Is this the best stat to increment?
-                        ++syncResult.stats.numIoExceptions;
-                    }
                     return RESULT_OTHER_FAILURE;
                 }
             } finally {
@@ -419,9 +390,6 @@ public abstract class EasOperation {
         // Non-redirects return immediately after handling, so the only way to reach here is if we
         // looped too many times.
         LogUtils.e(LOG_TAG, "Too many redirects");
-        if (syncResult != null) {
-           syncResult.tooManyRetries = true;
-        }
         return RESULT_TOO_MANY_REDIRECTS;
     }
 
@@ -491,15 +459,13 @@ public abstract class EasOperation {
     /**
      * Parse the response from the Exchange perform whatever actions are dictated by that.
      * @param response The {@link EasResponse} to our request.
-     * @param syncResult The {@link SyncResult} object for this operation, or null if we're not
-     *                   handling a sync.
      * @return A result code. Non-negative values are returned directly to the caller; negative
      *         values
      *
      * that is returned to the caller of {@link #performOperation}.
      * @throws IOException
      */
-    protected abstract int handleResponse(final EasResponse response, final SyncResult syncResult)
+    protected abstract int handleResponse(final EasResponse response)
             throws IOException, CommandStatusException;
 
     /**
@@ -549,13 +515,11 @@ public abstract class EasOperation {
     /**
      * Handle a provisioning error. Subclasses may override this to do something different, e.g.
      * to validate rather than actually do the provisioning.
-     * @param syncResult
-     * @param accountId
      * @return
      */
-    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+    protected boolean handleProvisionError() {
         final EasProvision provisionOperation = new EasProvision(this);
-        return provisionOperation.provision(syncResult, accountId);
+        return provisionOperation.provision();
     }
 
     /**
@@ -737,5 +701,33 @@ public abstract class EasOperation {
         ContentResolver.requestSync(amAccount, authority, extras);
         LogUtils.d(LOG_TAG, "requestSync EasOperation requestNoOpSync %s, %s",
                 amAccount.toString(), extras.toString());
+    }
+
+    public static void writeResultToSyncResult(final int result, final SyncResult syncResult) {
+        switch (result) {
+            case RESULT_TOO_MANY_REDIRECTS:
+                syncResult.tooManyRetries = true;
+                break;
+            case RESULT_REQUEST_FAILURE:
+                syncResult.stats.numIoExceptions = 1;
+                break;
+            case RESULT_FORBIDDEN:
+            case RESULT_PROVISIONING_ERROR:
+            case RESULT_AUTHENTICATION_ERROR:
+            case RESULT_CLIENT_CERTIFICATE_REQUIRED:
+                syncResult.stats.numAuthExceptions = 1;
+                break;
+            case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
+                // Only used in validate, so there's never a syncResult to write to here.
+                break;
+            case RESULT_ACCOUNT_ID_INVALID:
+            case RESULT_HARD_DATA_FAILURE:
+                syncResult.databaseError = true;
+                break;
+            case RESULT_OTHER_FAILURE:
+                // TODO: Is this correct?
+                syncResult.stats.numIoExceptions = 1;
+                break;
+        }
     }
 }
