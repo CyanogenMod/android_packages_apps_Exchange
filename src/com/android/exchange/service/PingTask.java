@@ -91,7 +91,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
             mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
                     pingStatus);
         } else {
-            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId());
+            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), mOperation.getAmAccount());
         }
         return null;
     }
@@ -105,7 +105,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
             mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
                     EasOperation.RESULT_REQUEST_FAILURE);
         } else {
-            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId());
+            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), mOperation.getAmAccount());
         }
     }
 }
