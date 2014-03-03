@@ -96,7 +96,7 @@ public class EasService extends Service {
             LogUtils.d(TAG, "IEmailService.pushModify: %d", accountId);
             final Account account = Account.restoreAccountWithId(EasService.this, accountId);
             if (pingNeededForAccount(account)) {
-                mSynchronizer.pushModify(accountId);
+                mSynchronizer.pushModify(account);
             } else {
                 mSynchronizer.pushStop(accountId);
             }
@@ -162,7 +162,7 @@ public class EasService extends Service {
                         account.restore(c);
                         if (EasService.this.pingNeededForAccount(account)) {
                             mHasRestartedPing = true;
-                            EasService.this.mSynchronizer.pushModify(account.mId);
+                            EasService.this.mSynchronizer.pushModify(account);
                         }
                     }
                 } finally {
@@ -232,6 +232,7 @@ public class EasService extends Service {
 
     public int doOperation(final EasOperation operation, final String loggingName) {
         final long accountId = operation.getAccountId();
+        final Account account = operation.getAccount();
         LogUtils.d(TAG, "%s: %d", loggingName, accountId);
         mSynchronizer.syncStart(accountId);
         // TODO: Do we need a wakelock here? For RPC coming from sync adapters, no -- the SA
@@ -242,7 +243,7 @@ public class EasService extends Service {
         try {
             return operation.performOperation();
         } finally {
-            mSynchronizer.syncEnd(accountId);
+            mSynchronizer.syncEnd(account);
         }
     }
 
