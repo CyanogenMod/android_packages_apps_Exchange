@@ -17,10 +17,13 @@
 package com.android.exchange.service;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.support.v4.util.LongSparseArray;
 
+import com.android.emailcommon.provider.Account;
 import com.android.exchange.Eas;
+import com.android.exchange.eas.EasPing;
 import com.android.mail.utils.LogUtils;
 
 import java.util.concurrent.locks.Condition;
@@ -106,6 +109,20 @@ public class PingSyncSynchronizer {
         }
 
         /**
+         * Helper function that starts a ping task
+         * @param account The {@link Account} in question.
+         * @param synchronizer Parent {@link PingSyncSynchronizer} object.
+         */
+        private void startPingTask(final Account account, final PingSyncSynchronizer synchronizer) {
+            final android.accounts.Account amAccount =
+                    new android.accounts.Account(account.mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+            mPingTask = new PingTask(synchronizer.getContext(), account, amAccount,
+                    synchronizer);
+            mPingTask.start();
+        }
+
+        /**
          * Update bookkeeping for a new sync:
          * - Stop the Ping if there is one.
          * - Wait until there's nothing running for this account before proceeding.
@@ -134,7 +151,7 @@ public class PingSyncSynchronizer {
          * go ahead, or starting the ping if appropriate and there are no waiting ops.
          * @return Whether this account is now idle.
          */
-        public boolean syncEnd() {
+        public boolean syncEnd(final Account account, final PingSyncSynchronizer synchronizer) {
             --mSyncCount;
             if (mSyncCount > 0) {
                 LogUtils.d(TAG, "Signalling a pending sync to proceed.");
@@ -142,7 +159,7 @@ public class PingSyncSynchronizer {
                 return false;
             } else {
                 if (mPushEnabled) {
-                    // TODO: Start the ping task
+                    startPingTask(account, synchronizer);
                     return false;
                 }
             }
@@ -153,14 +170,19 @@ public class PingSyncSynchronizer {
          * Update bookkeeping when the ping task terminates, including signaling any waiting ops.
          * @return Whether this account is now idle.
          */
-        public boolean pingEnd() {
+        public boolean pingEnd(final android.accounts.Account amAccount) {
             mPingTask = null;
             if (mSyncCount > 0) {
                 mCondition.signal();
                 return false;
             } else {
                 if (mPushEnabled) {
-                    // TODO: request a push-only sync.
+                    /**
+                     * This situation only arises if we encountered some sort of error that
+                     * stopped our ping but not due to a sync interruption. In this scenario
+                     * we'll leverage the SyncManager to request a push only sync that will
+                     * restart the ping when the time is right. */
+                    EasPing.requestPing(amAccount);
                     return false;
                 }
             }
@@ -170,14 +192,12 @@ public class PingSyncSynchronizer {
         /**
          * Modifies or starts a ping for this account if no syncs are running.
          */
-        public void pushModify() {
+        public void pushModify(final Account account, final PingSyncSynchronizer synchronizer) {
             mPushEnabled = true;
             if (mSyncCount == 0) {
                 if (mPingTask == null) {
                     // No ping, no running syncs -- start a new ping.
-                    // TODO: Fix this.
-                    //mPingTask = new PingTask();
-                    //mPingTask.start();
+                    startPingTask(account, synchronizer);
                 } else {
                     // Ping is already running, so tell it to restart to pick up any new params.
                     mPingTask.restart();
@@ -218,6 +238,10 @@ public class PingSyncSynchronizer {
         mLock = new ReentrantLock();
         mAccountStateMap = new LongSparseArray<AccountSyncState>();
         mService = service;
+    }
+
+    public Context getContext() {
+        return mService;
     }
 
     /**
@@ -270,16 +294,17 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void syncEnd(final long accountId) {
+    public void syncEnd(final Account account) {
         mLock.lock();
         try {
+            final long accountId = account.getId();
             LogUtils.d(TAG, "PSS syncEnd for account %d", accountId);
             final AccountSyncState accountState = getAccountState(accountId, false);
             if (accountState == null) {
                 LogUtils.w(TAG, "PSS syncEnd for account %d but no state found", accountId);
                 return;
             }
-            if (accountState.syncEnd()) {
+            if (accountState.syncEnd(account, this)) {
                 removeAccount(accountId);
             }
         } finally {
@@ -287,7 +312,7 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void pingEnd(final long accountId) {
+    public void pingEnd(final long accountId, final android.accounts.Account amAccount) {
         mLock.lock();
         try {
             LogUtils.d(TAG, "PSS pingEnd for account %d", accountId);
@@ -296,7 +321,7 @@ public class PingSyncSynchronizer {
                 LogUtils.w(TAG, "PSS pingEnd for account %d but no state found", accountId);
                 return;
             }
-            if (accountState.pingEnd()) {
+            if (accountState.pingEnd(amAccount)) {
                 removeAccount(accountId);
             }
         } finally {
@@ -304,12 +329,13 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void pushModify(final long accountId) {
+    public void pushModify(final Account account) {
         mLock.lock();
         try {
+            final long accountId = account.getId();
             LogUtils.d(TAG, "PSS pushModify for account %d", accountId);
             final AccountSyncState accountState = getAccountState(accountId, true);
-            accountState.pushModify();
+            accountState.pushModify(account, this);
         } finally {
             mLock.unlock();
         }

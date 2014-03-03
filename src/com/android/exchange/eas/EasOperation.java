@@ -222,6 +222,10 @@ public abstract class EasOperation {
         return mAccountId;
     }
 
+    public final Account getAccount() {
+        return mAccount;
+    }
+
     /**
      * Request that this operation terminate. Intended for use by the sync service to interrupt
      * running operations, primarily Ping.
