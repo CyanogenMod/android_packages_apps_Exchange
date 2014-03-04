@@ -68,6 +68,12 @@ public abstract class AbstractSyncParser extends Parser {
         init(adapter);
     }
 
+    public AbstractSyncParser(final Parser p, final Context context, final ContentResolver resolver,
+        final Mailbox mailbox, final Account account) throws IOException {
+        super(p);
+        init(context, resolver, mailbox, account);
+    }
+
     private void init(final AbstractSyncAdapter adapter) {
         init(adapter.mContext, adapter.mContext.getContentResolver(), adapter.mMailbox,
                 adapter.mAccount);
