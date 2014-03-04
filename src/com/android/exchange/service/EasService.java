@@ -70,7 +70,9 @@ public class EasService extends Service {
      */
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
         @Override
-        public void sendMail(final long accountId) {}
+        public void sendMail(final long accountId) {
+            LogUtils.d(TAG, "IEmailService.sendMail: %d", accountId);
+        }
 
         @Override
         public void loadAttachment(final IEmailServiceCallback callback, final long accountId,
