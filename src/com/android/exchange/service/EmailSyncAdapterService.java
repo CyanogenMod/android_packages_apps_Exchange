@@ -60,12 +60,12 @@ import com.android.exchange.Eas;
 import com.android.exchange.R.drawable;
 import com.android.exchange.R.string;
 import com.android.exchange.adapter.PingParser;
-import com.android.exchange.adapter.Search;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasMoveItems;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
+import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSync;
 import com.android.mail.providers.UIProvider;
 import com.android.mail.utils.LogUtils;
@@ -460,8 +460,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         public int searchMessages(final long accountId, final SearchParams searchParams,
                 final long destMailboxId) {
             LogUtils.d(TAG, "IEmailService.searchMessages");
-            return Search.searchMessages(EmailSyncAdapterService.this, accountId, searchParams,
-                    destMailboxId);
+            final EasSearch operation = new EasSearch(EmailSyncAdapterService.this, accountId,
+                    searchParams, destMailboxId);
+            operation.performOperation();
+            return operation.getTotalResults();
             // TODO: may need an explicit callback to replace the one to IEmailServiceCallback.
         }
 
