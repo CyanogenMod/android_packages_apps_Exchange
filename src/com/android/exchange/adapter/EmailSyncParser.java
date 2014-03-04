@@ -114,6 +114,11 @@ public class EmailSyncParser extends AbstractSyncParser {
         }
     }
 
+    public EmailSyncParser(final Context context, final InputStream in, final Mailbox mailbox,
+            final Account account) throws IOException {
+        this(context, context.getContentResolver(), in, mailbox, account);
+    }
+
     public boolean fetchNeeded() {
         return mFetchNeeded;
     }
