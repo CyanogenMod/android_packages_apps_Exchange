@@ -277,7 +277,11 @@ public abstract class EasOperation {
             // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
+                try {
+                    response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
+                } finally {
+                    onRequestMade();
+                }
             } catch (final IOException e) {
                 // If we were stopped, return the appropriate result code.
                 switch (mConnection.getStoppedReason()) {
@@ -335,7 +339,7 @@ public abstract class EasOperation {
                     }
                     result = responseResult;
                 } else {
-                    result = RESULT_OTHER_FAILURE;
+                    result = handleHttpError(response.getStatus());
                 }
 
                 // Non-negative results indicate success. Return immediately and bypass the error
@@ -391,6 +395,17 @@ public abstract class EasOperation {
         // looped too many times.
         LogUtils.e(LOG_TAG, "Too many redirects");
         return RESULT_TOO_MANY_REDIRECTS;
+    }
+
+    protected void onRequestMade() {
+        // This can be overridden to do any cleanup that must happen after the request has
+        // been sent. It will always be called, regardless of the status of the request.
+    }
+
+    protected int handleHttpError(final int httpStatus) {
+        // This function can be overriden if the child class needs to change the result code
+        // based on the http response status.
+        return RESULT_OTHER_FAILURE;
     }
 
     /**
