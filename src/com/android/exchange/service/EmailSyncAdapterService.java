@@ -47,6 +47,9 @@ import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.AccountColumns;
+import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceStatus;
@@ -64,6 +67,7 @@ import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasMoveItems;
 import com.android.exchange.eas.EasOperation;
+import com.android.exchange.eas.EasOutboxSync;
 import com.android.exchange.eas.EasPing;
 import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSync;
@@ -112,6 +116,12 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
     private static final Object sSyncAdapterLock = new Object();
     private static AbstractThreadedSyncAdapter sSyncAdapter = null;
+
+    // Value for a message's server id when sending fails.
+    public static final int SEND_FAILED = 1;
+    public static final String MAILBOX_KEY_AND_NOT_SEND_FAILED =
+            MessageColumns.MAILBOX_KEY + "=? and (" + SyncColumns.SERVER_ID + " is null or " +
+            SyncColumns.SERVER_ID + "!=" + SEND_FAILED + ')';
 
     /**
      * Bookkeeping for handling synchronization between pings and syncs.
@@ -869,9 +879,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             updateMailbox(context, mailbox, cv, isMailboxSync ?
                     EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND);
             if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
-                final EasOutboxSyncHandler outboxSyncHandler =
-                        new EasOutboxSyncHandler(context, account, mailbox);
-                outboxSyncHandler.performSync();
+                int result = syncOutbox(context, cr, account, mailbox);
+                // TODO: in some cases we might want to abort the sync completely.
                 success = true;
             } else if(mailbox.isSyncable()) {
                 final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context, cr,
@@ -892,6 +901,46 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             return success;
         }
     }
+
+    private int syncOutbox(Context context, ContentResolver cr, Account account, Mailbox mailbox) {
+        // Get a cursor to Outbox messages
+        final Cursor c = cr.query(Message.CONTENT_URI,
+                Message.CONTENT_PROJECTION, MAILBOX_KEY_AND_NOT_SEND_FAILED,
+                new String[] {Long.toString(mailbox.mId)}, null);
+        try {
+            // Loop through the messages, sending each one
+            while (c.moveToNext()) {
+                final Message message = new Message();
+                message.restore(c);
+                if (Utility.hasUnloadedAttachments(context, message.mId)) {
+                    // We'll just have to wait on this...
+                    continue;
+                }
+
+                // TODO: Fix -- how do we want to signal to UI that we started syncing?
+                // Note the entire callback mechanism here needs improving.
+                //sendMessageStatus(message.mId, null, EmailServiceStatus.IN_PROGRESS, 0);
+
+                EasOperation op = new EasOutboxSync(context, account, message, true);
+                int result = op.performOperation();
+                if (result == EasOutboxSync.RESULT_ITEM_NOT_FOUND) {
+                    // This can happen if we are using smartReply, and the message we are referring
+                    // to has disappeared from the server. Try again with smartReply disabled.
+                    op = new EasOutboxSync(context, account, message, false);
+                    result = op.performOperation();
+                }
+                if (result != EasOutboxSync.RESULT_OK) {
+                    LogUtils.w(TAG, "Aborting outbox synx for error %d", result);
+                    return result;
+                }
+            }
+        } finally {
+            // TODO: Some sort of sendMessageStatus() is needed here.
+            c.close();
+        }
+        return EasOutboxSync.RESULT_OK;
+    }
+
     private void showAuthNotification(long accountId, String accountName) {
         final PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
