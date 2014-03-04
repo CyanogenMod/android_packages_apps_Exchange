@@ -39,6 +39,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
+import com.android.exchange.eas.EasSearch;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashSet;
@@ -64,7 +65,7 @@ public class EasService extends Service {
     private final PingSyncSynchronizer mSynchronizer;
 
     /**
-     * Implementation of the IEmailService interface.
+     * Implementation of the IMailService interface.
      * For the most part these calls should consist of creating the correct {@link EasOperation}
      * class and calling {@link #doOperation} with it.
      */
@@ -112,8 +113,10 @@ public class EasService extends Service {
         @Override
         public int searchMessages(final long accountId, final SearchParams searchParams,
                 final long destMailboxId) {
-            LogUtils.d(TAG, "IEmailService.searchMessages");
-            return 0;
+            final EasSearch operation = new EasSearch(EasService.this, accountId, searchParams,
+                    destMailboxId);
+            doOperation(operation, "IEmailService.searchMessages");
+            return operation.getTotalResults();
         }
 
         @Override
