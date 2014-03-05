@@ -49,7 +49,7 @@ import com.android.emailcommon.service.SearchParams;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.SyncManager;
-import com.android.exchange.adapter.Search;
+import com.android.exchange.eas.EasSearch;
 import com.android.exchange.utility.FileLogger;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
@@ -172,8 +172,9 @@ public class ExchangeService extends SyncManager {
         public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
             SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
-            return Search.searchMessages(exchangeService, accountId, searchParams,
-                    destMailboxId);
+            EasSearch op = new EasSearch(exchangeService, accountId, searchParams, destMailboxId);
+            op.performOperation();
+            return op.getTotalResults();
         }
 
         @Override
