@@ -65,7 +65,7 @@ public class EasService extends Service {
     private final PingSyncSynchronizer mSynchronizer;
 
     /**
-     * Implementation of the IMailService interface.
+     * Implementation of the IEmailService interface.
      * For the most part these calls should consist of creating the correct {@link EasOperation}
      * class and calling {@link #doOperation} with it.
      */
