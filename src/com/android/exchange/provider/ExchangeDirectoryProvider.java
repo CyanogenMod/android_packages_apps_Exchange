@@ -565,17 +565,20 @@ public class ExchangeDirectoryProvider extends ContentProvider {
      *      preserved both between contacts with the same name and for
      *      multiple results within a given contact
      */
-    private static class GalSortKey {
+    protected static class GalSortKey {
         final String sortName;
-        final int    id;
+        final int id;
 
-        public GalSortKey(String sortName, int id) {
+        public GalSortKey(final String sortName, final int id) {
             this.sortName = sortName;
             this.id = id;
         }
     }
 
-    private static class NameComparator implements Comparator<GalSortKey> {
+    /**
+     * The Comparator that is used by ExchangeDirectoryProvider
+     */
+    protected static class NameComparator implements Comparator<GalSortKey> {
         private final Collator collator;
 
         public NameComparator() {
@@ -585,15 +588,19 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         }
 
         @Override
-        public int compare(GalSortKey lhs, GalSortKey rhs) {
-            final int res = collator.compare(lhs.sortName, rhs.sortName);
-            if (res != 0) {
-                return res;
+        public int compare(final GalSortKey lhs, final GalSortKey rhs) {
+            final int res;
+            if (lhs.sortName != null && rhs.sortName != null) {
+                res = collator.compare(lhs.sortName, rhs.sortName);
+                if (res != 0) {
+                    return res;
+                }
             }
-            if (lhs.id != rhs.id) {
-                return lhs.id > rhs.id ? 1 : -1;
+            // Either the names compared equally or one was not provided, use the id to compare.
+            if (lhs.id == rhs.id) {
+                return 0;
             }
-            return 0;
+            return lhs.id > rhs.id ? 1 : -1;
         }
     }
 
