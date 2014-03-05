@@ -56,7 +56,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         result.addGalData(4, "Dan Dolphin", "dan@dolphin.com");
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
-        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result);
+        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, false, null);
         assertNotNull(c);
         assertEquals(MatrixCursor.class, c.getClass());
         assertEquals(4, c.getCount());
@@ -99,7 +99,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         GalResult result = getTestDisplayNameResult();
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
-        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result);
+        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, false, null);
         assertNotNull(c);
         assertEquals(MatrixCursor.class, c.getClass());
         assertEquals(DISPLAY_NAME_TEST_FIELDS.length, c.getCount());
@@ -113,7 +113,7 @@ public class ExchangeDirectoryProviderTests extends ExchangeTestCase {
         GalResult result = getTestDisplayNameResult();
         // Make sure our returned cursor has the expected contents
         ExchangeDirectoryProvider provider = new ExchangeDirectoryProvider();
-        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result);
+        Cursor c = provider.buildGalResultCursor(GAL_RESULT_PROJECTION, result, false, null);
         assertNotNull(c);
         assertEquals(MatrixCursor.class, c.getClass());
         assertEquals(DISPLAY_NAME_TEST_FIELDS.length, c.getCount());
