@@ -2,7 +2,6 @@ package com.android.exchange.eas;
 
 import android.content.Context;
 import android.text.format.DateUtils;
-import android.util.SparseArray;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
@@ -33,22 +32,9 @@ public class EasSyncBase extends EasOperation {
 
     private final boolean mInitialSync;
     private final Mailbox mMailbox;
+    private EasSyncCollectionTypeBase mCollectionTypeHandler;
 
     private int mNumWindows;
-
-    /**
-     * {@link EasSyncCollectionTypeBase} classes currently are stateless, so there's no need to
-     * create one per operation instance. We just maintain a single instance of each in a map and
-     * grab it as necessary.
-     */
-    private static final SparseArray<EasSyncCollectionTypeBase> COLLECTION_TYPE_HANDLERS;
-    static {
-        COLLECTION_TYPE_HANDLERS = new SparseArray<EasSyncCollectionTypeBase>(3);
-        // TODO: As the subclasses are created, add them to the map.
-        COLLECTION_TYPE_HANDLERS.put(Mailbox.TYPE_MAIL, new EasSyncMail());
-        COLLECTION_TYPE_HANDLERS.put(Mailbox.TYPE_CALENDAR, null);
-        COLLECTION_TYPE_HANDLERS.put(Mailbox.TYPE_CONTACTS, null);
-    }
 
     // TODO: Convert to accountId when ready to convert to EasService.
     public EasSyncBase(final Context context, final Account account, final Mailbox mailbox) {
@@ -79,18 +65,23 @@ public class EasSyncBase extends EasOperation {
     }
 
     @Override
+    public boolean init(final boolean allowReload) {
+        final boolean result = super.init(allowReload);
+        if (result) {
+            mCollectionTypeHandler = getCollectionTypeHandler(mMailbox.mType);
+            if (mCollectionTypeHandler == null) {
+                return false;
+            }
+        }
+        return result;
+    }
+
+    @Override
     protected HttpEntity getRequestEntity() throws IOException {
         final String className = Eas.getFolderClass(mMailbox.mType);
         final String syncKey = getSyncKey();
         LogUtils.d(TAG, "Syncing account %d mailbox %d (class %s) with syncKey %s", mAccount.mId,
                 mMailbox.mId, className, syncKey);
-
-        final EasSyncCollectionTypeBase collectionTypeHandler =
-                getCollectionTypeHandler(mMailbox.mType);
-        if (collectionTypeHandler == null) {
-            throw new IllegalStateException("No handler for collection type: "
-                    + Integer.toString(mMailbox.mType));
-        }
 
         final Serializer s = new Serializer();
         s.start(Tags.SYNC_SYNC);
@@ -102,7 +93,7 @@ public class EasSyncBase extends EasOperation {
         }
         s.data(Tags.SYNC_SYNC_KEY, syncKey);
         s.data(Tags.SYNC_COLLECTION_ID, mMailbox.mServerId);
-        collectionTypeHandler.setSyncOptions(mContext, s, getProtocolVersion(), mAccount, mMailbox,
+        mCollectionTypeHandler.setSyncOptions(mContext, s, getProtocolVersion(), mAccount, mMailbox,
                 mInitialSync, mNumWindows);
         s.end().end().end().done();
 
@@ -113,9 +104,8 @@ public class EasSyncBase extends EasOperation {
     protected int handleResponse(final EasResponse response)
             throws IOException, CommandStatusException {
         try {
-            final AbstractSyncParser parser =
-                    getCollectionTypeHandler(mMailbox.mType).getParser(mContext, mAccount, mMailbox,
-                            response.getInputStream());
+            final AbstractSyncParser parser = mCollectionTypeHandler.getParser(mContext, mAccount,
+                    mMailbox, response.getInputStream());
             final boolean moreAvailable = parser.parse();
             if (moreAvailable) {
                 return RESULT_MORE_AVAILABLE;
@@ -161,14 +151,25 @@ public class EasSyncBase extends EasOperation {
      * @param type The type of the {@link Mailbox} that we're trying to sync.
      * @return An {@link EasSyncCollectionTypeBase} appropriate for this type.
      */
-    private static EasSyncCollectionTypeBase getCollectionTypeHandler(final int type) {
-        EasSyncCollectionTypeBase typeHandler = COLLECTION_TYPE_HANDLERS.get(type);
-        if (typeHandler == null) {
-            // Treat mail as the default; this also means we don't bother mapping every type of
-            // mail folder.
-            // TODO: Should we just do that?
-            typeHandler = COLLECTION_TYPE_HANDLERS.get(Mailbox.TYPE_MAIL);
+    private EasSyncCollectionTypeBase getCollectionTypeHandler(final int type) {
+        switch (type) {
+            case Mailbox.TYPE_MAIL:
+            case Mailbox.TYPE_INBOX:
+            case Mailbox.TYPE_DRAFTS:
+//            case Mailbox.TYPE_SENT:
+//            case Mailbox.TYPE_TRASH:
+            case Mailbox.TYPE_JUNK: {
+                return new EasSyncMail();
+            }
+            case Mailbox.TYPE_CALENDAR:
+                // TODO: fill this in when we have EasSyncContacts;
+                return null;
+            case Mailbox.TYPE_CONTACTS:
+                // TODO: fill this in when we have EasSyncContacts;
+                return null;
+            default:
+                LogUtils.e(LOG_TAG, "unexpected collectiontype %d", type);
+                return null;
         }
-        return typeHandler;
     }
 }

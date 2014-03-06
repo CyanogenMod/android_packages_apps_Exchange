@@ -188,7 +188,7 @@ public abstract class EasOperation {
 
     /**
      * Some operations happen before the account exists (e.g. account validation).
-     * These operations cannot use {@link #loadAccount}, so instead we make a dummy account and
+     * These operations cannot use {@link #init}, so instead we make a dummy account and
      * supply a temporary {@link HostAuth}.
      * @param hostAuth
      */
@@ -200,14 +200,15 @@ public abstract class EasOperation {
 
     /**
      * Loads (or reloads) the {@link Account} for this operation, and sets up our connection to the
-     * server.
+     * server. This can be overridden to add additional functionality, but child implementations
+     * should always call super().
      * @param allowReload If false, do not perform a load if we already have an {@link Account}
      *                    (i.e. just keep the existing one); otherwise allow replacement of the
      *                    account. Note that this can result in a valid Account being replaced with
      *                    null if the account no longer exists.
      * @return Whether we now have a valid {@link Account} object.
      */
-    public final boolean loadAccount(final boolean allowReload) {
+    public boolean init(final boolean allowReload) {
         if (mAccount == null || allowReload) {
             mAccount = Account.restoreAccountWithId(mContext, getAccountId());
             if (mAccount != null) {
@@ -264,7 +265,9 @@ public abstract class EasOperation {
      */
     public int performOperation() {
         // Make sure the account is loaded if it hasn't already been.
-        if (!loadAccount(false)) {
+        if (!init(false)) {
+            // TODO: Fix this comment and error code, init() can now fail for reasons other than
+            // failing to load the account.
             LogUtils.i(LOG_TAG, "Failed to load account %d before sending request for operation %s",
                     getAccountId(), getCommand());
             return RESULT_ACCOUNT_ID_INVALID;
