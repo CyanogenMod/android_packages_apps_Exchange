@@ -130,8 +130,8 @@ public abstract class EasOperation {
     public static final int RESULT_CLIENT_CERTIFICATE_REQUIRED = -8;
     /** Error code indicating we don't have a protocol version in common with the server. */
     public static final int RESULT_PROTOCOL_VERSION_UNSUPPORTED = -9;
-    /** Error code indicating the account could not be loaded from the provider. */
-    public static final int RESULT_ACCOUNT_ID_INVALID = -10;
+    /** Error code indicating a hard error when initializing the operation. */
+    public static final int RESULT_INITIALIZATION_FAILURE = -10;
     /** Error code indicating a hard data layer error. */
     public static final int RESULT_HARD_DATA_FAILURE = -11;
     /** Error code indicating some other failure. */
@@ -266,11 +266,9 @@ public abstract class EasOperation {
     public int performOperation() {
         // Make sure the account is loaded if it hasn't already been.
         if (!init(false)) {
-            // TODO: Fix this comment and error code, init() can now fail for reasons other than
-            // failing to load the account.
-            LogUtils.i(LOG_TAG, "Failed to load account %d before sending request for operation %s",
+            LogUtils.i(LOG_TAG, "Failed to initialize %d before sending request for operation %s",
                     getAccountId(), getCommand());
-            return RESULT_ACCOUNT_ID_INVALID;
+            return RESULT_INITIALIZATION_FAILURE;
         }
 
         // We handle server redirects by looping, but we need to protect against too much looping.
@@ -721,31 +719,39 @@ public abstract class EasOperation {
                 amAccount.toString(), extras.toString());
     }
 
-    public static void writeResultToSyncResult(final int result, final SyncResult syncResult) {
+    /**
+     * Interpret a result code from an {@link EasOperation} and, if it's an error, write it to
+     * the appropriate field in {@link SyncResult}.
+     * @param result
+     * @param syncResult
+     * @return Whether an error code was written to syncResult.
+     */
+    public static boolean writeResultToSyncResult(final int result, final SyncResult syncResult) {
         switch (result) {
             case RESULT_TOO_MANY_REDIRECTS:
                 syncResult.tooManyRetries = true;
-                break;
+                return true;
             case RESULT_REQUEST_FAILURE:
                 syncResult.stats.numIoExceptions = 1;
-                break;
+                return true;
             case RESULT_FORBIDDEN:
             case RESULT_PROVISIONING_ERROR:
             case RESULT_AUTHENTICATION_ERROR:
             case RESULT_CLIENT_CERTIFICATE_REQUIRED:
                 syncResult.stats.numAuthExceptions = 1;
-                break;
+                return true;
             case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
                 // Only used in validate, so there's never a syncResult to write to here.
                 break;
-            case RESULT_ACCOUNT_ID_INVALID:
+            case RESULT_INITIALIZATION_FAILURE:
             case RESULT_HARD_DATA_FAILURE:
                 syncResult.databaseError = true;
-                break;
+                return true;
             case RESULT_OTHER_FAILURE:
                 // TODO: Is this correct?
                 syncResult.stats.numIoExceptions = 1;
-                break;
+                return true;
         }
+        return false;
     }
 }
