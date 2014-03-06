@@ -30,7 +30,7 @@ public class EasSyncBase extends EasOperation {
     public static final int RESULT_DONE = 0;
     public static final int RESULT_MORE_AVAILABLE = 1;
 
-    private final boolean mInitialSync;
+    private boolean mInitialSync;
     private final Mailbox mMailbox;
     private EasSyncCollectionTypeBase mCollectionTypeHandler;
 
@@ -39,8 +39,6 @@ public class EasSyncBase extends EasOperation {
     // TODO: Convert to accountId when ready to convert to EasService.
     public EasSyncBase(final Context context, final Account account, final Mailbox mailbox) {
         super(context, account);
-        // TODO: This works for email, but not necessarily for other types.
-        mInitialSync = EmailContent.isInitialSyncKey(getSyncKey());
         mMailbox = mailbox;
     }
 
@@ -82,7 +80,7 @@ public class EasSyncBase extends EasOperation {
         final String syncKey = getSyncKey();
         LogUtils.d(TAG, "Syncing account %d mailbox %d (class %s) with syncKey %s", mAccount.mId,
                 mMailbox.mId, className, syncKey);
-
+        mInitialSync = EmailContent.isInitialSyncKey(syncKey);
         final Serializer s = new Serializer();
         s.start(Tags.SYNC_SYNC);
         s.start(Tags.SYNC_COLLECTIONS);
@@ -120,7 +118,7 @@ public class EasSyncBase extends EasOperation {
     public int performOperation() {
         int result = RESULT_MORE_AVAILABLE;
         mNumWindows = 1;
-        String key = getSyncKey();
+        final String key = getSyncKey();
         while (result == RESULT_MORE_AVAILABLE) {
             result = super.performOperation();
             // TODO: Clear pending request queue.
@@ -156,7 +154,7 @@ public class EasSyncBase extends EasOperation {
             case Mailbox.TYPE_MAIL:
             case Mailbox.TYPE_INBOX:
             case Mailbox.TYPE_DRAFTS:
-//            case Mailbox.TYPE_SENT:
+            case Mailbox.TYPE_SENT:
 //            case Mailbox.TYPE_TRASH:
             case Mailbox.TYPE_JUNK: {
                 return new EasSyncMail();
