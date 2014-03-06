@@ -15,9 +15,6 @@ import java.io.InputStream;
  * These details include:
  * - Forming the request options. Contacts, Calendar, and Mail set this up differently.
  * - Getting the appropriate parser for this collection type.
- * These classes should be stateless, i.e. the distinct subtypes and instances are used simply
- * to have polymorphic behavior for these functions. If member variables are ever added to any
- * of these classes, {@link EasSyncBase} MUST change how it creates these objects.
  */
 public abstract class EasSyncCollectionTypeBase {
 
