@@ -16,9 +16,11 @@
 
 package com.android.exchange.eas;
 
+import android.content.ContentValues;
 import android.content.Context;
 
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.exchange.Eas;
@@ -144,6 +146,18 @@ public class EasProvision extends EasOperation {
     }
 
     /**
+     * Write the max attachment size that came out of the policy to the Account table in the db.
+     * Once this value is written, the mapping to Account.Settings.MAX_ATTACHMENT_SIZE was
+     * added to point to this column in this table.
+     * @param maxAttachmentSize The max attachment size value that we want to write to the db.
+     */
+    private void storeMaxAttachmentSize(final int maxAttachmentSize) {
+        final ContentValues values = new ContentValues(1);
+        values.put(EmailContent.AccountColumns.MAX_ATTACHMENT_SIZE, maxAttachmentSize);
+        Account.update(mContext, Account.CONTENT_URI, getAccountId(), values);
+    }
+
+    /**
      * Get the required policy from the server and enforce it.
      * @return Whether we succeeded in provisioning this account.
      */
@@ -161,6 +175,10 @@ public class EasProvision extends EasOperation {
             PolicyServiceProxy.remoteWipe(mContext);
             return false;
         }
+
+        // Even before the policy is accepted, we can honor this setting since it has nothing
+        // to do with the device policy manager and is requested by the Exchange server.
+        storeMaxAttachmentSize(mPolicy.mMaxAttachmentSize);
 
         // Apply the policies (that we support) with the temporary key.
         mPolicy.mProtocolPoliciesUnsupported = null;
