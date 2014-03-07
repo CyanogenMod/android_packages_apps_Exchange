@@ -33,6 +33,7 @@ import com.android.exchange.adapter.AbstractSyncParser;
 import com.android.exchange.adapter.Parser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.exchange.eas.EasSyncCalendar;
 import com.android.exchange.eas.EasProvision;
 import com.android.mail.utils.LogUtils;
 
@@ -124,13 +125,7 @@ public abstract class EasSyncHandler extends EasServerConnection {
             final android.accounts.Account accountManagerAccount,
             final Account account, final Mailbox mailbox,
             final Bundle syncExtras, final SyncResult syncResult) {
-        if (account != null && mailbox != null) {
-            switch (mailbox.mType) {
-                case Mailbox.TYPE_CALENDAR:
-                    return new EasCalendarSyncHandler(context, contentResolver,
-                            accountManagerAccount, account, mailbox, syncExtras, syncResult);
-            }
-        }
+        // FLAG: Obsolete function
         // Unknown mailbox type.
         LogUtils.e(TAG, "Invalid mailbox type %d", mailbox.mType);
         return null;

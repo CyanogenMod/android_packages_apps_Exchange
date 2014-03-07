@@ -64,6 +64,7 @@ import com.android.exchange.R.drawable;
 import com.android.exchange.R.string;
 import com.android.exchange.adapter.PingParser;
 import com.android.exchange.eas.EasSyncContacts;
+import com.android.exchange.eas.EasSyncCalendar;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasMoveItems;
@@ -463,7 +464,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             if (emailAddress != null) {
                 final Context context = EmailSyncAdapterService.this;
                 EasSyncContacts.wipeAccountFromContentProvider(context, emailAddress);
-                EasCalendarSyncHandler.wipeAccountFromContentProvider(context, emailAddress);
+                EasSyncCalendar.wipeAccountFromContentProvider(context, emailAddress);
             }
             // TODO: Run account reconciler?
         }
