@@ -176,7 +176,7 @@ public class EasOutboxSync extends EasOperation {
             } catch (final EmptyStreamException e) {
                 // This is actually fine; an empty stream means SendMail succeeded
                 LogUtils.d(LOG_TAG, "empty response sending mail");
-                return RESULT_OK;
+                // Don't return here, fall through so that we'll delete the sent message.
             } catch (final IOException e) {
                 // Parsing failed in some other way.
                 LogUtils.w(LOG_TAG, "IOException sending mail");
