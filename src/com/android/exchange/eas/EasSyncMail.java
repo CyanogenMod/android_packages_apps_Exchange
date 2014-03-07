@@ -3,6 +3,7 @@ package com.android.exchange.eas;
 import android.content.Context;
 import android.database.Cursor;
 
+import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
@@ -31,6 +32,12 @@ public class EasSyncMail extends EasSyncCollectionTypeBase {
     private static final int FETCH_REQUEST_SERVER_ID = 0;
 
     private static final int EMAIL_WINDOW_SIZE = 10;
+
+
+    @Override
+    public int getTrafficFlag() {
+        return TrafficFlags.DATA_EMAIL;
+    }
 
     @Override
     public void setSyncOptions(final Context context, final Serializer s,

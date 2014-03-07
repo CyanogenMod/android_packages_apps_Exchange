@@ -4,8 +4,10 @@ import android.content.Context;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.exchange.Eas;
 import com.android.exchange.adapter.AbstractSyncParser;
 import com.android.exchange.adapter.Serializer;
+import com.android.exchange.adapter.Tags;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +21,13 @@ import java.io.InputStream;
 public abstract class EasSyncCollectionTypeBase {
 
     public static final int MAX_WINDOW_SIZE = 512;
+
+    /**
+     * Get the flag for traffic bookkeeping for this sync type.
+     * @return The appropriate value from {@link com.android.emailcommon.TrafficFlags} for this
+     *         sync.
+     */
+    public abstract int getTrafficFlag();
 
     /**
      * Write the contents of a Collection node in an EAS sync request appropriate for our mailbox.
@@ -49,4 +58,44 @@ public abstract class EasSyncCollectionTypeBase {
      */
     public abstract AbstractSyncParser getParser(final Context context, final Account account,
             final Mailbox mailbox, final InputStream is) throws IOException;
+
+    /**
+     * After every successful sync iteration, this function gets called to cleanup any state to
+     * match the sync result (e.g., to clean up an external ContentProvider for PIM data).
+     * @param context
+     * @param account
+     */
+    public void cleanup(final Context context, final Account account) {}
+
+    /**
+     * Shared non-initial sync options for PIM (contacts & calendar) objects.
+     *
+     * @param s The {@link com.android.exchange.adapter.Serializer} for this sync request.
+     * @param filter The lookback to use, or null if no lookback is desired.
+     * @param protocolVersion The EAS protocol version for this request, as a double.
+     * @param windowSize
+     * @throws IOException
+     */
+    protected static void setPimSyncOptions(final Serializer s, final String filter,
+            final double protocolVersion, int windowSize) throws IOException {
+        s.tag(Tags.SYNC_DELETES_AS_MOVES);
+        s.tag(Tags.SYNC_GET_CHANGES);
+        s.data(Tags.SYNC_WINDOW_SIZE, String.valueOf(windowSize));
+        s.start(Tags.SYNC_OPTIONS);
+        // Set the filter (lookback), if provided
+        if (filter != null) {
+            s.data(Tags.SYNC_FILTER_TYPE, filter);
+        }
+        // Set the truncation amount and body type
+        if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            s.start(Tags.BASE_BODY_PREFERENCE);
+            // Plain text
+            s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_TEXT);
+            s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
+            s.end();
+        } else {
+            s.data(Tags.SYNC_TRUNCATION, Eas.EAS2_5_TRUNCATION_SIZE);
+        }
+        s.end();
+    }
 }
