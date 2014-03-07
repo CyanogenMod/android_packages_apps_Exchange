@@ -127,7 +127,7 @@ public class EasSyncBase extends EasOperation {
         while (result == RESULT_MORE_AVAILABLE) {
             result = super.performOperation();
             if (result == RESULT_MORE_AVAILABLE || result == RESULT_DONE) {
-                mCollectionTypeHandler.cleanup(mContext, mAccount);
+                mCollectionTypeHandler.cleanup(mContext, mAccount, result);
             }
             // TODO: Clear pending request queue.
             final String newKey = getSyncKey();
@@ -166,9 +166,9 @@ public class EasSyncBase extends EasOperation {
             case Mailbox.TYPE_TRASH:
             //case Mailbox.TYPE_JUNK:
                 return new EasSyncMail();
-            case Mailbox.TYPE_CALENDAR:
-                // TODO: fill this in when we have EasSyncCalendar;
-                return null;
+            case Mailbox.TYPE_CALENDAR: {
+                return new EasSyncCalendar(mContext, mAccount, mMailbox);
+            }
             case Mailbox.TYPE_CONTACTS:
                 return new EasSyncContacts(mAccount.mEmailAddress);
             default:

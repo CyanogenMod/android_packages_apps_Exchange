@@ -26,7 +26,7 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.AbstractSyncAdapter.Operation;
-import com.android.exchange.service.EasCalendarSyncHandler;
+import com.android.exchange.eas.EasSyncCalendar;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
@@ -1357,7 +1357,7 @@ public class CalendarSyncParser extends AbstractSyncParser {
     @Override
     protected void wipe() {
         LogUtils.w(TAG, "Wiping calendar for account %d", mAccount.mId);
-        EasCalendarSyncHandler.wipeAccountFromContentProvider(mContext,
+        EasSyncCalendar.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
     }
 }
