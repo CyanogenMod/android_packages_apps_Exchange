@@ -127,7 +127,7 @@ public class EasSyncBase extends EasOperation {
         while (result == RESULT_MORE_AVAILABLE) {
             result = super.performOperation();
             if (result == RESULT_MORE_AVAILABLE || result == RESULT_DONE) {
-                mCollectionTypeHandler.cleanup(mContext, mAccount, result);
+                mCollectionTypeHandler.cleanup(mContext, mAccount);
             }
             // TODO: Clear pending request queue.
             final String newKey = getSyncKey();
