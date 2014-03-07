@@ -1,4 +1,4 @@
-package com.android.exchange.service;
+package com.android.exchange.eas;
 
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
@@ -7,10 +7,8 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
 import android.content.EntityIterator;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Event;
@@ -54,8 +52,10 @@ import java.util.TimeZone;
  * Contact state is in the contacts provider, not in our DB (and therefore not in e.g. mMailbox).
  * The Mailbox in the Email DB is only useful for serverId and syncInterval.
  */
-public class EasContactsSyncHandler extends EasSyncHandler {
+public class EasSyncContacts extends EasSyncCollectionTypeBase {
     private static final String TAG = Eas.LOG_TAG;
+
+    public static final int PIM_WINDOW_SIZE_CONTACTS = 10;
 
     private static final String MIMETYPE_GROUP_MEMBERSHIP_AND_ID_EQUALS =
             ContactsContract.Data.MIMETYPE + "='" + GroupMembership.CONTENT_ITEM_TYPE + "' AND " +
@@ -152,34 +152,44 @@ public class EasContactsSyncHandler extends EasSyncHandler {
         public static final String ACCOUNT_NAME = "data8";
     }
 
-    public EasContactsSyncHandler(final Context context, final ContentResolver contentResolver,
-            final android.accounts.Account accountManagerAccount, final Account account,
-            final Mailbox mailbox, final Bundle syncExtras, final SyncResult syncResult) {
-        super(context, contentResolver, account, mailbox, syncExtras, syncResult);
-        mAccountManagerAccount = accountManagerAccount;
+    public EasSyncContacts(final String emailAddress) {
+        mAccountManagerAccount = new android.accounts.Account(emailAddress,
+                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
     }
 
     @Override
-    protected int getTrafficFlag() {
+    public int getTrafficFlag() {
         return TrafficFlags.DATA_CONTACTS;
     }
 
     @Override
-    protected String getFolderClassName() {
-        return "Contacts";
+    public void setSyncOptions(final Context context, final Serializer s,
+            final double protocolVersion, final Account account, final Mailbox mailbox,
+            final boolean isInitialSync, final int numWindows) throws IOException {
+        if (isInitialSync) {
+            setInitialSyncOptions(s);
+            return;
+        }
+
+        final int windowSize = numWindows * PIM_WINDOW_SIZE_CONTACTS;
+        if (windowSize > MAX_WINDOW_SIZE  + PIM_WINDOW_SIZE_CONTACTS) {
+            throw new IOException("Max window size reached and still no data");
+        }
+        setPimSyncOptions(s, null, protocolVersion,
+                windowSize < MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
+
+        setUpsyncCommands(s, context.getContentResolver(), account, mailbox, protocolVersion);
     }
 
     @Override
-    protected AbstractSyncParser getParser(final InputStream is) throws IOException {
-        // Store the parser because we'll want to ask it about whether groups are used later.
-        // TODO: It'd be nice to find a cleaner way to get this result back from the parser.
-        mParser = new ContactsSyncParser(mContext, mContentResolver, is,
-                mMailbox, mAccount, mAccountManagerAccount);
+    public AbstractSyncParser getParser(final Context context, final Account account,
+            final Mailbox mailbox, final InputStream is) throws IOException {
+        mParser = new ContactsSyncParser(context, context.getContentResolver(), is, mailbox,
+                account, mAccountManagerAccount);
         return mParser;
     }
 
-    @Override
-    protected void setInitialSyncOptions(final Serializer s) throws IOException {
+    private void setInitialSyncOptions(final Serializer s) throws IOException {
         // These are the tags we support for upload; whenever we add/remove support
         // (in addData), we need to update this list
         s.start(Tags.SYNC_SUPPORTED);
@@ -243,15 +253,6 @@ public class EasContactsSyncHandler extends EasSyncHandler {
         s.end(); // SYNC_SUPPORTED
     }
 
-    @Override
-    protected void setNonInitialSyncOptions(final Serializer s, int numWindows) throws IOException {
-        final int windowSize = numWindows * PIM_WINDOW_SIZE_CONTACTS;
-        if (windowSize > MAX_WINDOW_SIZE  + PIM_WINDOW_SIZE_CONTACTS) {
-            throw new IOException("Max window size reached and still no data");
-        }
-        setPimSyncOptions(s, null, windowSize < MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
-    }
-
     /**
      * Add account info and the "caller is syncadapter" param to a URI.
      * @param uri The {@link Uri} to add to.
@@ -281,10 +282,9 @@ public class EasContactsSyncHandler extends EasSyncHandler {
     /**
      * Mark contacts in dirty groups as dirty.
      */
-    private void dirtyContactsWithinDirtyGroups() {
-        final String emailAddress = mAccount.mEmailAddress;
-        final Cursor c = mContentResolver.query(
-                uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
+    private void dirtyContactsWithinDirtyGroups(final ContentResolver cr, final Account account) {
+        final String emailAddress = account.mEmailAddress;
+        final Cursor c = cr.query( uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
                 GROUPS_ID_PROJECTION, Groups.DIRTY + "=1", null, null);
         if (c == null) {
             return;
@@ -300,19 +300,17 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                     final long id = c.getLong(0);
                     updateValues.put(GroupMembership.GROUP_ROW_ID, id);
                     updateArgs[0] = Long.toString(id);
-                    mContentResolver.update(ContactsContract.Data.CONTENT_URI, updateValues,
+                    cr.update(ContactsContract.Data.CONTENT_URI, updateValues,
                             MIMETYPE_GROUP_MEMBERSHIP_AND_ID_EQUALS, updateArgs);
                 }
                 // Really delete groups that are marked deleted
-                mContentResolver.delete(uriWithAccountAndIsSyncAdapter(
-                        Groups.CONTENT_URI, emailAddress),
+                cr.delete(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
                         Groups.DELETED + "=1", null);
                 // Clear the dirty flag for all of our groups
                 updateValues.clear();
                 updateValues.put(Groups.DIRTY, 0);
-                mContentResolver.update(uriWithAccountAndIsSyncAdapter(
-                        Groups.CONTENT_URI, emailAddress), updateValues, null,
-                        null);
+                cr.update(uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI, emailAddress),
+                        updateValues, null, null);
             }
         } finally {
             c.close();
@@ -638,9 +636,11 @@ public class EasContactsSyncHandler extends EasSyncHandler {
      * Add a note to the upsync.
      * @param s The {@link Serializer} for this sync request.
      * @param cv The {@link ContentValues} with the data for this note.
+     * @param protocolVersion
      * @throws IOException
      */
-    private void sendNote(final Serializer s, final ContentValues cv) throws IOException {
+    private void sendNote(final Serializer s, final ContentValues cv, final double protocolVersion)
+            throws IOException {
         // Even when there is no local note, we must explicitly upsync an empty note,
         // which is the only way to force the server to delete any pre-existing note.
         String note = "";
@@ -649,7 +649,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
             note = cv.getAsString(Note.NOTE).replaceAll("\n", "\r\n");
         }
         // Format of upsync data depends on protocol version
-        if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+        if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
             s.start(Tags.BASE_BODY);
             s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_TEXT).data(Tags.BASE_DATA, note);
             s.end();
@@ -681,10 +681,11 @@ public class EasContactsSyncHandler extends EasSyncHandler {
      * @param cv The {@link ContentValues} with the data for this email address.
      * @param count The number of email addresses that have already been added.
      * @param displayName The display name for this contact.
+     * @param protocolVersion
      * @throws IOException
      */
     private void sendEmail(final Serializer s, final ContentValues cv, final int count,
-            final String displayName) throws IOException {
+            final String displayName, final double protocolVersion) throws IOException {
         // Get both parts of the email address (a newly created one in the UI won't have a name)
         final String addr = cv.getAsString(Email.DATA);
         String name = cv.getAsString(Email.DISPLAY_NAME);
@@ -700,7 +701,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
             final String value;
             // Only send the raw email address for EAS 2.5 (Hotmail, in particular, chokes on
             // an RFC822 address)
-            if (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            if (protocolVersion < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
                 value = addr;
             } else {
                 value = '\"' + name + "\" <" + addr + '>';
@@ -711,19 +712,19 @@ public class EasContactsSyncHandler extends EasSyncHandler {
         }
     }
 
-    @Override
-    protected void setUpsyncCommands(final Serializer s) throws IOException {
+    private void setUpsyncCommands(final Serializer s, final ContentResolver cr,
+            final Account account, final Mailbox mailbox, final double protocolVersion)
+            throws IOException {
         // Find any groups of ours that are dirty and dirty those groups' members
-        dirtyContactsWithinDirtyGroups();
+        dirtyContactsWithinDirtyGroups(cr, account);
 
         // First, let's find Contacts that have changed.
         final Uri uri = uriWithAccountAndIsSyncAdapter(
-                ContactsContract.RawContactsEntity.CONTENT_URI, mAccount.mEmailAddress);
+                ContactsContract.RawContactsEntity.CONTENT_URI, account.mEmailAddress);
 
         // Get them all atomically
         final EntityIterator ei = ContactsContract.RawContacts.newEntityIterator(
-                mContentResolver.query(uri, null, ContactsContract.RawContacts.DIRTY + "=1", null,
-                        null));
+                cr.query(uri, null, ContactsContract.RawContacts.DIRTY + "=1", null, null));
         final ContentValues cidValues = new ContentValues();
         try {
             boolean first = true;
@@ -744,12 +745,12 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                 if (serverId == null) {
                     // This is a new contact; create a clientId
                     final String clientId =
-                            "new_" + mMailbox.mId + '_' + System.currentTimeMillis();
+                            "new_" + mailbox.mId + '_' + System.currentTimeMillis();
                     LogUtils.d(TAG, "Creating new contact with clientId: %s", clientId);
                     s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
                     // And save it in the raw contact
                     cidValues.put(ContactsContract.RawContacts.SYNC1, clientId);
-                    mContentResolver.update(ContentUris.withAppendedId(rawContactUri,
+                    cr.update(ContentUris.withAppendedId(rawContactUri,
                             entityValues.getAsLong(ContactsContract.RawContacts._ID)),
                             cidValues, null, null);
                 } else {
@@ -811,7 +812,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                         // We must gather these, and send them together (below)
                         groupIds.add(cv.getAsInteger(GroupMembership.GROUP_ROW_ID));
                     } else if (mimeType.equals(Note.CONTENT_ITEM_TYPE)) {
-                        sendNote(s, cv);
+                        sendNote(s, cv, protocolVersion);
                     } else if (mimeType.equals(Photo.CONTENT_ITEM_TYPE)) {
                         sendPhoto(s, cv);
                     } else {
@@ -822,7 +823,7 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                 // We do the email rows last, because we need to make sure we've found the
                 // displayName (if one exists); this would be in a StructuredName rnow
                 for (final ContentValues cv: emailValues) {
-                    sendEmail(s, cv, emailCount++, displayName);
+                    sendEmail(s, cv, emailCount++, displayName, protocolVersion);
                 }
 
                 // Now, we'll send up groups, if any
@@ -830,9 +831,8 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                     boolean groupFirst = true;
                     for (final int id: groupIds) {
                         // Since we get id's from the provider, we need to find their names
-                        final Cursor c = mContentResolver.query(ContentUris.withAppendedId(
-                                Groups.CONTENT_URI, id),
-                                GROUP_TITLE_PROJECTION, null, null, null);
+                        final Cursor c = cr.query(ContentUris.withAppendedId(Groups.CONTENT_URI,
+                                id), GROUP_TITLE_PROJECTION, null, null, null);
                         try {
                             // Presumably, this should always succeed, but ...
                             if (c.moveToFirst()) {
@@ -863,10 +863,8 @@ public class EasContactsSyncHandler extends EasSyncHandler {
     }
 
     @Override
-    protected void cleanup(final int syncResult) {
-        if (syncResult == SYNC_RESULT_FAILED) {
-            return;
-        }
+    public void cleanup(final Context context, final Account account) {
+        final ContentResolver cr = context.getContentResolver();
 
         // Mark the changed contacts dirty = 0
         // Permanently delete the user deletions
@@ -885,16 +883,15 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                     .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true").build())
                     .build());
         }
-        ops.execute(mContext);
+        ops.execute(context);
         if (mParser != null && mParser.isGroupsUsed()) {
             // Make sure the title column is set for all of our groups
             // And that all of our groups are visible
             // TODO Perhaps the visible part should only happen when the group is created, but
             // this is fine for now.
             final Uri groupsUri = uriWithAccountAndIsSyncAdapter(Groups.CONTENT_URI,
-                    mAccount.mEmailAddress);
-            final Cursor c = mContentResolver.query(groupsUri,
-                    new String[] {Groups.SOURCE_ID, Groups.TITLE},
+                    account.mEmailAddress);
+            final Cursor c = cr.query(groupsUri, new String[] {Groups.SOURCE_ID, Groups.TITLE},
                     Groups.TITLE + " IS NULL", null, null);
             final ContentValues values = new ContentValues();
             values.put(Groups.GROUP_VISIBLE, 1);
@@ -902,8 +899,8 @@ public class EasContactsSyncHandler extends EasSyncHandler {
                 while (c.moveToNext()) {
                     final String sourceId = c.getString(0);
                     values.put(Groups.TITLE, sourceId);
-                    mContentResolver.update(uriWithAccountAndIsSyncAdapter(groupsUri,
-                            mAccount.mEmailAddress), values, Groups.SOURCE_ID + "=?",
+                    cr.update(uriWithAccountAndIsSyncAdapter(groupsUri,
+                            account.mEmailAddress), values, Groups.SOURCE_ID + "=?",
                             new String[] {sourceId});
                 }
             } finally {
