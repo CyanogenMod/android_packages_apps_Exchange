@@ -51,9 +51,6 @@ import java.io.OutputStream;
  */
 public final class EasLoadAttachment extends EasOperation {
 
-    /** Result code indicating the sync completed correctly. */
-    public static final int RESULT_OK = 1;
-
     /** Attachment Loading Errors **/
     public static final int RESULT_LOAD_ATTACHMENT_INFO_ERROR = -100;
     public static final int RESULT_ATTACHMENT_NO_LOCATION_ERROR = -101;
@@ -65,7 +62,6 @@ public final class EasLoadAttachment extends EasOperation {
     private final long mAttachmentId;
 
     // These members are set in a future point in time outside of the constructor.
-    private int mFinalStatus = RESULT_OK;
     private Attachment mAttachment;
 
     /**
@@ -172,21 +168,26 @@ public final class EasLoadAttachment extends EasOperation {
         }
 
         // First callback to let the client know that we have started the attachment load.
-        doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachment.mId,
+        LogUtils.e(LOG_TAG, "Calling callback for %d with IN_PROGRESS", mAttachmentId);
+        doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachmentId,
                 EmailServiceStatus.IN_PROGRESS, 0);
 
         final int return_value = super.performOperation();
 
-        // Last callback to report results.  Note that we are using the status member variable
-        // to keep track of the status to be returned as super.performOperation() is not designed
-        // to return the most contextually relevant code.
-        if (mFinalStatus == RESULT_OK) {
-            // We'll just use the one that was returned to us since we didn't track anything
-            // interesting ourselves.
-            mFinalStatus = return_value;
+        // Last callback to report results.
+        if (return_value < 0) {
+            // We had an error processing an attachment, let's report a {@link EmailServiceStatus}
+            // connection error in this case
+            LogUtils.d(LOG_TAG, "Invoking callback for attachmentId: %d with CONNECTION_ERROR",
+                    mAttachmentId);
+            doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachmentId,
+                    EmailServiceStatus.CONNECTION_ERROR, 0);
+        } else {
+            LogUtils.d(LOG_TAG, "Invoking callback for attachmentId: %d with SUCCESS",
+                    mAttachmentId);
+            doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachmentId,
+                    EmailServiceStatus.SUCCESS, 0);
         }
-        doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachmentId, mFinalStatus, 0);
-
         return return_value;
     }
 
@@ -267,7 +268,8 @@ public final class EasLoadAttachment extends EasOperation {
     /**
      * Read the {@link EasResponse} and extract the attachment data, saving it to the provider.
      * @param response The (successful) {@link EasResponse} containing the attachment data.
-     * @return A status code, from {@link EmailServiceStatus}, for this load.
+     * @return A status code, 0 is a success, anything negative is an error outlined by constants
+     *         in this class or its base class.
      */
     @Override
     protected int handleResponse(final EasResponse response) {
@@ -277,8 +279,7 @@ public final class EasLoadAttachment extends EasOperation {
         // the errors that are being returned to the caller of performOperation().
         if (response.isEmpty()) {
             LogUtils.e(LOG_TAG, "Error, empty response.");
-            mFinalStatus = RESULT_REQUEST_FAILURE;
-            return mFinalStatus;
+            return RESULT_REQUEST_FAILURE;
         }
 
         // This is a 2 step process.
@@ -289,8 +290,7 @@ public final class EasLoadAttachment extends EasOperation {
             tmpFile = File.createTempFile("eas_", "tmp", mContext.getCacheDir());
         } catch (final IOException e) {
             LogUtils.e(LOG_TAG, "Could not open temp file: %s", e.getMessage());
-            mFinalStatus = RESULT_REQUEST_FAILURE;
-            return mFinalStatus;
+            return RESULT_REQUEST_FAILURE;
         }
 
         try {
@@ -299,8 +299,7 @@ public final class EasLoadAttachment extends EasOperation {
                 os = new FileOutputStream(tmpFile);
             } catch (final FileNotFoundException e) {
                 LogUtils.e(LOG_TAG, "Temp file not found: %s", e.getMessage());
-                mFinalStatus = RESULT_ATTACHMENT_INTERNAL_HANDLING_ERROR;
-                return mFinalStatus;
+                return RESULT_ATTACHMENT_INTERNAL_HANDLING_ERROR;
             }
             try {
                 final InputStream is = response.getInputStream();
@@ -329,15 +328,13 @@ public final class EasLoadAttachment extends EasOperation {
                     // Check that we successfully grabbed what came over the wire...
                     if (!success) {
                         LogUtils.e(LOG_TAG, "Error parsing server response");
-                        mFinalStatus = RESULT_ATTACHMENT_RESPONSE_PARSING_ERROR;
-                        return mFinalStatus;
+                        return RESULT_ATTACHMENT_RESPONSE_PARSING_ERROR;
                     }
                     // Now finish the process and save to the final destination.
                     final boolean loadResult = finishLoadAttachment(mAttachment, tmpFile);
                     if (!loadResult) {
                         LogUtils.e(LOG_TAG, "Error post processing attachment file.");
-                        mFinalStatus = RESULT_ATTACHMENT_INTERNAL_HANDLING_ERROR;
-                        return mFinalStatus;
+                        return RESULT_ATTACHMENT_INTERNAL_HANDLING_ERROR;
                     }
                 } catch (final IOException e) {
                     LogUtils.e(LOG_TAG, "Error handling attachment: %s", e.getMessage());
@@ -351,6 +348,6 @@ public final class EasLoadAttachment extends EasOperation {
         } finally {
             tmpFile.delete();
         }
-        return mFinalStatus;
+        return 0;
     }
 }
