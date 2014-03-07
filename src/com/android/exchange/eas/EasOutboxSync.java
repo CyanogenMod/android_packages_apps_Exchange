@@ -1,5 +1,6 @@
 package com.android.exchange.eas;
 
+import android.content.ContentUris;
 import android.content.Context;
 import android.net.Uri;
 import android.text.format.DateUtils;
@@ -139,12 +140,12 @@ public class EasOutboxSync extends EasOperation {
 
     @Override
     protected void onRequestMade() {
-      try {
-          mFileStream.close();
-      } catch (IOException e) {
-          LogUtils.w(LOG_TAG, "IOException closing fileStream %s", e);
-      }
-      if (mTmpFile != null && mTmpFile.exists()) {
+        try {
+            mFileStream.close();
+        } catch (IOException e) {
+            LogUtils.w(LOG_TAG, "IOException closing fileStream %s", e);
+        }
+        if (mTmpFile != null && mTmpFile.exists()) {
             mTmpFile.delete();
         }
     }
@@ -184,6 +185,8 @@ public class EasOutboxSync extends EasOperation {
         } else {
             // FLAG: Do we need to parse results for earlier versions?
         }
+        mContext.getContentResolver().delete(
+            ContentUris.withAppendedId(Message.CONTENT_URI, mMessage.mId), null, null);
         return RESULT_OK;
     }
 
