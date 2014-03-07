@@ -51,6 +51,8 @@ import java.io.OutputStream;
  */
 public final class EasLoadAttachment extends EasOperation {
 
+    public static final int RESULT_SUCCESS = 0;
+
     /** Attachment Loading Errors **/
     public static final int RESULT_LOAD_ATTACHMENT_INFO_ERROR = -100;
     public static final int RESULT_ATTACHMENT_NO_LOCATION_ERROR = -101;
@@ -168,14 +170,13 @@ public final class EasLoadAttachment extends EasOperation {
         }
 
         // First callback to let the client know that we have started the attachment load.
-        LogUtils.e(LOG_TAG, "Calling callback for %d with IN_PROGRESS", mAttachmentId);
         doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachmentId,
                 EmailServiceStatus.IN_PROGRESS, 0);
 
-        final int return_value = super.performOperation();
+        final int result = super.performOperation();
 
         // Last callback to report results.
-        if (return_value < 0) {
+        if (result < 0) {
             // We had an error processing an attachment, let's report a {@link EmailServiceStatus}
             // connection error in this case
             LogUtils.d(LOG_TAG, "Invoking callback for attachmentId: %d with CONNECTION_ERROR",
@@ -188,7 +189,7 @@ public final class EasLoadAttachment extends EasOperation {
             doStatusCallback(mCallback, mAttachment.mMessageKey, mAttachmentId,
                     EmailServiceStatus.SUCCESS, 0);
         }
-        return return_value;
+        return result;
     }
 
     @Override
@@ -348,6 +349,6 @@ public final class EasLoadAttachment extends EasOperation {
         } finally {
             tmpFile.delete();
         }
-        return 0;
+        return RESULT_SUCCESS;
     }
 }
