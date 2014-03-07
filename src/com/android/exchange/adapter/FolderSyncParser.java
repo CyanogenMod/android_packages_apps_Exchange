@@ -41,7 +41,7 @@ import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
 import com.android.exchange.eas.EasSyncContacts;
-import com.android.exchange.service.EasCalendarSyncHandler;
+import com.android.exchange.eas.EasSyncCalendar;
 import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -759,7 +759,7 @@ public class FolderSyncParser extends AbstractSyncParser {
 
     @Override
     protected void wipe() {
-        EasCalendarSyncHandler.wipeAccountFromContentProvider(mContext,
+        EasSyncCalendar.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
         EasSyncContacts.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
