@@ -40,7 +40,7 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
-import com.android.exchange.service.EasContactsSyncHandler;
+import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.service.EasSyncHandler;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.mail.utils.LogUtils;
@@ -1308,7 +1308,7 @@ public class ContactsSyncParser extends AbstractSyncParser {
     @Override
     protected void wipe() {
         LogUtils.w(TAG, "Wiping contacts for account %d", mAccount.mId);
-        EasContactsSyncHandler.wipeAccountFromContentProvider(mContext,
+        EasSyncContacts.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
     }
 }

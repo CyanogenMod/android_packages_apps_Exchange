@@ -1,8 +1,10 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
+import android.net.TrafficStats;
 import android.text.format.DateUtils;
 
+import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Mailbox;
@@ -70,6 +72,9 @@ public class EasSyncBase extends EasOperation {
             if (mCollectionTypeHandler == null) {
                 return false;
             }
+            // Set up traffic stats bookkeeping.
+            final int trafficFlags = TrafficFlags.getSyncFlags(mContext, mAccount);
+            TrafficStats.setThreadStatsTag(trafficFlags | mCollectionTypeHandler.getTrafficFlag());
         }
         return result;
     }
@@ -121,6 +126,9 @@ public class EasSyncBase extends EasOperation {
         final String key = getSyncKey();
         while (result == RESULT_MORE_AVAILABLE) {
             result = super.performOperation();
+            if (result == RESULT_MORE_AVAILABLE || result == RESULT_DONE) {
+                mCollectionTypeHandler.cleanup(mContext, mAccount);
+            }
             // TODO: Clear pending request queue.
             final String newKey = getSyncKey();
             if (result == RESULT_MORE_AVAILABLE && key.equals(newKey)) {
@@ -155,16 +163,14 @@ public class EasSyncBase extends EasOperation {
             case Mailbox.TYPE_INBOX:
             case Mailbox.TYPE_DRAFTS:
             case Mailbox.TYPE_SENT:
-//            case Mailbox.TYPE_TRASH:
-            case Mailbox.TYPE_JUNK: {
+            case Mailbox.TYPE_TRASH:
+            //case Mailbox.TYPE_JUNK:
                 return new EasSyncMail();
-            }
             case Mailbox.TYPE_CALENDAR:
-                // TODO: fill this in when we have EasSyncContacts;
+                // TODO: fill this in when we have EasSyncCalendar;
                 return null;
             case Mailbox.TYPE_CONTACTS:
-                // TODO: fill this in when we have EasSyncContacts;
-                return null;
+                return new EasSyncContacts(mAccount.mEmailAddress);
             default:
                 LogUtils.e(LOG_TAG, "unexpected collectiontype %d", type);
                 return null;

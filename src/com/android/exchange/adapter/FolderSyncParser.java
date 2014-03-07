@@ -40,8 +40,8 @@ import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.CommandStatusException.CommandStatus;
 import com.android.exchange.Eas;
+import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.service.EasCalendarSyncHandler;
-import com.android.exchange.service.EasContactsSyncHandler;
 import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -761,7 +761,7 @@ public class FolderSyncParser extends AbstractSyncParser {
     protected void wipe() {
         EasCalendarSyncHandler.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
-        EasContactsSyncHandler.wipeAccountFromContentProvider(mContext,
+        EasSyncContacts.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
 
         // Save away any mailbox sync information that is NOT default

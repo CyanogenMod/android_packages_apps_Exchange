@@ -63,6 +63,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.R.drawable;
 import com.android.exchange.R.string;
 import com.android.exchange.adapter.PingParser;
+import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasMoveItems;
@@ -461,7 +462,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
             if (emailAddress != null) {
                 final Context context = EmailSyncAdapterService.this;
-                EasContactsSyncHandler.wipeAccountFromContentProvider(context, emailAddress);
+                EasSyncContacts.wipeAccountFromContentProvider(context, emailAddress);
                 EasCalendarSyncHandler.wipeAccountFromContentProvider(context, emailAddress);
             }
             // TODO: Run account reconciler?
@@ -875,18 +876,17 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // Non-mailbox syncs are whole account syncs initiated by the AccountManager and are
             // treated as background syncs.
             // TODO: Push will be treated as "user" syncs, and probably should be background.
-            final ContentValues cv = new ContentValues(2);
-            updateMailbox(context, mailbox, cv, isMailboxSync ?
-                    EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND);
-            try {
-                if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
-                    return syncOutbox(context, cr, account, mailbox);
-                }
+            if (mailbox.mType == Mailbox.TYPE_OUTBOX || mailbox.isSyncable()) {
+                final ContentValues cv = new ContentValues(2);
+                updateMailbox(context, mailbox, cv, isMailboxSync ?
+                        EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND);
+                try {
+                    if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
+                        return syncOutbox(context, cr, account, mailbox);
+                    }
 
-                if(mailbox.isSyncable()) {
                     // TODO: This conditional logic is temporary until EasSyncHandler is obsolete.
-                    if (mailbox.mType == Mailbox.TYPE_INBOX || mailbox.mType == Mailbox.TYPE_MAIL ||
-                            mailbox.mType == Mailbox.TYPE_SENT) {
+                    if (mailbox.mType != Mailbox.TYPE_CALENDAR) {
                         final EasSyncBase operation = new EasSyncBase(context, account, mailbox);
                         return operation.performOperation();
                     } else {
@@ -908,9 +908,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                             }
                         }
                     }
+                } finally {
+                    updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
                 }
-            } finally {
-                updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
             }
 
             return EasSyncBase.RESULT_DONE;
