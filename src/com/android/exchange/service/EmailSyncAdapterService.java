@@ -684,14 +684,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             final long[] mailboxIds = Mailbox.getMailboxIdsFromBundle(extras);
             final int mailboxType = extras.getInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE,
                     Mailbox.TYPE_NONE);
-            final boolean hasCallbackMethod =
-                    extras.containsKey(EmailServiceStatus.SYNC_EXTRAS_CALLBACK_METHOD);
-            if (hasCallbackMethod && mailboxIds != null) {
-                for (long mailboxId : mailboxIds) {
-                    EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
-                            EmailServiceStatus.IN_PROGRESS, 0, UIProvider.LastSyncResult.SUCCESS);
-                }
-            }
 
             // Push only means this sync request should only refresh the ping (either because
             // settings changed, or we need to restart it for some reason).
@@ -723,16 +715,15 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             // Do the bookkeeping for starting a sync, including stopping a ping if necessary.
             mSyncHandlerMap.startSync(account.mId);
-
+            int operationResult = 0;
             try {
                 // Perform a FolderSync if necessary.
                 // TODO: We permit FolderSync even during security hold, because it's necessary to
                 // resolve some holds. Ideally we would only do it for the holds that require it.
                 if (isFolderSync) {
                     final EasFolderSync folderSync = new EasFolderSync(context, account);
-                    final int result = folderSync.doFolderSync();
-                    if (result < 0) {
-                        EasFolderSync.writeResultToSyncResult(result, syncResult);
+                    operationResult = folderSync.doFolderSync();
+                    if (operationResult < 0) {
                         return;
                     }
                 }
@@ -745,45 +736,39 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 // Perform email upsync for this account. Moves first, then state changes.
                 if (!isInitialSync) {
                     EasMoveItems move = new EasMoveItems(context, account);
-                    final int moveResult = move.upsyncMovedMessages();
-                    if (moveResult < 0) {
-                        EasMoveItems.writeResultToSyncResult(moveResult, syncResult);
+                    operationResult = move.upsyncMovedMessages();
+                    if (operationResult < 0) {
                         return;
                     }
 
                     // TODO: EasSync should eventually handle both up and down; for now, it's used
                     // purely for upsync.
                     EasSync upsync = new EasSync(context, account);
-                    final int upsyncResult = upsync.upsync();
-                    if (upsyncResult < 0) {
-                        EasSync.writeResultToSyncResult(upsyncResult, syncResult);
+                    operationResult = upsync.upsync();
+                    if (operationResult < 0) {
                         return;
                     }
                 }
 
                 if (mailboxIds != null) {
+                    final boolean hasCallbackMethod =
+                            extras.containsKey(EmailServiceStatus.SYNC_EXTRAS_CALLBACK_METHOD);
                     // Sync the mailbox that was explicitly requested.
                     for (final long mailboxId : mailboxIds) {
-                        final int result = syncMailbox(context, cr, acct, account, mailboxId,
-                                extras, syncResult, null, true);
-                        EasSyncBase.writeResultToSyncResult(result, syncResult);
                         if (hasCallbackMethod) {
-                            final int uiResult;
-                            if (syncResult.hasError()) {
-                                if (syncResult.stats.numIoExceptions > 0) {
-                                    uiResult = UIProvider.LastSyncResult.CONNECTION_ERROR;
-                                } else if (syncResult.stats.numAuthExceptions > 0) {
-                                    uiResult = UIProvider.LastSyncResult.AUTH_ERROR;
-                                }  else {
-                                    uiResult = UIProvider.LastSyncResult.INTERNAL_ERROR;
-                                }
-                            } else {
-                                uiResult = UIProvider.LastSyncResult.SUCCESS;
-                            }
-                            EmailServiceStatus.syncMailboxStatus(
-                                    cr, extras, mailboxId,EmailServiceStatus.SUCCESS, 0, uiResult);
+                            EmailServiceStatus.syncMailboxStatus(cr, extras, mailboxId,
+                                    EmailServiceStatus.IN_PROGRESS, 0,
+                                    UIProvider.LastSyncResult.SUCCESS);
                         }
-                        if (syncResult.hasError()) {
+                        operationResult = syncMailbox(context, cr, acct, account, mailboxId,
+                                extras, syncResult, null, true);
+                        if (hasCallbackMethod) {
+                            EmailServiceStatus.syncMailboxStatus(cr, extras,
+                                    mailboxId,EmailServiceStatus.SUCCESS, 0,
+                                    EasOperation.translateSyncResultToUiResult(operationResult));
+                        }
+
+                        if (operationResult < 0) {
                             break;
                         }
                     }
@@ -801,10 +786,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                         try {
                             final HashSet<String> authsToSync = getAuthsToSync(acct);
                             while (c.moveToNext()) {
-                                final int result = syncMailbox(context, cr, acct, account,
+                                operationResult = syncMailbox(context, cr, acct, account,
                                         c.getLong(0), extras, syncResult, authsToSync, false);
-                                EasSyncBase.writeResultToSyncResult(result, syncResult);
-                                if (syncResult.hasError()) {
+                                if (operationResult < 0) {
                                     break;
                                 }
                             }
@@ -817,9 +801,15 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 // Clean up the bookkeeping, including restarting ping if necessary.
                 mSyncHandlerMap.syncComplete(syncResult.hasError(), account);
 
-                // If any operations had an auth error, notify the user.
-                if (syncResult.stats.numAuthExceptions > 0) {
-                    showAuthNotification(account.mId, account.mEmailAddress);
+                if (operationResult < 0) {
+                    EasFolderSync.writeResultToSyncResult(operationResult, syncResult);
+                    // If any operations had an auth error, notify the user.
+                    // Note that provisioning errors should have already triggered the policy
+                    // notification, so suppress those from showing the auth notification.
+                    if (syncResult.stats.numAuthExceptions > 0 &&
+                            operationResult != EasOperation.RESULT_PROVISIONING_ERROR) {
+                        showAuthNotification(account.mId, account.mEmailAddress);
+                    }
                 }
 
                 LogUtils.d(TAG, "onPerformSync: finished");
@@ -885,30 +875,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
                         return syncOutbox(context, cr, account, mailbox);
                     }
-
-                    // TODO: This conditional logic is temporary until EasSyncHandler is obsolete.
-                    if (mailbox.mType != Mailbox.TYPE_CALENDAR) {
-                        final EasSyncBase operation = new EasSyncBase(context, account, mailbox);
-                        return operation.performOperation();
-                    } else {
-                        // TODO: This branch goes away after all conversions are done.
-                        final EasSyncHandler syncHandler = EasSyncHandler.getEasSyncHandler(context,
-                                cr, acct, account, mailbox, extras, syncResult);
-                        if (syncHandler != null) {
-                            if (!syncHandler.performSync(syncResult)) {
-                                // This is ass-backwards, but it's a hack until this code goes away.
-                                if (syncResult.stats.numIoExceptions > 0) {
-                                    return EasSyncBase.RESULT_REQUEST_FAILURE;
-                                }
-                                if (syncResult.stats.numAuthExceptions > 0) {
-                                    return EasSyncBase.RESULT_AUTHENTICATION_ERROR;
-                                }
-                                if (syncResult.stats.numParseExceptions > 0) {
-                                    return EasSyncBase.RESULT_OTHER_FAILURE;
-                                }
-                            }
-                        }
-                    }
+                    final EasSyncBase operation = new EasSyncBase(context, account, mailbox);
+                    return operation.performOperation();
                 } finally {
                     updateMailbox(context, mailbox, cv, EmailContent.SYNC_STATUS_NONE);
                 }

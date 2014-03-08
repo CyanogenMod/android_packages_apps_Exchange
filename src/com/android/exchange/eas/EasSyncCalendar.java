@@ -6,7 +6,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
 import android.content.EntityIterator;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
@@ -35,7 +34,6 @@ import com.android.exchange.adapter.AbstractSyncParser;
 import com.android.exchange.adapter.CalendarSyncParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
-import com.android.exchange.service.EasSyncHandler;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.mail.utils.LogUtils;
 import com.google.common.collect.Sets;
@@ -1088,7 +1086,6 @@ public class EasSyncCalendar extends EasSyncCollectionTypeBase {
 
     /**
      * Issue a {@link android.content.ContentResolver#requestSync} for a specific mailbox.
-     * @param amAccount The {@link android.accounts.Account} for the account we're pinging.
      * @param authority The authority for the mailbox that needs to sync.
      * @param mailboxId The id of the mailbox that needs to sync.
      */

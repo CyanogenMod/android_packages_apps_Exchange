@@ -93,7 +93,6 @@ public class EasProvision extends EasOperation {
      */
     private int mPhase;
 
-    // TODO: Temporary until EasSyncHandler converts to EasOperation.
     public EasProvision(final Context context, final Account account,
             final EasServerConnection connection) {
         super(context, account, connection);
