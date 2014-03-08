@@ -39,6 +39,7 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.service.EasServerConnection;
+import com.android.mail.providers.UIProvider;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -158,7 +159,6 @@ public abstract class EasOperation {
         mAccountId = accountId;
     }
 
-    // TODO: Make this private again when EasSyncHandler is converted to be a subclass.
     protected EasOperation(final Context context, final Account account,
             final EasServerConnection connection) {
         this(context, account.mId);
@@ -753,5 +753,28 @@ public abstract class EasOperation {
                 return true;
         }
         return false;
+    }
+
+    public static int translateSyncResultToUiResult(final int result) {
+        switch (result) {
+              case RESULT_TOO_MANY_REDIRECTS:
+                return UIProvider.LastSyncResult.INTERNAL_ERROR;
+            case RESULT_REQUEST_FAILURE:
+                return UIProvider.LastSyncResult.CONNECTION_ERROR;
+            case RESULT_FORBIDDEN:
+            case RESULT_PROVISIONING_ERROR:
+            case RESULT_AUTHENTICATION_ERROR:
+            case RESULT_CLIENT_CERTIFICATE_REQUIRED:
+                return UIProvider.LastSyncResult.AUTH_ERROR;
+            case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
+                // Only used in validate, so there's never a syncResult to write to here.
+                break;
+            case RESULT_INITIALIZATION_FAILURE:
+            case RESULT_HARD_DATA_FAILURE:
+                return UIProvider.LastSyncResult.INTERNAL_ERROR;
+            case RESULT_OTHER_FAILURE:
+                return UIProvider.LastSyncResult.INTERNAL_ERROR;
+        }
+        return UIProvider.LastSyncResult.SUCCESS;
     }
 }
