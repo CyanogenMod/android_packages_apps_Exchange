@@ -82,7 +82,7 @@ public class Serializer {
         if (cr > 0) {
             str = str.substring(0, cr);
         }
-        LogUtils.v(TAG, str);
+        LogUtils.v(TAG, "%s", str);
         if (Eas.FILE_LOG) {
             FileLogger.log(TAG, str);
         }
