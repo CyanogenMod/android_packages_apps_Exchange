@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.text.format.DateUtils;
 import android.util.Log;
 
+import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.internet.Rfc822Output;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
@@ -383,6 +384,16 @@ public class EasOutboxSync extends EasOperation {
                 return new SmartSendInfo(itemId, collectionId, reply, requiredAtts);
             }
             return null;
+        }
+    }
+
+    @Override
+    public String getRequestContentType() {
+        // When using older protocols, we need to use a different MIME type for sending messages.
+        if (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+            return MimeUtility.MIME_TYPE_RFC822;
+        } else {
+            return super.getRequestContentType();
         }
     }
 

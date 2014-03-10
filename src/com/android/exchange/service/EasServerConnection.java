@@ -341,6 +341,8 @@ public class EasServerConnection {
         final boolean isPingCommand = cmd.equals("Ping");
 
         // Split the mail sending commands
+        // TODO: This logic should not be here, the command should be generated correctly
+        // in a subclass of EasOperation.
         String extra = null;
         boolean msg = false;
         if (cmd.startsWith("SmartForward&") || cmd.startsWith("SmartReply&")) {
