@@ -164,7 +164,7 @@ public class EasSyncBase extends EasOperation {
             case Mailbox.TYPE_DRAFTS:
             case Mailbox.TYPE_SENT:
             case Mailbox.TYPE_TRASH:
-            //case Mailbox.TYPE_JUNK:
+            case Mailbox.TYPE_JUNK:
                 return new EasSyncMail();
             case Mailbox.TYPE_CALENDAR: {
                 return new EasSyncCalendar(mContext, mAccount, mMailbox);
