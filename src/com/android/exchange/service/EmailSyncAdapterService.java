@@ -913,7 +913,8 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     op = new EasOutboxSync(context, account, message, false);
                     result = op.performOperation();
                 }
-                if (result != EasOutboxSync.RESULT_OK) {
+                if (result != EasOutboxSync.RESULT_OK &&
+                    result != EasOutboxSync.RESULT_NON_FATAL_ERROR) {
                     LogUtils.w(TAG, "Aborting outbox synx for error %d", result);
                     return result;
                 }
