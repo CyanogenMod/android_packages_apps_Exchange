@@ -98,7 +98,7 @@ public class EasOutboxSync extends EasOperation {
     }
 
     @Override
-    protected HttpEntity getRequestEntity() throws IOException {
+    protected HttpEntity getRequestEntity() throws IOException, MessageInvalidException {
         try {
             mTmpFile = File.createTempFile("eas_", "tmp", mCacheDir);
         } catch (final IOException e) {
@@ -107,8 +107,13 @@ public class EasOutboxSync extends EasOperation {
         }
 
         if (!writeMessageToTempFile(mTmpFile, mMessage, mSmartSendInfo)) {
+            // There are several reasons this could happen, possibly the message is corrupt (e.g.
+            // the To header is null) or the disk is too full to handle the temporary message.
+            // We can't send this message, but we don't want to abort the entire sync. Returning
+            // this error code will let the caller recognize that this operation failed, but we
+            // should continue on with the rest of the sync.
             LogUtils.w(LOG_TAG, "IO error writing to temp file");
-            throw new IllegalStateException("Failure writing to temp file");
+            throw new MessageInvalidException("Failure writing to temp file");
         }
 
         try {

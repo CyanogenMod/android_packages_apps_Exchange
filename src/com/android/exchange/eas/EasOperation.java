@@ -135,8 +135,11 @@ public abstract class EasOperation {
     public static final int RESULT_INITIALIZATION_FAILURE = -10;
     /** Error code indicating a hard data layer error. */
     public static final int RESULT_HARD_DATA_FAILURE = -11;
+    /** Error code indicating that this operation failed, but we should not abort the sync */
+    /** TODO: This is currently only used in EasOutboxSync, no other place handles it correctly */
+    public static final int RESULT_NON_FATAL_ERROR = -12;
     /** Error code indicating some other failure. */
-    public static final int RESULT_OTHER_FAILURE = -12;
+    public static final int RESULT_OTHER_FAILURE = -99;
 
     protected final Context mContext;
 
@@ -148,6 +151,12 @@ public abstract class EasOperation {
 
     /** The connection to use for this operation. This is created when {@link #mAccount} is set. */
     private EasServerConnection mConnection;
+
+    public class MessageInvalidException extends Exception {
+        public MessageInvalidException(final String message) {
+            super(message);
+        }
+    }
 
     /**
      * Constructor which defers loading of account and connection info.
@@ -304,6 +313,9 @@ public abstract class EasOperation {
                 LogUtils.i(LOG_TAG, "CertificateException while sending request: %s",
                         e.getMessage());
                 return RESULT_CLIENT_CERTIFICATE_REQUIRED;
+            } catch (final MessageInvalidException e) {
+                LogUtils.d(LOG_TAG, "Exception sending request %s", e.getMessage());
+                return RESULT_NON_FATAL_ERROR;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
                 // TODO: Switch away from ISEs.
@@ -440,7 +452,7 @@ public abstract class EasOperation {
      * @return An {@link HttpUriRequest}.
      * @throws IOException
      */
-    private final HttpUriRequest makeRequest() throws IOException {
+    private final HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
         final String requestUri = getRequestUri();
         if (requestUri == null) {
             return mConnection.makeOptions();
@@ -470,7 +482,7 @@ public abstract class EasOperation {
      * @return The {@link HttpEntity} to pass to {@link EasServerConnection#makePost}.
      * @throws IOException
      */
-    protected abstract HttpEntity getRequestEntity() throws IOException;
+    protected abstract HttpEntity getRequestEntity() throws IOException, MessageInvalidException;
 
     /**
      * Parse the response from the Exchange perform whatever actions are dictated by that.
