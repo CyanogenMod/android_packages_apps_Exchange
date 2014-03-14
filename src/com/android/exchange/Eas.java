@@ -43,7 +43,7 @@ public class Eas {
     public static boolean PARSER_LOG = false;   // DO NOT CHECK IN WITH THIS SET TO TRUE
     public static boolean FILE_LOG = false;     // DO NOT CHECK IN WITH THIS SET TO TRUE
 
-    public static final String CLIENT_VERSION = "EAS-1.3";
+    public static final String CLIENT_VERSION = "EAS-2.0";
     public static final String ACCOUNT_MAILBOX_PREFIX = "__eas";
 
     // Define our default protocol version as 2.5 (Exchange 2003)
