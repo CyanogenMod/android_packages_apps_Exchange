@@ -412,9 +412,17 @@ public class EasPing extends EasOperation {
                 mAmAccount.toString(), extras.toString());
     }
 
+    /**
+     * Request a ping-only sync via the SyncManager. This is used in error paths, which is also why
+     * we don't just create and start a new ping task immediately: in the case where we have loss
+     * of network, we want to take advantage of the SyncManager to schedule this when we expect it
+     * to be able to work.
+     * @param amAccount Account that needs to ping.
+     */
     public static void requestPing(final android.accounts.Account amAccount) {
-        final Bundle extras = new Bundle(1);
+        final Bundle extras = new Bundle(2);
         extras.putBoolean(Mailbox.SYNC_EXTRA_PUSH_ONLY, true);
+        extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
         ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
         LogUtils.i(LOG_TAG, "requestPing EasOperation %s, %s",
                 amAccount.toString(), extras.toString());
