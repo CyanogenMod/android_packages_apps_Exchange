@@ -273,27 +273,16 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 if (pingSyncHandler != null) {
                     pingSyncHandler.restart();
                 } else {
-                    // Start a new ping.
-                    // Note: unlike startSync, we CANNOT allow the caller to do the actual work.
-                    // If we return before the ping starts, there's a race condition where another
-                    // ping or sync might start first. It only works for startSync because sync is
-                    // higher priority than ping (i.e. a ping can't start while a sync is pending)
-                    // and only one sync can run at a time.
                     if (lastSyncHadError) {
                         // Schedule an alarm to set up the ping in 5 minutes
-                        final Intent intent = new Intent(service, EmailSyncAdapterService.class);
-                        intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
-                        intent.putExtra(EXTRA_START_PING, true);
-                        intent.putExtra(EXTRA_PING_ACCOUNT, amAccount);
-                        final PendingIntent pi = PendingIntent.getService(
-                                EmailSyncAdapterService.this, 0, intent,
-                                PendingIntent.FLAG_ONE_SHOT);
-                        final AlarmManager am = (AlarmManager)getSystemService(
-                                Context.ALARM_SERVICE);
-                        final long atTime = SystemClock.elapsedRealtime() +
-                                SYNC_ERROR_BACKOFF_MILLIS;
-                        am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, atTime, pi);
+                        scheduleDelayedPing(amAccount, SYNC_ERROR_BACKOFF_MILLIS);
                     } else {
+                        // Start a new ping.
+                        // Note: unlike startSync, we CANNOT allow the caller to do the actual work.
+                        // If we return before the ping starts, there's a race condition where
+                        // another ping or sync might start first. It only works for startSync
+                        // because sync is higher priority than ping (i.e. a ping can't start while
+                        // a sync is pending) and only one sync can run at a time.
                         final PingTask pingHandler = new PingTask(service, account, amAccount,
                                 this);
                         mPingHandlers.put(account.mId, pingHandler);
@@ -351,14 +340,19 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             // TODO: if (pingStatus == PingParser.STATUS_FAILED), notify UI.
             // TODO: if (pingStatus == PingParser.STATUS_REQUEST_TOO_MANY_FOLDERS), notify UI.
 
-            // TODO: Should this just re-request ping if status < 0? This would do the wrong thing
-            // for e.g. auth errors, though.
             if (pingStatus == EasOperation.RESULT_REQUEST_FAILURE ||
                     pingStatus == EasOperation.RESULT_OTHER_FAILURE) {
-                // Request a new ping through the SyncManager. This will do the right thing if the
-                // exception was due to loss of network connectivity, etc. (i.e. it will wait for
-                // network to restore and then request it).
-                EasPing.requestPing(amAccount);
+                // TODO: Sticky problem here: we necessarily aren't in a sync, so it's impossible to
+                // signal the error to the SyncManager and take advantage of backoff there. Worse,
+                // the current mechanism for how we do this will just encourage spammy requests
+                // since the actual ping-only sync request ALWAYS succeeds.
+                // So for now, let's delay a bit before asking the SyncManager to perform the sync.
+                // Longer term, this should be incorporated into some form of backoff, either
+                // by integrating with the SyncManager more fully or by implementing a Ping-specific
+                // backoff mechanism (e.g. integrate this with the logic for ping duration).
+                LogUtils.e(TAG, "Ping for account %d completed with error %d, delaying next ping",
+                        accountId, pingStatus);
+                scheduleDelayedPing(amAccount, SYNC_ERROR_BACKOFF_MILLIS);
             } else {
                 stopServiceIfNoPings();
             }
@@ -977,5 +971,27 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             authsToSync.add(ContactsContract.AUTHORITY);
         }
         return authsToSync;
+    }
+
+    /**
+     * Schedule to have a ping start some time in the future. This is used when we encounter an
+     * error, and properly should be a more full featured back-off, but for the short run, just
+     * waiting a few minutes at least avoids burning battery.
+     * @param amAccount The account that needs to be pinged.
+     * @param delay The time in milliseconds to wait before requesting the ping-only sync. Note that
+     *              it may take longer than this before the ping actually happens, since there's two
+     *              layers of waiting ({@link AlarmManager} can choose to wait longer, as can the
+     *              SyncManager).
+     */
+    private void scheduleDelayedPing(final android.accounts.Account amAccount, final long delay) {
+        final Intent intent = new Intent(this, EmailSyncAdapterService.class);
+        intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
+        intent.putExtra(EXTRA_START_PING, true);
+        intent.putExtra(EXTRA_PING_ACCOUNT, amAccount);
+        final PendingIntent pi = PendingIntent.getService(this, 0, intent,
+                PendingIntent.FLAG_ONE_SHOT);
+        final AlarmManager am = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+        final long atTime = SystemClock.elapsedRealtime() + delay;
+        am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, atTime, pi);
     }
 }
