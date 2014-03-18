@@ -907,9 +907,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                     op = new EasOutboxSync(context, account, message, false);
                     result = op.performOperation();
                 }
+                // If we got some connection error or other fatal error, terminate the sync.
                 if (result != EasOutboxSync.RESULT_OK &&
-                    result != EasOutboxSync.RESULT_NON_FATAL_ERROR) {
-                    LogUtils.w(TAG, "Aborting outbox synx for error %d", result);
+                    result != EasOutboxSync.RESULT_NON_FATAL_ERROR &&
+                    result > EasOutboxSync.RESULT_OP_SPECIFIC_ERROR_RESULT) {
+                    LogUtils.w(TAG, "Aborting outbox sync for error %d", result);
                     return result;
                 }
             }
