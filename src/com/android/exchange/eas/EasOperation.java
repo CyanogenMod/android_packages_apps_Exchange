@@ -140,6 +140,8 @@ public abstract class EasOperation {
     public static final int RESULT_NON_FATAL_ERROR = -12;
     /** Error code indicating some other failure. */
     public static final int RESULT_OTHER_FAILURE = -99;
+    /** Constant to delimit where op specific error codes begin. */
+    public static final int RESULT_OP_SPECIFIC_ERROR_RESULT = -100;
 
     protected final Context mContext;
 
@@ -397,6 +399,7 @@ public abstract class EasOperation {
                     // All other errors.
                     LogUtils.e(LOG_TAG, "Generic error for operation %s: status %d, result %d",
                             getCommand(), response.getStatus(), result);
+                    // TODO: This probably should return result.
                     return RESULT_OTHER_FAILURE;
                 }
             } finally {
