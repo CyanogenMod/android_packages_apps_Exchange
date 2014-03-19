@@ -30,6 +30,7 @@ import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
+import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.ConversionUtilities;
 import com.android.emailcommon.utility.TextUtilities;
@@ -395,6 +396,12 @@ public class EmailSyncParser extends AbstractSyncParser {
                     break;
                 case Tags.BASE_DATA:
                     body = getValue();
+                    break;
+                case Tags.BASE_TRUNCATED:
+                    boolean truncated = getValue().equals("1") ? true : false;
+                    if (truncated) {
+                        msg.mFlagLoaded = Message.FLAG_LOADED_PARTIAL_COMPLETE;
+                    }
                     break;
                 default:
                     skipTag();
