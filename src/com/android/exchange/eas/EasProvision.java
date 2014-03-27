@@ -177,7 +177,8 @@ public class EasProvision extends EasOperation {
 
         // Even before the policy is accepted, we can honor this setting since it has nothing
         // to do with the device policy manager and is requested by the Exchange server.
-        storeMaxAttachmentSize(mPolicy.mMaxAttachmentSize);
+        // TODO: This was an error, this is minimum change to disable it.
+        //storeMaxAttachmentSize(mPolicy.mMaxAttachmentSize);
 
         // Apply the policies (that we support) with the temporary key.
         mPolicy.mProtocolPoliciesUnsupported = null;
