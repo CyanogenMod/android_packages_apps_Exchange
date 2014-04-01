@@ -426,7 +426,12 @@ public abstract class EasOperation {
 
     /**
      * Reset the protocol version to use for this connection. If it's changed, and our account is
-     * persisted, also write back the changes to the DB.
+     * persisted, also write back the changes to the DB. Note that this function is called at
+     * the time of Account creation but does not update the Account object with the various flags
+     * at that point in time.
+     * TODO: Make sure that the Account flags are set properly in this function or a similar
+     * function in the future. Right now the Account setup activity sets the flags, this is not
+     * the right design.
      * @param protocolVersion The new protocol version to use, as a string.
      */
     protected final void setProtocolVersion(final String protocolVersion) {
@@ -438,8 +443,9 @@ public abstract class EasOperation {
                 final int oldFlags = Utility.getFirstRowInt(mContext, uri,
                         Account.ACCOUNT_FLAGS_PROJECTION, null, null, null,
                         Account.ACCOUNT_FLAGS_COLUMN_FLAGS, 0);
-                final int newFlags = oldFlags
-                        | Account.FLAGS_SUPPORTS_GLOBAL_SEARCH + Account.FLAGS_SUPPORTS_SEARCH;
+                final int newFlags = oldFlags |
+                        Account.FLAGS_SUPPORTS_GLOBAL_SEARCH | Account.FLAGS_SUPPORTS_SEARCH |
+                                Account.FLAGS_SUPPORTS_SMART_FORWARD;
                 if (oldFlags != newFlags) {
                     cv.put(EmailContent.AccountColumns.FLAGS, newFlags);
                 }
