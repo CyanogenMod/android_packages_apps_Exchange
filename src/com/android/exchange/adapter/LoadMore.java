@@ -142,7 +142,7 @@ public class LoadMore {
                     LoadMoreParser parser = new LoadMoreParser(is, msg);
                     parser.parse();
                     if (parser.getStatusCode() == LoadMoreParser.STATUS_CODE_SUCCESS) {
-                        parser.commit(cr);
+                        parser.commit(context);
                     }
                 }
             } else {
@@ -196,16 +196,22 @@ public class LoadMore {
         }
 
         // commit the body data to database.
-        public void commit(ContentResolver contentResolver) {
+        public void commit(Context context) {
             LogUtils.d(Logging.LOG_TAG, "Fetched message body successfully for " + mMessage.mId);
 
             // update the body data
+            String newContent = Message.updateHTMLContentForInlineAtts(context,
+                    mMessage.mHtml, mMessage.mId);
+            if (newContent != null) {
+                mMessage.mHtml = newContent;
+            }
             ContentValues cv = new ContentValues();
             if (mBodyType.equals(Eas.BODY_PREFERENCE_HTML)) {
                 cv.put(BodyColumns.HTML_CONTENT, mMessage.mHtml);
             } else {
                 cv.put(BodyColumns.TEXT_CONTENT, mMessage.mText);
             }
+            ContentResolver contentResolver = context.getContentResolver();
             int res = contentResolver.update(Body.CONTENT_URI, cv,
                     BodyColumns.MESSAGE_KEY + "=" + mMessage.mId, null);
             LogUtils.d(Logging.LOG_TAG, "update the body content, success number : " + res);
