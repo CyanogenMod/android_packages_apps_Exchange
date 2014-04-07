@@ -279,6 +279,9 @@ public class ContactsSyncParser extends AbstractSyncParser {
                 case Tags.CONTACTS_ANNIVERSARY:
                     personal.anniversary = getValue();
                     break;
+                case Tags.CONTACTS_FILE_AS:
+                    personal.fileAs = getValue();
+                    break;
                 case Tags.CONTACTS_BIRTHDAY:
                     ops.addBirthday(entity, getValue());
                     break;

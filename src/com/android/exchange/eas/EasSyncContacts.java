@@ -30,6 +30,7 @@ import android.util.Base64;
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.adapter.AbstractSyncParser;
 import com.android.exchange.adapter.ContactsSyncParser;
@@ -135,7 +136,7 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
      * Data and constants for a Personal contact.
      */
     private static final class EasPersonal {
-            /** MIME type used when storing this in data table. */
+        /** MIME type used when storing this in data table. */
         public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/eas_personal";
         public static final String ANNIVERSARY = "data2";
         public static final String FILE_AS = "data4";
@@ -250,6 +251,7 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
         s.tag(Tags.CONTACTS_BIRTHDAY);
         s.tag(Tags.CONTACTS_WEBPAGE);
         s.tag(Tags.CONTACTS_PICTURE);
+        s.tag(Tags.CONTACTS_FILE_AS);
         s.end(); // SYNC_SUPPORTED
     }
 
@@ -318,21 +320,43 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
     }
 
     /**
+     * Helper function to safely extract a string from a content value.
+     * @param cv The {@link ContentValues} that contains the values
+     * @param column The column name in cv for the data
+     * @return The data in the column or null if it doesn't exist or is empty.
+     * @throws IOException
+     */
+    public static String tryGetStringData(final ContentValues cv, final String column)
+            throws IOException {
+        if ((cv == null) || (column == null)) {
+            return null;
+        }
+        if (cv.containsKey(column)) {
+            final String value = cv.getAsString(column);
+            if (!TextUtils.isEmpty(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Helper to add a string to the upsync.
      * @param s The {@link Serializer} for this sync request
      * @param cv The {@link ContentValues} with the data for this string.
      * @param column The column name in cv to find the string.
      * @param tag The tag to use when adding to s.
+     * @return Whether or not the field was actually set.
      * @throws IOException
      */
-    private static void sendStringData(final Serializer s, final ContentValues cv,
+    private static boolean sendStringData(final Serializer s, final ContentValues cv,
             final String column, final int tag) throws IOException {
-        if (cv.containsKey(column)) {
-            final String value = cv.getAsString(column);
-            if (!TextUtils.isEmpty(value)) {
-                s.data(tag, value);
-            }
+        final String dataValue = tryGetStringData(cv, column);
+        if (dataValue != null) {
+            s.data(tag, dataValue);
+            return true;
         }
+        return false;
     }
 
 
@@ -451,7 +475,17 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
     private static void sendPersonal(final Serializer s, final ContentValues cv)
             throws IOException {
         sendStringData(s, cv, EasPersonal.ANNIVERSARY, Tags.CONTACTS_ANNIVERSARY);
-        sendStringData(s, cv, EasPersonal.FILE_AS, Tags.CONTACTS_FILE_AS);
+    }
+
+    /**
+     * Add contact file_as info to the upsync.
+     * @param s The {@link Serializer} for this sync request.
+     * @param cv The {@link ContentValues} with the data for this personal contact.
+     * @throws IOException
+     */
+    private static boolean trySendFileAs(final Serializer s, final ContentValues cv)
+            throws IOException {
+        return sendStringData(s, cv, EasPersonal.FILE_AS, Tags.CONTACTS_FILE_AS);
     }
 
     /**
@@ -712,6 +746,60 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
         }
     }
 
+    /**
+     * Generate a default fileAs string for this contact using name and email data.
+     * Note that the user can change this in Outlook/OWA if it is not correct for them but
+     * we need to send something or else Exchange will not display a name with the contact.
+     * @param nameValues Name information to use in generating the fileAs string
+     * @param emailValues Email information to use to generate the fileAs string
+     * @return A valid fileAs string or null
+     */
+    public static String generateFileAs(final ContentValues nameValues,
+            final ArrayList<ContentValues> emailValues) throws IOException {
+        // TODO: Is there a better way of generating a default file_as that will make people
+        // happy everywhere in the world? Should we read the sort settings of the People app?
+        final String firstName = tryGetStringData(nameValues, StructuredName.GIVEN_NAME);
+        final String lastName = tryGetStringData(nameValues, StructuredName.FAMILY_NAME);;
+        final String middleName = tryGetStringData(nameValues, StructuredName.MIDDLE_NAME);;
+        final String nameSuffix = tryGetStringData(nameValues, StructuredName.SUFFIX);
+
+        if (firstName == null && lastName == null) {
+            if (emailValues == null) {
+                // Bad name, bad email list...not much we can do about it.
+                return null;
+            }
+            // The name fields didn't yield anything valuable, let's generate a file as
+            // via the email addresses that were passed in.
+            for (final ContentValues cv : emailValues) {
+                final String emailAddr = tryGetStringData(cv, Email.DATA);
+                if (emailAddr != null) {
+                    return emailAddr;
+                }
+            }
+            return null;
+        }
+        // Let's try to construct this with the name only. The format is this:
+        // LastName nameSuffix, FirstName MiddleName
+        // nameSuffix is only applied if lastName exists.
+        final StringBuilder builder = new StringBuilder();
+        if (lastName != null) {
+            builder.append(lastName);
+            if (nameSuffix != null) {
+                builder.append(" " + nameSuffix);
+            }
+            builder.append(", ");
+        }
+        if (firstName != null) {
+            builder.append(firstName + " ");
+        }
+        if (middleName != null) {
+            builder.append(middleName);
+        }
+        // We might leave a trailing space, so let's trim the string here.
+        return builder.toString().trim();
+    }
+
+
     private void setUpsyncCommands(final Serializer s, final ContentResolver cr,
             final Account account, final Mailbox mailbox, final double protocolVersion)
             throws IOException {
@@ -726,6 +814,7 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
         final EntityIterator ei = ContactsContract.RawContacts.newEntityIterator(
                 cr.query(uri, null, ContactsContract.RawContacts.DIRTY + "=1", null, null));
         final ContentValues cidValues = new ContentValues();
+        boolean hasSetFileAs = false;
         try {
             boolean first = true;
             final Uri rawContactUri = addCallerIsSyncAdapterParameter(
@@ -734,8 +823,7 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                 final Entity entity = ei.next();
                 // For each of these entities, create the change commands
                 final ContentValues entityValues = entity.getEntityValues();
-                final String serverId =
-                        entityValues.getAsString(ContactsContract.RawContacts.SOURCE_ID);
+                String serverId = entityValues.getAsString(ContactsContract.RawContacts.SOURCE_ID);
                 final ArrayList<Integer> groupIds = new ArrayList<Integer>();
                 if (first) {
                     s.start(Tags.SYNC_COMMANDS);
@@ -746,6 +834,8 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                     // This is a new contact; create a clientId
                     final String clientId =
                             "new_" + mailbox.mId + '_' + System.currentTimeMillis();
+                    // We need to server id to look up the fileAs string.
+                    serverId = clientId;
                     LogUtils.d(TAG, "Creating new contact with clientId: %s", clientId);
                     s.start(Tags.SYNC_ADD).data(Tags.SYNC_CLIENT_ID, clientId);
                     // And save it in the raw contact
@@ -763,6 +853,9 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                     }
                     LogUtils.d(TAG, "Upsync change to contact with serverId: %s", serverId);
                     s.start(Tags.SYNC_CHANGE).data(Tags.SYNC_SERVER_ID, serverId);
+                    // We don't need to set the file has because it is not a new contact
+                    // i.e. it should have the file_as if it needs one.
+                    hasSetFileAs = true;
                 }
                 s.start(Tags.SYNC_APPLICATION_DATA);
                 // Write out the data here
@@ -773,6 +866,7 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                 // TODO: How is this name supposed to be formed?
                 String displayName = null;
                 final ArrayList<ContentValues> emailValues = new ArrayList<ContentValues>();
+                ContentValues nameValues = null;
                 for (final Entity.NamedContentValues ncv: entity.getSubValues()) {
                     final ContentValues cv = ncv.values;
                     final String mimeType = cv.getAsString(ContactsContract.Data.MIMETYPE);
@@ -788,6 +882,7 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                         sendWebpage(s, cv);
                     } else if (mimeType.equals(EasPersonal.CONTENT_ITEM_TYPE)) {
                         sendPersonal(s, cv);
+                        hasSetFileAs = trySendFileAs(s, cv);
                     } else if (mimeType.equals(Phone.CONTENT_ITEM_TYPE)) {
                         sendPhone(s, cv, workPhoneCount, homePhoneCount);
                         int type = cv.getAsInteger(Phone.TYPE);
@@ -797,6 +892,8 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                         sendRelation(s, cv);
                     } else if (mimeType.equals(StructuredName.CONTENT_ITEM_TYPE)) {
                         sendStructuredName(s, cv);
+                        // Stash names here
+                        nameValues = cv;
                     } else if (mimeType.equals(StructuredPostal.CONTENT_ITEM_TYPE)) {
                         sendStructuredPostal(s, cv);
                     } else if (mimeType.equals(Organization.CONTENT_ITEM_TYPE)) {
@@ -819,13 +916,40 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                         LogUtils.i(TAG, "Contacts upsync, unknown data: %s", mimeType);
                     }
                 }
-
                 // We do the email rows last, because we need to make sure we've found the
                 // displayName (if one exists); this would be in a StructuredName rnow
                 for (final ContentValues cv: emailValues) {
                     sendEmail(s, cv, emailCount++, displayName, protocolVersion);
                 }
-
+                // For Exchange, we need to make sure that we provide a fileAs string because
+                // it is used as the display name for the contact in some views.
+                if (!hasSetFileAs) {
+                    String fileAs = null;
+                    // Let's go grab the display_name_alt info for this contact and use
+                    // that as the default fileAs.
+                    final Cursor c = cr.query(ContactsContract.RawContacts.CONTENT_URI,
+                            new String[]{ContactsContract.RawContacts.DISPLAY_NAME_ALTERNATIVE},
+                            ContactsContract.RawContacts.SYNC1 + "=?",
+                            new String[]{String.valueOf(serverId)}, null);
+                    try {
+                        while (c.moveToNext()) {
+                            final String contentValue = c.getString(0);
+                            if ((contentValue != null) && (!TextUtils.isEmpty(contentValue))) {
+                                fileAs = contentValue;
+                                break;
+                            }
+                        }
+                    } finally {
+                        c.close();
+                    }
+                    if (fileAs == null) {
+                        // Just in case that property did not exist, we can generate our own
+                        // rudimentary string that uses a combination of structured name fields or
+                        // email addresses depending on what is available.
+                        fileAs = generateFileAs(nameValues, emailValues);
+                    }
+                    s.data(Tags.CONTACTS_FILE_AS, fileAs);
+                }
                 // Now, we'll send up groups, if any
                 if (!groupIds.isEmpty()) {
                     boolean groupFirst = true;
