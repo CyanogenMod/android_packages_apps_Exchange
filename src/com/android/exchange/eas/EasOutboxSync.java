@@ -251,7 +251,7 @@ public class EasOutboxSync extends EasOperation {
     private static class SmartSendInfo {
         public static final String[] BODY_SOURCE_PROJECTION =
                 new String[] {BodyColumns.SOURCE_MESSAGE_KEY};
-        public static final String WHERE_MESSAGE_KEY = Body.MESSAGE_KEY + "=?";
+        public static final String WHERE_MESSAGE_KEY = BodyColumns.MESSAGE_KEY + "=?";
 
         final String mItemId;
         final String mCollectionId;

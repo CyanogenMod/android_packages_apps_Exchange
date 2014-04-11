@@ -1108,7 +1108,7 @@ public class EasSyncService extends AbstractSyncService {
                     } else if (statusCode == MoveItemsParser.STATUS_CODE_SUCCESS) {
                         // Update with the new server id
                         cv.put(SyncColumns.SERVER_ID, p.getNewServerId());
-                        cv.put(Message.FLAGS, msg.mFlags | MESSAGE_FLAG_MOVED_MESSAGE);
+                        cv.put(MessageColumns.FLAGS, msg.mFlags | MESSAGE_FLAG_MOVED_MESSAGE);
                         mContentResolver.update(
                                 ContentUris.withAppendedId(Message.CONTENT_URI, req.mMessageId),
                                 cv, null, null);

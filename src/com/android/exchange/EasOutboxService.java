@@ -66,7 +66,7 @@ public class EasOutboxService extends EasSyncService {
         SyncColumns.SERVER_ID + "!=" + SEND_FAILED + ')';
     public static final String[] BODY_SOURCE_PROJECTION =
         new String[] {BodyColumns.SOURCE_MESSAGE_KEY};
-    public static final String WHERE_MESSAGE_KEY = Body.MESSAGE_KEY + "=?";
+    public static final String WHERE_MESSAGE_KEY = BodyColumns.MESSAGE_KEY + "=?";
 
     // This is a normal email (i.e. not one of the other types)
     public static final int MODE_NORMAL = 0;

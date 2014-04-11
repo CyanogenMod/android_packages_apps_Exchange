@@ -27,6 +27,8 @@ import com.android.emailcommon.mail.PackedString;
 import com.android.emailcommon.mail.Part;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
+import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
@@ -53,8 +55,8 @@ import java.util.Map;
 public class EmailSyncParser extends AbstractSyncParser {
     private static final String TAG = Eas.LOG_TAG;
 
-    private static final String WHERE_SERVER_ID_AND_MAILBOX_KEY = EmailContent.SyncColumns.SERVER_ID
-            + "=? and " + EmailContent.MessageColumns.MAILBOX_KEY + "=?";
+    private static final String WHERE_SERVER_ID_AND_MAILBOX_KEY = SyncColumns.SERVER_ID
+            + "=? and " + MessageColumns.MAILBOX_KEY + "=?";
 
     private final String mMailboxIdAsString;
 
@@ -68,7 +70,7 @@ public class EmailSyncParser extends AbstractSyncParser {
     private static final int MESSAGE_ID_SUBJECT_ID_COLUMN = 0;
     private static final int MESSAGE_ID_SUBJECT_SUBJECT_COLUMN = 1;
     private static final String[] MESSAGE_ID_SUBJECT_PROJECTION =
-            new String[] { EmailContent.Message.RECORD_ID, EmailContent.MessageColumns.SUBJECT };
+            new String[] { MessageColumns._ID, MessageColumns.SUBJECT };
 
     @VisibleForTesting
     static final int LAST_VERB_REPLY = 1;
@@ -824,11 +826,11 @@ public class EmailSyncParser extends AbstractSyncParser {
                 final String[] bindArgument = new String[] {id};
                 ops.add(ContentProviderOperation.newUpdate(EmailContent.Body.CONTENT_URI)
                         .withSelection(EmailContent.Body.SELECTION_BY_MESSAGE_KEY, bindArgument)
-                        .withValue(EmailContent.Body.TEXT_CONTENT, msg.mText)
+                        .withValue(EmailContent.BodyColumns.TEXT_CONTENT, msg.mText)
                         .build());
                 ops.add(ContentProviderOperation.newUpdate(EmailContent.Message.CONTENT_URI)
-                        .withSelection(EmailContent.RECORD_ID + "=?", bindArgument)
-                        .withValue(EmailContent.Message.FLAG_LOADED,
+                        .withSelection(MessageColumns._ID + "=?", bindArgument)
+                        .withValue(MessageColumns.FLAG_LOADED,
                                 EmailContent.Message.FLAG_LOADED_COMPLETE)
                         .build());
             }

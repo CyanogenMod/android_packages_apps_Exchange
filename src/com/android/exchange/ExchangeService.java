@@ -36,7 +36,7 @@ import android.provider.CalendarContract.Events;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
-import com.android.emailcommon.provider.EmailContent.Message;
+import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
@@ -77,7 +77,7 @@ public class ExchangeService extends SyncManager {
         MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.TYPE + "!=" +
         Mailbox.TYPE_EAS_ACCOUNT_MAILBOX + " and " + MailboxColumns.SYNC_INTERVAL +
         " IN (" + Mailbox.CHECK_INTERVAL_PING + ',' + Mailbox.CHECK_INTERVAL_PUSH + ')';
-    private static final String WHERE_MAILBOX_KEY = Message.MAILBOX_KEY + "=?";
+    private static final String WHERE_MAILBOX_KEY = MessageColumns.MAILBOX_KEY + "=?";
     private static final String WHERE_CALENDAR_ID = Events.CALENDAR_ID + "=?";
     private static final String ACCOUNT_KEY_IN = MailboxColumns.ACCOUNT_KEY + " in (";
 

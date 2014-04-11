@@ -29,6 +29,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.os.TransactionTooLargeException;
+import android.provider.BaseColumns;
 import android.provider.CalendarContract.Events;
 import android.text.Html;
 import android.text.SpannedString;
@@ -100,14 +101,15 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int MESSAGE_ID_SUBJECT_ID_COLUMN = 0;
     private static final int MESSAGE_ID_SUBJECT_SUBJECT_COLUMN = 1;
     private static final String[] MESSAGE_ID_SUBJECT_PROJECTION =
-        new String[] { Message.RECORD_ID, MessageColumns.SUBJECT };
+        new String[] { MessageColumns._ID, MessageColumns.SUBJECT };
 
-    private static final String WHERE_BODY_SOURCE_MESSAGE_KEY = Body.SOURCE_MESSAGE_KEY + "=?";
+    private static final String WHERE_BODY_SOURCE_MESSAGE_KEY =
+            EmailContent.BodyColumns.SOURCE_MESSAGE_KEY + "=?";
     private static final String WHERE_MAILBOX_KEY_AND_MOVED =
         MessageColumns.MAILBOX_KEY + "=? AND (" + MessageColumns.FLAGS + "&" +
         EasSyncService.MESSAGE_FLAG_MOVED_MESSAGE + ")!=0";
     private static final String[] FETCH_REQUEST_PROJECTION =
-        new String[] {EmailContent.RECORD_ID, SyncColumns.SERVER_ID};
+        new String[] {BaseColumns._ID, SyncColumns.SERVER_ID};
     private static final int FETCH_REQUEST_RECORD_ID = 0;
     private static final int FETCH_REQUEST_SERVER_ID = 1;
 
@@ -136,11 +138,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     @Override
     public void wipe() {
         mContentResolver.delete(Message.CONTENT_URI,
-                Message.MAILBOX_KEY + "=" + mMailbox.mId, null);
+                MessageColumns.MAILBOX_KEY + "=" + mMailbox.mId, null);
         mContentResolver.delete(Message.DELETED_CONTENT_URI,
-                Message.MAILBOX_KEY + "=" + mMailbox.mId, null);
+                MessageColumns.MAILBOX_KEY + "=" + mMailbox.mId, null);
         mContentResolver.delete(Message.UPDATED_CONTENT_URI,
-                Message.MAILBOX_KEY + "=" + mMailbox.mId, null);
+                MessageColumns.MAILBOX_KEY + "=" + mMailbox.mId, null);
         mService.clearRequests();
         mFetchRequestList.clear();
         // Delete attachments...
@@ -1164,12 +1166,13 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         msg.mText = msg.mText.substring(0, maxPerFetch) + "...";
                     }
                     ops.add(ContentProviderOperation.newUpdate(Body.CONTENT_URI)
-                            .withSelection(Body.MESSAGE_KEY + "=?", bindArgument)
-                            .withValue(Body.TEXT_CONTENT, msg.mText)
+                            .withSelection(EmailContent.BodyColumns.MESSAGE_KEY + "=?",
+                                    bindArgument)
+                            .withValue(EmailContent.BodyColumns.TEXT_CONTENT, msg.mText)
                             .build());
                     ops.add(ContentProviderOperation.newUpdate(Message.CONTENT_URI)
-                            .withSelection(EmailContent.RECORD_ID + "=?", bindArgument)
-                            .withValue(Message.FLAG_LOADED, Message.FLAG_LOADED_COMPLETE)
+                            .withSelection(BaseColumns._ID + "=?", bindArgument)
+                            .withValue(MessageColumns.FLAG_LOADED, Message.FLAG_LOADED_COMPLETE)
                             .build());
                 }
             }

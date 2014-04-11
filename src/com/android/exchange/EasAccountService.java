@@ -268,9 +268,9 @@ public class EasAccountService extends EasSyncService {
                         cv.clear();
                         // Save the protocol version in the account; if we're using 12.0 or greater,
                         // set the flag for support of SmartForward
-                        cv.put(Account.PROTOCOL_VERSION, mProtocolVersion);
+                        cv.put(AccountColumns.PROTOCOL_VERSION, mProtocolVersion);
                         if (mProtocolVersionDouble >= 12.0) {
-                            cv.put(Account.FLAGS,
+                            cv.put(AccountColumns.FLAGS,
                                     mAccount.mFlags |
                                     Account.FLAGS_SUPPORTS_SMART_FORWARD |
                                     Account.FLAGS_SUPPORTS_SEARCH |

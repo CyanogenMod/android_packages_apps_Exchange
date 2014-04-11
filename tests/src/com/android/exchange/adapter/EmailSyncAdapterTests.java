@@ -151,7 +151,7 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         Body body = Body.restoreBodyWithMessageId(mProviderContext, msg4.mId);
         // Set its source message to msg2's id
         ContentValues values = new ContentValues();
-        values.put(Body.SOURCE_MESSAGE_KEY, msg2.mId);
+        values.put(EmailContent.BodyColumns.SOURCE_MESSAGE_KEY, msg2.mId);
         body.update(mProviderContext, values);
 
         // Now send deletions again; this time only two should get deleted; msg2 should NOT be
