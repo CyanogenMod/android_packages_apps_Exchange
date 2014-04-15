@@ -41,7 +41,7 @@ import java.util.TimeZone;
 @SmallTest
 public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter> {
 
-    private static final String WHERE_ACCOUNT_KEY = Message.ACCOUNT_KEY + "=?";
+    private static final String WHERE_ACCOUNT_KEY = MessageColumns.ACCOUNT_KEY + "=?";
     private static final String[] ACCOUNT_ARGUMENT = new String[1];
 
     // A server id that is guaranteed to be test-related
@@ -278,7 +278,7 @@ public class EmailSyncAdapterTests extends SyncAdapterTestCase<EmailSyncAdapter>
         mSyncAdapter.mDeletedIdList.add(id);
         id = messageIds.get(2);
         ContentValues cv = new ContentValues();
-        cv.put(Message.FLAG_READ, 0);
+        cv.put(MessageColumns.FLAG_READ, 0);
         mResolver.update(ContentUris.withAppendedId(Message.SYNCED_CONTENT_URI,
                 id), cv, null, null);
         mSyncAdapter.mUpdatedIdList.add(id);
