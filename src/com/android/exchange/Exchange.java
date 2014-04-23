@@ -31,7 +31,12 @@ public class Exchange extends Application {
     public void onCreate() {
         super.onCreate();
         EmailContent.init(this);
-        getContentResolver().call(EmailContent.CONTENT_URI, MailboxUtilities.FIX_PARENT_KEYS_METHOD,
-                "", null);
+        try {
+            getContentResolver().call(EmailContent.CONTENT_URI,
+                    MailboxUtilities.FIX_PARENT_KEYS_METHOD, "", null);
+        } catch (IllegalArgumentException e) {
+            // If there is no Email provider (which happens if eg the
+            // Email app is disabled), ignore.
+        }
     }
 }
