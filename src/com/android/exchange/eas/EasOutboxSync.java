@@ -3,6 +3,7 @@ package com.android.exchange.eas;
 import android.content.ContentUris;
 import android.content.Context;
 import android.net.Uri;
+import android.provider.BaseColumns;
 import android.text.format.DateUtils;
 import android.util.Log;
 
@@ -12,7 +13,6 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
-import com.android.emailcommon.provider.EmailContent.BodyColumns;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
@@ -249,10 +249,6 @@ public class EasOutboxSync extends EasOperation {
      * Information needed for SmartReply/SmartForward.
      */
     private static class SmartSendInfo {
-        public static final String[] BODY_SOURCE_PROJECTION =
-                new String[] {BodyColumns.SOURCE_MESSAGE_KEY};
-        public static final String WHERE_MESSAGE_KEY = BodyColumns.MESSAGE_KEY + "=?";
-
         final String mItemId;
         final String mCollectionId;
         final boolean mIsReply;
@@ -338,25 +334,22 @@ public class EasOutboxSync extends EasOperation {
             String itemId = null;
             String collectionId = null;
 
-            // First, we need to get the id of the reply/forward message
-            String[] cols = Utility.getRowColumns(context, Body.CONTENT_URI, BODY_SOURCE_PROJECTION,
-                    WHERE_MESSAGE_KEY, new String[] {Long.toString(message.mId)});
-            long refId = 0;
-            // TODO: We can probably just write a smarter query to do this all at once.
-            if (cols != null && cols[0] != null) {
-                refId = Long.parseLong(cols[0]);
+            // First, we need to get the id of the reply/forward message, 0 is the default value
+            // so we are looking for something greater than 0.
+            final long refId = Body.restoreBodySourceKey(context, message.mId);
+            if (refId > 0) {
                 // Then, we need the serverId and mailboxKey of the message
-                cols = Utility.getRowColumns(context, Message.CONTENT_URI, refId,
-                        SyncColumns.SERVER_ID, MessageColumns.MAILBOX_KEY,
+                final String[] colsMailboxKey = Utility.getRowColumns(context, Message.CONTENT_URI,
+                        refId, SyncColumns.SERVER_ID, MessageColumns.MAILBOX_KEY,
                         MessageColumns.PROTOCOL_SEARCH_INFO);
-                if (cols != null) {
-                    itemId = cols[0];
-                    final long boxId = Long.parseLong(cols[1]);
+                if (colsMailboxKey != null) {
+                    itemId = colsMailboxKey[0];
+                    final long boxId = Long.parseLong(colsMailboxKey[1]);
                     // Then, we need the serverId of the mailbox
-                    cols = Utility.getRowColumns(context, Mailbox.CONTENT_URI, boxId,
-                            MailboxColumns.SERVER_ID);
-                    if (cols != null) {
-                        collectionId = cols[0];
+                    final String[] colsServerId = Utility.getRowColumns(context,
+                            Mailbox.CONTENT_URI, boxId, MailboxColumns.SERVER_ID);
+                    if (colsServerId != null) {
+                        collectionId = colsServerId[0];
                     }
                 }
             }
