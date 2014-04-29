@@ -54,6 +54,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -1146,7 +1147,7 @@ public class CalendarUtilities {
      * Reformat an RRULE style UNTIL to an EAS style until
      */
     @VisibleForTesting
-    static String recurrenceUntilToEasUntil(String until) {
+    static String recurrenceUntilToEasUntil(String until) throws ParseException {
         // Get a calendar in our local time zone
         GregorianCalendar localCalendar = new GregorianCalendar(TimeZone.getDefault());
         // Set the time per GMT time in the 'until'
@@ -1176,7 +1177,11 @@ public class CalendarUtilities {
         }
         String until = tokenFromRrule(rrule, "UNTIL=");
         if (until != null) {
-            s.data(Tags.CALENDAR_RECURRENCE_UNTIL, recurrenceUntilToEasUntil(until));
+            try {
+                s.data(Tags.CALENDAR_RECURRENCE_UNTIL, recurrenceUntilToEasUntil(until));
+            } catch (ParseException e) {
+                LogUtils.w(TAG, "Parse error for CALENDAR_RECURRENCE_UNTIL tag.", e);
+            }
         }
     }
 

@@ -42,6 +42,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -203,7 +204,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertNull(CalendarUtilities.tokenFromRrule(rrule, "UNTIL="));
     }
 
-    public void testRecurrenceUntilToEasUntil() {
+    public void testRecurrenceUntilToEasUntil() throws ParseException {
         TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"));
         // Case where local time crosses into next day in GMT
         assertEquals("20110730T000000Z",
@@ -211,9 +212,18 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         // Case where local time does not cross into next day in GMT
         assertEquals("20110730T000000Z",
                 CalendarUtilities.recurrenceUntilToEasUntil("20110730T235959Z"));
+        // Abbreviated date format
+        assertEquals("20110729T000000Z",
+                CalendarUtilities.recurrenceUntilToEasUntil("20110730"));
+        try {
+            CalendarUtilities.recurrenceUntilToEasUntil("201107");
+            fail("Expected ParseException");
+        } catch (ParseException e) {
+            // expected
+        }
     }
 
-    public void testParseEmailDateTimeToMillis(String date) {
+    public void testParseEmailDateTimeToMillis(String date) throws ParseException {
         // Format for email date strings is 2010-02-23T16:00:00.000Z
         String dateString = "2010-02-23T15:16:17.000Z";
         long dateTime = Utility.parseEmailDateTimeToMillis(dateString);
@@ -228,7 +238,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         assertEquals(cal.get(Calendar.SECOND), 17);
     }
 
-    public void testParseDateTimeToMillis(String date) {
+    public void testParseDateTimeToMillis(String date) throws ParseException {
         // Format for calendar date strings is 20100223T160000000Z
         String dateString = "20100223T151617000Z";
         long dateTime = Utility.parseDateTimeToMillis(dateString);
@@ -254,10 +264,14 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         // Fill in times, location, title, and organizer
         entityValues.put("DTSTAMP",
                 CalendarUtilities.convertEmailDateTimeToCalendarDateTime("2010-04-05T14:30:51Z"));
-        entityValues.put(Events.DTSTART,
-                Utility.parseEmailDateTimeToMillis("2010-04-12T18:30:00Z"));
-        entityValues.put(Events.DTEND,
-                Utility.parseEmailDateTimeToMillis("2010-04-12T19:30:00Z"));
+        try {
+            entityValues.put(Events.DTSTART,
+                    Utility.parseEmailDateTimeToMillis("2010-04-12T18:30:00Z"));
+            entityValues.put(Events.DTEND,
+                    Utility.parseEmailDateTimeToMillis("2010-04-12T19:30:00Z"));
+        } catch (ParseException e) {
+            // ignore
+        }
         entityValues.put(Events.EVENT_LOCATION, location);
         entityValues.put(Events.TITLE, title);
         entityValues.put(Events.ORGANIZER, organizer);
@@ -282,8 +296,12 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         ContentValues entityValues = entity.getEntityValues();
         entityValues.put(Events.ORIGINAL_SYNC_ID, 69);
         // The exception will be on April 26th
-        entityValues.put(Events.ORIGINAL_INSTANCE_TIME,
-                Utility.parseEmailDateTimeToMillis("2010-04-26T18:30:00Z"));
+        try {
+            entityValues.put(Events.ORIGINAL_INSTANCE_TIME,
+                    Utility.parseEmailDateTimeToMillis("2010-04-26T18:30:00Z"));
+        } catch (ParseException e) {
+            // ignore
+        }
         return entity;
     }
 
@@ -540,7 +558,7 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         // Set up the "exception"...
         String title = "Discuss Unit Tests";
         Entity entity = setupTestExceptionEntity(ORGANIZER, ATTENDEE, title);
-        
+
         ContentValues entityValues = entity.getEntityValues();
         // Mark the Exception as dirty
         entityValues.put(Events.DIRTY, 1);

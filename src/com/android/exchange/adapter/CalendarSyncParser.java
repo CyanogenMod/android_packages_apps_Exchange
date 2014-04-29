@@ -33,6 +33,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.Map.Entry;
@@ -445,10 +446,18 @@ public class CalendarSyncParser extends AbstractSyncParser {
                     cv.put(Events.EVENT_TIMEZONE, timeZone.getID());
                     break;
                 case Tags.CALENDAR_START_TIME:
-                    startTime = Utility.parseDateTimeToMillis(getValue());
+                    try {
+                        startTime = Utility.parseDateTimeToMillis(getValue());
+                    } catch (ParseException e) {
+                        LogUtils.w(TAG, "Parse error for CALENDAR_START_TIME tag.", e);
+                    }
                     break;
                 case Tags.CALENDAR_END_TIME:
-                    endTime = Utility.parseDateTimeToMillis(getValue());
+                    try {
+                        endTime = Utility.parseDateTimeToMillis(getValue());
+                    } catch (ParseException e) {
+                        LogUtils.w(TAG, "Parse error for CALENDAR_END_TIME tag.", e);
+                    }
                     break;
                 case Tags.CALENDAR_EXCEPTIONS:
                     // For exceptions to show the organizer, the organizer must be added before
@@ -787,9 +796,14 @@ public class CalendarSyncParser extends AbstractSyncParser {
                     attachmentsParser();
                     break;
                 case Tags.CALENDAR_EXCEPTION_START_TIME:
-                    exceptionStartTime = getValue();
-                    cv.put(Events.ORIGINAL_INSTANCE_TIME,
-                            Utility.parseDateTimeToMillis(exceptionStartTime));
+                    final String valueStr = getValue();
+                    try {
+                        cv.put(Events.ORIGINAL_INSTANCE_TIME,
+                                Utility.parseDateTimeToMillis(valueStr));
+                        exceptionStartTime = valueStr;
+                    } catch (ParseException e) {
+                        LogUtils.w(TAG, "Parse error for CALENDAR_EXCEPTION_START_TIME tag.", e);
+                    }
                     break;
                 case Tags.CALENDAR_EXCEPTION_IS_DELETED:
                     if (getValueInt() == 1) {
@@ -807,10 +821,18 @@ public class CalendarSyncParser extends AbstractSyncParser {
                     cv.put(Events.DESCRIPTION, getValue());
                     break;
                 case Tags.CALENDAR_START_TIME:
-                    startTime = Utility.parseDateTimeToMillis(getValue());
+                    try {
+                        startTime = Utility.parseDateTimeToMillis(getValue());
+                    } catch (ParseException e) {
+                        LogUtils.w(TAG, "Parse error for CALENDAR_START_TIME tag.", e);
+                    }
                     break;
                 case Tags.CALENDAR_END_TIME:
-                    endTime = Utility.parseDateTimeToMillis(getValue());
+                    try {
+                        endTime = Utility.parseDateTimeToMillis(getValue());
+                    } catch (ParseException e) {
+                        LogUtils.w(TAG, "Parse error for CALENDAR_END_TIME tag.", e);
+                    }
                     break;
                 case Tags.CALENDAR_LOCATION:
                     cv.put(Events.EVENT_LOCATION, getValue());
