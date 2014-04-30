@@ -397,8 +397,7 @@ public class EasOutboxService extends EasSyncService {
             fileOutputStream.close();
 
             // Sending via EAS14 is a whole 'nother kettle of fish
-            boolean isEas14 = (Double.parseDouble(mAccount.mProtocolVersion) >=
-                Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE);
+            final boolean isEas14 = Eas.isProtocolEas14(mAccount.mProtocolVersion);
 
             while (true) {
                 // Get an input stream to our temporary file and create an entity with it

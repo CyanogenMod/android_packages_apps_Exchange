@@ -58,6 +58,7 @@ public class Eas {
     public static final String SUPPORTED_PROTOCOL_EX2010_SP1 = "14.1";
     public static final double SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE = 14.1;
     public static final String DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_EX2003;
+    public static final boolean DEFAULT_PROTOCOL_IS_EAS14 = false;
 
     public static final String EXCHANGE_ACCOUNT_MANAGER_TYPE =
             com.android.exchange.Configuration.EXCHANGE_ACCOUNT_MANAGER_TYPE;
@@ -155,6 +156,13 @@ public class Eas {
             return SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE;
         }
         throw new IllegalArgumentException("illegal protocol version");
+    }
+
+    static public boolean isProtocolEas14(String version) {
+        if (version == null) {
+            return DEFAULT_PROTOCOL_IS_EAS14;
+        }
+        return getProtocolVersionDouble(version) >= SUPPORTED_PROTOCOL_EX2010_DOUBLE;
     }
 
     /**

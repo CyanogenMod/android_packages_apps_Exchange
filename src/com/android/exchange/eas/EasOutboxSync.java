@@ -57,7 +57,7 @@ public class EasOutboxSync extends EasOperation {
     public static final int RESULT_SEND_FAILED = -102;
 
     private final Message mMessage;
-    private final boolean mIsEas14;
+    private boolean mIsEas14;
     private final File mCacheDir;
     private final SmartSendInfo mSmartSendInfo;
     private final int mModeTag;
@@ -68,8 +68,7 @@ public class EasOutboxSync extends EasOperation {
             final boolean useSmartSend) {
         super(context, account);
         mMessage = message;
-        mIsEas14 = (Double.parseDouble(mAccount.mProtocolVersion) >=
-                Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE);
+        initEas14();
         mCacheDir = context.getCacheDir();
         if (useSmartSend) {
             mSmartSendInfo = SmartSendInfo.getSmartSendInfo(mContext, mAccount, mMessage);
@@ -77,6 +76,21 @@ public class EasOutboxSync extends EasOperation {
             mSmartSendInfo = null;
         }
         mModeTag = getModeTag(mSmartSendInfo);
+    }
+
+    /**
+     * Have to override EasOperation::init because it reloads mAccount, so we
+     * need to reset any derived values (eg, mIsEas14).
+     */
+    @Override
+    public boolean init(final boolean allowReload) {
+        final boolean haveValidAccount = super.init(allowReload);
+        initEas14();
+        return haveValidAccount;
+    }
+
+    private void initEas14() {
+        mIsEas14 = Eas.isProtocolEas14(mAccount.mProtocolVersion);
     }
 
     @Override
