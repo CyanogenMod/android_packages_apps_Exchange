@@ -499,7 +499,9 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
     private static void sendPhone(final Serializer s, final ContentValues cv, final int workCount,
             final int homeCount) throws IOException {
         final String value = cv.getAsString(Phone.NUMBER);
-        if (value == null) return;
+        if (value == null || !cv.containsKey(Phone.TYPE)) {
+            return;
+        }
         switch (cv.getAsInteger(Phone.TYPE)) {
             case Phone.TYPE_WORK:
                 if (workCount < MAX_PHONE_ROWS) {
@@ -552,7 +554,9 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
     private static void sendRelation(final Serializer s, final ContentValues cv)
             throws IOException {
         final String value = cv.getAsString(Relation.DATA);
-        if (value == null) return;
+        if (value == null || !cv.containsKey(Relation.TYPE)) {
+            return;
+        }
         switch (cv.getAsInteger(Relation.TYPE)) {
             case Relation.TYPE_ASSISTANT:
                 s.data(Tags.CONTACTS_ASSISTANT_NAME, value);
@@ -610,7 +614,10 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
      * @throws IOException
      */
     private static void sendStructuredPostal(final Serializer s, final ContentValues cv)
-            throws IOException {
+        throws IOException {
+        if (!cv.containsKey(StructuredPostal.TYPE)) {
+            return;
+        }
         switch (cv.getAsInteger(StructuredPostal.TYPE)) {
             case StructuredPostal.TYPE_HOME:
                 sendOnePostal(s, cv, HOME_ADDRESS_TAGS);
@@ -890,9 +897,14 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                         hasSetFileAs = trySendFileAs(s, cv);
                     } else if (mimeType.equals(Phone.CONTENT_ITEM_TYPE)) {
                         sendPhone(s, cv, workPhoneCount, homePhoneCount);
-                        int type = cv.getAsInteger(Phone.TYPE);
-                        if (type == Phone.TYPE_HOME) homePhoneCount++;
-                        if (type == Phone.TYPE_WORK) workPhoneCount++;
+                        if (cv.containsKey(Phone.TYPE)) {
+                            final int type = cv.getAsInteger(Phone.TYPE);
+                            if (type == Phone.TYPE_HOME) {
+                                homePhoneCount++;
+                            } else if (type == Phone.TYPE_WORK) {
+                                workPhoneCount++;
+                            }
+                        }
                     } else if (mimeType.equals(Relation.CONTENT_ITEM_TYPE)) {
                         sendRelation(s, cv);
                     } else if (mimeType.equals(StructuredName.CONTENT_ITEM_TYPE)) {
@@ -906,9 +918,12 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                     } else if (mimeType.equals(Im.CONTENT_ITEM_TYPE)) {
                         sendIm(s, cv, imCount++);
                     } else if (mimeType.equals(Event.CONTENT_ITEM_TYPE)) {
-                        Integer eventType = cv.getAsInteger(Event.TYPE);
-                        if (eventType != null && eventType.equals(Event.TYPE_BIRTHDAY)) {
-                            sendBirthday(s, cv);
+                        if (cv.containsKey(Event.TYPE)) {
+                            final Integer eventType = cv.getAsInteger(Event.TYPE);
+                            if (eventType != null &&
+                                    eventType.equals(Event.TYPE_BIRTHDAY)) {
+                                sendBirthday(s, cv);
+                            }
                         }
                     } else if (mimeType.equals(GroupMembership.CONTENT_ITEM_TYPE)) {
                         // We must gather these, and send them together (below)
