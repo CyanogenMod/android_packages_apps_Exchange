@@ -42,7 +42,7 @@
     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Tillad ikke browsere"</string>
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Tillad ikke e-mail fra tredjepart"</string>
     <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Tillad ikke internetdeling"</string>
-    <string name="policy_require_smime" msgid="673557150920820590">"Kræv SMIME-beskeder"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"Kræv SMIME-meddelelser"</string>
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Begræns brugen af bluetooth"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Tillad ikke angivne apps"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Tillad kun angivne apps"</string>
