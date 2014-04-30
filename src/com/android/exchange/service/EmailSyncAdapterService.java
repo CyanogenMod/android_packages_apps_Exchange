@@ -673,6 +673,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             final Account account;
             final Cursor accountCursor = cr.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION,
                     AccountColumns.EMAIL_ADDRESS + "=?", new String[] {acct.name}, null);
+            if (accountCursor == null) {
+                // The account with the name acct.name does not exist.
+                return;
+            }
             try {
                 if (!accountCursor.moveToFirst()) {
                     // Could not load account.
