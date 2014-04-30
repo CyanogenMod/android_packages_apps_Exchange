@@ -870,6 +870,11 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                 for (final Entity.NamedContentValues ncv: entity.getSubValues()) {
                     final ContentValues cv = ncv.values;
                     final String mimeType = cv.getAsString(ContactsContract.Data.MIMETYPE);
+                    if (TextUtils.isEmpty(mimeType)) {
+                        LogUtils.i(TAG, "Contacts upsync, unknown data: no mimetype set");
+                        continue;
+                    }
+
                     if (mimeType.equals(Email.CONTENT_ITEM_TYPE)) {
                         emailValues.add(cv);
                     } else if (mimeType.equals(Nickname.CONTENT_ITEM_TYPE)) {
