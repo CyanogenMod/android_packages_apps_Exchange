@@ -47,6 +47,7 @@ import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.TimeZone;
@@ -1047,7 +1048,13 @@ public class ContactsSyncParser extends AbstractSyncParser {
                 return;
             }
             // TODO: Store the date in the format expected by EAS servers.
-            long millis = Utility.parseEmailDateTimeToMillis(birthday);
+            final long millis;
+            try {
+                millis = Utility.parseEmailDateTimeToMillis(birthday);
+            } catch (ParseException e) {
+                LogUtils.w(TAG, "Parse error for birthday date field.", e);
+                return;
+            }
             GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
             cal.setTimeInMillis(millis);
             if (cal.get(GregorianCalendar.HOUR_OF_DAY) >= 12) {

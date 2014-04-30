@@ -77,6 +77,7 @@ import org.apache.http.entity.ByteArrayEntity;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -541,7 +542,11 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                         msg.mReplyTo = Address.toString(Address.parse(getValue()));
                         break;
                     case Tags.EMAIL_DATE_RECEIVED:
-                        msg.mTimeStamp = Utility.parseEmailDateTimeToMillis(getValue());
+                        try {
+                            msg.mTimeStamp = Utility.parseEmailDateTimeToMillis(getValue());
+                        } catch (ParseException e) {
+                            LogUtils.w(TAG, "Parse error for EMAIL_DATE_RECEIVED tag.", e);
+                        }
                         break;
                     case Tags.EMAIL_SUBJECT:
                         msg.mSubject = getValue();
@@ -635,8 +640,13 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                                 Events.EVENT_LOCATION);
                         String dtstart = ps.get(MeetingInfo.MEETING_DTSTART);
                         if (!TextUtils.isEmpty(dtstart)) {
-                            long startTime = Utility.parseEmailDateTimeToMillis(dtstart);
-                            values.put(Events.DTSTART, startTime);
+                            try {
+                                final long startTime =
+                                    Utility.parseEmailDateTimeToMillis(dtstart);
+                                values.put(Events.DTSTART, startTime);
+                            } catch (ParseException e) {
+                                LogUtils.w(TAG, "Parse error for MEETING_DTSTART tag.", e);
+                            }
                         }
                         putFromMeeting(ps, MeetingInfo.MEETING_ALL_DAY, values,
                                 Events.ALL_DAY);

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Entity;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Events;
+import android.text.TextUtils;
 
 import com.android.emailcommon.mail.Address;
 import com.android.emailcommon.mail.MeetingInfo;
@@ -29,6 +30,7 @@ import org.apache.http.HttpStatus;
 
 import java.io.IOException;
 import java.security.cert.CertificateException;
+import java.text.ParseException;
 
 /**
  * Responds to a meeting request, both notifying the EAS server and sending email.
@@ -128,6 +130,10 @@ public class EasMeetingResponder extends EasServerConnection {
         final String dtStamp = meetingInfo.get(MeetingInfo.MEETING_DTSTAMP);
         final String dtStart = meetingInfo.get(MeetingInfo.MEETING_DTSTART);
         final String dtEnd = meetingInfo.get(MeetingInfo.MEETING_DTEND);
+        if (TextUtils.isEmpty(dtStamp) || TextUtils.isEmpty(dtStart) ||
+                TextUtils.isEmpty(dtEnd)) {
+            return;
+        }
 
         // What we're doing here is to create an Entity that looks like an Event as it would be
         // stored by CalendarProvider
@@ -137,8 +143,13 @@ public class EasMeetingResponder extends EasServerConnection {
         // Fill in times, location, title, and organizer
         entityValues.put("DTSTAMP",
                 CalendarUtilities.convertEmailDateTimeToCalendarDateTime(dtStamp));
-        entityValues.put(Events.DTSTART, Utility.parseEmailDateTimeToMillis(dtStart));
-        entityValues.put(Events.DTEND, Utility.parseEmailDateTimeToMillis(dtEnd));
+        try {
+            entityValues.put(Events.DTSTART, Utility.parseEmailDateTimeToMillis(dtStart));
+            entityValues.put(Events.DTEND, Utility.parseEmailDateTimeToMillis(dtEnd));
+        } catch (ParseException e) {
+            LogUtils.w(TAG, "Parse error for DTSTART/DTEND tags.", e);
+            return;
+        }
         entityValues.put(Events.EVENT_LOCATION, meetingInfo.get(MeetingInfo.MEETING_LOCATION));
         entityValues.put(Events.TITLE, meetingInfo.get(MeetingInfo.MEETING_TITLE));
         entityValues.put(Events.ORGANIZER, organizerEmail);
