@@ -1064,7 +1064,11 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
      */
     public static void wipeAccountFromContentProvider(final Context context,
             final String emailAddress) {
-        context.getContentResolver().delete(uriWithAccountAndIsSyncAdapter(
-                ContactsContract.RawContacts.CONTENT_URI, emailAddress), null, null);
+        try {
+            context.getContentResolver().delete(uriWithAccountAndIsSyncAdapter(
+                            ContactsContract.RawContacts.CONTENT_URI, emailAddress), null, null);
+        } catch (IllegalArgumentException e) {
+            LogUtils.e(TAG, "ContactsProvider disabled; unable to wipe account.");
+        }
     }
 }

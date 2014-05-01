@@ -1253,9 +1253,14 @@ public class CalendarSyncParser extends AbstractSyncParser {
             final String authority, final ArrayList<ContentProviderOperation> ops)
             throws RemoteException, OperationApplicationException {
         if (!ops.isEmpty()) {
-            ContentProviderResult[] result = contentResolver.applyBatch(authority, ops);
-            //mService.userLog("Results: " + result.length);
-            return result;
+            try {
+                ContentProviderResult[] result = contentResolver.applyBatch(authority, ops);
+                //mService.userLog("Results: " + result.length);
+                return result;
+            } catch (IllegalArgumentException e) {
+                // Thrown when Calendar Provider is disabled
+                LogUtils.e(TAG, "Error executing operation; provider is disabled.", e);
+            }
         }
         return new ContentProviderResult[0];
     }

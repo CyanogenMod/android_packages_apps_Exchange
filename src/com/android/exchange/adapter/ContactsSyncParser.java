@@ -850,6 +850,9 @@ public class ContactsSyncParser extends AbstractSyncParser {
             } catch (OperationApplicationException e) {
                 // There is nothing sensible to be done here
                 LogUtils.e(TAG, "problem inserting contact during server update", e);
+            } catch (IllegalArgumentException e) {
+                // CP2 has been disabled
+                LogUtils.e(TAG, "CP2 is disabled; unable to insert contact.");
             }
         }
 

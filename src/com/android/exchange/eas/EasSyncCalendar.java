@@ -1110,9 +1110,13 @@ public class EasSyncCalendar extends EasSyncCollectionTypeBase {
      */
     public static void wipeAccountFromContentProvider(final Context context,
             final String emailAddress) {
-        context.getContentResolver().delete(asSyncAdapter(Calendars.CONTENT_URI, emailAddress),
-                Calendars.ACCOUNT_NAME + "=" + DatabaseUtils.sqlEscapeString(emailAddress)
-                        + " AND " + Calendars.ACCOUNT_TYPE + "="+ DatabaseUtils.sqlEscapeString(
-                        context.getString(R.string.account_manager_type_exchange)), null);
+        try {
+            context.getContentResolver().delete(asSyncAdapter(Calendars.CONTENT_URI, emailAddress),
+                    Calendars.ACCOUNT_NAME + "=" + DatabaseUtils.sqlEscapeString(emailAddress)
+                    + " AND " + Calendars.ACCOUNT_TYPE + "="+ DatabaseUtils.sqlEscapeString(
+                            context.getString(R.string.account_manager_type_exchange)), null);
+        } catch (IllegalArgumentException e) {
+            LogUtils.e(TAG, "CalendarProvider disabled; unable to wipe account.");
+        }
     }
 }
