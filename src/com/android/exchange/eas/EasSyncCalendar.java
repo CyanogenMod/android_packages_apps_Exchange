@@ -658,9 +658,12 @@ public class EasSyncCalendar extends EasSyncCollectionTypeBase {
             final String serverId, final String clientId, final String calendarIdString,
             final boolean selfOrganizer, final double protocolVersion) throws IOException {
         final ContentResolver cr = context.getContentResolver();
-        final EntityIterator exIterator = EventsEntity.newEntityIterator(cr.query(
-                asSyncAdapter(Events.CONTENT_URI, account), null, ORIGINAL_EVENT_AND_CALENDAR,
-                new String[] { serverId, calendarIdString }, null), cr);
+        final Cursor cursor = cr.query(asSyncAdapter(Events.CONTENT_URI, account), null,
+                ORIGINAL_EVENT_AND_CALENDAR, new String[] { serverId, calendarIdString }, null);
+        if (cursor == null) {
+            return;
+        }
+        final EntityIterator exIterator = EventsEntity.newEntityIterator(cursor, cr);
         boolean exFirst = true;
         while (exIterator.hasNext()) {
             final Entity exEntity = exIterator.next();
@@ -1010,9 +1013,12 @@ public class EasSyncCalendar extends EasSyncCollectionTypeBase {
         markParentsOfDirtyEvents(context, account, calendarIdString, calendarIdArgument);
 
         // Now go through dirty/marked top-level events and send them back to the server
-        final EntityIterator eventIterator = EventsEntity.newEntityIterator(
-                cr.query(asSyncAdapter(Events.CONTENT_URI, account), null,
-                DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, calendarIdArgument, null), cr);
+        final Cursor cursor = cr.query(asSyncAdapter(Events.CONTENT_URI, account), null,
+                DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, calendarIdArgument, null);
+        if (cursor == null) {
+            return;
+        }
+        final EntityIterator eventIterator = EventsEntity.newEntityIterator(cursor, cr);
 
         try {
             boolean first = true;

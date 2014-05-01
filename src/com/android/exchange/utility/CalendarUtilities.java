@@ -24,6 +24,7 @@ import android.content.Entity;
 import android.content.Entity.NamedContentValues;
 import android.content.EntityIterator;
 import android.content.res.Resources;
+import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
@@ -2035,10 +2036,13 @@ public class CalendarUtilities {
 
     static public EmailContent.Message createMessageForEventId(Context context, long eventId,
             int messageFlag, String uid, Account account, String specifiedAttendee) {
-        ContentResolver cr = context.getContentResolver();
-        EntityIterator eventIterator = EventsEntity.newEntityIterator(cr.query(
-                ContentUris.withAppendedId(Events.CONTENT_URI, eventId), null, null, null, null),
-                cr);
+        final ContentResolver cr = context.getContentResolver();
+        final Cursor cursor = cr.query(ContentUris.withAppendedId(
+                        Events.CONTENT_URI, eventId), null, null, null, null);
+        if (cursor == null) {
+            return null;
+        }
+        final EntityIterator eventIterator = EventsEntity.newEntityIterator(cursor, cr);
         try {
             while (eventIterator.hasNext()) {
                 Entity entity = eventIterator.next();

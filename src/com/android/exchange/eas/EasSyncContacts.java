@@ -818,8 +818,12 @@ public class EasSyncContacts extends EasSyncCollectionTypeBase {
                 ContactsContract.RawContactsEntity.CONTENT_URI, account.mEmailAddress);
 
         // Get them all atomically
-        final EntityIterator ei = ContactsContract.RawContacts.newEntityIterator(
-                cr.query(uri, null, ContactsContract.RawContacts.DIRTY + "=1", null, null));
+        final Cursor cursor = cr.query(uri, null, ContactsContract.RawContacts.DIRTY + "=1",
+                null, null);
+        if (cursor == null) {
+            return;
+        }
+        final EntityIterator ei = ContactsContract.RawContacts.newEntityIterator(cursor);
         final ContentValues cidValues = new ContentValues();
         boolean hasSetFileAs = false;
         try {

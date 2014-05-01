@@ -478,12 +478,16 @@ public class ContactsSyncParser extends AbstractSyncParser {
                                     RawContacts.CONTENT_URI, c.getLong(0));
                             uri = Uri.withAppendedPath(
                                     uri, RawContacts.Entity.CONTENT_DIRECTORY);
-                            EntityIterator entityIterator = RawContacts.newEntityIterator(
-                                mContentResolver.query(uri, null, null, null, null));
-                            if (entityIterator.hasNext()) {
-                                entity = entityIterator.next();
+                            final Cursor cursor = mContentResolver.query(uri,
+                                    null, null, null, null);
+                            if (cursor != null) {
+                                final EntityIterator entityIterator =
+                                    RawContacts.newEntityIterator(cursor);
+                                if (entityIterator.hasNext()) {
+                                    entity = entityIterator.next();
+                                }
+                                userLog("Changing contact ", serverId);
                             }
-                            userLog("Changing contact ", serverId);
                         }
                     } finally {
                         c.close();
