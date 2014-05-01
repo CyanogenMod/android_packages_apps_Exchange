@@ -577,6 +577,11 @@ public class FolderSyncParser extends AbstractSyncParser {
                 new ArrayList<ContentProviderOperation>(transactionSize);
         while (!mOperations.isEmpty()) {
             subOps.clear();
+            // If the original transaction is split into smaller transactions,
+            // need to ensure the final transaction doesn't overrun the array.
+            if (transactionSize > mOperations.size()) {
+                transactionSize = mOperations.size();
+            }
             subOps.addAll(mOperations.subList(0, transactionSize));
             // Try to apply the ops. If the transaction is too large, split it in half and try again
             // If some other error happens then throw an IOException up the stack.
