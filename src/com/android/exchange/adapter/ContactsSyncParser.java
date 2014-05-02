@@ -32,6 +32,7 @@ import android.provider.ContactsContract.Data;
 import android.provider.ContactsContract.RawContacts;
 import android.provider.ContactsContract.SyncState;
 import android.provider.SyncStateContract;
+import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Base64;
@@ -867,14 +868,17 @@ public class ContactsSyncParser extends AbstractSyncParser {
         private static NamedContentValues findTypedData(ArrayList<NamedContentValues> list,
                 String contentItemType, int type, String stringType) {
             NamedContentValues result = null;
+            if (contentItemType == null) {
+                return result;
+            }
 
             // Loop through the ncv's, looking for an existing row
             for (NamedContentValues namedContentValues: list) {
-                Uri uri = namedContentValues.uri;
-                ContentValues cv = namedContentValues.values;
+                final Uri uri = namedContentValues.uri;
+                final ContentValues cv = namedContentValues.values;
                 if (Data.CONTENT_URI.equals(uri)) {
-                    String mimeType = cv.getAsString(Data.MIMETYPE);
-                    if (mimeType.equals(contentItemType)) {
+                    final String mimeType = cv.getAsString(Data.MIMETYPE);
+                    if (TextUtils.equals(mimeType, contentItemType)) {
                         if (stringType != null) {
                             if (cv.getAsString(GroupMembership.GROUP_ROW_ID).equals(stringType)) {
                                 result = namedContentValues;
@@ -911,17 +915,20 @@ public class ContactsSyncParser extends AbstractSyncParser {
          */
         private static ArrayList<NamedContentValues> findUntypedData(
                 ArrayList<NamedContentValues> list, int type, String contentItemType) {
-            ArrayList<NamedContentValues> result = new ArrayList<NamedContentValues>();
+            final ArrayList<NamedContentValues> result = new ArrayList<NamedContentValues>();
+            if (contentItemType == null) {
+                return result;
+            }
 
             // Loop through the ncv's, looking for an existing row
             for (NamedContentValues namedContentValues: list) {
-                Uri uri = namedContentValues.uri;
-                ContentValues cv = namedContentValues.values;
+                final Uri uri = namedContentValues.uri;
+                final ContentValues cv = namedContentValues.values;
                 if (Data.CONTENT_URI.equals(uri)) {
-                    String mimeType = cv.getAsString(Data.MIMETYPE);
-                    if (mimeType.equals(contentItemType)) {
+                    final String mimeType = cv.getAsString(Data.MIMETYPE);
+                    if (TextUtils.equals(mimeType, contentItemType)) {
                         if (type != -1) {
-                            int subtype = cv.getAsInteger(Phone.TYPE);
+                            final int subtype = cv.getAsInteger(Phone.TYPE);
                             if (type != subtype) {
                                 continue;
                             }
