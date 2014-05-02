@@ -1632,18 +1632,24 @@ public class CalendarUtilities {
         boolean recurringEvent = !entityValues.containsKey(Events.ORIGINAL_SYNC_ID) &&
             entityValues.containsKey(Events.RRULE);
 
-        String dateTimeString;
-        int res;
-        long startTime = entityValues.getAsLong(Events.DTSTART);
-        if (allDayEvent) {
-            Date date = new Date(getLocalAllDayCalendarTime(startTime, TimeZone.getDefault()));
-            dateTimeString = DateFormat.getDateInstance().format(date);
-            res = recurringEvent ? R.string.meeting_allday_recurring : R.string.meeting_allday;
-        } else {
-            dateTimeString = DateFormat.getDateTimeInstance().format(new Date(startTime));
-            res = recurringEvent ? R.string.meeting_recurring : R.string.meeting_when;
+        if (entityValues.containsKey(Events.DTSTART)) {
+            final String dateTimeString;
+            final int res;
+            final long startTime = entityValues.getAsLong(Events.DTSTART);
+            if (allDayEvent) {
+                final Date date = new Date(getLocalAllDayCalendarTime(startTime,
+                                TimeZone.getDefault()));
+                dateTimeString = DateFormat.getDateInstance().format(date);
+                res = recurringEvent ? R.string.meeting_allday_recurring
+                    : R.string.meeting_allday;
+            } else {
+                dateTimeString = DateFormat.getDateTimeInstance().format(
+                        new Date(startTime));
+                res = recurringEvent ? R.string.meeting_recurring
+                    : R.string.meeting_when;
+            }
+            sb.append(resources.getString(res, dateTimeString));
         }
-        sb.append(resources.getString(res, dateTimeString));
 
         String location = null;
         if (entityValues.containsKey(Events.EVENT_LOCATION)) {
