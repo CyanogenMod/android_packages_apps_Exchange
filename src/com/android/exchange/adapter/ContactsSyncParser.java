@@ -1129,10 +1129,17 @@ public class ContactsSyncParser extends AbstractSyncParser {
         }
 
         public void addPhoto(Entity entity, String photo) {
-            RowBuilder builder = untypedRowBuilder(entity, Photo.CONTENT_ITEM_TYPE);
             // We're always going to add this; it's not worth trying to figure out whether the
             // picture is the same as the one stored.
-            byte[] pic = Base64.decode(photo, Base64.DEFAULT);
+            final byte[] pic;
+            try {
+                pic = Base64.decode(photo, Base64.DEFAULT);
+            } catch (IllegalArgumentException e) {
+                LogUtils.w(TAG, "Bad base-64 encoding; unable to decode photo.");
+                return;
+            }
+
+            final RowBuilder builder = untypedRowBuilder(entity, Photo.CONTENT_ITEM_TYPE);
             builder.withValue(Photo.PHOTO, pic);
             add(builder.build());
         }
