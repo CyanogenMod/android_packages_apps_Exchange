@@ -18,8 +18,10 @@
 package com.android.exchange;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Toast;
 
 import com.android.emailcommon.utility.IntentUtilities;
 
@@ -40,7 +42,13 @@ public class SettingsRedirector extends Activity {
                 IntentUtilities.createActivityIntentUrlBuilder(IntentUtilities.PATH_SETTINGS)
                         .build());
         redirect.setFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
-        startActivity(redirect);
+        try {
+            startActivity(redirect);
+        } catch (ActivityNotFoundException e) {
+            Toast toast = Toast.makeText(this, R.string.email_settings_not_available,
+                    Toast.LENGTH_SHORT);
+            toast.show();
+        }
         finish();
     }
 }
