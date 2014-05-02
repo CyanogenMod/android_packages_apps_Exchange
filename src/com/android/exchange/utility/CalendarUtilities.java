@@ -1349,7 +1349,15 @@ public class CalendarUtilities {
      */
     static public String rruleFromRecurrence(int type, int occurrences, int interval, int dow,
             int dom, int wom, int moy, String until) {
-        StringBuilder rrule = new StringBuilder("FREQ=" + sTypeToFreq[type]);
+        if (type < 0 || type >= sTypeToFreq.length) {
+            return null;
+        }
+        final String typeStr = sTypeToFreq[type];
+        // Type array is sparse (eg, no type 4), so catch invalid (empty) types
+        if (TextUtils.isEmpty(typeStr)) {
+            return null;
+        }
+        StringBuilder rrule = new StringBuilder("FREQ=" + typeStr);
         // INTERVAL and COUNT
         if (occurrences > 0) {
             rrule.append(";COUNT=" + occurrences);
