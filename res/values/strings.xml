@@ -205,4 +205,7 @@
     <!-- text for notification warning about an authentication error [CHAR LIMIT=60]  -->
     <string name="auth_error_notification_text">Touch to edit account settings for <xliff:g id="account">%s</xliff:g></string>
 
+    <!-- Message displayed when there is no application to handle the settings option. [CHAR LIMIT=NONE] -->
+    <string name="email_settings_not_available">Re-enable the Email application to view settings.</string>
+
 </resources>
