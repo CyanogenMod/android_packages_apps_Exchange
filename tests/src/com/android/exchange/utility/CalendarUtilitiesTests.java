@@ -720,6 +720,14 @@ public class CalendarUtilitiesTests extends AndroidTestCase {
         rrule = CalendarUtilities.rruleFromRecurrence(
                 6 /*Yearly/Month/DayOfWeek*/, 0, 0, 4 /*Tue*/, 0, 1 /*1st*/, 6 /*June*/, null);
         assertEquals("FREQ=YEARLY;BYDAY=1TU;BYMONTH=6", rrule);
+        // Missing type
+        rrule = CalendarUtilities.rruleFromRecurrence(
+                -1 /* missing */, 0, 0, 4 /*Tue*/, 0, 1 /*1st*/, 6 /*June*/, null);
+        assertNull(rrule);
+        // Invalid type
+        rrule = CalendarUtilities.rruleFromRecurrence(
+                4 /* invalid */, 0, 0, 4 /*Tue*/, 0, 1 /*1st*/, 6 /*June*/, null);
+        assertNull(rrule);
     }
 
     /**
