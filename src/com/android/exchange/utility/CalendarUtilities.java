@@ -1725,7 +1725,7 @@ public class CalendarUtilities {
             int messageFlag, String uid, Account account, String specifiedAttendee) {
         ContentValues entityValues = entity.getEntityValues();
         ArrayList<NamedContentValues> subValues = entity.getSubValues();
-        boolean isException = entityValues.containsKey(Events.ORIGINAL_SYNC_ID);
+        boolean isException = entityValues.containsKey(Events.ORIGINAL_INSTANCE_TIME);
         boolean isReply = false;
 
         EmailContent.Message msg = new EmailContent.Message();
@@ -1803,6 +1803,7 @@ public class CalendarUtilities {
             // If this is an Exception, we send the recurrence-id, which is just the original
             // instance time
             if (isException) {
+                // isException indicates this key is present
                 long originalTime = entityValues.getAsLong(Events.ORIGINAL_INSTANCE_TIME);
                 ics.writeTag("RECURRENCE-ID" + vCalendarDateSuffix,
                         millisToEasDateTime(originalTime, vCalendarTimeZone, !allDayEvent));
@@ -1882,6 +1883,7 @@ public class CalendarUtilities {
             StringBuilder sb = new StringBuilder();
             if (isException && !isReply) {
                 // Add the line, depending on whether this is a cancellation or update
+                // isException indicates this key is present
                 Date date = new Date(entityValues.getAsLong(Events.ORIGINAL_INSTANCE_TIME));
                 String dateString = DateFormat.getDateInstance().format(date);
                 if (titleId == R.string.meeting_canceled) {
