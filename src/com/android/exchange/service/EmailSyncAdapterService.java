@@ -661,7 +661,7 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             final Cursor accountCursor = cr.query(Account.CONTENT_URI, Account.CONTENT_PROJECTION,
                     AccountColumns.EMAIL_ADDRESS + "=?", new String[] {acct.name}, null);
             try {
-                if (!accountCursor.moveToFirst()) {
+                if (accountCursor == null || !accountCursor.moveToFirst()) {
                     // Could not load account.
                     // TODO: improve error handling.
                     LogUtils.w(TAG, "onPerformSync: could not load account");
@@ -670,7 +670,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 account = new Account();
                 account.restore(accountCursor);
             } finally {
-                accountCursor.close();
+                if (accountCursor != null) {
+                    accountCursor.close();
+                }
             }
 
             // Figure out what we want to sync, based on the extras and our account sync status.

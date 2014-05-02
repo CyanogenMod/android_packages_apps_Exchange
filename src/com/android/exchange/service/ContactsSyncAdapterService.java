@@ -78,6 +78,9 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
 
     private static boolean hasDirtyRows(ContentResolver resolver, Uri uri, String dirtyColumn) {
         Cursor c = resolver.query(uri, EmailContent.ID_PROJECTION, dirtyColumn + "=1", null, null);
+        if (c == null) {
+            return false;
+        }
         try {
             return c.getCount() > 0;
         } finally {
