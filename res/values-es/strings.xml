@@ -62,4 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Todo"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Error de autenticación"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Toca para editar la configuración de la cuenta <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"Vuelve a habilitar la aplicación Correo para ver los ajustes."</string>
 </resources>

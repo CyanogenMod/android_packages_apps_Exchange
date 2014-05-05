@@ -62,4 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Alles"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Verificatiefout"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Raak aan om accountinstellingen voor <xliff:g id="ACCOUNT">%s</xliff:g> te bewerken"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"Schakel de app E-mail weer in om instellingen te bekijken."</string>
 </resources>

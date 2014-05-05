@@ -62,4 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Siden tidenes morgen"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Feil ved autentisering"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Trykk for å redigere kontoinnstillingene for <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"Aktiver e-postappen på nytt for å se innstillingene."</string>
 </resources>

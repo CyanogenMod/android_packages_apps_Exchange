@@ -62,4 +62,6 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Todos"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Erro de autenticação"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Toque para editar as configurações de conta para <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <!-- no translation found for email_settings_not_available (3139586580003323185) -->
+    <skip />
 </resources>

@@ -38,11 +38,11 @@
     <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"ungavumeli imilayezo yombhalo"</string>
     <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Ungavumeli i-POP3 noma ama-akhawunti e-IMAP"</string>
     <string name="policy_dont_allow_irda" msgid="1848561629495912430">"ungavumeli ukukhulumisana kwe-infrared"</string>
-    <string name="policy_dont_allow_html" msgid="5888652525907651489">"ungavumeli i-imeyli ye-HTML"</string>
-    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"ungavumeli isiphequluli"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ungavumeli i-imeyli yomthengi"</string>
+    <string name="policy_dont_allow_html" msgid="5888652525907651489">"Ungavumeli i-imeyli ye-HTML"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Ungavumeli isiphequluli"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Ungavumeli i-imeyli yomthengi"</string>
     <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Ungavumeli ukwabelana nge-inthanethi"</string>
-    <string name="policy_require_smime" msgid="673557150920820590">"idinga imiyalezo ye-SMME"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"Dinga imiyalezo ye-SMME"</string>
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Nciphisa ukusetshenziswa kwe-Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"Ungavumeli ama-apps angacacisiwe"</string>
     <string name="policy_app_whitelist" msgid="3670572644342165306">"Vumela ama-apps avunyelwe"</string>
@@ -62,4 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Konke"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Iphutha lokufakazela ubuqiniso"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Thinta ukuze uhlele izilungiselelo ze-akhawunti <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"Nika kabusha amandla uhlelo lokusebenza ukuze ubuke izilungiselelo."</string>
 </resources>

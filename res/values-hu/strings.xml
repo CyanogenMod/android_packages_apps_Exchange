@@ -62,4 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Összes"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Azonosítási hiba"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Érintse meg a(z) <xliff:g id="ACCOUNT">%s</xliff:g> fiók beállításainak szerkesztéséhez"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"A beállítások megtekintéséhez ismét engedélyeznie kell a Levelek alkalmazást."</string>
 </resources>

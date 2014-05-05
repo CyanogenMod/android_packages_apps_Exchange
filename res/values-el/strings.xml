@@ -62,4 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Όλες"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Σφάλμα ελέγχου ταυτότητας"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Αγγίξτε για να επεξεργαστείτε τις ρυθμίσεις λογαριασμού για <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"Ενεργοποιήσετε ξανά την εφαρμογή ηλεκτρονικού ταχυδρομείου για να δείτε τις ρυθμίσεις."</string>
 </resources>
