@@ -31,8 +31,11 @@ import java.io.IOException;
  */
 @SmallTest
 public class ProvisionParserTests extends SyncAdapterTestCase {
+    // <Sync><Status>1</Status></Sync>
+    private final byte[] wbxmlBytes = new byte[] {
+        0x03, 0x01, 0x6A, 0x00, 0x45, 0x4E, 0x03, 0x31, 0x00, 0x01, 0x01};
     private final ByteArrayInputStream mTestInputStream =
-        new ByteArrayInputStream("ABCDEFG".getBytes());
+        new ByteArrayInputStream(wbxmlBytes);
 
     // A good sample of an Exchange 2003 (WAP) provisioning document for end-to-end testing
     private String mWapProvisioningDoc1 =

@@ -72,7 +72,10 @@ public class SyncAdapterTestCase<T extends AbstractSyncAdapter> extends AndroidT
      * @return the InputStream
      */
     public InputStream getTestInputStream() {
-        return new ByteArrayInputStream(new byte[] {0, 0, 0, 0, 0});
+        // <Sync><Status>1</Status></Sync>
+        final byte[] wbxmlBytes = new byte[] {
+            0x03, 0x01, 0x6A, 0x00, 0x45, 0x4E, 0x03, 0x31, 0x00, 0x01, 0x01};
+        return new ByteArrayInputStream(wbxmlBytes);
     }
 
     EasSyncService getTestService() {

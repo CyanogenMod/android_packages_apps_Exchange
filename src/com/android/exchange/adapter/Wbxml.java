@@ -44,8 +44,9 @@ public interface Wbxml {
     static public final int EXT_0 = 0x0c0;
     static public final int EXT_1 = 0x0c1;
     static public final int EXT_2 = 0x0c2;
-    static public final int OPAQUE = 0x0c3; 
+    static public final int OPAQUE = 0x0c3;
     static public final int LITERAL_AC = 0x0c4;
 
+    static public final int WITH_ATTRIBUTES = 0x80;
     static public final int WITH_CONTENT = 0x40;
 }

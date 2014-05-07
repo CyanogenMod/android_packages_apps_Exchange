@@ -221,7 +221,7 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
                 return line.substring(start + 2).trim();
             } finally {
                 if (nextTag(0) != END) {
-                    throw new IOException("Value not followed by end tag: " + name);
+                    throw new IOException("Value not followed by end tag");
                 }
             }
         }
