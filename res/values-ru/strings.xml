@@ -62,6 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Все"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"Ошибка аутентификации"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"Нажмите, чтобы изменить настройки для аккаунта <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
-    <!-- no translation found for email_settings_not_available (3139586580003323185) -->
-    <skip />
+    <string name="email_settings_not_available" msgid="3139586580003323185">"Чтобы посмотреть настройки, включите приложение Email."</string>
 </resources>

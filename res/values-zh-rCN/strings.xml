@@ -62,6 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"全部"</string>
     <string name="auth_error_notification_title" msgid="8108639432449021675">"身份验证出错"</string>
     <string name="auth_error_notification_text" msgid="6813530336397532878">"触摸即可修改“<xliff:g id="ACCOUNT">%s</xliff:g>”的帐户设置"</string>
-    <!-- no translation found for email_settings_not_available (3139586580003323185) -->
-    <skip />
+    <string name="email_settings_not_available" msgid="3139586580003323185">"重新启用“电子邮件”应用即可查看设置。"</string>
 </resources>
