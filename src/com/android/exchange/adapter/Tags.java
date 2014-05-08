@@ -38,6 +38,8 @@ public class Tags {
     public static final int FOLDER = 0x07;
     public static final int MREQ = 0x08;
     public static final int TASK = 0x09;
+    public static final int RECIPIENTS = 0x0A;
+    public static final int VALIDATE = 0x0B;
     public static final int CONTACTS2 = 0x0C;
     public static final int PING = 0x0D;
     public static final int PROVISION = 0x0E;
@@ -58,6 +60,7 @@ public class Tags {
     public static final int PAGE_SHIFT = 6;
     public static final int PAGE_MASK = 0x3F;  // 6 bits
 
+    // AirSync code page 0
     public static final int SYNC_PAGE = 0 << PAGE_SHIFT;
     public static final int SYNC_SYNC = SYNC_PAGE + 5;
     public static final int SYNC_RESPONSES = SYNC_PAGE + 6;
@@ -93,19 +96,11 @@ public class Tags {
     public static final int SYNC_WAIT = SYNC_PAGE + 0x24;
     public static final int SYNC_LIMIT = SYNC_PAGE + 0x25;
     public static final int SYNC_PARTIAL = SYNC_PAGE + 0x26;
+    public static final int SYNC_CONVERSATION_MODE = SYNC_PAGE + 0x27;
+    public static final int SYNC_MAX_ITEMS = SYNC_PAGE + 0x28;
+    public static final int SYNC_HEARTBEAT_INTERVAL = SYNC_PAGE + 0x29;
 
-    public static final int GIE_PAGE = GIE << PAGE_SHIFT;
-    public static final int GIE_GET_ITEM_ESTIMATE = GIE_PAGE + 5;
-    public static final int GIE_VERSION = GIE_PAGE + 6;
-    public static final int GIE_COLLECTIONS = GIE_PAGE + 7;
-    public static final int GIE_COLLECTION = GIE_PAGE + 8;
-    public static final int GIE_CLASS = GIE_PAGE + 9;
-    public static final int GIE_COLLECTION_ID = GIE_PAGE + 0xA;
-    public static final int GIE_DATE_TIME = GIE_PAGE + 0xB;
-    public static final int GIE_ESTIMATE = GIE_PAGE + 0xC;
-    public static final int GIE_RESPONSE = GIE_PAGE + 0xD;
-    public static final int GIE_STATUS = GIE_PAGE + 0xE;
-
+    // Contacts code page 1
     public static final int CONTACTS_PAGE = CONTACTS << PAGE_SHIFT;
     public static final int CONTACTS_ANNIVERSARY = CONTACTS_PAGE + 5;
     public static final int CONTACTS_ASSISTANT_NAME = CONTACTS_PAGE + 6;
@@ -163,97 +158,10 @@ public class Tags {
     public static final int CONTACTS_YOMI_LAST_NAME = CONTACTS_PAGE + 0x3A;
     public static final int CONTACTS_COMPRESSED_RTF = CONTACTS_PAGE + 0x3B;
     public static final int CONTACTS_PICTURE = CONTACTS_PAGE + 0x3C;
+    public static final int CONTACTS_ALIAS = CONTACTS_PAGE + 0x3D;
+    public static final int CONTACTS_WEIGHTED_RANK = CONTACTS_PAGE + 0x3E;
 
-    public static final int CALENDAR_PAGE = CALENDAR << PAGE_SHIFT;
-    public static final int CALENDAR_TIME_ZONE = CALENDAR_PAGE + 5;
-    public static final int CALENDAR_ALL_DAY_EVENT = CALENDAR_PAGE + 6;
-    public static final int CALENDAR_ATTENDEES = CALENDAR_PAGE + 7;
-    public static final int CALENDAR_ATTENDEE = CALENDAR_PAGE + 8;
-    public static final int CALENDAR_ATTENDEE_EMAIL = CALENDAR_PAGE + 9;
-    public static final int CALENDAR_ATTENDEE_NAME = CALENDAR_PAGE + 0xA;
-    public static final int CALENDAR_BODY = CALENDAR_PAGE + 0xB;
-    public static final int CALENDAR_BODY_TRUNCATED = CALENDAR_PAGE + 0xC;
-    public static final int CALENDAR_BUSY_STATUS = CALENDAR_PAGE + 0xD;
-    public static final int CALENDAR_CATEGORIES = CALENDAR_PAGE + 0xE;
-    public static final int CALENDAR_CATEGORY = CALENDAR_PAGE + 0xF;
-    public static final int CALENDAR_COMPRESSED_RTF = CALENDAR_PAGE + 0x10;
-    public static final int CALENDAR_DTSTAMP = CALENDAR_PAGE + 0x11;
-    public static final int CALENDAR_END_TIME = CALENDAR_PAGE + 0x12;
-    public static final int CALENDAR_EXCEPTION = CALENDAR_PAGE + 0x13;
-    public static final int CALENDAR_EXCEPTIONS = CALENDAR_PAGE + 0x14;
-    public static final int CALENDAR_EXCEPTION_IS_DELETED = CALENDAR_PAGE + 0x15;
-    public static final int CALENDAR_EXCEPTION_START_TIME = CALENDAR_PAGE + 0x16;
-    public static final int CALENDAR_LOCATION = CALENDAR_PAGE + 0x17;
-    public static final int CALENDAR_MEETING_STATUS = CALENDAR_PAGE + 0x18;
-    public static final int CALENDAR_ORGANIZER_EMAIL = CALENDAR_PAGE + 0x19;
-    public static final int CALENDAR_ORGANIZER_NAME = CALENDAR_PAGE + 0x1A;
-    public static final int CALENDAR_RECURRENCE = CALENDAR_PAGE + 0x1B;
-    public static final int CALENDAR_RECURRENCE_TYPE = CALENDAR_PAGE + 0x1C;
-    public static final int CALENDAR_RECURRENCE_UNTIL = CALENDAR_PAGE + 0x1D;
-    public static final int CALENDAR_RECURRENCE_OCCURRENCES = CALENDAR_PAGE + 0x1E;
-    public static final int CALENDAR_RECURRENCE_INTERVAL = CALENDAR_PAGE + 0x1F;
-    public static final int CALENDAR_RECURRENCE_DAYOFWEEK = CALENDAR_PAGE + 0x20;
-    public static final int CALENDAR_RECURRENCE_DAYOFMONTH = CALENDAR_PAGE + 0x21;
-    public static final int CALENDAR_RECURRENCE_WEEKOFMONTH = CALENDAR_PAGE + 0x22;
-    public static final int CALENDAR_RECURRENCE_MONTHOFYEAR = CALENDAR_PAGE + 0x23;
-    public static final int CALENDAR_REMINDER_MINS_BEFORE = CALENDAR_PAGE + 0x24;
-    public static final int CALENDAR_SENSITIVITY = CALENDAR_PAGE + 0x25;
-    public static final int CALENDAR_SUBJECT = CALENDAR_PAGE + 0x26;
-    public static final int CALENDAR_START_TIME = CALENDAR_PAGE + 0x27;
-    public static final int CALENDAR_UID = CALENDAR_PAGE + 0x28;
-    public static final int CALENDAR_ATTENDEE_STATUS = CALENDAR_PAGE + 0x29;
-    public static final int CALENDAR_ATTENDEE_TYPE = CALENDAR_PAGE + 0x2A;
-    public static final int CALENDAR_ATTACHMENT = CALENDAR_PAGE + 0x2B;
-    public static final int CALENDAR_ATTACHMENTS = CALENDAR_PAGE + 0x2C;
-    public static final int CALENDAR_ATT_NAME = CALENDAR_PAGE + 0x2D;
-    public static final int CALENDAR_ATT_SIZE = CALENDAR_PAGE + 0x2E;
-    public static final int CALENDAR_ATT_OID = CALENDAR_PAGE + 0x2F;
-    public static final int CALENDAR_ATT_METHOD = CALENDAR_PAGE + 0x30;
-    public static final int CALENDAR_ATT_REMOVED = CALENDAR_PAGE + 0x31;
-    public static final int CALENDAR_DISPLAY_NAME = CALENDAR_PAGE + 0x32;
-    public static final int CALENDAR_DISALLOW_NEW_TIME_PROPOSAL = CALENDAR_PAGE + 0x33;
-    public static final int CALENDAR_RESPONSE_REQUESTED = CALENDAR_PAGE + 0x34;
-    public static final int CALENDAR_APPOINTMENT_REPLY_TIME = CALENDAR_PAGE + 0x35;
-    public static final int CALENDAR_RESPONSE_TYPE = CALENDAR_PAGE + 0x36;
-    public static final int CALENDAR_CALENDAR_TYPE = CALENDAR_PAGE + 0x37;
-    public static final int CALENDAR_IS_LEAP_MONTH = CALENDAR_PAGE + 0x38;
-    public static final int CALENDAR_FIRST_DAY_OF_WEEK = CALENDAR_PAGE + 0x39;
-    public static final int CALENDAR_ONLINE_MEETING_CONFLINK = CALENDAR_PAGE + 0x3A;
-    public static final int CALENDAR_ONLINE_MEETING_EXTERNAL_LINK = CALENDAR_PAGE + 0x3B;
-
-    public static final int FOLDER_PAGE = FOLDER << PAGE_SHIFT;
-    public static final int FOLDER_FOLDERS = FOLDER_PAGE + 5;
-    public static final int FOLDER_FOLDER = FOLDER_PAGE + 6;
-    public static final int FOLDER_DISPLAY_NAME = FOLDER_PAGE + 7;
-    public static final int FOLDER_SERVER_ID = FOLDER_PAGE + 8;
-    public static final int FOLDER_PARENT_ID = FOLDER_PAGE + 9;
-    public static final int FOLDER_TYPE = FOLDER_PAGE + 0xA;
-    public static final int FOLDER_RESPONSE = FOLDER_PAGE + 0xB;
-    public static final int FOLDER_STATUS = FOLDER_PAGE + 0xC;
-    public static final int FOLDER_CONTENT_CLASS = FOLDER_PAGE + 0xD;
-    public static final int FOLDER_CHANGES = FOLDER_PAGE + 0xE;
-    public static final int FOLDER_ADD = FOLDER_PAGE + 0xF;
-    public static final int FOLDER_DELETE = FOLDER_PAGE + 0x10;
-    public static final int FOLDER_UPDATE = FOLDER_PAGE + 0x11;
-    public static final int FOLDER_SYNC_KEY = FOLDER_PAGE + 0x12;
-    public static final int FOLDER_FOLDER_CREATE = FOLDER_PAGE + 0x13;
-    public static final int FOLDER_FOLDER_DELETE= FOLDER_PAGE + 0x14;
-    public static final int FOLDER_FOLDER_UPDATE = FOLDER_PAGE + 0x15;
-    public static final int FOLDER_FOLDER_SYNC = FOLDER_PAGE + 0x16;
-    public static final int FOLDER_COUNT = FOLDER_PAGE + 0x17;
-    public static final int FOLDER_VERSION = FOLDER_PAGE + 0x18;
-
-    public static final int MREQ_PAGE = MREQ << PAGE_SHIFT;
-    public static final int MREQ_CAL_ID = MREQ_PAGE + 5;
-    public static final int MREQ_COLLECTION_ID = MREQ_PAGE + 6;
-    public static final int MREQ_MEETING_RESPONSE = MREQ_PAGE + 7;
-    public static final int MREQ_REQ_ID = MREQ_PAGE + 8;
-    public static final int MREQ_REQUEST = MREQ_PAGE + 9;
-    public static final int MREQ_RESULT = MREQ_PAGE + 0xA;
-    public static final int MREQ_STATUS = MREQ_PAGE + 0xB;
-    public static final int MREQ_USER_RESPONSE = MREQ_PAGE + 0xC;
-    public static final int MREQ_VERSION = MREQ_PAGE + 0xD;
-
+    // Email code page 2
     public static final int EMAIL_PAGE = EMAIL << PAGE_SHIFT;
     public static final int EMAIL_ATTACHMENT = EMAIL_PAGE + 5;
     public static final int EMAIL_ATTACHMENTS = EMAIL_PAGE + 6;
@@ -315,6 +223,129 @@ public class Tags {
     public static final int EMAIL_COMPLETE_TIME = EMAIL_PAGE + 0x3E;
     public static final int EMAIL_DISALLOW_NEW_TIME_PROPOSAL = EMAIL_PAGE + 0x3F;
 
+    // AirNotify code page 3 (no longer used)
+
+    // Calendar code page 4
+    public static final int CALENDAR_PAGE = CALENDAR << PAGE_SHIFT;
+    public static final int CALENDAR_TIME_ZONE = CALENDAR_PAGE + 5;
+    public static final int CALENDAR_ALL_DAY_EVENT = CALENDAR_PAGE + 6;
+    public static final int CALENDAR_ATTENDEES = CALENDAR_PAGE + 7;
+    public static final int CALENDAR_ATTENDEE = CALENDAR_PAGE + 8;
+    public static final int CALENDAR_ATTENDEE_EMAIL = CALENDAR_PAGE + 9;
+    public static final int CALENDAR_ATTENDEE_NAME = CALENDAR_PAGE + 0xA;
+    public static final int CALENDAR_BODY = CALENDAR_PAGE + 0xB;
+    public static final int CALENDAR_BODY_TRUNCATED = CALENDAR_PAGE + 0xC;
+    public static final int CALENDAR_BUSY_STATUS = CALENDAR_PAGE + 0xD;
+    public static final int CALENDAR_CATEGORIES = CALENDAR_PAGE + 0xE;
+    public static final int CALENDAR_CATEGORY = CALENDAR_PAGE + 0xF;
+    public static final int CALENDAR_COMPRESSED_RTF = CALENDAR_PAGE + 0x10;
+    public static final int CALENDAR_DTSTAMP = CALENDAR_PAGE + 0x11;
+    public static final int CALENDAR_END_TIME = CALENDAR_PAGE + 0x12;
+    public static final int CALENDAR_EXCEPTION = CALENDAR_PAGE + 0x13;
+    public static final int CALENDAR_EXCEPTIONS = CALENDAR_PAGE + 0x14;
+    public static final int CALENDAR_EXCEPTION_IS_DELETED = CALENDAR_PAGE + 0x15;
+    public static final int CALENDAR_EXCEPTION_START_TIME = CALENDAR_PAGE + 0x16;
+    public static final int CALENDAR_LOCATION = CALENDAR_PAGE + 0x17;
+    public static final int CALENDAR_MEETING_STATUS = CALENDAR_PAGE + 0x18;
+    public static final int CALENDAR_ORGANIZER_EMAIL = CALENDAR_PAGE + 0x19;
+    public static final int CALENDAR_ORGANIZER_NAME = CALENDAR_PAGE + 0x1A;
+    public static final int CALENDAR_RECURRENCE = CALENDAR_PAGE + 0x1B;
+    public static final int CALENDAR_RECURRENCE_TYPE = CALENDAR_PAGE + 0x1C;
+    public static final int CALENDAR_RECURRENCE_UNTIL = CALENDAR_PAGE + 0x1D;
+    public static final int CALENDAR_RECURRENCE_OCCURRENCES = CALENDAR_PAGE + 0x1E;
+    public static final int CALENDAR_RECURRENCE_INTERVAL = CALENDAR_PAGE + 0x1F;
+    public static final int CALENDAR_RECURRENCE_DAYOFWEEK = CALENDAR_PAGE + 0x20;
+    public static final int CALENDAR_RECURRENCE_DAYOFMONTH = CALENDAR_PAGE + 0x21;
+    public static final int CALENDAR_RECURRENCE_WEEKOFMONTH = CALENDAR_PAGE + 0x22;
+    public static final int CALENDAR_RECURRENCE_MONTHOFYEAR = CALENDAR_PAGE + 0x23;
+    public static final int CALENDAR_REMINDER_MINS_BEFORE = CALENDAR_PAGE + 0x24;
+    public static final int CALENDAR_SENSITIVITY = CALENDAR_PAGE + 0x25;
+    public static final int CALENDAR_SUBJECT = CALENDAR_PAGE + 0x26;
+    public static final int CALENDAR_START_TIME = CALENDAR_PAGE + 0x27;
+    public static final int CALENDAR_UID = CALENDAR_PAGE + 0x28;
+    public static final int CALENDAR_ATTENDEE_STATUS = CALENDAR_PAGE + 0x29;
+    public static final int CALENDAR_ATTENDEE_TYPE = CALENDAR_PAGE + 0x2A;
+    public static final int CALENDAR_ATTACHMENT = CALENDAR_PAGE + 0x2B;
+    public static final int CALENDAR_ATTACHMENTS = CALENDAR_PAGE + 0x2C;
+    public static final int CALENDAR_ATT_NAME = CALENDAR_PAGE + 0x2D;
+    public static final int CALENDAR_ATT_SIZE = CALENDAR_PAGE + 0x2E;
+    public static final int CALENDAR_ATT_OID = CALENDAR_PAGE + 0x2F;
+    public static final int CALENDAR_ATT_METHOD = CALENDAR_PAGE + 0x30;
+    public static final int CALENDAR_ATT_REMOVED = CALENDAR_PAGE + 0x31;
+    public static final int CALENDAR_DISPLAY_NAME = CALENDAR_PAGE + 0x32;
+    public static final int CALENDAR_DISALLOW_NEW_TIME_PROPOSAL = CALENDAR_PAGE + 0x33;
+    public static final int CALENDAR_RESPONSE_REQUESTED = CALENDAR_PAGE + 0x34;
+    public static final int CALENDAR_APPOINTMENT_REPLY_TIME = CALENDAR_PAGE + 0x35;
+    public static final int CALENDAR_RESPONSE_TYPE = CALENDAR_PAGE + 0x36;
+    public static final int CALENDAR_CALENDAR_TYPE = CALENDAR_PAGE + 0x37;
+    public static final int CALENDAR_IS_LEAP_MONTH = CALENDAR_PAGE + 0x38;
+    public static final int CALENDAR_FIRST_DAY_OF_WEEK = CALENDAR_PAGE + 0x39;
+    public static final int CALENDAR_ONLINE_MEETING_CONFLINK = CALENDAR_PAGE + 0x3A;
+    public static final int CALENDAR_ONLINE_MEETING_EXTERNAL_LINK = CALENDAR_PAGE + 0x3B;
+
+    // Move code page 5
+    public static final int MOVE_PAGE = MOVE << PAGE_SHIFT;
+    public static final int MOVE_MOVE_ITEMS = MOVE_PAGE + 5;
+    public static final int MOVE_MOVE = MOVE_PAGE + 6;
+    public static final int MOVE_SRCMSGID = MOVE_PAGE + 7;
+    public static final int MOVE_SRCFLDID = MOVE_PAGE + 8;
+    public static final int MOVE_DSTFLDID = MOVE_PAGE + 9;
+    public static final int MOVE_RESPONSE = MOVE_PAGE + 0xA;
+    public static final int MOVE_STATUS = MOVE_PAGE + 0xB;
+    public static final int MOVE_DSTMSGID = MOVE_PAGE + 0xC;
+
+    // GetItemEstimate code page 6
+    public static final int GIE_PAGE = GIE << PAGE_SHIFT;
+    public static final int GIE_GET_ITEM_ESTIMATE = GIE_PAGE + 5;
+    public static final int GIE_VERSION = GIE_PAGE + 6;
+    public static final int GIE_COLLECTIONS = GIE_PAGE + 7;
+    public static final int GIE_COLLECTION = GIE_PAGE + 8;
+    public static final int GIE_CLASS = GIE_PAGE + 9;
+    public static final int GIE_COLLECTION_ID = GIE_PAGE + 0xA;
+    public static final int GIE_DATE_TIME = GIE_PAGE + 0xB;
+    public static final int GIE_ESTIMATE = GIE_PAGE + 0xC;
+    public static final int GIE_RESPONSE = GIE_PAGE + 0xD;
+    public static final int GIE_STATUS = GIE_PAGE + 0xE;
+
+    // FolderHierarchy code page 7
+    public static final int FOLDER_PAGE = FOLDER << PAGE_SHIFT;
+    public static final int FOLDER_FOLDERS = FOLDER_PAGE + 5;
+    public static final int FOLDER_FOLDER = FOLDER_PAGE + 6;
+    public static final int FOLDER_DISPLAY_NAME = FOLDER_PAGE + 7;
+    public static final int FOLDER_SERVER_ID = FOLDER_PAGE + 8;
+    public static final int FOLDER_PARENT_ID = FOLDER_PAGE + 9;
+    public static final int FOLDER_TYPE = FOLDER_PAGE + 0xA;
+    public static final int FOLDER_RESPONSE = FOLDER_PAGE + 0xB;
+    public static final int FOLDER_STATUS = FOLDER_PAGE + 0xC;
+    public static final int FOLDER_CONTENT_CLASS = FOLDER_PAGE + 0xD;
+    public static final int FOLDER_CHANGES = FOLDER_PAGE + 0xE;
+    public static final int FOLDER_ADD = FOLDER_PAGE + 0xF;
+    public static final int FOLDER_DELETE = FOLDER_PAGE + 0x10;
+    public static final int FOLDER_UPDATE = FOLDER_PAGE + 0x11;
+    public static final int FOLDER_SYNC_KEY = FOLDER_PAGE + 0x12;
+    public static final int FOLDER_FOLDER_CREATE = FOLDER_PAGE + 0x13;
+    public static final int FOLDER_FOLDER_DELETE= FOLDER_PAGE + 0x14;
+    public static final int FOLDER_FOLDER_UPDATE = FOLDER_PAGE + 0x15;
+    public static final int FOLDER_FOLDER_SYNC = FOLDER_PAGE + 0x16;
+    public static final int FOLDER_COUNT = FOLDER_PAGE + 0x17;
+    // 0x18 FOLDER_VERSION unused in spec v14.0
+    public static final int FOLDER_VERSION = FOLDER_PAGE + 0x18;
+
+    // MeetingResponse code page 8
+    public static final int MREQ_PAGE = MREQ << PAGE_SHIFT;
+    public static final int MREQ_CAL_ID = MREQ_PAGE + 5;
+    public static final int MREQ_COLLECTION_ID = MREQ_PAGE + 6;
+    public static final int MREQ_MEETING_RESPONSE = MREQ_PAGE + 7;
+    public static final int MREQ_REQ_ID = MREQ_PAGE + 8;
+    public static final int MREQ_REQUEST = MREQ_PAGE + 9;
+    public static final int MREQ_RESULT = MREQ_PAGE + 0xA;
+    public static final int MREQ_STATUS = MREQ_PAGE + 0xB;
+    public static final int MREQ_USER_RESPONSE = MREQ_PAGE + 0xC;
+    // 0x0D MREQ_VERSION unused in spec v14.0
+    public static final int MREQ_VERSION = MREQ_PAGE + 0xD;
+    public static final int MREQ_INSTANCE_ID = MREQ_PAGE + 0xE;
+
+    // Tasks code page 9
     public static final int TASK_PAGE = TASK << PAGE_SHIFT;
     public static final int TASK_BODY = TASK_PAGE + 5;
     public static final int TASK_BODY_SIZE = TASK_PAGE + 6;
@@ -344,20 +375,52 @@ public class Tags {
     public static final int TASK_START_DATE = TASK_PAGE + 0x1E;
     public static final int TASK_UTC_START_DATE = TASK_PAGE + 0x1F;
     public static final int TASK_SUBJECT = TASK_PAGE + 0x20;
-    public static final int COMPRESSED_RTF = TASK_PAGE + 0x21;
-    public static final int ORDINAL_DATE = TASK_PAGE + 0x22;
-    public static final int SUBORDINAL_DATE = TASK_PAGE + 0x23;
+    // 0x21 TASK_COMPRESSED_RTF unused in spec v14.0
+    public static final int TASK_COMPRESSED_RTF = TASK_PAGE + 0x21;
+    public static final int TASK_ORDINAL_DATE = TASK_PAGE + 0x22;
+    public static final int TASK_SUBORDINAL_DATE = TASK_PAGE + 0x23;
+    public static final int TASK_CALENDAR_TYPE = TASK_PAGE + 0x24;
+    public static final int TASK_IS_LEAP_MONTH = TASK_PAGE + 0x25;
+    public static final int TASK_FIRST_DAY_OF_WEEK = TASK_PAGE + 0x26;
 
-    public static final int MOVE_PAGE = MOVE << PAGE_SHIFT;
-    public static final int MOVE_MOVE_ITEMS = MOVE_PAGE + 5;
-    public static final int MOVE_MOVE = MOVE_PAGE + 6;
-    public static final int MOVE_SRCMSGID = MOVE_PAGE + 7;
-    public static final int MOVE_SRCFLDID = MOVE_PAGE + 8;
-    public static final int MOVE_DSTFLDID = MOVE_PAGE + 9;
-    public static final int MOVE_RESPONSE = MOVE_PAGE + 0xA;
-    public static final int MOVE_STATUS = MOVE_PAGE + 0xB;
-    public static final int MOVE_DSTMSGID = MOVE_PAGE + 0xC;
+    // ResolveRecipients code page 10
+    public static final int RECIPIENTS_PAGE = RECIPIENTS << PAGE_SHIFT;
+    public static final int RECIPIENTS_RESOLVE_RECIPIENTS = RECIPIENTS_PAGE + 5;
+    public static final int RECIPIENTS_RESPONSE = RECIPIENTS_PAGE + 6;
+    public static final int RECIPIENTS_STATUS = RECIPIENTS_PAGE + 7;
+    public static final int RECIPIENTS_TYPE = RECIPIENTS_PAGE + 8;
+    public static final int RECIPIENTS_RECIPIENT = RECIPIENTS_PAGE + 9;
+    public static final int RECIPIENTS_DISPLAY_NAME = RECIPIENTS_PAGE + 0xA;
+    public static final int RECIPIENTS_EMAIL_ADDRESS = RECIPIENTS_PAGE + 0xB;
+    public static final int RECIPIENTS_CERTIFICATES = RECIPIENTS_PAGE + 0xC;
+    public static final int RECIPIENTS_CERTIFICATE = RECIPIENTS_PAGE + 0xD;
+    public static final int RECIPIENTS_MINI_CERTIFICATE = RECIPIENTS_PAGE + 0xE;
+    public static final int RECIPIENTS_OPTIONS = RECIPIENTS_PAGE + 0xF;
+    public static final int RECIPIENTS_TO = RECIPIENTS_PAGE + 0x10;
+    public static final int RECIPIENTS_CERTIFICATE_RETRIEVAL = RECIPIENTS_PAGE + 0x11;
+    public static final int RECIPIENTS_RECIPIENT_COUNT = RECIPIENTS_PAGE + 0x12;
+    public static final int RECIPIENTS_MAX_CERTIFICATES = RECIPIENTS_PAGE + 0x13;
+    public static final int RECIPIENTS_MAX_AMBIGUOUS_RECIPIENTS = RECIPIENTS_PAGE + 0x14;
+    public static final int RECIPIENTS_CERTIFICATE_COUNT = RECIPIENTS_PAGE + 0x15;
+    public static final int RECIPIENTS_AVAILABILITY = RECIPIENTS_PAGE + 0x16;
+    public static final int RECIPIENTS_START_TIME = RECIPIENTS_PAGE + 0x17;
+    public static final int RECIPIENTS_END_TIME = RECIPIENTS_PAGE + 0x18;
+    public static final int RECIPIENTS_MERGED_FREE_BUSY = RECIPIENTS_PAGE + 0x19;
+    public static final int RECIPIENTS_PICTURE = RECIPIENTS_PAGE + 0x1A;
+    public static final int RECIPIENTS_MAX_SIZE = RECIPIENTS_PAGE + 0x1B;
+    public static final int RECIPIENTS_DATA = RECIPIENTS_PAGE + 0x1C;
+    public static final int RECIPIENTS_MAX_PICTURES = RECIPIENTS_PAGE + 0x1D;
 
+    // ValidateCert code page 11
+    public static final int VALIDATE_PAGE = VALIDATE << PAGE_SHIFT;
+    public static final int VALIDATE_VALIDATE_CERT = VALIDATE_PAGE + 5;
+    public static final int VALIDATE_CERTIFICATES = VALIDATE_PAGE + 6;
+    public static final int VALIDATE_CERTIFICATE = VALIDATE_PAGE + 7;
+    public static final int VALIDATE_CERTIFICATE_CHAIN = VALIDATE_PAGE + 8;
+    public static final int VALIDATE_CHECK_CRL = VALIDATE_PAGE + 9;
+    public static final int VALIDATE_STATUS = VALIDATE_PAGE + 0xA;
+
+    // Contacts2 code page 12
     public static final int CONTACTS2_PAGE = CONTACTS2 << PAGE_SHIFT;
     public static final int CONTACTS2_CUSTOMER_ID = CONTACTS2_PAGE + 5;
     public static final int CONTACTS2_GOVERNMENT_ID = CONTACTS2_PAGE + 6;
@@ -370,6 +433,7 @@ public class Tags {
     public static final int CONTACTS2_NICKNAME = CONTACTS2_PAGE + 0xD;
     public static final int CONTACTS2_MMS = CONTACTS2_PAGE + 0xE;
 
+    // Ping code page 13
     public static final int PING_PAGE = PING << PAGE_SHIFT;
     public static final int PING_PING = PING_PAGE + 5;
     public static final int PING_AUTD_STATE = PING_PAGE + 6;
@@ -381,46 +445,7 @@ public class Tags {
     public static final int PING_CLASS = PING_PAGE + 0xC;
     public static final int PING_MAX_FOLDERS = PING_PAGE + 0xD;
 
-    public static final int SEARCH_PAGE = SEARCH << PAGE_SHIFT;
-    public static final int SEARCH_SEARCH = SEARCH_PAGE + 5;
-    public static final int SEARCH_STORES = SEARCH_PAGE + 6;
-    public static final int SEARCH_STORE = SEARCH_PAGE + 7;
-    public static final int SEARCH_NAME = SEARCH_PAGE + 8;
-    public static final int SEARCH_QUERY = SEARCH_PAGE + 9;
-    public static final int SEARCH_OPTIONS = SEARCH_PAGE + 0xA;
-    public static final int SEARCH_RANGE = SEARCH_PAGE + 0xB;
-    public static final int SEARCH_STATUS = SEARCH_PAGE + 0xC;
-    public static final int SEARCH_RESPONSE = SEARCH_PAGE + 0xD;
-    public static final int SEARCH_RESULT = SEARCH_PAGE + 0xE;
-    public static final int SEARCH_PROPERTIES = SEARCH_PAGE + 0xF;
-    public static final int SEARCH_TOTAL = SEARCH_PAGE + 0x10;
-    public static final int SEARCH_EQUAL_TO = SEARCH_PAGE + 0x11;
-    public static final int SEARCH_VALUE = SEARCH_PAGE + 0x12;
-    public static final int SEARCH_AND = SEARCH_PAGE + 0x13;
-    public static final int SEARCH_OR = SEARCH_PAGE + 0x14;
-    public static final int SEARCH_FREE_TEXT = SEARCH_PAGE + 0x15;
-    public static final int SEARCH_SUBSTRING_OP = SEARCH_PAGE + 0x16;
-    public static final int SEARCH_DEEP_TRAVERSAL = SEARCH_PAGE + 0x17;
-    public static final int SEARCH_LONG_ID = SEARCH_PAGE + 0x18;
-    public static final int SEARCH_REBUILD_RESULTS = SEARCH_PAGE + 0x19;
-    public static final int SEARCH_LESS_THAN = SEARCH_PAGE + 0x1A;
-    public static final int SEARCH_GREATER_THAN = SEARCH_PAGE + 0x1B;
-    public static final int SEARCH_SCHEMA = SEARCH_PAGE + 0x1C;
-    public static final int SEARCH_SUPPORTED = SEARCH_PAGE + 0x1D;
-
-    public static final int GAL_PAGE = GAL << PAGE_SHIFT;
-    public static final int GAL_DISPLAY_NAME = GAL_PAGE + 5;
-    public static final int GAL_PHONE = GAL_PAGE + 6;
-    public static final int GAL_OFFICE = GAL_PAGE + 7;
-    public static final int GAL_TITLE = GAL_PAGE + 8;
-    public static final int GAL_COMPANY = GAL_PAGE + 9;
-    public static final int GAL_ALIAS = GAL_PAGE + 0xA;
-    public static final int GAL_FIRST_NAME = GAL_PAGE + 0xB;
-    public static final int GAL_LAST_NAME = GAL_PAGE + 0xC;
-    public static final int GAL_HOME_PHONE = GAL_PAGE + 0xD;
-    public static final int GAL_MOBILE_PHONE = GAL_PAGE + 0xE;
-    public static final int GAL_EMAIL_ADDRESS = GAL_PAGE + 0xF;
-
+    // Provision code page 14
     public static final int PROVISION_PAGE = PROVISION << PAGE_SHIFT;
     // EAS 2.5
     public static final int PROVISION_PROVISION = PROVISION_PAGE + 5;
@@ -437,6 +462,7 @@ public class Tags {
     public static final int PROVISION_ALPHA_DEVICE_PASSWORD_ENABLED = PROVISION_PAGE + 0xF;
     public static final int PROVISION_DEVICE_ENCRYPTION_ENABLED = PROVISION_PAGE + 0x10;
     public static final int PROVISION_PASSWORD_RECOVERY_ENABLED = PROVISION_PAGE + 0x11;
+    // There is no tag for 0x12 in spec v14.0
     public static final int PROVISION_ATTACHMENTS_ENABLED = PROVISION_PAGE + 0x13;
     public static final int PROVISION_MIN_DEVICE_PASSWORD_LENGTH = PROVISION_PAGE + 0x14;
     public static final int PROVISION_MAX_INACTIVITY_TIME_DEVICE_LOCK = PROVISION_PAGE + 0x15;
@@ -446,7 +472,6 @@ public class Tags {
     public static final int PROVISION_DEVICE_PASSWORD_EXPIRATION = PROVISION_PAGE + 0x19;
     public static final int PROVISION_DEVICE_PASSWORD_HISTORY = PROVISION_PAGE + 0x1A;
     public static final int PROVISION_MAX_SUPPORTED_TAG = PROVISION_DEVICE_PASSWORD_HISTORY;
-
     // EAS 12.1
     public static final int PROVISION_ALLOW_STORAGE_CARD = PROVISION_PAGE + 0x1B;
     public static final int PROVISION_ALLOW_CAMERA = PROVISION_PAGE + 0x1C;
@@ -481,12 +506,66 @@ public class Tags {
     public static final int PROVISION_APPROVED_APPLICATION_LIST = PROVISION_PAGE + 0x39;
     public static final int PROVISION_HASH = PROVISION_PAGE + 0x3A;
 
+    // Search code page 15
+    public static final int SEARCH_PAGE = SEARCH << PAGE_SHIFT;
+    public static final int SEARCH_SEARCH = SEARCH_PAGE + 5;
+    public static final int SEARCH_STORES = SEARCH_PAGE + 6;
+    public static final int SEARCH_STORE = SEARCH_PAGE + 7;
+    public static final int SEARCH_NAME = SEARCH_PAGE + 8;
+    public static final int SEARCH_QUERY = SEARCH_PAGE + 9;
+    public static final int SEARCH_OPTIONS = SEARCH_PAGE + 0xA;
+    public static final int SEARCH_RANGE = SEARCH_PAGE + 0xB;
+    public static final int SEARCH_STATUS = SEARCH_PAGE + 0xC;
+    public static final int SEARCH_RESPONSE = SEARCH_PAGE + 0xD;
+    public static final int SEARCH_RESULT = SEARCH_PAGE + 0xE;
+    public static final int SEARCH_PROPERTIES = SEARCH_PAGE + 0xF;
+    public static final int SEARCH_TOTAL = SEARCH_PAGE + 0x10;
+    public static final int SEARCH_EQUAL_TO = SEARCH_PAGE + 0x11;
+    public static final int SEARCH_VALUE = SEARCH_PAGE + 0x12;
+    public static final int SEARCH_AND = SEARCH_PAGE + 0x13;
+    public static final int SEARCH_OR = SEARCH_PAGE + 0x14;
+    public static final int SEARCH_FREE_TEXT = SEARCH_PAGE + 0x15;
+    public static final int SEARCH_SUBSTRING_OP = SEARCH_PAGE + 0x16;
+    public static final int SEARCH_DEEP_TRAVERSAL = SEARCH_PAGE + 0x17;
+    public static final int SEARCH_LONG_ID = SEARCH_PAGE + 0x18;
+    public static final int SEARCH_REBUILD_RESULTS = SEARCH_PAGE + 0x19;
+    public static final int SEARCH_LESS_THAN = SEARCH_PAGE + 0x1A;
+    public static final int SEARCH_GREATER_THAN = SEARCH_PAGE + 0x1B;
+    // 0x1C SEARCH_SCHEMA unused in spec v14.0
+    public static final int SEARCH_SCHEMA = SEARCH_PAGE + 0x1C;
+    // 0x1D SEARCH_SUPPORTED unused in spec v14.0
+    public static final int SEARCH_SUPPORTED = SEARCH_PAGE + 0x1D;
+    public static final int SEARCH_USER_NAME = SEARCH_PAGE + 0x1E;
+    public static final int SEARCH_PASSWORD = SEARCH_PAGE + 0x1F;
+    public static final int SEARCH_CONVERSATION_ID = SEARCH_PAGE + 0x20;
+    public static final int SEARCH_PICTURE = SEARCH_PAGE + 0x21;
+    public static final int SEARCH_MAX_SIZE = SEARCH_PAGE + 0x22;
+    public static final int SEARCH_MAX_PICTURES = SEARCH_PAGE + 0x23;
+
+    // GAL code page 16
+    public static final int GAL_PAGE = GAL << PAGE_SHIFT;
+    public static final int GAL_DISPLAY_NAME = GAL_PAGE + 5;
+    public static final int GAL_PHONE = GAL_PAGE + 6;
+    public static final int GAL_OFFICE = GAL_PAGE + 7;
+    public static final int GAL_TITLE = GAL_PAGE + 8;
+    public static final int GAL_COMPANY = GAL_PAGE + 9;
+    public static final int GAL_ALIAS = GAL_PAGE + 0xA;
+    public static final int GAL_FIRST_NAME = GAL_PAGE + 0xB;
+    public static final int GAL_LAST_NAME = GAL_PAGE + 0xC;
+    public static final int GAL_HOME_PHONE = GAL_PAGE + 0xD;
+    public static final int GAL_MOBILE_PHONE = GAL_PAGE + 0xE;
+    public static final int GAL_EMAIL_ADDRESS = GAL_PAGE + 0xF;
+    public static final int GAL_PICTURE = GAL_PAGE + 0x10;
+    public static final int GAL_STATUS = GAL_PAGE + 0x11;
+    public static final int GAL_DATA = GAL_PAGE + 0x12;
+
+    // AirSyncBase code page 17
     public static final int BASE_PAGE = BASE << PAGE_SHIFT;
     public static final int BASE_BODY_PREFERENCE = BASE_PAGE + 5;
     public static final int BASE_TYPE = BASE_PAGE + 6;
     public static final int BASE_TRUNCATION_SIZE = BASE_PAGE + 7;
     public static final int BASE_ALL_OR_NONE = BASE_PAGE + 8;
-    public static final int BASE_RESERVED = BASE_PAGE + 9;
+    // There is no tag for 0x09 in spec v14.0
     public static final int BASE_BODY = BASE_PAGE + 0xA;
     public static final int BASE_DATA = BASE_PAGE + 0xB;
     public static final int BASE_ESTIMATED_DATA_SIZE = BASE_PAGE + 0xC;
@@ -501,7 +580,12 @@ public class Tags {
     public static final int BASE_IS_INLINE = BASE_PAGE + 0x15;
     public static final int BASE_NATIVE_BODY_TYPE = BASE_PAGE + 0x16;
     public static final int BASE_CONTENT_TYPE = BASE_PAGE + 0x17;
+    public static final int BASE_PREVIEW = BASE_PAGE + 0x18;
+    public static final int BASE_BODY_PART_PREFERENCE = BASE_PAGE + 0x19;
+    public static final int BASE_BODY_PART = BASE_PAGE + 0x1A;
+    public static final int BASE_STATUS = BASE_PAGE + 0x1B;
 
+    // Settings code page 18
     public static final int SETTINGS_PAGE = SETTINGS << PAGE_SHIFT;
     public static final int SETTINGS_SETTINGS = SETTINGS_PAGE + 5;
     public static final int SETTINGS_STATUS = SETTINGS_PAGE + 6;
@@ -533,7 +617,28 @@ public class Tags {
     public static final int SETTINGS_USER_AGENT = SETTINGS_PAGE + 0x20;
     public static final int SETTINGS_ENABLE_OUTGOING_SMS = SETTINGS_PAGE + 0x21;
     public static final int SETTINGS_MOBILE_OPERATOR = SETTINGS_PAGE + 0x22;
+    public static final int SETTINGS_PRIMARY_SMTP_ADDRESS = SETTINGS_PAGE + 0x23;
+    public static final int SETTINGS_ACCOUNTS = SETTINGS_PAGE + 0x24;
+    public static final int SETTINGS_ACCOUNT = SETTINGS_PAGE + 0x25;
+    public static final int SETTINGS_ACCOUNT_ID = SETTINGS_PAGE + 0x26;
+    public static final int SETTINGS_ACCOUNT_NAME = SETTINGS_PAGE + 0x27;
+    public static final int SETTINGS_USER_DISPLAY_NAME = SETTINGS_PAGE + 0x28;
+    public static final int SETTINGS_SEND_DISABLED = SETTINGS_PAGE + 0x29;
+    // There is no tag for 0x2A in spec v14.0
+    public static final int SETTINGS_RIGHTS_MANAGEMENT_INFORMATION = SETTINGS_PAGE + 0x2B;
 
+    // DocumentLibrary code page 19
+    public static final int DOCS_PAGE = DOCS << PAGE_SHIFT;
+    public static final int DOCS_LINK_ID = DOCS_PAGE + 5;
+    public static final int DOCS_DISPLAY_NAME = DOCS_PAGE + 6;
+    public static final int DOCS_IS_FOLDER = DOCS_PAGE + 7;
+    public static final int DOCS_CREATION_DATE = DOCS_PAGE + 8;
+    public static final int DOCS_LAST_MODIFIED_DATE = DOCS_PAGE + 9;
+    public static final int DOCS_IS_HIDDEN = DOCS_PAGE + 0xA;
+    public static final int DOCS_CONTENT_LENGTH = DOCS_PAGE + 0xB;
+    public static final int DOCS_CONTENT_TYPE = DOCS_PAGE + 0xC;
+
+    // ItemOperations code page 20
     public static final int ITEMS_PAGE = ITEMS << PAGE_SHIFT;
     public static final int ITEMS_ITEMS = ITEMS_PAGE + 5;
     public static final int ITEMS_FETCH = ITEMS_PAGE + 6;
@@ -557,13 +662,14 @@ public class Tags {
     public static final int ITEMS_CONVERSATION_ID = ITEMS_PAGE + 0x18;
     public static final int ITEMS_MOVE_ALWAYS = ITEMS_PAGE + 0x19;
 
+    // ComposeMail code page 21
     public static final int COMPOSE_PAGE = COMPOSE << PAGE_SHIFT;
     public static final int COMPOSE_SEND_MAIL = COMPOSE_PAGE + 5;
     public static final int COMPOSE_SMART_FORWARD = COMPOSE_PAGE + 6;
     public static final int COMPOSE_SMART_REPLY = COMPOSE_PAGE + 7;
     public static final int COMPOSE_SAVE_IN_SENT_ITEMS = COMPOSE_PAGE + 8;
     public static final int COMPOSE_REPLACE_MIME = COMPOSE_PAGE + 9;
-    // There no tag for COMPOSE_PAGE + 0xA
+    // There is no tag for COMPOSE_PAGE + 0xA
     public static final int COMPOSE_SOURCE = COMPOSE_PAGE + 0xB;
     public static final int COMPOSE_FOLDER_ID = COMPOSE_PAGE + 0xC;
     public static final int COMPOSE_ITEM_ID = COMPOSE_PAGE + 0xD;
@@ -574,6 +680,7 @@ public class Tags {
     public static final int COMPOSE_STATUS = COMPOSE_PAGE + 0x12;
     public static final int COMPOSE_ACCOUNT_ID = COMPOSE_PAGE + 0x13;
 
+    // Email2 code page 22
     public static final int EMAIL2_PAGE = EMAIL2 << PAGE_SHIFT;
     public static final int EMAIL2_UM_CALLER_ID = EMAIL2_PAGE + 5;
     public static final int EMAIL2_UM_USER_NOTES = EMAIL2_PAGE + 6;
@@ -591,6 +698,15 @@ public class Tags {
     public static final int EMAIL2_FIRST_DAY_OF_WEEK = EMAIL2_PAGE + 0x12;
     public static final int EMAIL2_MEETING_MESSAGE_TYPE = EMAIL2_PAGE + 0x13;
 
+    // Notes code page 23
+    public static final int NOTES_PAGE = NOTES << PAGE_SHIFT;
+    public static final int NOTES_SUBJECT = NOTES_PAGE + 5;
+    public static final int NOTES_MESSAGE_CLASS = NOTES_PAGE + 6;
+    public static final int NOTES_LAST_MODIFIED_DATE = NOTES_PAGE + 7;
+    public static final int NOTES_CATEGORIES = NOTES_PAGE + 8;
+    public static final int NOTES_CATEGORY = NOTES_PAGE + 9;
+
+    // RightsManagement code page 24
     public static final int RIGHTS_PAGE = RIGHTS << PAGE_SHIFT;
     public static final int RIGHTS_SUPPORT = RIGHTS_PAGE + 5;
     public static final int RIGHTS_TEMPLATES = RIGHTS_PAGE + 6;
@@ -620,7 +736,7 @@ public class Tags {
             "MoreAvailable", "WindowSize", "Commands", "Options", "FilterType", "Truncation",
             "RTFTruncation", "Conflict", "Collections", "ApplicationData", "DeletesAsMoves",
             "NotifyGUID", "Supported", "SoftDelete", "MIMESupport", "MIMETruncation", "Wait",
-            "Limit", "Partial"
+            "Limit", "Partial", "ConversationMode", "MaxItems", "HeartbeatInterval"
         },
         {
             // 0x01 Contacts
@@ -637,7 +753,7 @@ public class Tags {
             "OfficeLocation", "OtherAddressCity", "OtherAddressCountry",
             "OtherAddressPostalCode", "OtherAddressState", "OtherAddressStreet", "PagerNumber",
             "RadioTelephoneNumber", "Spouse", "Suffix", "Title", "Webpage", "YomiCompanyName",
-            "YomiFirstName", "YomiLastName", "CompressedRTF", "Picture"
+            "YomiFirstName", "YomiLastName", "CompressedRTF", "Picture", "Alias", "WeightedRank"
         },
         {
             // 0x02 Email
@@ -693,7 +809,8 @@ public class Tags {
         {
             // 0x08 MeetingResponse
             "CalId", "CollectionId", "MeetingResponse", "ReqId", "Request",
-            "MeetingResponseResult", "MeetingResponseStatus", "UserResponse", "Version"
+            "MeetingResponseResult", "MeetingResponseStatus", "UserResponse", "Version",
+            "InstanceId"
         },
         {
             // 0x09 Tasks
@@ -703,13 +820,21 @@ public class Tags {
             "RecurrenceInterval", "RecurrenceDOM", "RecurrenceDOW", "RecurrenceWOM",
             "RecurrenceMOY", "RecurrenceRegenerate", "RecurrenceDeadOccur", "ReminderSet",
             "ReminderTime", "TasksSensitivity", "StartDate", "UTCStartDate", "TasksSubject",
-            "TasksCompressedRTF", "OrdinalDate", "SubordinalDate"
+            "TasksCompressedRTF", "OrdinalDate", "SubordinalDate", "TasksCalendarType",
+            "TasksIsLeapMonth", "TasksFirstDayOfWeek"
         },
         {
             // 0x0A ResolveRecipients
+            "ResolveRecipients", "Response", "Status", "Type", "Recipient", "DisplayName",
+            "EmailAddress", "Certificates", "Certificate", "MiniCertificate", "Options", "To",
+            "CertificateRetrieval", "RecipientCount", "MaxCertificates", "MaxAmbiguousRecipients",
+            "CertificateCount", "Availability", "StartTime", "EndTime", "MergedFreeBusy",
+            "Picture", "MaxSize", "Data", "MaxPictures"
         },
         {
             // 0x0B ValidateCert
+            "ValidateCert", "Certificates", "Certificate", "CertificateChain", "CheckCRL",
+            "Status"
         },
         {
             // 0x0C Contacts2
@@ -749,12 +874,14 @@ public class Tags {
             "SearchOptions", "Range", "SearchStatus", "Response", "Result",
             "Properties", "Total", "EqualTo", "Value", "And",
             "Or", "FreeText", "SubstringOp", "DeepTraversal", "LongId",
-            "RebuildResults", "LessThan", "GreateerThan", "Schema", "SearchSupported"
+            "RebuildResults", "LessThan", "GreaterThan", "Schema", "SearchSupported", "UserName",
+            "Password", "ConversationId", "Picture", "MaxSize", "MaxPictures"
         },
         {
             // 0x10 Gal
             "GalDisplayName", "GalPhone", "GalOffice", "GalTitle", "GalCompany", "GalAlias",
-            "GalFirstName", "GalLastName", "GalHomePhone", "GalMobilePhone", "GalEmailAddress"
+            "GalFirstName", "GalLastName", "GalHomePhone", "GalMobilePhone", "GalEmailAddress",
+            "GalPicture", "GalStatus", "GalData"
         },
         {
             // 0x11 AirSyncBase
@@ -762,7 +889,7 @@ public class Tags {
             "--unused1--", "BaseBody", "BaseData", "BaseEstimatedDataSize", "BaseTruncated",
             "BaseAttachments", "BaseAttachment", "BaseDisplayName", "FileReference", "BaseMethod",
             "BaseContentId", "BaseContentLocation", "BaseIsInline", "BaseNativeBodyType",
-            "BaseContentType"
+            "BaseContentType", "BasePreview", "BodyPartPreference", "BodyPart", "BaseStatus"
         },
         {
             // 0x12 Settings
@@ -771,10 +898,14 @@ public class Tags {
             "AppliesToExternalUnknown", "Enabled", "ReplyMessage", "BodyType", "DevicePassword",
             "Password", "DeviceInformation", "Model", "IMEI", "FriendlyName", "OS", "OSLanguage",
             "PhoneNumber", "UserInformation", "EmailAddress", "StmpAddress", "UserAgent",
-            "EnableOutboundSMS", "MobileOperator"
+            "EnableOutboundSMS", "MobileOperator", "PrimarySmtpAddress", "Accounts", "Account",
+            "AccountsId", "AccountName", "UserDisplayName", "SendDisabled", "--unused3--",
+            "RightsManagementInformation"
         },
         {
             // 0x13 DocumentLibrary
+            "LinkId", "DisplayName", "IsFolder", "CreationDate", "LastModifiedDate", "IsHidden",
+            "ContentLength", "ContentType"
         },
         {
             // 0x14 ItemOperations
@@ -800,6 +931,7 @@ public class Tags {
         },
         {
             // 0x17 Notes
+            "Subject", "MessageClass", "LastModifiedDate", "Categories", "Category"
         },
         {
             // 0x18 Rights Management
