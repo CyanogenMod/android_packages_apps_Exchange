@@ -527,12 +527,12 @@ public class ContactsSyncParser extends AbstractSyncParser {
         // Execute these all at once...
         ops.execute(mContext);
 
-        if (ops.mResults != null) {
-            ContentValues cv = new ContentValues();
+        if (ops.mResults != null && ops.mResults.length > 0) {
+            final ContentValues cv = new ContentValues();
             cv.put(RawContacts.DIRTY, 0);
             for (int i = 0; i < ops.mContactIndexCount; i++) {
-                int index = ops.mContactIndexArray[i];
-                Uri u = ops.mResults[index].uri;
+                final int index = ops.mContactIndexArray[i];
+                final Uri u = index < ops.mResults.length ? ops.mResults[index].uri : null;
                 if (u != null) {
                     String idString = u.getLastPathSegment();
                     mContentResolver.update(
