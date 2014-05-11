@@ -22,7 +22,10 @@ import android.test.MoreAsserts;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /** You can run this entire test case with:
  *   runtest -c com.android.exchange.adapter.SerializerTests exchange
@@ -92,5 +95,13 @@ public class SerializerTests extends AndroidTestCase {
          };
         // Make sure we get what's expected
         MoreAsserts.assertEquals("Serializer mismatch", bytes, expectedBytes);
+    }
+
+    @SmallTest
+    public void testWriteInteger() throws IOException {
+        OutputStream output = new ByteArrayOutputStream();
+        Serializer.writeInteger(output, 384);
+        Serializer.writeInteger(output, 0);
+        Serializer.writeInteger(output, -1);
     }
 }

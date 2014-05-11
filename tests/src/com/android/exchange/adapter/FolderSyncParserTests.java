@@ -170,7 +170,7 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
         private void initTagMap() {
             mTagMap = new HashMap<String, Integer>();
             int pageNum = 0;
-            for (String[] page: Tags.pages) {
+            for (String[] page: Tags.mPages) {
                 int tagNum = 5;
                 for (String tag: page) {
                     if (mTagMap.containsKey(tag)) {

@@ -514,9 +514,9 @@ public class EasOutboxSync extends EasOperation {
             s.start(Tags.COMPOSE_MIME);
             // Send opaque data from the file stream
             if (withData) {
-                s.opaque(mFileStream, (int)mFileLength);
+                s.opaque(mFileStream, (int) mFileLength);
             } else {
-                s.opaqueWithoutData((int)mFileLength);
+                s.writeOpaqueHeader((int) mFileLength);
             }
             // And we're done
             s.end().end().done();

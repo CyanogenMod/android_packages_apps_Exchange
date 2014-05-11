@@ -59,6 +59,7 @@ public class Tags {
     // Shift applied to page numbers to generate tag
     public static final int PAGE_SHIFT = 6;
     public static final int PAGE_MASK = 0x3F;  // 6 bits
+    public static final int TAG_BASE = 5;
 
     // AirSync code page 0
     public static final int SYNC_PAGE = 0 << PAGE_SHIFT;
@@ -729,7 +730,24 @@ public class Tags {
     public static final int RIGHTS_CONTENT_OWNER = RIGHTS_PAGE + 0x17;
     public static final int RIGHTS_REMOVE_RM_DISTRIBUTION = RIGHTS_PAGE + 0x18;
 
-    static public String[][] pages = {
+    public static boolean isValidPage(final int page) {
+        return page >= 0 && page < mPages.length;
+    }
+
+    public static boolean isValidTag(final int page, final int tag) {
+        final int tagIndex = tag - TAG_BASE;
+        return isValidPage(page) && tagIndex >= 0 && tagIndex < mPages[page].length;
+    }
+
+    public static boolean isGlobalTag(final int tag) {
+        return tag >= 0 && tag < TAG_BASE;
+    }
+
+    public static String getTagName(final int page, final int tag) {
+        return mPages[page][tag - TAG_BASE];
+    }
+
+    static final String[][] mPages = {
         {    // 0x00 AirSync
             "Sync", "Responses", "Add", "Change", "Delete", "Fetch", "SyncKey", "ClientId",
             "ServerId", "Status", "Collection", "Class", "Version", "CollectionId", "GetChanges",

@@ -24,6 +24,7 @@
 package com.android.exchange.adapter;
 
 import android.content.ContentValues;
+import android.text.TextUtils;
 
 import com.android.exchange.Eas;
 import com.android.exchange.utility.FileLogger;
@@ -34,6 +35,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Deque;
 
 public class Serializer {
     private static final String TAG = Eas.LOG_TAG;
@@ -42,10 +46,9 @@ public class Serializer {
 
     private final OutputStream mOutput;
     private int mPendingTag = NOT_PENDING;
-    private int mDepth;
-    private String[] mNameStack = new String[20];
+    private final Deque<String> mNameStack = new ArrayDeque<String>();
     private int mTagPage = 0;
-    private boolean mLogging = LogUtils.isLoggable(TAG, LogUtils.VERBOSE);
+    private final boolean mLogging = LogUtils.isLoggable(TAG, LogUtils.VERBOSE);
 
     public Serializer() throws IOException {
         this(new ByteArrayOutputStream(), true);
@@ -67,7 +70,8 @@ public class Serializer {
      * @param _logging whether or not to log our output
      * @throws IOException
      */
-    public Serializer(OutputStream outputStream, boolean startDocument) throws IOException {
+    public Serializer(final OutputStream outputStream, final boolean startDocument)
+            throws IOException {
         super();
         mOutput = outputStream;
         if (startDocument) {
@@ -77,37 +81,47 @@ public class Serializer {
         }
     }
 
-    void log(String str) {
-        int cr = str.indexOf('\n');
-        if (cr > 0) {
-            str = str.substring(0, cr);
+    void log(final String str) {
+        if (!mLogging) {
+            return;
         }
-        LogUtils.v(TAG, "%s", str);
+        final String logStr;
+        final int cr = str.indexOf('\n');
+        if (cr > 0) {
+            logStr = str.substring(0, cr);
+        } else {
+            logStr = str;
+        }
+        final char [] charArray = new char[mNameStack.size() * 2];
+        Arrays.fill(charArray, ' ');
+        final String indent = new String(charArray);
+        LogUtils.v(TAG, "%s%s", indent, logStr);
         if (Eas.FILE_LOG) {
-            FileLogger.log(TAG, str);
+            FileLogger.log(TAG, logStr);
         }
     }
 
     public void done() throws IOException {
-        if (mDepth != 0) {
+        if (mNameStack.size() != 0 || mPendingTag != NOT_PENDING) {
             throw new IOException("Done received with unclosed tags");
         }
         mOutput.flush();
     }
 
-    public void startDocument() throws IOException{
+    public void startDocument() throws IOException {
         mOutput.write(0x03); // version 1.3
         mOutput.write(0x01); // unknown or missing public identifier
         mOutput.write(106);  // UTF-8
         mOutput.write(0);    // 0 length string array
     }
 
-    public void checkPendingTag(boolean degenerated) throws IOException {
-        if (mPendingTag == NOT_PENDING)
+    private void checkPendingTag(final boolean degenerated) throws IOException {
+        if (mPendingTag == NOT_PENDING) {
             return;
+        }
 
-        int page = mPendingTag >> Tags.PAGE_SHIFT;
-        int tag = mPendingTag & Tags.PAGE_MASK;
+        final int page = mPendingTag >> Tags.PAGE_SHIFT;
+        final int tag = mPendingTag & Tags.PAGE_MASK;
         if (page != mTagPage) {
             mTagPage = page;
             mOutput.write(Wbxml.SWITCH_PAGE);
@@ -115,18 +129,24 @@ public class Serializer {
         }
 
         mOutput.write(degenerated ? tag : tag | Wbxml.WITH_CONTENT);
-        if (mLogging) {
-            String name = Tags.pages[page][tag - 5];
-            mNameStack[mDepth] = name;
-            log("<" + name + '>');
+        String name = "unknown";
+        if (!Tags.isValidPage(page)) {
+            log("Unrecognized page " + page);
+        } else if (!Tags.isValidTag(page, tag)) {
+            log("Unknown tag " + tag + " on page " + page);
+        } else {
+            name = Tags.getTagName(page, tag);
+        }
+        log("<" + name + (degenerated ? "/>" : ">"));
+        if (!degenerated) {
+            mNameStack.addFirst(name);
         }
         mPendingTag = NOT_PENDING;
     }
 
-    public Serializer start(int tag) throws IOException {
+    public Serializer start(final int tag) throws IOException {
         checkPendingTag(false);
         mPendingTag = tag;
-        mDepth++;
         return this;
     }
 
@@ -135,97 +155,115 @@ public class Serializer {
             checkPendingTag(true);
         } else {
             mOutput.write(Wbxml.END);
-            if (mLogging) {
-                log("</" + mNameStack[mDepth] + '>');
-            }
+            final String tagName = mNameStack.removeFirst();
+            log("</" + tagName + '>');
         }
-        mDepth--;
         return this;
     }
 
-    public Serializer tag(int t) throws IOException {
-        start(t);
+    public Serializer tag(final int tag) throws IOException {
+        start(tag);
         end();
         return this;
     }
 
-    public Serializer data(int tag, String value) throws IOException {
-        if (value == null) {
-            LogUtils.e(TAG, "Writing null data for tag: " + tag);
-        }
+    /**
+     * Writes <tag>value</tag>. Throws IOException for null strings.
+     */
+    public Serializer data(final int tag, final String value) throws IOException {
         start(tag);
         text(value);
         end();
         return this;
     }
 
-    public Serializer text(String text) throws IOException {
+    /**
+     * Writes out inline string. Throws IOException for null strings.
+     */
+    public Serializer text(final String text) throws IOException {
         if (text == null) {
-            LogUtils.e(TAG, "Writing null text for pending tag: " + mPendingTag);
+            throw new IOException("Null text write for pending tag: " + mPendingTag);
         }
         checkPendingTag(false);
-        mOutput.write(Wbxml.STR_I);
-        writeLiteralString(mOutput, text);
-        if (mLogging) {
-            log(text);
-        }
+        writeInlineString(mOutput, text);
+        log(text);
         return this;
     }
 
-    public Serializer opaque(InputStream is, int length) throws IOException {
-        checkPendingTag(false);
-        mOutput.write(Wbxml.OPAQUE);
-        writeInteger(mOutput, length);
-        if (mLogging) {
-            log("Opaque, length: " + length);
-        }
+    /**
+     * Writes out opaque data blocks. Throws IOException for negative buffer
+     * sizes or if is unable to read sufficient bytes from input stream.
+     */
+    public Serializer opaque(final InputStream is, final int length) throws IOException {
+        writeOpaqueHeader(length);
+        log("opaque: " + length);
         // Now write out the opaque data in batches
-        byte[] buffer = new byte[BUFFER_SIZE];
-        while (length > 0) {
-            int bytesRead = is.read(buffer, 0, Math.min(BUFFER_SIZE, length));
+        final byte[] buffer = new byte[BUFFER_SIZE];
+        int totalBytesRead = 0;
+        while (totalBytesRead < length) {
+            final int bytesRead = is.read(buffer, 0, Math.min(BUFFER_SIZE, length));
             if (bytesRead == -1) {
-                break;
+                throw new IOException("Invalid opaque data block; read "
+                        + totalBytesRead + " bytes but expected " + length);
             }
             mOutput.write(buffer, 0, bytesRead);
-            length -= bytesRead;
+            totalBytesRead += bytesRead;
         }
         return this;
     }
 
-    public Serializer opaqueWithoutData(int length) throws IOException {
+    /**
+     * Writes out opaque data header, without the actual opaque data bytes.
+     * Used internally by opaque(), and externally to calculate content length
+     * without having to allocate the memory for the data copy.
+     * Throws IOException if length is negative; is a no-op for length 0.
+     */
+    public Serializer writeOpaqueHeader(final int length) throws IOException {
+        if (length < 0) {
+            throw new IOException("Invalid negative opaque data length " + length);
+        }
+        if (length == 0) {
+            return this;
+        }
         checkPendingTag(false);
         mOutput.write(Wbxml.OPAQUE);
         writeInteger(mOutput, length);
         return this;
     }
 
-    void writeInteger(OutputStream out, int i) throws IOException {
-        byte[] buf = new byte[5];
+    @VisibleForTesting
+    static void writeInteger(final OutputStream out, int i) throws IOException {
+        final byte[] buf = new byte[5];
         int idx = 0;
 
         do {
             buf[idx++] = (byte) (i & 0x7f);
-            i = i >> 7;
+            // Use >>> to shift in 0s so loop terminates
+            i = i >>> 7;
         } while (i != 0);
 
         while (idx > 1) {
             out.write(buf[--idx] | 0x80);
         }
         out.write(buf[0]);
-        if (mLogging) {
-            log(Integer.toString(i));
-        }
     }
 
-    void writeLiteralString(OutputStream out, String s) throws IOException {
-        byte[] data = s.getBytes("UTF-8");
+    private static void writeInlineString(final OutputStream out, final String s)
+        throws IOException {
+        out.write(Wbxml.STR_I);
+        final byte[] data = s.getBytes("UTF-8");
         out.write(data);
         out.write(0);
     }
 
-    public void writeStringValue (ContentValues cv, String key, int tag) throws IOException {
-        String value = cv.getAsString(key);
-        if (value != null && value.length() > 0) {
+    /**
+     * Looks up key in cv; if absent or empty writes out <tag/> otherwise
+     * writes out <tag>value</tag>.
+     */
+    public void writeStringValue (final ContentValues cv, final String key,
+            final int tag) throws IOException {
+        final String value = cv.getAsString(key);
+        if (!TextUtils.isEmpty(value)) {
             data(tag, value);
         } else {
             tag(tag);

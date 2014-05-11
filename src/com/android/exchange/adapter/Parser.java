@@ -68,9 +68,6 @@ public abstract class Parser {
     private static final int NOT_ENDED = Integer.MIN_VALUE;
     private static final int EOF_BYTE = -1;
 
-    // Where tags start in a page
-    private static final int TAG_BASE = 5;
-
     private boolean logging = false;
     private boolean capture = false;
 
@@ -82,50 +79,55 @@ public abstract class Parser {
     // The current tag depth
     private int depth;
 
-    // The current tag table (i.e. the tag table for the current page)
-    private String[] tagTable;
-
-    // An array of tag tables, as defined in EasTags
-    static private String[][] tagTables = new String[Tags.pages.length + 1][];
-
     // The stack of names of tags being processed; used when debug = true
     private String[] nameArray = new String[32];
 
     public class Tag {
-        public int index;
+        private final int mPage;
+        private final int mIndex;
         // Whether the tag is associated with content (a value)
-        public boolean noContent;
-        public String name;
+        public final boolean mNoContent;
+        private final String mName;
 
-        public Tag(int id) {
+        public Tag(final int page, final int id) {
+            mPage = page;
             // The tag is in the low 6 bits
-            index = id & Tags.PAGE_MASK;
+            mIndex = id & Tags.PAGE_MASK;
             // If the high bit is set, there is content (a value) to be read
-            noContent = (id & Wbxml.WITH_CONTENT) == 0;
-            if (index < TAG_BASE) {
-                name = "unsupported-WBXML";
-            } else if (tagTable == null || index - TAG_BASE >= tagTable.length) {
-                name = "unknown";
+            mNoContent = (id & Wbxml.WITH_CONTENT) == 0;
+            if (Tags.isGlobalTag(mIndex)) {
+                mName = "unsupported-WBXML";
+            } else if (!Tags.isValidTag(mPage, mIndex)) {
+                mName = "unknown";
             } else {
-                name = tagTable[index - TAG_BASE];
+                mName = Tags.getTagName(mPage, mIndex);
             }
+        }
+
+        public int getTagNum() {
+            return (mPage << Tags.PAGE_SHIFT) | mIndex;
+        }
+
+        @Override
+        public String toString() {
+            return mName;
         }
     }
 
     // The stack of tags being processed
-    private Deque<Tag> startTagArray = new ArrayDeque<Tag>();
+    private final Deque<Tag> startTagArray = new ArrayDeque<Tag>();
 
     private Tag startTag;
 
-    private Tag endTag;
-
-    // The type of the last token read
+    // The type of the last token read (eg, TEXT, OPAQUE, END, etc).
     private int type;
 
-    // The current page
+    // The current page. As of EAS 14.1, this is a value 0-24.
     private int page;
 
-    // The current tag
+    // The current tag. The low order 6 bits contain the tag index and the
+    // higher order bits the page number. The format matches that used for
+    // the tag enums defined in Tags.java.
     public int tag;
 
     // Whether the current tag is associated with content (a value)
@@ -165,7 +167,7 @@ public abstract class Parser {
             super("WBXML format error");
         }
 
-        EasParserException(String reason) {
+        EasParserException(final String reason) {
             super(reason);
         }
     }
@@ -174,21 +176,7 @@ public abstract class Parser {
         return false;
     }
 
-    /**
-     * Initialize the tag tables; they are constant
-     *
-     */
-    {
-        String[][] pages = Tags.pages;
-        for (int i = 0; i < pages.length; i++) {
-            String[] page = pages[i];
-            if (page.length > 0) {
-                tagTables[i] = page;
-            }
-        }
-    }
-
-    public Parser(InputStream in) throws IOException {
+    public Parser(final InputStream in) throws IOException {
         setInput(in, true);
         logging = Eas.PARSER_LOG;
     }
@@ -198,7 +186,7 @@ public abstract class Parser {
      * @param parser an existing, initialized parser
      * @throws IOException
      */
-    public Parser(Parser parser) throws IOException {
+    public Parser(final Parser parser) throws IOException {
         setInput(parser.in, false);
         logging = Eas.PARSER_LOG;
     }
@@ -210,7 +198,7 @@ public abstract class Parser {
      * @param val the desired state for debug output
      */
     @VisibleForTesting
-    public void setDebug(boolean val) {
+    public void setDebug(final boolean val) {
         logging = val;
     }
 
@@ -230,9 +218,10 @@ public abstract class Parser {
     /**
      * Turns off data capture; writes the captured data to a specified file.
      */
-    public void captureOff(Context context, String file) {
+    public void captureOff(final Context context, final String file) {
         try {
-            FileOutputStream out = context.openFileOutput(file, Context.MODE_WORLD_WRITEABLE);
+            final FileOutputStream out = context.openFileOutput(file,
+                    Context.MODE_WORLD_WRITEABLE);
             out.write(captureArray.toString().getBytes());
             out.close();
         } catch (FileNotFoundException e) {
@@ -251,7 +240,7 @@ public abstract class Parser {
      * @throws IOException
      */
     public byte[] getValueBytes() throws IOException {
-        final String name = startTag.name;
+        final String name = startTag.toString();
 
         getNext();
         // This means there was no value given, just <Foo/>; we'll return empty array
@@ -281,7 +270,7 @@ public abstract class Parser {
      * @throws IOException
      */
     public String getValue() throws IOException {
-        final String name = startTag.name;
+        final String name = startTag.toString();
 
         getNext();
         // This means there was no value given, just <Foo/>; we'll return empty string for now
@@ -312,17 +301,16 @@ public abstract class Parser {
      * @throws IOException
      */
     public int getValueInt() throws IOException {
-        String val = getValue();
+        final String val = getValue();
         if (val.length() == 0) {
             return 0;
         }
 
-        final String name = startTag.name;
         int num;
         try {
             num = Integer.parseInt(val);
         } catch (NumberFormatException e) {
-            throw new EasParserException("Tag " + name + ": " + e.getMessage());
+            throw new EasParserException("Tag " + startTag + ": " + e.getMessage());
         }
         return num;
     }
@@ -338,21 +326,19 @@ public abstract class Parser {
      * @return the next tag found
      * @throws IOException
      */
-    public int nextTag(int endingTag) throws IOException {
-        // Lose the page information
-        final int endTagIndex = endingTag & Tags.PAGE_MASK;
+    public int nextTag(final int endingTag) throws IOException {
         while (getNext() != DONE) {
             // If we're a start, set tag to include the page and return it
             if (type == START) {
-                tag = page | startTag.index;
+                tag = startTag.getTagNum();
                 return tag;
             // If we're at the ending tag we're looking for, return the END signal
-            } else if (type == END && startTag.index == endTagIndex) {
+            } else if (type == END && startTag.getTagNum() == endingTag) {
                 return END;
             }
         }
         // We're at end of document here.  If we're looking for it, return END_DOCUMENT
-        if (endTagIndex == START_DOCUMENT) {
+        if (endingTag == START_DOCUMENT) {
             return END_DOCUMENT;
         }
         // Otherwise, we've prematurely hit end of document, so exception out
@@ -368,10 +354,10 @@ public abstract class Parser {
      * @throws IOException
      */
     public void skipTag() throws IOException {
-        int thisTag = startTag.index;
+        final int thisTag = startTag.getTagNum();
         // Just loop until we hit the end of the current tag
         while (getNext() != DONE) {
-            if (type == END && startTag.index == thisTag) {
+            if (type == END && startTag.getTagNum() == thisTag) {
                 return;
             }
         }
@@ -388,15 +374,12 @@ public abstract class Parser {
      * @param in the InputStream associated with this parser
      * @throws IOException
      */
-    public void setInput(InputStream in, boolean initialize) throws IOException {
+    public void setInput(final InputStream in, final boolean initialize) throws IOException {
         this.in = in;
         if ((in != null) && initialize) {
             // If we fail on the very first byte, report an empty stream
             try {
                 final int version = readByte(); // version
-                if (version > 3) {
-                    log("WBXML version " + version + " is newer than supported version 3");
-                }
             } catch (EofException e) {
                 throw new EmptyStreamException();
             }
@@ -407,11 +390,10 @@ public abstract class Parser {
                 throw new EasParserException("WBXML string table unsupported");
             }
         }
-        tagTable = tagTables[0];
     }
 
     @VisibleForTesting
-    void resetInput(InputStream in) {
+    void resetInput(final InputStream in) {
         this.in = in;
         try {
             // Read leading zero
@@ -420,20 +402,23 @@ public abstract class Parser {
         }
     }
 
-    void log(String str) {
+    void log(final String str) {
         if (!logging) {
             return;
         }
+        final String logStr;
         int cr = str.indexOf('\n');
         if (cr > 0) {
-            str = str.substring(0, cr);
+            logStr = str.substring(0, cr);
+        } else {
+            logStr = str;
         }
         final char [] charArray = new char[startTagArray.size() * 2];
         Arrays.fill(charArray, ' ');
         final String indent = new String(charArray);
-        LogUtils.v(LOG_TAG, indent + str);
+        LogUtils.v(LOG_TAG, "%s", indent + logStr);
         if (Eas.FILE_LOG) {
-            FileLogger.log(LOG_TAG, str);
+            FileLogger.log(LOG_TAG, logStr);
         }
     }
 
@@ -443,22 +428,21 @@ public abstract class Parser {
         }
     }
 
-    protected void pushTag(int id) {
-        page = id >> Tags.PAGE_SHIFT;
-        tagTable = tagTables[page];
+    protected void pushTag(final int id) {
+        page = id >>> Tags.PAGE_SHIFT;
         push(id);
     }
 
     private void pop() {
         // Retrieve the now-current startTag from our stack
         startTag = startTagArray.removeFirst();
-        log("</" + startTag.name + '>');
+        log("</" + startTag + '>');
     }
 
-    private void push(int id) {
-        startTag = new Tag(id);
-        noContent = startTag.noContent;
-        log("<" + startTag.name + (startTag.noContent ? '/' : "") + '>');
+    private void push(final int id) {
+        startTag = new Tag(page, id);
+        noContent = startTag.mNoContent;
+        log("<" + startTag + (noContent ? '/' : "") + '>');
         // Save the startTag to our stack
         startTagArray.addFirst(startTag);
     }
@@ -485,18 +469,14 @@ public abstract class Parser {
         int id = read();
         while (id == Wbxml.SWITCH_PAGE) {
             // Get the new page number
-            int pg = readByte();
-            // Save the shifted page to add into the startTag in nextTag
-            page = pg << Tags.PAGE_SHIFT;
+            page = readByte();
             // Retrieve the current tag table
-            if (pg >= tagTables.length) {
+            if (!Tags.isValidPage(page)) {
                 // Unknown code page. These seem to happen mostly because of
                 // invalid data from the server so throw an exception here.
-                throw new EasParserException("Unknown code page " + pg);
-            } else {
-                tagTable = tagTables[pg];
+                throw new EasParserException("Unknown code page " + page);
             }
-            logVerbose((tagTable == null ? "Unknown " : "") + "Page: " + page);
+            logVerbose("Page: " + page);
             id = read();
         }
 
@@ -515,22 +495,22 @@ public abstract class Parser {
                 // Inline string
                 type = TEXT;
                 text = readInlineString();
-                log(startTag.name + ": " + text);
+                log(startTag + ": " + text);
                 break;
 
             case Wbxml.OPAQUE:
                 // Integer length + opaque data
                 type = OPAQUE;
-                int length = readInt();
+                final int length = readInt();
                 bytes = new byte[length];
                 for (int i = 0; i < length; i++) {
                     bytes[i] = (byte)readByte();
                 }
-                log(startTag.name + ": (opaque:" + length + ") ");
+                log(startTag + ": (opaque:" + length + ") ");
                 break;
 
             default:
-                if ((id & Tags.PAGE_MASK) < TAG_BASE) {
+                if (Tags.isGlobalTag(id & Tags.PAGE_MASK)) {
                     throw new EasParserException(String.format(
                                     "Unhandled WBXML global token 0x%02X", id));
                 }
@@ -571,11 +551,21 @@ public abstract class Parser {
         return i;
     }
 
+    /**
+     * Throws EasParserException if detects integer encoded with more than 5
+     * bytes. A uint_32 needs 5 bytes to fully encode 32 bits so if the high
+     * bit is set for more than 4 bytes, something is wrong with the data
+     * stream.
+     */
     private int readInt() throws IOException {
         int result = 0;
         int i;
+        int numBytes = 0;
 
         do {
+            if (++numBytes > 5) {
+                throw new EasParserException("Invalid integer encoding, too many bytes");
+            }
             i = readByte();
             result = (result << 7) | (i & 0x7f);
         } while ((i & 0x80) != 0);
@@ -590,9 +580,9 @@ public abstract class Parser {
      * @throws IOException
      */
     private String readInlineString() throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(256);
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(256);
         while (true) {
-            int i = read();
+            final int i = read();
             if (i == 0) {
                 break;
             } else if (i == EOF_BYTE) {
@@ -601,7 +591,7 @@ public abstract class Parser {
             outputStream.write(i);
         }
         outputStream.flush();
-        String res = outputStream.toString("UTF-8");
+        final String res = outputStream.toString("UTF-8");
         outputStream.close();
         return res;
     }

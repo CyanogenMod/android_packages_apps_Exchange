@@ -109,17 +109,6 @@ public class ParserTest extends AndroidTestCase {
     }
 
     @SmallTest
-    public void testParser() throws Exception {
-        // Test parser with sample valid data
-        final String wbxmlDataStr =
-            "03 01 6A 00 45 5C 4F 50 03 43 6F 6E 74 61 63 74 73 00 01 4B 03 32 00 01 52 03 32 00 01 4E 03 " +
-            "31 00 01 56 47 4D 03 32 3A 31 00 01 5D 00 11 4A 46 03 31 00 01 4C 03 30 00 01 4D 03 31 00 01 " +
-            "01 00 01 5E 03 46 75 6E 6B 2C 20 44 6F 6E 00 01 5F 03 44 6F 6E 00 01 69 03 46 75 6E 6B 00 01 " +
-            "00 11 56 03 31 00 01 01 01 01 01 01 01";
-        testParserHelper(wbxmlDataStr);
-    }
-
-    @SmallTest
     public void testUnsupportedWbxmlTag() throws Exception {
         // Test parser with unsupported Wbxml tag (EXT_2 = 0xC2)
         final String unsupportedWbxmlTag = "03 01 6A 00 45 5F C2 05 11 22 33 44 00 01 01";
@@ -223,6 +212,17 @@ public class ParserTest extends AndroidTestCase {
         try {
             testParserHelper(malformedData);
             fail("Expected EasParserException for improperly escaped text data");
+        } catch (Parser.EasParserException e) {
+            // expected
+        }
+    }
+
+    @SmallTest
+    public void testRunOnInteger() throws Exception {
+        final String runOnIntegerEncoding = "03 01 6A 00 45 4D C3 81 82 83 84 85 06 11 22 33 01 01";
+        try {
+            testParserHelper(runOnIntegerEncoding);
+            fail("Expected EasParserException for improperly encoded integer");
         } catch (Parser.EasParserException e) {
             // expected
         }
