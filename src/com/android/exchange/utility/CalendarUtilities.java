@@ -1938,23 +1938,21 @@ public class CalendarUtilities {
                 Uri ncvUri = ncv.uri;
                 ContentValues ncvValues = ncv.values;
                 if (ncvUri.equals(Attendees.CONTENT_URI)) {
-                    Integer relationship =
+                    final Integer relationship =
                         ncvValues.getAsInteger(Attendees.ATTENDEE_RELATIONSHIP);
+                    final String attendeeEmail =
+                        ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
                     // If there's no relationship, we can't create this for EAS
                     // Similarly, we need an attendee email for each invitee
-                    if (relationship != null &&
-                            ncvValues.containsKey(Attendees.ATTENDEE_EMAIL)) {
+                    if (relationship != null && !TextUtils.isEmpty(attendeeEmail)) {
                         // Organizer isn't among attendees in EAS
                         if (relationship == Attendees.RELATIONSHIP_ORGANIZER) {
                             organizerName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
-                            organizerEmail = ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
+                            organizerEmail = attendeeEmail;
                             continue;
                         }
-                        String attendeeEmail = ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
                         String attendeeName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
 
-                        // This shouldn't be possible, but allow for it
-                        if (attendeeEmail == null) continue;
                         // If we only want to send to the specifiedAttendee, eliminate others here
                         if ((specifiedAttendee != null) &&
                                 !attendeeEmail.equalsIgnoreCase(specifiedAttendee)) {
