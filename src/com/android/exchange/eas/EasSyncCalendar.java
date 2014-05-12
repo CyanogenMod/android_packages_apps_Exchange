@@ -576,13 +576,15 @@ public class EasSyncCalendar extends EasSyncCollectionTypeBase {
             if (ncvUri.equals(Attendees.CONTENT_URI)) {
                 final Integer relationship =
                         ncvValues.getAsInteger(Attendees.ATTENDEE_RELATIONSHIP);
+                final String attendeeEmail =
+                        ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
                 // If there's no relationship, we can't create this for EAS
                 // Similarly, we need an attendee email for each invitee
-                if (relationship != null && ncvValues.containsKey(Attendees.ATTENDEE_EMAIL)) {
+                if (relationship != null && !TextUtils.isEmpty(attendeeEmail)) {
                     // Organizer isn't among attendees in EAS
                     if (relationship == Attendees.RELATIONSHIP_ORGANIZER) {
                         organizerName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
-                        organizerEmail = ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
+                        organizerEmail = attendeeEmail;
                         continue;
                     }
                     if (!hasAttendees) {
@@ -590,8 +592,6 @@ public class EasSyncCalendar extends EasSyncCollectionTypeBase {
                         hasAttendees = true;
                     }
                     s.start(Tags.CALENDAR_ATTENDEE);
-                    final String attendeeEmail =
-                            ncvValues.getAsString(Attendees.ATTENDEE_EMAIL);
                     String attendeeName = ncvValues.getAsString(Attendees.ATTENDEE_NAME);
                     if (attendeeName == null) {
                         attendeeName = attendeeEmail;
