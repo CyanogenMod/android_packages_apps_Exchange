@@ -41,6 +41,7 @@ import com.android.exchange.adapter.Tags;
 import com.android.exchange.service.EasServerConnection;
 import com.android.mail.providers.UIProvider;
 import com.android.mail.utils.LogUtils;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -160,6 +161,11 @@ public abstract class EasOperation {
         }
     }
 
+    @VisibleForTesting
+    public void replaceEasServerConnection(EasServerConnection connection) {
+        mConnection = connection;
+    }
+
     /**
      * Constructor which defers loading of account and connection info.
      * @param context
@@ -228,6 +234,19 @@ public abstract class EasOperation {
             }
         }
         return (mAccount != null);
+    }
+
+    /**
+     * Sets the account. This is for use in cases where the account is not available upon
+     * construction. This will also create the EasServerConnection.
+     * @param account
+     * @param hostAuth
+     */
+    protected void setAccount(final Account account, final HostAuth hostAuth) {
+        mAccount = account;
+        if (mAccount != null) {
+            mConnection = new EasServerConnection(mContext, mAccount, hostAuth);
+        }
     }
 
     public final long getAccountId() {
@@ -466,8 +485,10 @@ public abstract class EasOperation {
         if (requestUri == null) {
             return mConnection.makeOptions();
         }
-        return mConnection.makePost(requestUri, getRequestEntity(),
+
+        HttpUriRequest req = mConnection.makePost(requestUri, getRequestEntity(),
                 getRequestContentType(), addPolicyKeyHeaderToRequest());
+        return req;
     }
 
     /**
@@ -488,7 +509,7 @@ public abstract class EasOperation {
      * Build the {@link HttpEntity} which is used to construct the POST. Typically this function
      * will build the Exchange request using a {@link Serializer} and then call {@link #makeEntity}.
      * If the subclass is not using a POST, then it should override this to return null.
-     * @return The {@link HttpEntity} to pass to {@link EasServerConnection#makePost}.
+     * @return The {@link HttpEntity} to pass to {@link com.android.exchange.service.EasServerConnection#makePost}.
      * @throws IOException
      */
     protected abstract HttpEntity getRequestEntity() throws IOException, MessageInvalidException;

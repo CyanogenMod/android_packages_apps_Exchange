@@ -137,16 +137,12 @@ public class EasServerConnection {
     private EmailClientConnectionManager mClientConnectionManager;
 
     public EasServerConnection(final Context context, final Account account,
-            final HostAuth hostAuth) {
+                               final HostAuth hostAuth) {
         mContext = context;
         mHostAuth = hostAuth;
         mAccount = account;
         mAccountId = account.mId;
         setProtocolVersion(account.mProtocolVersion);
-    }
-
-    public EasServerConnection(final Context context, final Account account) {
-        this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
     }
 
     protected EmailClientConnectionManager getClientConnectionManager()

@@ -31,15 +31,18 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.service.ServiceProxy;
 import com.android.exchange.Eas;
+import com.android.exchange.eas.EasAutoDiscover;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasSearch;
+import com.android.exchange.eas.EasSendMeetingResponse;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashSet;
@@ -123,13 +126,66 @@ public class EasService extends Service {
 
         @Override
         public void sendMeetingResponse(final long messageId, final int response) {
-            LogUtils.d(TAG, "IEmailService.sendMeetingResponse: %d, %d", messageId, response);
+            EmailContent.Message msg = EmailContent.Message.restoreMessageWithId(EasService.this,
+                    messageId);
+            if (msg == null) {
+                LogUtils.e(TAG, "Could not load message %d in sendMeetingResponse", messageId);
+                return;
+            }
+
+            final EasSendMeetingResponse operation = new EasSendMeetingResponse(EasService.this,
+                    msg.mAccountKey, msg, response);
+            doOperation(operation, "IEmailService.sendMeetingResponse");
         }
 
         @Override
         public Bundle autoDiscover(final String username, final String password) {
-            LogUtils.d(TAG, "IEmailService.autoDiscover");
-            return null;
+            final String domain = EasAutoDiscover.getDomain(username);
+            final String uri = EasAutoDiscover.createUri(domain);
+            final Bundle result = autoDiscoverInternal(uri, username, password, true);
+            final int resultCode = result.getInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE);
+            if (resultCode == EasAutoDiscover.RESULT_BAD_RESPONSE) {
+                // Try the alternate uri
+                final String alternateUri = EasAutoDiscover.createAlternateUri(domain);
+                return autoDiscoverInternal(alternateUri, username, password, true);
+            } else {
+                return result;
+            }
+        }
+
+        private Bundle autoDiscoverInternal(final String uri, final String username,
+                                            final String password, final boolean canRetry) {
+            final EasAutoDiscover op = new EasAutoDiscover(EasService.this, uri, username, password);
+            final int result = op.performOperation();
+            if (result == EasAutoDiscover.RESULT_REDIRECT) {
+                // Try again recursively with the new uri. TODO we should limit the number of redirects.
+                final String redirectUri = op.getRedirectUri();
+                return autoDiscoverInternal(redirectUri, username, password, canRetry);
+            } else if (result == EasAutoDiscover.RESULT_SC_UNAUTHORIZED) {
+                if (canRetry && username.contains("@")) {
+                    // Try again using the bare user name
+                    final int atSignIndex = username.indexOf('@');
+                    final String bareUsername = username.substring(0, atSignIndex);
+                    LogUtils.d(TAG, "%d received; trying username: %s", result, atSignIndex);
+                    // Try again recursively, but this time don't allow retries for username.
+                    return autoDiscoverInternal(uri, bareUsername, password, false);
+                } else {
+                    // Either we're already on our second try or the username didn't have an "@"
+                    // to begin with. Either way, failure.
+                    final Bundle bundle = new Bundle(1);
+                    bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                            EasAutoDiscover.RESULT_OTHER_FAILURE);
+                    return bundle;
+                }
+            } else if (result != EasAutoDiscover.RESULT_OK) {
+                // Return failure, we'll try again with an alternate address
+                final Bundle bundle = new Bundle(1);
+                bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                        EasAutoDiscover.RESULT_BAD_RESPONSE);
+                return bundle;
+            }
+            // Success.
+            return op.getResultBundle();
         }
 
         @Override
@@ -140,6 +196,7 @@ public class EasService extends Service {
         @Override
         public void deleteAccountPIMData(final String emailAddress) {
             LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
+            // TODO: remove this, move it completely to Email code.
         }
     };
 

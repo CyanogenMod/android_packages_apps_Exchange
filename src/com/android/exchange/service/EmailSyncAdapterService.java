@@ -52,6 +52,7 @@ import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
@@ -60,9 +61,10 @@ import com.android.emailcommon.service.ServiceProxy;
 import com.android.emailcommon.utility.IntentUtilities;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
-import com.android.exchange.R.drawable;
-import com.android.exchange.R.string;
+import com.android.exchange.R;
 import com.android.exchange.adapter.PingParser;
+import com.android.exchange.eas.EasAutoDiscover;
+import com.android.exchange.eas.EasSendMeetingResponse;
 import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.eas.EasSyncCalendar;
 import com.android.exchange.eas.EasFolderSync;
@@ -395,11 +397,55 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
         @Override
         public Bundle autoDiscover(final String username, final String password) {
-            LogUtils.d(TAG, "IEmailService.autoDiscover");
-            return new EasAutoDiscover(EmailSyncAdapterService.this, username, password)
-                    .doAutodiscover();
+            final String domain = EasAutoDiscover.getDomain(username);
+            final String uri = EasAutoDiscover.createUri(domain);
+            final Bundle result = autoDiscoverInternal(uri, username, password, true);
+            final int resultCode = result.getInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE);
+            if (resultCode == EasAutoDiscover.RESULT_BAD_RESPONSE) {
+                // Try the alternate uri
+                final String alternateUri = EasAutoDiscover.createAlternateUri(domain);
+                return autoDiscoverInternal(alternateUri, username, password, true);
+            } else {
+                return result;
+            }
         }
 
+        private Bundle autoDiscoverInternal(final String uri, final String username,
+                                            final String password, final boolean canRetry) {
+            EasAutoDiscover op = new EasAutoDiscover(EmailSyncAdapterService.this, uri, username, password);
+            final int result = op.performOperation();
+            if (result == EasAutoDiscover.RESULT_REDIRECT) {
+                // Try again recursively with the new uri. TODO we should limit the number of redirects.
+                String redirectUri = op.getRedirectUri();
+                return autoDiscoverInternal(redirectUri, username, password, canRetry);
+            } else if (result == EasAutoDiscover.RESULT_SC_UNAUTHORIZED) {
+                if (canRetry && username.contains("@")) {
+                    // Try again using the bare user name
+                    final int atSignIndex = username.indexOf('@');
+                    final String bareUsername = username.substring(0, atSignIndex);
+                    LogUtils.d(TAG, "%d received; trying username: %s", result, atSignIndex);
+                    // Try again recursively, but this time don't allow retries for username.
+                    return autoDiscoverInternal(uri, bareUsername, password, false);
+                } else {
+                    // Either we're already on our second try or the username didn't have an "@"
+                    // to begin with. Either way, failure.
+                    final Bundle bundle = new Bundle(1);
+                    bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                            EasAutoDiscover.RESULT_OTHER_FAILURE);
+                    return bundle;
+                }
+            } else if (result != EasAutoDiscover.RESULT_OK) {
+                // Return failure, we'll try again with an alternate address
+                final Bundle bundle = new Bundle(1);
+                bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                        EasAutoDiscover.RESULT_BAD_RESPONSE);
+                return bundle;
+
+            } else {
+                // Success.
+                return op.getResultBundle();
+            }
+        }
         @Override
         public void updateFolderList(final long accountId) {
             LogUtils.d(TAG, "IEmailService.updateFolderList: %d", accountId);
@@ -443,8 +489,14 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         @Override
         public void sendMeetingResponse(final long messageId, final int response) {
             LogUtils.d(TAG, "IEmailService.sendMeetingResponse: %d, %d", messageId, response);
-            EasMeetingResponder.sendMeetingResponse(EmailSyncAdapterService.this, messageId,
-                    response);
+            final EmailContent.Message msg = EmailContent.Message.restoreMessageWithId(
+                    EmailSyncAdapterService.this, messageId);
+            final EasOperation op = new EasSendMeetingResponse(EmailSyncAdapterService.this,
+                    msg.mAccountKey, msg, response);
+            final int result = op.performOperation();
+            if (result != EasSendMeetingResponse.RESULT_OK) {
+                LogUtils.w(TAG, "Unexpected result %d from sendMeetingResponse", result);
+            }
         }
 
         /**
@@ -932,10 +984,10 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 0);
 
         final Notification notification = new Builder(this)
-                .setContentTitle(this.getString(string.auth_error_notification_title))
+                .setContentTitle(this.getString(R.string.auth_error_notification_title))
                 .setContentText(this.getString(
-                        string.auth_error_notification_text, accountName))
-                .setSmallIcon(drawable.stat_notify_auth)
+                        R.string.auth_error_notification_text, accountName))
+                .setSmallIcon(R.drawable.stat_notify_auth)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build();
