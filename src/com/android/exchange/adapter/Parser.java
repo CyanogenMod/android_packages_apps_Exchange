@@ -59,12 +59,12 @@ public abstract class Parser {
 
     // The following constants are Wbxml standard
     public static final int START_DOCUMENT = 0;
-    public static final int DONE = 1;
-    public static final int START = 2;
+    public static final int END_DOCUMENT = 1;
+    private static final int DONE = 1;
+    private static final int START = 2;
     public static final int END = 3;
-    public static final int TEXT = 4;
-    public static final int OPAQUE = 5;
-    public static final int END_DOCUMENT = 3;
+    private static final int TEXT = 4;
+    private static final int OPAQUE = 5;
     private static final int NOT_ENDED = Integer.MIN_VALUE;
     private static final int EOF_BYTE = -1;
 
@@ -340,19 +340,19 @@ public abstract class Parser {
      */
     public int nextTag(int endingTag) throws IOException {
         // Lose the page information
-        endTag = new Tag(endingTag);
+        final int endTagIndex = endingTag & Tags.PAGE_MASK;
         while (getNext() != DONE) {
             // If we're a start, set tag to include the page and return it
             if (type == START) {
                 tag = page | startTag.index;
                 return tag;
             // If we're at the ending tag we're looking for, return the END signal
-            } else if (type == END && startTag.index == endTag.index) {
+            } else if (type == END && startTag.index == endTagIndex) {
                 return END;
             }
         }
         // We're at end of document here.  If we're looking for it, return END_DOCUMENT
-        if (endTag.index == START_DOCUMENT) {
+        if (endTagIndex == START_DOCUMENT) {
             return END_DOCUMENT;
         }
         // Otherwise, we've prematurely hit end of document, so exception out
@@ -451,7 +451,7 @@ public abstract class Parser {
 
     private void pop() {
         // Retrieve the now-current startTag from our stack
-        startTag = endTag = startTagArray.removeFirst();
+        startTag = startTagArray.removeFirst();
         log("</" + startTag.name + '>');
     }
 

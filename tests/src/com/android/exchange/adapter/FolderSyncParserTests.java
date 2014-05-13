@@ -237,7 +237,7 @@ public class FolderSyncParserTests extends SyncAdapterTestCase<EmailSyncAdapter>
         public int nextTag(int endingTag) throws IOException {
             String line = getLine();
             if (line == null) {
-                return DONE;
+                return END_DOCUMENT;
             }
             if (line.startsWith("</")) {
                 int end = line.indexOf('>');
