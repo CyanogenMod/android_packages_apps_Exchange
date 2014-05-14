@@ -174,7 +174,13 @@ public class EmailSyncParser extends AbstractSyncParser {
                     msg.mFlagFavorite = flagParser();
                     break;
                 case Tags.EMAIL_MIME_TRUNCATED:
-                    truncated = getValueInt() == 1;
+                    String value = getValue();
+                    if (!TextUtils.isEmpty(value)) {
+                        truncated = (value.equals("1")) || (value.toLowerCase().equals("true"));
+                    } else {
+                        LogUtils.w(TAG, "TRUNCATED value is missing, then assumed to be true.");
+                        truncated = true;
+                    }
                     break;
                 case Tags.EMAIL_MIME_DATA:
                     // We get MIME data for EAS 2.5.  First we parse it, then we take the
@@ -406,7 +412,13 @@ public class EmailSyncParser extends AbstractSyncParser {
                     body = getValue();
                     break;
                 case Tags.BASE_TRUNCATED:
-                    truncated = getValueInt() == 1;
+                    String value = getValue();
+                    if (!TextUtils.isEmpty(value)) {
+                        truncated = (value.equals("1")) || (value.toLowerCase().equals("true"));
+                    } else {
+                        LogUtils.w(TAG, "TRUNCATED value is missing, then assumed to be true.");
+                        truncated = true;
+                    }
                     break;
                 case Tags.BASE_ESTIMATED_DATA_SIZE:
                     length = getValue();
