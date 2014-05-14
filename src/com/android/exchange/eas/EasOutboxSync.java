@@ -158,15 +158,26 @@ public class EasOutboxSync extends EasOperation {
         }
     }
 
+    /**
+     * This routine is called in a finally block in EasOperation.performOperation,
+     * so the request may have failed part way through and there is no guarantee
+     * what state we're in.
+     */
     @Override
     protected void onRequestMade() {
-        try {
-            mFileStream.close();
-        } catch (IOException e) {
-            LogUtils.w(LOG_TAG, "IOException closing fileStream %s", e);
+        if (mFileStream != null) {
+            try {
+                mFileStream.close();
+            } catch (IOException e) {
+                LogUtils.w(LOG_TAG, "IOException closing fileStream %s", e);
+            }
+            mFileStream = null;
         }
-        if (mTmpFile != null && mTmpFile.exists()) {
-            mTmpFile.delete();
+        if (mTmpFile != null) {
+            if (mTmpFile.exists()) {
+                mTmpFile.delete();
+            }
+            mTmpFile = null;
         }
     }
 
