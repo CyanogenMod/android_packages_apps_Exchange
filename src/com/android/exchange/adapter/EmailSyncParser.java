@@ -760,7 +760,7 @@ public class EmailSyncParser extends AbstractSyncParser {
 
     @Override
     protected void wipe() {
-        LogUtils.i(TAG, "Wiping mailbox " + mMailbox);
+        LogUtils.i(TAG, "Wiping mailbox %s", mMailbox);
         Mailbox.resyncMailbox(mContentResolver, new android.accounts.Account(mAccount.mEmailAddress,
                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), mMailbox.mId);
     }
