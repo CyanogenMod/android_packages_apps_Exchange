@@ -1725,8 +1725,8 @@ public class CalendarUtilities {
      * Create a Message for an (Event) Entity
      * @param entity the Entity for the Event (as might be retrieved by CalendarProvider)
      * @param messageFlag the Message.FLAG_XXX constant indicating the type of email to be sent
-     * @param the unique id of this Event, or null if it can be retrieved from the Event
-     * @param the user's account
+     * @param uid the unique id of this Event, or null if it can be retrieved from the Event
+     * @param account the user's account
      * @return a Message with many fields pre-filled (more later)
      */
     static public Message createMessageForEntity(Context context, Entity entity,

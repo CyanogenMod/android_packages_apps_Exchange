@@ -1,20 +1,20 @@
-package com.android.exchange.service;
+package com.android.exchange.eas;
 
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Xml;
 
-import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.service.EmailServiceProxy;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.mail.utils.LogUtils;
 
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -23,18 +23,19 @@ import org.xmlpull.v1.XmlSerializer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.security.cert.CertificateException;
 
-/**
- * Performs Autodiscover for Exchange servers. This feature tries to find all the configuration
- * options needed based on just a username and password.
- */
-public class EasAutoDiscover extends EasServerConnection {
-    private static final String TAG = Eas.LOG_TAG;
+public class EasAutoDiscover extends EasOperation {
+
+    public final static int RESULT_OK = 1;
+    public final static int RESULT_SC_UNAUTHORIZED = RESULT_OP_SPECIFIC_ERROR_RESULT - 0;
+    public final static int RESULT_REDIRECT = RESULT_OP_SPECIFIC_ERROR_RESULT - 1;
+    public final static int RESULT_BAD_RESPONSE = RESULT_OP_SPECIFIC_ERROR_RESULT - 2;
+    public final static int RESULT_FATAL_SERVER_ERROR = RESULT_OP_SPECIFIC_ERROR_RESULT - 3;
+
+    private final static String TAG = LogUtils.TAG;
 
     private static final String AUTO_DISCOVER_SCHEMA_PREFIX =
-        "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
+            "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
     private static final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
 
     // Set of string constants for parsing the autodiscover response.
@@ -53,95 +54,56 @@ public class EasAutoDiscover extends EasServerConnection {
     private static final String ELEMENT_NAME_RESPONSE = "Response";
     private static final String ELEMENT_NAME_AUTODISCOVER = "Autodiscover";
 
-    public EasAutoDiscover(final Context context, final String username, final String password) {
-        super(context, new Account(), new HostAuth());
-        mHostAuth.mLogin = username;
-        mHostAuth.mPassword = password;
-        mHostAuth.mFlags = HostAuth.FLAG_AUTHENTICATE | HostAuth.FLAG_SSL;
+    private final String mUri;
+    private final String mUsername;
+    private final String mPassword;
+    private HostAuth mHostAuth;
+    private String mRedirectUri;
+
+    public EasAutoDiscover(final Context context, final String uri, final String username,
+                           final String password) {
+        // We don't actually need an account or a hostAuth, but the EasServerConnection requires
+        // one. Just create dummy values.
+        super(context, -1);
+        mUri = uri;
+        mUsername = username;
+        mPassword = password;
+        mHostAuth = new HostAuth();
+        mHostAuth.mLogin = mUsername;
+        mHostAuth.mPassword = mPassword;
         mHostAuth.mPort = 443;
+        mHostAuth.mProtocol = Eas.PROTOCOL;
+        mHostAuth.mFlags = HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
+        setAccount(new Account(), mHostAuth);
     }
 
-    /**
-     * Do all the work of autodiscovery.
-     * @return A {@link Bundle} with the host information if autodiscovery succeeded. If we failed
-     *     due to an authentication failure, we return a {@link Bundle} with no host info but with
-     *     an appropriate error code. Otherwise, we return null.
-     */
-    public Bundle doAutodiscover() {
-        final String domain = getDomain();
-        if (domain == null) {
-            return null;
-        }
-
-        final StringEntity entity = buildRequestEntity();
-        if (entity == null) {
-            return null;
-        }
-        try {
-            final HttpPost post = makePost("https://" + domain + AUTO_DISCOVER_PAGE, entity,
-                    "text/xml", false);
-            final EasResponse resp = getResponse(post, domain);
-            if (resp == null) {
-                return null;
-            }
-
-            try {
-                // resp is either an authentication error, or a good response.
-                final int code = resp.getStatus();
-                if (code == HttpStatus.SC_UNAUTHORIZED) {
-                    final Bundle bundle = new Bundle(1);
-                    bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
-                            MessagingException.AUTODISCOVER_AUTHENTICATION_FAILED);
-                    return bundle;
-                } else {
-                    final HostAuth hostAuth = parseAutodiscover(resp);
-                    if (hostAuth != null) {
-                        // Fill in the rest of the HostAuth
-                        // We use the user name and password that were successful during
-                        // the autodiscover process
-                        hostAuth.mLogin = mHostAuth.mLogin;
-                        hostAuth.mPassword = mHostAuth.mPassword;
-                        // Note: there is no way we can auto-discover the proper client
-                        // SSL certificate to use, if one is needed.
-                        hostAuth.mPort = 443;
-                        hostAuth.mProtocol = Eas.PROTOCOL;
-                        hostAuth.mFlags = HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
-                        final Bundle bundle = new Bundle(2);
-                        bundle.putParcelable(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_HOST_AUTH,
-                                hostAuth);
-                        bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
-                                MessagingException.NO_ERROR);
-                        return bundle;
-                    }
-                }
-            } finally {
-                resp.close();
-            }
-        } catch (final IllegalArgumentException e) {
-            // This happens when the domain is malformatted.
-            // TODO: Fix sanitizing of the domain -- we try to in UI but apparently not correctly.
-            LogUtils.e(TAG, "ISE with domain: %s", domain);
-        }
-        return null;
+    protected String getRequestUri() {
+        return mUri;
     }
 
-    /**
-     * Get the domain of our account.
-     * @return The domain of the email address.
-     */
-    private String getDomain() {
-        final int amp = mHostAuth.mLogin.indexOf('@');
+    public static String getDomain(final String login) {
+        final int amp = login.indexOf('@');
         if (amp < 0) {
             return null;
         }
-        return mHostAuth.mLogin.substring(amp + 1);
+        return login.substring(amp + 1);
     }
 
-    /**
-     * Create the payload of the request.
-     * @return A {@link StringEntity} for the request XML.
-     */
-    private StringEntity buildRequestEntity() {
+    public static String createUri(final String domain) {
+        return "https://" + domain + AUTO_DISCOVER_PAGE;
+    }
+
+    public static String createAlternateUri(final String domain) {
+        return "https://autodiscover." + domain + AUTO_DISCOVER_PAGE;
+    }
+
+    @Override
+    protected String getCommand() {
+        return null;
+    }
+
+    @Override
+    protected HttpEntity getRequestEntity() throws IOException, MessageInvalidException {
         try {
             final XmlSerializer s = Xml.newSerializer();
             final ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
@@ -150,7 +112,7 @@ public class EasAutoDiscover extends EasServerConnection {
             s.startTag(null, "Autodiscover");
             s.attribute(null, "xmlns", AUTO_DISCOVER_SCHEMA_PREFIX + "requestschema/2006");
             s.startTag(null, "Request");
-            s.startTag(null, "EMailAddress").text(mHostAuth.mLogin).endTag(null, "EMailAddress");
+            s.startTag(null, "EMailAddress").text(mUsername).endTag(null, "EMailAddress");
             s.startTag(null, "AcceptableResponseSchema");
             s.text(AUTO_DISCOVER_SCHEMA_PREFIX + "responseschema/2006");
             s.endTag(null, "AcceptableResponseSchema");
@@ -163,76 +125,65 @@ public class EasAutoDiscover extends EasServerConnection {
         } catch (final IllegalArgumentException e) {
         } catch (final IllegalStateException e) {
         }
-
         return null;
     }
 
-    /**
-     * Perform all requests necessary and get the server response. If the post fails or is
-     * redirected, we alter the post and retry.
-     * @param post The initial {@link HttpPost} for this request.
-     * @param domain The domain for our account.
-     * @return If this request succeeded or has an unrecoverable authentication error, an
-     *     {@link EasResponse} with the details. For other errors, we return null.
-     */
-    private EasResponse getResponse(final HttpPost post, final String domain) {
-        EasResponse resp = doPost(post, true);
-        if (resp == null) {
-            LogUtils.d(TAG, "Error in autodiscover, trying aternate address");
-            post.setURI(URI.create("https://autodiscover." + domain + AUTO_DISCOVER_PAGE));
-            resp = doPost(post, true);
-        }
-        return resp;
+    public String getRedirectUri() {
+        return mRedirectUri;
     }
 
-    /**
-     * Perform one attempt to get autodiscover information. Redirection and some authentication
-     * errors are handled by recursively calls with modified host information.
-     * @param post The {@link HttpPost} for this request.
-     * @param canRetry Whether we can retry after an authentication failure.
-     * @return If this request succeeded or has an unrecoverable authentication error, an
-     *     {@link EasResponse} with the details. For other errors, we return null.
-     */
-    private EasResponse doPost(final HttpPost post, final boolean canRetry) {
-        final EasResponse resp;
-        try {
-            resp = executePost(post);
-        } catch (final IOException e) {
-            return null;
-        } catch (final CertificateException e) {
-            // TODO: Raise this error to the user or something
-            return null;
-        }
+    @Override
+    protected int handleResponse(final EasResponse response) throws
+            IOException, CommandStatusException {
+        // resp is either an authentication error, or a good response.
+        final int code = response.getStatus();
 
-        final int code = resp.getStatus();
-
-        if (resp.isRedirectError()) {
-            final String loc = resp.getRedirectAddress();
+        if (response.isRedirectError()) {
+            final String loc = response.getRedirectAddress();
             if (loc != null && loc.startsWith("http")) {
                 LogUtils.d(TAG, "Posting autodiscover to redirect: " + loc);
-                redirectHostAuth(loc);
-                post.setURI(URI.create(loc));
-                return doPost(post, canRetry);
+                mRedirectUri = loc;
+                return RESULT_REDIRECT;
+            } else {
+                LogUtils.w(TAG, "Invalid redirect %s", loc);
+                return RESULT_FATAL_SERVER_ERROR;
             }
-            return null;
         }
 
         if (code == HttpStatus.SC_UNAUTHORIZED) {
-            if (canRetry && mHostAuth.mLogin.contains("@")) {
-                // Try again using the bare user name
-                final int atSignIndex = mHostAuth.mLogin.indexOf('@');
-                mHostAuth.mLogin = mHostAuth.mLogin.substring(0, atSignIndex);
-                LogUtils.d(TAG, "401 received; trying username: %s", mHostAuth.mLogin);
-                resetAuthorization(post);
-                return doPost(post, false);
-            }
+            LogUtils.w(TAG, "Autodiscover received SC_UNAUTHORIZED");
+            return RESULT_SC_UNAUTHORIZED;
         } else if (code != HttpStatus.SC_OK) {
             // We'll try the next address if this doesn't work
             LogUtils.d(TAG, "Bad response code when posting autodiscover: %d", code);
-            return null;
+            return RESULT_BAD_RESPONSE;
+        } else {
+            mHostAuth = parseAutodiscover(response);
+            if (mHostAuth != null) {
+                // Fill in the rest of the HostAuth
+                // We use the user name and password that were successful during
+                // the autodiscover process
+                mHostAuth.mLogin = mUsername;
+                mHostAuth.mPassword = mPassword;
+                // Note: there is no way we can auto-discover the proper client
+                // SSL certificate to use, if one is needed.
+                mHostAuth.mPort = 443;
+                mHostAuth.mProtocol = Eas.PROTOCOL;
+                mHostAuth.mFlags = HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
+                return RESULT_OK;
+            } else {
+                return RESULT_HARD_DATA_FAILURE;
+            }
         }
+    }
 
-        return resp;
+    public Bundle getResultBundle() {
+        final Bundle bundle = new Bundle(2);
+        bundle.putParcelable(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_HOST_AUTH,
+                mHostAuth);
+        bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                RESULT_OK);
+        return bundle;
     }
 
     /**
