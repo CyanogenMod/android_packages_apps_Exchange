@@ -61,7 +61,7 @@ public class SettingsParser extends Parser {
         return res;
     }
 
-    public void parseDeviceInformation() throws IOException {
+    private void parseDeviceInformation() throws IOException {
         while (nextTag(Tags.SETTINGS_DEVICE_INFORMATION) != END) {
             if (tag == Tags.SETTINGS_SET) {
                 parseSet();
@@ -71,7 +71,7 @@ public class SettingsParser extends Parser {
         }
     }
 
-    public void parseSet() throws IOException {
+    private void parseSet() throws IOException {
         while (nextTag(Tags.SETTINGS_SET) != END) {
             if (tag == Tags.SETTINGS_STATUS) {
                 LogUtils.d(TAG, "Set status = %d", getValueInt());

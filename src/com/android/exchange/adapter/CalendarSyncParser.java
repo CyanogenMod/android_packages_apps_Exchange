@@ -790,7 +790,7 @@ public class CalendarSyncParser extends AbstractSyncParser {
         cv.put(Events.ORIGINAL_SYNC_ID, parentCv.getAsString(Events._SYNC_ID));
 
         String exceptionStartTime = "_noStartTime";
-        while (nextTag(Tags.SYNC_APPLICATION_DATA) != END) {
+        while (nextTag(Tags.CALENDAR_EXCEPTION) != END) {
             switch (tag) {
                 case Tags.CALENDAR_ATTACHMENTS:
                     attachmentsParser();
