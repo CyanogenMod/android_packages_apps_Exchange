@@ -192,6 +192,12 @@ public class EasService extends Service {
         public void setLogging(final int flags) {
             LogUtils.d(TAG, "IEmailService.setLogging");
         }
+
+        @Override
+        public void deleteAccountPIMData(final String emailAddress) {
+            LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
+            // TODO: remove this, move it completely to Email code.
+        }
     };
 
     /**
