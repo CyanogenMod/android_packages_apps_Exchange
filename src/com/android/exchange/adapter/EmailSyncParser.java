@@ -138,7 +138,7 @@ public class EmailSyncParser extends AbstractSyncParser {
             switch (tag) {
                 case Tags.EMAIL_ATTACHMENTS:
                 case Tags.BASE_ATTACHMENTS: // BASE_ATTACHMENTS is used in EAS 12.0 and up
-                    attachmentsParser(atts, msg);
+                    attachmentsParser(atts, msg, tag);
                     break;
                 case Tags.EMAIL_TO:
                     msg.mTo = Address.toString(Address.parse(getValue()));
@@ -352,7 +352,7 @@ public class EmailSyncParser extends AbstractSyncParser {
      * @return the parsed Message
      * @throws IOException
      */
-    private EmailContent.Message addParser() throws IOException, CommandStatusException {
+    private EmailContent.Message addParser(final int endingTag) throws IOException, CommandStatusException {
         EmailContent.Message msg = new EmailContent.Message();
         msg.mAccountKey = mAccount.mId;
         msg.mMailboxKey = mMailbox.mId;
@@ -360,7 +360,7 @@ public class EmailSyncParser extends AbstractSyncParser {
         // Default to 1 (success) in case we don't get this tag
         int status = 1;
 
-        while (nextTag(Tags.SYNC_ADD) != END) {
+        while (nextTag(endingTag) != END) {
             switch (tag) {
                 case Tags.SYNC_SERVER_ID:
                     msg.mServerId = getValue();
@@ -400,7 +400,7 @@ public class EmailSyncParser extends AbstractSyncParser {
     private void bodyParser(EmailContent.Message msg) throws IOException {
         String bodyType = Eas.BODY_PREFERENCE_TEXT;
         String body = "";
-        while (nextTag(Tags.EMAIL_BODY) != END) {
+        while (nextTag(Tags.BASE_BODY) != END) {
             switch (tag) {
                 case Tags.BASE_TYPE:
                     bodyType = getValue();
@@ -451,13 +451,13 @@ public class EmailSyncParser extends AbstractSyncParser {
         }
     }
 
-    private void attachmentsParser(ArrayList<EmailContent.Attachment> atts,
-            EmailContent.Message msg) throws IOException {
-        while (nextTag(Tags.EMAIL_ATTACHMENTS) != END) {
+    private void attachmentsParser(final ArrayList<EmailContent.Attachment> atts,
+            final EmailContent.Message msg, final int endingTag) throws IOException {
+        while (nextTag(endingTag) != END) {
             switch (tag) {
                 case Tags.EMAIL_ATTACHMENT:
                 case Tags.BASE_ATTACHMENT:  // BASE_ATTACHMENT is used in EAS 12.0 and up
-                    attachmentParser(atts, msg);
+                    attachmentParser(atts, msg, tag);
                     break;
                 default:
                     skipTag();
@@ -465,15 +465,15 @@ public class EmailSyncParser extends AbstractSyncParser {
         }
     }
 
-    private void attachmentParser(ArrayList<EmailContent.Attachment> atts,
-            EmailContent.Message msg) throws IOException {
+    private void attachmentParser(final ArrayList<EmailContent.Attachment> atts,
+            final EmailContent.Message msg, final int endingTag) throws IOException {
         String fileName = null;
         String length = null;
         String location = null;
         boolean isInline = false;
         String contentId = null;
 
-        while (nextTag(Tags.EMAIL_ATTACHMENT) != END) {
+        while (nextTag(endingTag) != END) {
             switch (tag) {
                 // We handle both EAS 2.5 and 12.0+ attachments here
                 case Tags.EMAIL_DISPLAY_NAME:
@@ -683,7 +683,7 @@ public class EmailSyncParser extends AbstractSyncParser {
     public void commandsParser() throws IOException, CommandStatusException {
         while (nextTag(Tags.SYNC_COMMANDS) != END) {
             if (tag == Tags.SYNC_ADD) {
-                newEmails.add(addParser());
+                newEmails.add(addParser(tag));
             } else if (tag == Tags.SYNC_DELETE || tag == Tags.SYNC_SOFT_DELETE) {
                 deleteParser(deletedEmails, tag);
             } else if (tag == Tags.SYNC_CHANGE) {
@@ -743,7 +743,7 @@ public class EmailSyncParser extends AbstractSyncParser {
                 messageUpdateParser(tag);
             } else if (tag == Tags.SYNC_FETCH) {
                 try {
-                    fetchedEmails.add(addParser());
+                    fetchedEmails.add(addParser(tag));
                 } catch (CommandStatusException sse) {
                     if (sse.mStatus == 8) {
                         // 8 = object not found; delete the message from EmailProvider

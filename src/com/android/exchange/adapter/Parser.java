@@ -105,6 +105,9 @@ public abstract class Parser {
         }
 
         public int getTagNum() {
+            if (Tags.isGlobalTag(mIndex)) {
+                return mIndex;
+            }
             return (mPage << Tags.PAGE_SHIFT) | mIndex;
         }
 

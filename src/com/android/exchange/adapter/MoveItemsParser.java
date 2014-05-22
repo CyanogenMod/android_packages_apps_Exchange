@@ -66,7 +66,7 @@ public class MoveItemsParser extends Parser {
         return mSourceServerId;
     }
 
-    public void parseResponse() throws IOException {
+    private void parseResponse() throws IOException {
         while (nextTag(Tags.MOVE_RESPONSE) != END) {
             if (tag == Tags.MOVE_STATUS) {
                 int status = getValueInt();

@@ -355,7 +355,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             return true;
         }
 
-        public void parseGetItemEstimate() throws IOException {
+        private void parseGetItemEstimate() throws IOException {
             while (nextTag(Tags.GIE_GET_ITEM_ESTIMATE) != END) {
                 if (tag == Tags.GIE_RESPONSE) {
                     parseResponse();
@@ -365,7 +365,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        public void parseResponse() throws IOException {
+        private void parseResponse() throws IOException {
             while (nextTag(Tags.GIE_RESPONSE) != END) {
                 if (tag == Tags.GIE_STATUS) {
                     LogUtils.d(TAG, "GIE status: " + getValue());
@@ -377,7 +377,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        public void parseCollection() throws IOException {
+        private void parseCollection() throws IOException {
             while (nextTag(Tags.GIE_COLLECTION) != END) {
                 if (tag == Tags.GIE_CLASS) {
                     LogUtils.d(TAG, "GIE class: " + getValue());
@@ -523,7 +523,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 switch (tag) {
                     case Tags.EMAIL_ATTACHMENTS:
                     case Tags.BASE_ATTACHMENTS: // BASE_ATTACHMENTS is used in EAS 12.0 and up
-                        attachmentsParser(atts, msg);
+                        attachmentsParser(atts, msg, tag);
                         break;
                     case Tags.EMAIL_TO:
                         msg.mTo = Address.toString(Address.parse(getValue()));
@@ -737,7 +737,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
          * @return the parsed Message
          * @throws IOException
          */
-        private Message addParser() throws IOException, CommandStatusException {
+        private Message addParser(final int endingTag) throws IOException, CommandStatusException {
             Message msg = new Message();
             msg.mAccountKey = mAccount.mId;
             msg.mMailboxKey = mMailbox.mId;
@@ -745,7 +745,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             // Default to 1 (success) in case we don't get this tag
             int status = 1;
 
-            while (nextTag(Tags.SYNC_ADD) != END) {
+            while (nextTag(endingTag) != END) {
                 switch (tag) {
                     case Tags.SYNC_SERVER_ID:
                         msg.mServerId = getValue();
@@ -785,7 +785,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         private void bodyParser(Message msg) throws IOException {
             String bodyType = Eas.BODY_PREFERENCE_TEXT;
             String body = "";
-            while (nextTag(Tags.EMAIL_BODY) != END) {
+            while (nextTag(Tags.BASE_BODY) != END) {
                 switch (tag) {
                     case Tags.BASE_TYPE:
                         bodyType = getValue();
@@ -835,12 +835,13 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private void attachmentsParser(ArrayList<Attachment> atts, Message msg) throws IOException {
-            while (nextTag(Tags.EMAIL_ATTACHMENTS) != END) {
+        private void attachmentsParser(final ArrayList<Attachment> atts, final Message msg,
+                final int endingTag) throws IOException {
+            while (nextTag(endingTag) != END) {
                 switch (tag) {
                     case Tags.EMAIL_ATTACHMENT:
                     case Tags.BASE_ATTACHMENT:  // BASE_ATTACHMENT is used in EAS 12.0 and up
-                        attachmentParser(atts, msg);
+                        attachmentParser(atts, msg, tag);
                         break;
                     default:
                         skipTag();
@@ -848,14 +849,15 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
             }
         }
 
-        private void attachmentParser(ArrayList<Attachment> atts, Message msg) throws IOException {
+        private void attachmentParser(final ArrayList<Attachment> atts, final Message msg,
+                final int endingTag) throws IOException {
             String fileName = null;
             String length = null;
             String location = null;
             boolean isInline = false;
             String contentId = null;
 
-            while (nextTag(Tags.EMAIL_ATTACHMENT) != END) {
+            while (nextTag(endingTag) != END) {
                 switch (tag) {
                     // We handle both EAS 2.5 and 12.0+ attachments here
                     case Tags.EMAIL_DISPLAY_NAME:
@@ -1063,7 +1065,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
         public void commandsParser() throws IOException, CommandStatusException {
             while (nextTag(Tags.SYNC_COMMANDS) != END) {
                 if (tag == Tags.SYNC_ADD) {
-                    newEmails.add(addParser());
+                    newEmails.add(addParser(tag));
                 } else if (tag == Tags.SYNC_DELETE || tag == Tags.SYNC_SOFT_DELETE) {
                     deleteParser(deletedEmails, tag);
                 } else if (tag == Tags.SYNC_CHANGE) {
@@ -1113,7 +1115,7 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                     failedUpdateParser(tag);
                 } else if (tag == Tags.SYNC_FETCH) {
                     try {
-                        fetchedEmails.add(addParser());
+                        fetchedEmails.add(addParser(tag));
                     } catch (CommandStatusException sse) {
                         if (sse.mStatus == 8) {
                             // 8 = object not found; delete the message from EmailProvider

@@ -794,7 +794,7 @@ public class Tags {
             // 0x04 Calendar
             "CalTimeZone", "CalAllDayEvent", "CalAttendees", "CalAttendee", "CalAttendee_Email",
             "CalAttendee_Name", "CalBody", "CalBodyTruncated", "CalBusyStatus", "CalCategories",
-            "CalCategory", "CalCompressed_RTF", "CalDTStamp", "CalEndTime", "CalExeption",
+            "CalCategory", "CalCompressed_RTF", "CalDTStamp", "CalEndTime", "CalException",
             "CalExceptions", "CalException_IsDeleted", "CalException_StartTime", "CalLocation",
             "CalMeetingStatus", "CalOrganizer_Email", "CalOrganizer_Name", "CalRecurrence",
             "CalRecurrence_Type", "CalRecurrence_Until", "CalRecurrence_Occurrences",
