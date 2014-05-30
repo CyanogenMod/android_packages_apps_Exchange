@@ -548,8 +548,12 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         }
 
         @Override
-        public void sync(final long accountId, final boolean updateFolderList,
-                final int mailboxType, final long[] folders) {}
+        public void syncFolders(final long accountId, final boolean updateFolderList,
+                         final long[] folders) {}
+
+        @Override
+        public void syncMailboxType(final long accountId, final boolean updateFolderList,
+                         final int mailboxType) {}
     };
 
     public EmailSyncAdapterService() {

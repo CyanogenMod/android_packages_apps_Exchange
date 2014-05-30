@@ -18,6 +18,7 @@ package com.android.exchange.service;
 
 import android.app.Service;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.AsyncTask;
@@ -43,6 +44,7 @@ import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSendMeetingResponse;
+import com.android.exchange.eas.EasSyncBase;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashSet;
@@ -94,8 +96,26 @@ public class EasService extends Service {
         }
 
         @Override
-        public void sync(final long accountId, final boolean updateFolderList,
-                final int mailboxType, final long[] folders) {}
+        public void syncFolders(final long accountId, final boolean updateFolderList,
+                         final long[] folders) {
+            final Account account = Account.restoreAccountWithId(EasService.this, accountId);
+            for (final long folderId : folders) {
+                // TODO: Performance would be improved if we could do multiple folders in
+                // a single operation.
+                final Mailbox mailbox = Mailbox.restoreMailboxWithId(EasService.this, folderId);
+                EasOperation op = new EasSyncBase(EasService.this, account, mailbox);
+            }
+        }
+
+        @Override
+        public void syncMailboxType(final long accountId, final boolean updateFolderList,
+                         final int mailboxType) {
+            final Account account = Account.restoreAccountWithId(EasService.this, accountId);
+            // TODO: What if there are multiple mailboxes of this type?
+            final Mailbox mailbox = Mailbox.restoreMailboxOfType(EasService.this, accountId,
+                    mailboxType);
+            EasOperation op = new EasSyncBase(EasService.this, account, mailbox);
+        }
 
         @Override
         public void pushModify(final long accountId) {
