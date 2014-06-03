@@ -15,9 +15,9 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.EasSyncService;
 import com.android.exchange.provider.GalResult;
 import com.android.exchange.provider.GalResult.GalData;
+import com.android.mail.utils.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,12 +26,13 @@ import java.io.InputStream;
  * Parse the result of a GAL command.
  */
 public class GalParser extends Parser {
-    private EasSyncService mService;
+    // TODO: make this controllable through the debug screen.
+    private static final boolean DEBUG_GAL_SERVICE = false;
+
     GalResult mGalResult = new GalResult();
 
-    public GalParser(InputStream in, EasSyncService service) throws IOException {
+    public GalParser(final InputStream in) throws IOException {
         super(in);
-        mService = service;
     }
 
     public GalResult getGalResult() {
@@ -129,8 +130,8 @@ public class GalParser extends Parser {
              } else if (tag == Tags.SEARCH_RANGE) {
                  // Retrieve value, even if we're not using it for debug logging
                  String range = getValue();
-                 if (EasSyncService.DEBUG_GAL_SERVICE) {
-                     mService.userLog("GAL result range: " + range);
+                 if (DEBUG_GAL_SERVICE) {
+                     LogUtils.d(LogUtils.TAG, "GAL result range: " + range);
                  }
              } else if (tag == Tags.SEARCH_TOTAL) {
                  galResult.total = getValueInt();

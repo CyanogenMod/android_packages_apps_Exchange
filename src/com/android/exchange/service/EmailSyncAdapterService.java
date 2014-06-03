@@ -83,6 +83,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
+ * TODO: Most of this is deprecated.
+ * This is needed to handle syncs, but pings and IEmailService functionality will be in EasService.
+ * Also, we need to refactor sync functionality into some common class so that it can be used by
+ * this, and ContactsSyncAdapterService and CalendarSyncAdapterService.
+ *
  * Service for communicating with Exchange servers. There are three main parts of this class:
  * TODO: Flesh out these comments.
  * 1) An {@link AbstractThreadedSyncAdapter} to handle actually performing syncs.

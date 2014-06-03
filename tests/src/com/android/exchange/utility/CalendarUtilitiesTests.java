@@ -30,15 +30,9 @@ import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.R;
-import com.android.exchange.adapter.CalendarSyncParser;
-import com.android.exchange.adapter.Parser;
-import com.android.exchange.adapter.Serializer;
-import com.android.exchange.adapter.SyncAdapterTestCase;
-import com.android.exchange.adapter.Tags;
 import com.android.mail.utils.LogUtils;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.text.DateFormat;

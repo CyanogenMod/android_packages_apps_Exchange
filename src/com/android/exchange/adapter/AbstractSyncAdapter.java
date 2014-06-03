@@ -31,7 +31,7 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
+import com.android.mail.utils.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
@@ -53,7 +53,6 @@ public abstract class AbstractSyncAdapter {
     private static final long SEPARATOR_ID = Long.MAX_VALUE;
 
     public Mailbox mMailbox;
-    public EasSyncService mService;
     public Context mContext;
     public Account mAccount;
     public final ContentResolver mContentResolver;
@@ -80,18 +79,14 @@ public abstract class AbstractSyncAdapter {
         return false;
     }
 
-    public AbstractSyncAdapter(EasSyncService service) {
-        mService = service;
-        mMailbox = service.mMailbox;
-        mContext = service.mContext;
-        mAccount = service.mAccount;
+    public AbstractSyncAdapter(final Context context, final Mailbox mailbox,
+                               final Account account) {
+        mContext = context;
+        mMailbox = mailbox;
+        mAccount = account;
         mAccountManagerAccount = new android.accounts.Account(mAccount.mEmailAddress,
                 Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         mContentResolver = mContext.getContentResolver();
-    }
-
-    public void userLog(String ...strings) {
-        mService.userLog(strings);
     }
 
     /**
@@ -101,7 +96,7 @@ public abstract class AbstractSyncAdapter {
      */
     public String getSyncKey() throws IOException {
         if (mMailbox.mSyncKey == null) {
-            userLog("Reset SyncKey to 0");
+            LogUtils.d(LogUtils.TAG, "Reset SyncKey to 0");
             mMailbox.mSyncKey = "0";
         }
         return mMailbox.mSyncKey;
@@ -183,7 +178,6 @@ public abstract class AbstractSyncAdapter {
             throws RemoteException, OperationApplicationException {
         if (!ops.isEmpty()) {
             ContentProviderResult[] result = contentResolver.applyBatch(authority, ops);
-            //mService.userLog("Results: " + result.length);
             return result;
         }
         return new ContentProviderResult[0];
@@ -256,14 +250,12 @@ public abstract class AbstractSyncAdapter {
      */
     protected static ContentProviderResult[] safeExecute(final ContentResolver contentResolver,
             final String authority, final ArrayList<Operation> ops) throws RemoteException {
-        //mService.userLog("Try to execute ", ops.size(), " CPO's for " + authority);
         ContentProviderResult[] result = null;
         try {
             // Try to execute the whole thing
             return applyBatch(contentResolver, authority, ops, 0);
         } catch (TransactionTooLargeException e) {
             // Nope; split into smaller chunks, demarcated by the separator operation
-            //mService.userLog("Transaction too large; spliting!");
             ArrayList<Operation> mini = new ArrayList<Operation>();
             // Build a result array with the total size we're sending
             result = new ContentProviderResult[ops.size()];
@@ -272,7 +264,6 @@ public abstract class AbstractSyncAdapter {
             for (Operation op: ops) {
                 if (op.mSeparator) {
                     try {
-                        //mService.userLog("Try mini-batch of ", mini.size(), " CPO's");
                         applyAndCopyResults(contentResolver, authority, mini, result, offset);
                         mini.clear();
                         // Save away the offset here; this will need to be subtracted out of the

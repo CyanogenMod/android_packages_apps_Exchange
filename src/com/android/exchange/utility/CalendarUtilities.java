@@ -46,7 +46,6 @@ import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
-import com.android.exchange.ExchangeService;
 import com.android.exchange.R;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
@@ -385,7 +384,7 @@ public class CalendarUtilities {
         String tziString = sTziStringCache.get(tz);
         if (tziString != null) {
             if (Eas.USER_LOG) {
-                ExchangeService.log(TAG, "TZI string for " + tz.getDisplayName() +
+                LogUtils.d(TAG, "TZI string for " + tz.getDisplayName() +
                         " found in cache.");
             }
             return tziString;
@@ -761,14 +760,14 @@ public class CalendarUtilities {
         TimeZone timeZone = sTimeZoneCache.get(timeZoneString);
         if (timeZone != null) {
             if (Eas.USER_LOG) {
-                ExchangeService.log(TAG, " Using cached TimeZone " + timeZone.getID());
+                LogUtils.d(TAG, " Using cached TimeZone " + timeZone.getID());
             }
         } else {
             timeZone = tziStringToTimeZoneImpl(timeZoneString, precision);
             if (timeZone == null) {
                 // If we don't find a match, we just return the current TimeZone.  In theory, this
                 // shouldn't be happening...
-                ExchangeService.alwaysLog("TimeZone not found using default: " + timeZoneString);
+                LogUtils.d(TAG, "TimeZone not found using default: " + timeZoneString);
                 timeZone = TimeZone.getDefault();
             }
             sTimeZoneCache.put(timeZoneString, timeZone);
@@ -825,7 +824,7 @@ public class CalendarUtilities {
                 if (!defaultTimeZone.useDaylightTime() &&
                         hasTimeZoneId(zoneIds, defaultTimeZone.getID())) {
                     if (Eas.USER_LOG) {
-                        ExchangeService.log(TAG, "TimeZone without DST found to be default: " +
+                        LogUtils.d(TAG, "TimeZone without DST found to be default: " +
                                 defaultTimeZone.getID());
                     }
                     return defaultTimeZone;
@@ -837,7 +836,7 @@ public class CalendarUtilities {
                     timeZone = TimeZone.getTimeZone(zoneId);
                     if (!timeZone.useDaylightTime()) {
                         if (Eas.USER_LOG) {
-                            ExchangeService.log(TAG, "TimeZone without DST found by offset: " +
+                            LogUtils.d(TAG, "TimeZone without DST found by offset: " +
                                     timeZone.getID());
                         }
                         return timeZone;
@@ -908,7 +907,7 @@ public class CalendarUtilities {
                     }
                 }
                 if (Eas.USER_LOG) {
-                    ExchangeService.log(TAG,
+                    LogUtils.d(TAG,
                             "No TimeZone with correct DST settings; using " +
                             (name ? "name" : (lenient ? "lenient" : "first")) + ": " +
                                     timeZone.getID());
@@ -1232,7 +1231,7 @@ public class CalendarUtilities {
             Serializer s)
             throws IOException {
         if (Eas.USER_LOG) {
-            ExchangeService.log(TAG, "RRULE: " + rrule);
+            LogUtils.d(TAG, "RRULE: " + rrule);
         }
         final String freq = tokenFromRrule(rrule, "FREQ=");
         // If there's no FREQ=X, then we don't write a recurrence

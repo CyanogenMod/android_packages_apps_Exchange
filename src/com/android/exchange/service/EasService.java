@@ -43,8 +43,10 @@ import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasSearch;
+import com.android.exchange.eas.EasSearchGal;
 import com.android.exchange.eas.EasSendMeetingResponse;
 import com.android.exchange.eas.EasSyncBase;
+import com.android.exchange.provider.GalResult;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashSet;
@@ -403,4 +405,21 @@ public class EasService extends Service {
         }
         return authsToSync;
     }
+
+    static public GalResult searchGal(final Context context, final long accountId,
+                                      final String filter, final int limit) {
+        final EasSearchGal operation = new EasSearchGal(context, accountId, filter, limit);
+        // We don't use doOperation() here for two reasons:
+        // 1. This is a static function, doOperation is not, and we don't have an instance of
+        // EasService.
+        // 2. All doOperation() does besides this is stop the ping and then restart it. This is
+        // required during syncs, but not for GalSearches.
+        final int result = operation.performOperation();
+        if (result == EasSearchGal.RESULT_OK) {
+            return operation.getResult();
+        } else {
+            return null;
+        }
+    }
+
 }

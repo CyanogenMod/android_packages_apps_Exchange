@@ -346,34 +346,7 @@ public class EasPing extends EasOperation {
                  * Microsoft, and the server hotfix for this case can be found at
                  * http://support.microsoft.com/kb/923282
                  */
-                // TODO: Implement the above.
-                    /*
-                    String status = c.getString(Mailbox.CONTENT_SYNC_STATUS_COLUMN);
-                    int type = ExchangeService.getStatusType(status);
-                    // This check should always be true...
-                    if (type == ExchangeService.SYNC_PING) {
-                        int changeCount = ExchangeService.getStatusChangeCount(status);
-                        if (changeCount > 0) {
-                            errorMap.remove(serverId);
-                        } else if (changeCount == 0) {
-                            // This means that a ping reported changes in error; we keep a
-                            // count of consecutive errors of this kind
-                            String name = c.getString(Mailbox.CONTENT_DISPLAY_NAME_COLUMN);
-                            Integer failures = errorMap.get(serverId);
-                            if (failures == null) {
-                                userLog("Last ping reported changes in error for: ", name);
-                                errorMap.put(serverId, 1);
-                            } else if (failures > MAX_PING_FAILURES) {
-                                // We'll back off of push for this box
-                                pushFallback(c.getLong(Mailbox.CONTENT_ID_COLUMN));
-                                continue;
-                            } else {
-                                userLog("Last ping reported changes in error for: ", name);
-                                errorMap.put(serverId, failures + 1);
-                            }
-                        }
-                    }
-                    */
+                // TODO: Implement the above
                 if (c.moveToFirst()) {
                     final long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
                     final int contentType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);

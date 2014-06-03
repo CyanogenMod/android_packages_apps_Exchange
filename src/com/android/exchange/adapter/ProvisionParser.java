@@ -261,7 +261,7 @@ public class ProvisionParser extends Parser {
                         unsupportedList.add(R.string.policy_require_sd_encryption);
                     }
                     break;
-                    // Note this policy; we enforce it in ExchangeService
+                    // Note this policy; we enforce it in EasService
                 case Tags.PROVISION_REQUIRE_MANUAL_SYNC_WHEN_ROAMING:
                     policy.mRequireManualSyncWhenRoaming = getValueInt() == 1;
                     break;

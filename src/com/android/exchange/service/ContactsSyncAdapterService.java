@@ -89,7 +89,7 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
     }
 
     /**
-     * Partial integration with system SyncManager; we tell our EAS ExchangeService to start a
+     * Partial integration with system SyncManager; we tell our EasService to start a
      * contacts sync when we get the signal from SyncManager.
      * The missing piece at this point is integration with the push/ping mechanism in EAS; this will
      * be put in place at a later time.

@@ -47,9 +47,9 @@ import com.android.emailcommon.provider.EmailContent.AccountColumns;
 import com.android.emailcommon.service.AccountServiceProxy;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
-import com.android.exchange.EasSyncService;
 import com.android.exchange.R;
 import com.android.exchange.provider.GalResult.GalData;
+import com.android.exchange.service.EasService;
 import com.android.mail.utils.LogUtils;
 
 import java.text.Collator;
@@ -326,7 +326,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                     }
 
                     // Get results from the Exchange account
-                    final GalResult galResult = EasSyncService.searchGal(getContext(), accountId,
+                    final GalResult galResult = EasService.searchGal(getContext(), accountId,
                             filter, queryLimit);
                     if (galResult != null) {
                          return buildGalResultCursor(
