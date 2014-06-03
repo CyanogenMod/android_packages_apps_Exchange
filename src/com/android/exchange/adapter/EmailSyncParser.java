@@ -102,6 +102,23 @@ public class EmailSyncParser extends AbstractSyncParser {
         }
     }
 
+    public EmailSyncParser(final Parser parser, final Context context,
+            final ContentResolver resolver, final Mailbox mailbox, final Account account)
+                    throws IOException {
+        super(parser, context, resolver, mailbox, account);
+        mMailboxIdAsString = Long.toString(mMailbox.mId);
+        if (mAccount.mPolicyKey != 0) {
+            mPolicy = Policy.restorePolicyWithId(mContext, mAccount.mPolicyKey);
+        } else {
+            mPolicy = null;
+        }
+    }
+
+    public EmailSyncParser(final Context context, final InputStream in, final Mailbox mailbox,
+            final Account account) throws IOException {
+        this(context, context.getContentResolver(), in, mailbox, account);
+    }
+
     public boolean fetchNeeded() {
         return mFetchNeeded;
     }
@@ -110,7 +127,7 @@ public class EmailSyncParser extends AbstractSyncParser {
         return mMessageUpdateStatus;
     }
 
-    public void addData (EmailContent.Message msg, int endingTag) throws IOException {
+    public void addData(EmailContent.Message msg, int endingTag) throws IOException {
         ArrayList<EmailContent.Attachment> atts = new ArrayList<EmailContent.Attachment>();
         boolean truncated = false;
 

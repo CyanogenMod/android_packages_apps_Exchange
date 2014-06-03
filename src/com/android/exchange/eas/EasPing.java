@@ -19,12 +19,9 @@ package com.android.exchange.eas;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.provider.CalendarContract;
-import android.provider.ContactsContract;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -44,9 +41,7 @@ import org.apache.http.HttpEntity;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Performs an Exchange Ping, which is the command for receiving push notifications.
@@ -58,7 +53,6 @@ public class EasPing extends EasOperation {
     private static final String WHERE_ACCOUNT_KEY_AND_SERVER_ID =
             MailboxColumns.ACCOUNT_KEY + "=? and " + MailboxColumns.SERVER_ID + "=?";
 
-    private final long mAccountId;
     private final android.accounts.Account mAmAccount;
     private long mPingDuration;
 
@@ -97,18 +91,17 @@ public class EasPing extends EasOperation {
     public EasPing(final Context context, final Account account,
             final android.accounts.Account amAccount) {
         super(context, account);
-        mAccountId = account.mId;
         mAmAccount = amAccount;
         mPingDuration = account.mPingDuration;
         if (mPingDuration == 0) {
             mPingDuration = DEFAULT_PING_HEARTBEAT;
         }
-        LogUtils.d(TAG, "initial ping duration " + mPingDuration + " account " + mAccountId);
+        LogUtils.d(TAG, "initial ping duration " + mPingDuration + " account " + getAccountId());
     }
 
     public final int doPing() {
         final long startTime = SystemClock.elapsedRealtime();
-        final int result = performOperation(null);
+        final int result = performOperation();
         if (result == RESULT_RESTART) {
             return PingParser.STATUS_EXPIRED;
         } else  if (result == RESULT_REQUEST_FAILURE) {
@@ -123,7 +116,7 @@ public class EasPing extends EasOperation {
         mPingDuration = Math.max(MINIMUM_PING_HEARTBEAT,
                 mPingDuration - MAXIMUM_HEARTBEAT_INCREMENT);
         LogUtils.d(TAG, "decreasePingDuration adjusting by " + MAXIMUM_HEARTBEAT_INCREMENT +
-                " new duration " + mPingDuration + " account " + mAccountId);
+                " new duration " + mPingDuration + " account " + getAccountId());
         storePingDuration();
     }
 
@@ -131,18 +124,14 @@ public class EasPing extends EasOperation {
         mPingDuration = Math.min(MAXIMUM_PING_HEARTBEAT,
                 mPingDuration + MAXIMUM_HEARTBEAT_INCREMENT);
         LogUtils.d(TAG, "increasePingDuration adjusting by " + MAXIMUM_HEARTBEAT_INCREMENT +
-                " new duration " + mPingDuration + " account " + mAccountId);
+                " new duration " + mPingDuration + " account " + getAccountId());
         storePingDuration();
     }
 
     private void storePingDuration() {
         final ContentValues values = new ContentValues(1);
         values.put(AccountColumns.PING_DURATION, mPingDuration);
-        Account.update(mContext, Account.CONTENT_URI, mAccountId, values);
-    }
-
-    public final long getAccountId() {
-        return mAccountId;
+        Account.update(mContext, Account.CONTENT_URI, getAccountId(), values);
     }
 
     public final android.accounts.Account getAmAccount() {
@@ -158,7 +147,7 @@ public class EasPing extends EasOperation {
     protected HttpEntity getRequestEntity() throws IOException {
         // Get the mailboxes that need push notifications.
         final Cursor c = Mailbox.getMailboxesForPush(mContext.getContentResolver(),
-                mAccountId);
+                getAccountId());
         if (c == null) {
             throw new IllegalStateException("Could not read mailboxes");
         }
@@ -186,8 +175,7 @@ public class EasPing extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+    protected int handleResponse(final EasResponse response) throws IOException {
         if (response.isEmpty()) {
             // TODO this should probably not be an IOException, maybe something more descriptive?
             throw new IOException("Empty ping response");
@@ -201,14 +189,15 @@ public class EasPing extends EasOperation {
         // Take the appropriate action for this response.
         // Many of the responses require no explicit action here, they just influence
         // our re-ping behavior, which is handled by the caller.
+        final long accountId = getAccountId();
         switch (pingStatus) {
             case PingParser.STATUS_EXPIRED:
-                LogUtils.i(TAG, "Ping expired for account %d", mAccountId);
+                LogUtils.i(TAG, "Ping expired for account %d", accountId);
                 // On successful expiration, we can increase our ping duration
                 increasePingDuration();
                 break;
             case PingParser.STATUS_CHANGES_FOUND:
-                LogUtils.i(TAG, "Ping found changed folders for account %d", mAccountId);
+                LogUtils.i(TAG, "Ping found changed folders for account %d", accountId);
                 requestSyncForSyncList(pp.getSyncList());
                 break;
             case PingParser.STATUS_REQUEST_INCOMPLETE:
@@ -216,28 +205,28 @@ public class EasPing extends EasOperation {
                 // These two cases indicate that the ping request was somehow bad.
                 // TODO: It's insanity to re-ping with the same data and expect a different
                 // result. Improve this if possible.
-                LogUtils.e(TAG, "Bad ping request for account %d", mAccountId);
+                LogUtils.e(TAG, "Bad ping request for account %d", accountId);
                 break;
             case PingParser.STATUS_REQUEST_HEARTBEAT_OUT_OF_BOUNDS:
                 long newDuration = pp.getHeartbeatInterval();
                 LogUtils.i(TAG, "Heartbeat out of bounds for account %d, " +
-                        "old duration %d new duration %d", mAccountId, mPingDuration, newDuration);
+                        "old duration %d new duration %d", accountId, mPingDuration, newDuration);
                 mPingDuration = newDuration;
                 storePingDuration();
                 break;
             case PingParser.STATUS_REQUEST_TOO_MANY_FOLDERS:
-                LogUtils.i(TAG, "Too many folders for account %d", mAccountId);
+                LogUtils.i(TAG, "Too many folders for account %d", accountId);
                 break;
             case PingParser.STATUS_FOLDER_REFRESH_NEEDED:
-                LogUtils.i(TAG, "FolderSync needed for account %d", mAccountId);
+                LogUtils.i(TAG, "FolderSync needed for account %d", accountId);
                 requestFolderSync();
                 break;
             case PingParser.STATUS_SERVER_ERROR:
-                LogUtils.i(TAG, "Server error for account %d", mAccountId);
+                LogUtils.i(TAG, "Server error for account %d", accountId);
                 break;
             case CommandStatus.SERVER_ERROR_RETRY:
                 // Try again later.
-                LogUtils.i(TAG, "Retryable server error for account %d", mAccountId);
+                LogUtils.i(TAG, "Retryable server error for account %d", accountId);
                 return RESULT_RESTART;
 
             // These errors should not happen.
@@ -328,7 +317,7 @@ public class EasPing extends EasOperation {
      */
     private void requestSyncForSyncList(final ArrayList<String> syncList) {
         final String[] bindArguments = new String[2];
-        bindArguments[0] = Long.toString(mAccountId);
+        bindArguments[0] = Long.toString(getAccountId());
 
         final ArrayList<Long> mailboxIds = new ArrayList<Long>();
         final HashSet<Integer> contentTypes = new HashSet<Integer>();
@@ -423,9 +412,17 @@ public class EasPing extends EasOperation {
                 mAmAccount.toString(), extras.toString());
     }
 
+    /**
+     * Request a ping-only sync via the SyncManager. This is used in error paths, which is also why
+     * we don't just create and start a new ping task immediately: in the case where we have loss
+     * of network, we want to take advantage of the SyncManager to schedule this when we expect it
+     * to be able to work.
+     * @param amAccount Account that needs to ping.
+     */
     public static void requestPing(final android.accounts.Account amAccount) {
-        final Bundle extras = new Bundle(1);
+        final Bundle extras = new Bundle(2);
         extras.putBoolean(Mailbox.SYNC_EXTRA_PUSH_ONLY, true);
+        extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
         ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
         LogUtils.i(LOG_TAG, "requestPing EasOperation %s, %s",
                 amAccount.toString(), extras.toString());

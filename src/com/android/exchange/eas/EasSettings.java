@@ -16,8 +16,6 @@
 
 package com.android.exchange.eas;
 
-import android.content.SyncResult;
-
 import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.SettingsParser;
@@ -49,8 +47,8 @@ public class EasSettings extends EasOperation {
         super(parentOperation);
     }
 
-    public boolean sendDeviceInformation(final SyncResult syncResult) {
-        return performOperation(syncResult) == RESULT_OK;
+    public boolean sendDeviceInformation() {
+        return performOperation() == RESULT_OK;
     }
 
     @Override
@@ -62,14 +60,13 @@ public class EasSettings extends EasOperation {
     protected HttpEntity getRequestEntity() throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.SETTINGS_SETTINGS);
-        addDeviceInformationToSerlializer(s);
+        addDeviceInformationToSerializer(s);
         s.end().done();
         return makeEntity(s);
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+    protected int handleResponse(final EasResponse response) throws IOException {
         return new SettingsParser(response.getInputStream()).parse()
                 ? RESULT_OK : RESULT_OTHER_FAILURE;
     }

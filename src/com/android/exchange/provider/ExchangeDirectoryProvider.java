@@ -36,6 +36,8 @@ import android.provider.ContactsContract.Directory;
 import android.provider.ContactsContract.DisplayNameSources;
 import android.provider.ContactsContract.RawContacts;
 import android.text.TextUtils;
+import android.util.Log;
+import android.util.Pair;
 
 import com.android.emailcommon.Configuration;
 import com.android.emailcommon.mail.PackedString;
@@ -70,7 +72,9 @@ public class ExchangeDirectoryProvider extends ContentProvider {
             com.android.exchange.Configuration.EXCHANGE_GAL_AUTHORITY;
 
     private static final int DEFAULT_CONTACT_ID = 1;
+
     private static final int DEFAULT_LOOKUP_LIMIT = 20;
+    private static final int MAX_LOOKUP_LIMIT = 100;
 
     private static final int GAL_BASE = 0;
     private static final int GAL_DIRECTORIES = GAL_BASE;
@@ -306,12 +310,27 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                         return null;
                     }
 
+                    final boolean isEmail = match == GAL_EMAIL_FILTER;
+                    final boolean isPhone = match == GAL_PHONE_FILTER;
+                    // For phone filter queries we request more results from the server
+                    // than requested by the caller because we omit contacts without
+                    // phone numbers, and the server lacks the ability to do this filtering
+                    // for us. We then enforce the limit when constructing the cursor
+                    // containing the results.
+                    int queryLimit = limit;
+                    if (isPhone) {
+                        queryLimit = 3 * queryLimit;
+                    }
+                    if (queryLimit > MAX_LOOKUP_LIMIT) {
+                        queryLimit = MAX_LOOKUP_LIMIT;
+                    }
+
                     // Get results from the Exchange account
                     final GalResult galResult = EasSyncService.searchGal(getContext(), accountId,
-                            filter, limit);
+                            filter, queryLimit);
                     if (galResult != null) {
-                        return buildGalResultCursor(
-                                projection, galResult, match == GAL_PHONE_FILTER, sortOrder);
+                         return buildGalResultCursor(
+                                 projection, galResult, sortOrder, limit, isEmail, isPhone);
                     }
                 } finally {
                     Binder.restoreCallingIdentity(callingId);
@@ -354,7 +373,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
     }
 
     /*package*/ Cursor buildGalResultCursor(String[] projection, GalResult galResult,
-            boolean isPhoneFilter, String sortOrder) {
+            String sortOrder, int limit, boolean isEmailFilter, boolean isPhoneFilter) {
         int displayNameIndex = -1;
         int displayNameSourceIndex = -1;
         int alternateDisplayNameIndex = -1;
@@ -401,7 +420,15 @@ public class ExchangeDirectoryProvider extends ContentProvider {
             }
         }
 
-        final boolean useAlternateSortKey = Contacts.SORT_KEY_ALTERNATIVE.equals(sortOrder);
+        boolean usePrimarySortKey = false;
+        boolean useAlternateSortKey = false;
+        if (Contacts.SORT_KEY_PRIMARY.equals(sortOrder)) {
+            usePrimarySortKey = true;
+        } else if (Contacts.SORT_KEY_ALTERNATIVE.equals(sortOrder)) {
+            useAlternateSortKey = true;
+        } else if (sortOrder != null && sortOrder.length() > 0) {
+            Log.w(TAG, "Ignoring unsupported sort order: " + sortOrder);
+        }
 
         final TreeMap<GalSortKey, Object[]> sortedResultsMap =
                 new TreeMap<GalSortKey, Object[]>(new NameComparator());
@@ -415,56 +442,44 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         // email addresses or multiple phone numbers.
         int contactId = 1;
 
-        final Object[] row = new Object[projection.length];
         final int count = galResult.galData.size();
         for (int i = 0; i < count; i++) {
             final GalData galDataRow = galResult.galData.get(i);
-            final String firstName = galDataRow.get(GalData.FIRST_NAME);
-            final String lastName = galDataRow.get(GalData.LAST_NAME);
-            String displayName = galDataRow.get(GalData.DISPLAY_NAME);
-            final List<PhoneInfo> phones = new ArrayList<PhoneInfo>();
 
+            final List<PhoneInfo> phones = new ArrayList<PhoneInfo>();
             addPhoneInfo(phones, galDataRow.get(GalData.WORK_PHONE), Phone.TYPE_WORK);
             addPhoneInfo(phones, galDataRow.get(GalData.OFFICE), Phone.TYPE_COMPANY_MAIN);
             addPhoneInfo(phones, galDataRow.get(GalData.HOME_PHONE), Phone.TYPE_HOME);
             addPhoneInfo(phones, galDataRow.get(GalData.MOBILE_PHONE), Phone.TYPE_MOBILE);
 
-            // If we don't have a display name, try to create one using first and last name
-            if (displayName == null) {
-                if (firstName != null && lastName != null) {
-                    displayName = firstName + " " + lastName;
-                } else if (firstName != null) {
-                    displayName = firstName;
-                } else if (lastName != null) {
-                    displayName = lastName;
-                }
-            }
-            galDataRow.put(GalData.DISPLAY_NAME, displayName);
+            // Track whether we added a result for this contact or not, in
+            // order to stop once we have maxResult contacts.
+            boolean addedContact = false;
 
+            Pair<String, Integer> displayName = getDisplayName(galDataRow, phones);
+            if (TextUtils.isEmpty(displayName.first)) {
+                // can't use a contact if we can't find a decent name for it.
+                continue;
+            }
+            galDataRow.put(GalData.DISPLAY_NAME, displayName.first);
+
+            final String alternateDisplayName = getAlternateDisplayName(
+                    galDataRow, displayName.first);
+            final String sortName = usePrimarySortKey ? displayName.first
+                : (useAlternateSortKey ? alternateDisplayName : "");
+            final Object[] row = new Object[projection.length];
             if (displayNameIndex != -1) {
-                row[displayNameIndex] = displayName;
+                row[displayNameIndex] = displayName.first;
             }
-
-            // Try to create an alternate display name, using first and last name
-            // TODO: Check with Contacts team to make sure we're using this properly
-            final String alternateDisplayName;
-            if (firstName != null && lastName != null) {
-                alternateDisplayName = lastName + " " + firstName;
-            } else {
-                alternateDisplayName = displayName;
+            if (displayNameSourceIndex != -1) {
+                row[displayNameSourceIndex] = displayName.second;
             }
 
             if (alternateDisplayNameIndex != -1) {
                 row[alternateDisplayNameIndex] = alternateDisplayName;
             }
 
-            if (displayNameSourceIndex >= 0) {
-                row[displayNameSourceIndex] = DisplayNameSources.STRUCTURED_NAME;
-            }
-
-            final String sortName = useAlternateSortKey ? alternateDisplayName : displayName;
-
-            if (hasPhoneNumberIndex >= 0) {
+            if (hasPhoneNumberIndex != -1) {
                 if (phones.size() > 0) {
                     row[hasPhoneNumberIndex] = true;
                 }
@@ -487,34 +502,48 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                     if (!uniqueNumbers.add(phone.mNumber)) {
                         continue;
                     }
-                    if (phoneNumberIndex >= 0) {
+                    if (phoneNumberIndex != -1) {
                         row[phoneNumberIndex] = phone.mNumber;
                     }
-                    if (phoneTypeIndex >= 0) {
+                    if (phoneTypeIndex != -1) {
                         row[phoneTypeIndex] = phone.mType;
                     }
                     if (idIndex != -1) {
                         row[idIndex] = id;
                     }
                     sortedResultsMap.put(new GalSortKey(sortName, id), row.clone());
+                    addedContact = true;
                     id++;
                 }
 
             } else {
-                if (emailIndex != -1) {
-                    row[emailIndex] = galDataRow.get(GalData.EMAIL_ADDRESS);
-                }
-                if (emailTypeIndex >= 0) {
-                    row[emailTypeIndex] = Email.TYPE_WORK;
+                boolean haveEmail = false;
+                Object address = galDataRow.get(GalData.EMAIL_ADDRESS);
+                if (address != null && !TextUtils.isEmpty(address.toString())) {
+                    if (emailIndex != -1) {
+                        row[emailIndex] = address;
+                    }
+                    if (emailTypeIndex != -1) {
+                        row[emailTypeIndex] = Email.TYPE_WORK;
+                    }
+                    haveEmail = true;
                 }
 
-                if (idIndex != -1) {
-                    row[idIndex] = id;
+                if (!isEmailFilter || haveEmail) {
+                    if (idIndex != -1) {
+                        row[idIndex] = id;
+                    }
+                    sortedResultsMap.put(new GalSortKey(sortName, id), row.clone());
+                    addedContact = true;
+                    id++;
                 }
-                sortedResultsMap.put(new GalSortKey(sortName, id), row.clone());
-                id++;
             }
-            contactId++;
+            if (addedContact) {
+                contactId++;
+                if (contactId > limit) {
+                    break;
+                }
+            }
         }
         final MatrixCursor cursor = new MatrixCursor(projection, sortedResultsMap.size());
         for(Object[] result : sortedResultsMap.values()) {
@@ -522,6 +551,66 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         }
 
         return cursor;
+    }
+
+    /**
+     * Try to create a display name from various fields.
+     *
+     * @return a display name for contact and its source
+     */
+    private static Pair<String, Integer> getDisplayName(GalData galDataRow, List<PhoneInfo> phones) {
+        String displayName = galDataRow.get(GalData.DISPLAY_NAME);
+        if (!TextUtils.isEmpty(displayName)) {
+            return Pair.create(displayName, DisplayNameSources.STRUCTURED_NAME);
+        }
+
+        // try to get displayName from name fields
+        final String firstName = galDataRow.get(GalData.FIRST_NAME);
+        final String lastName = galDataRow.get(GalData.LAST_NAME);
+        if (!TextUtils.isEmpty(firstName) || !TextUtils.isEmpty(lastName)) {
+            if (!TextUtils.isEmpty(firstName) && !TextUtils.isEmpty(lastName)) {
+                displayName = firstName + " " + lastName;
+            } else if (!TextUtils.isEmpty(firstName)) {
+                displayName = firstName;
+            } else {
+                displayName = lastName;
+            }
+            return Pair.create(displayName, DisplayNameSources.STRUCTURED_NAME);
+        }
+
+        // try to get displayName from email
+        final String emailAddress = galDataRow.get(GalData.EMAIL_ADDRESS);
+        if (!TextUtils.isEmpty(emailAddress)) {
+            return Pair.create(emailAddress, DisplayNameSources.EMAIL);
+        }
+
+        // try to get displayName from phone numbers
+        if (phones != null && phones.size() > 0) {
+            final PhoneInfo phone = (PhoneInfo) phones.get(0);
+            if (phone != null && !TextUtils.isEmpty(phone.mNumber)) {
+                return Pair.create(phone.mNumber, DisplayNameSources.PHONE);
+            }
+        }
+        return Pair.create(null, null);
+    }
+
+    /**
+     * Try to create the alternate display name from various fields. The CP2
+     * Alternate Display Name field is LastName FirstName to support user
+     * choice of how to order names for display.
+     *
+     * @return alternate display name for contact and its source
+     */
+    private static String getAlternateDisplayName(GalData galDataRow, String displayName) {
+        // try to get displayName from name fields
+        final String firstName = galDataRow.get(GalData.FIRST_NAME);
+        final String lastName = galDataRow.get(GalData.LAST_NAME);
+        if (!TextUtils.isEmpty(firstName) && !TextUtils.isEmpty(lastName)) {
+            return lastName + " " + firstName;
+        } else if (!TextUtils.isEmpty(lastName)) {
+            return lastName;
+        }
+        return displayName;
     }
 
     private void addPhoneInfo(List<PhoneInfo> phones, String number, int type) {
@@ -565,17 +654,20 @@ public class ExchangeDirectoryProvider extends ContentProvider {
      *      preserved both between contacts with the same name and for
      *      multiple results within a given contact
      */
-    private static class GalSortKey {
+    protected static class GalSortKey {
         final String sortName;
-        final int    id;
+        final int id;
 
-        public GalSortKey(String sortName, int id) {
+        public GalSortKey(final String sortName, final int id) {
             this.sortName = sortName;
             this.id = id;
         }
     }
 
-    private static class NameComparator implements Comparator<GalSortKey> {
+    /**
+     * The Comparator that is used by ExchangeDirectoryProvider
+     */
+    protected static class NameComparator implements Comparator<GalSortKey> {
         private final Collator collator;
 
         public NameComparator() {
@@ -585,11 +677,19 @@ public class ExchangeDirectoryProvider extends ContentProvider {
         }
 
         @Override
-        public int compare(GalSortKey lhs, GalSortKey rhs) {
-            final int res = collator.compare(lhs.sortName, rhs.sortName);
-            if (res != 0) {
-                return res;
+        public int compare(final GalSortKey lhs, final GalSortKey rhs) {
+            if (lhs.sortName != null && rhs.sortName != null) {
+                final int res = collator.compare(lhs.sortName, rhs.sortName);
+                if (res != 0) {
+                    return res;
+                }
+            } else if (lhs.sortName != null) {
+                return 1;
+            } else if (rhs.sortName != null) {
+                return -1;
             }
+
+            // Either the names compared equally or both were null, use the id to compare.
             if (lhs.id != rhs.id) {
                 return lhs.id > rhs.id ? 1 : -1;
             }

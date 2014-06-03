@@ -19,7 +19,6 @@ package com.android.exchange.eas;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.support.v4.util.LongSparseArray;
 import android.text.TextUtils;
@@ -54,6 +53,10 @@ import java.util.TimeZone;
  * TODO: Handle multiple folders in one request. Not sure if parser can handle it yet.
  */
 public class EasSync extends EasOperation {
+
+    /** Result code indicating that the mailbox for an upsync is no longer present. */
+    public final static int RESULT_NO_MAILBOX = 0;
+    public final static int RESULT_OK = 1;
 
     // TODO: When we handle downsync, this will become relevant.
     private boolean mInitialSync;
@@ -100,12 +103,12 @@ public class EasSync extends EasOperation {
     }
 
     /**
-     * TODO: return value doesn't do what it claims.
-     * @return Number of messages successfully synced, or -1 if we encountered an error.
+     * @return Number of messages successfully synced, or a negative response code from
+     *         {@link EasOperation} if we encountered any errors.
      */
-    public final int upsync(final SyncResult syncResult) {
-        final List<MessageStateChange> changes = MessageStateChange.getChanges(mContext, mAccountId,
-                        getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE);
+    public final int upsync() {
+        final List<MessageStateChange> changes = MessageStateChange.getChanges(mContext,
+                getAccountId(), getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE);
         if (changes == null) {
             return 0;
         }
@@ -117,43 +120,65 @@ public class EasSync extends EasOperation {
 
         final long[][] messageIds = new long[2][changes.size()];
         final int[] counts = new int[2];
+        int result = 0;
 
         for (int i = 0; i < allData.size(); ++i) {
             mMailboxId = allData.keyAt(i);
             mStateChanges = allData.valueAt(i);
-            final Cursor mailboxCursor = mContext.getContentResolver().query(
-                    ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailboxId),
-                    Mailbox.ProjectionSyncData.PROJECTION, null, null, null);
-            if (mailboxCursor != null) {
-                try {
-                    if (mailboxCursor.moveToFirst()) {
-                        mMailboxServerId = mailboxCursor.getString(
-                                Mailbox.ProjectionSyncData.COLUMN_SERVER_ID);
-                        mMailboxSyncKey = mailboxCursor.getString(
-                                Mailbox.ProjectionSyncData.COLUMN_SYNC_KEY);
-                        final int result;
-                        if (TextUtils.isEmpty(mMailboxSyncKey) || mMailboxSyncKey.equals("0")) {
-                            // For some reason we can get here without a valid mailbox sync key
-                            // b/10797675
-                            // TODO: figure out why and clean this up
-                            LogUtils.d(LOG_TAG,
-                                    "Tried to sync mailbox %d with invalid mailbox sync key",
-                                    mMailboxId);
-                            result = -1;
-                        } else {
-                            result = performOperation(syncResult);
-                        }
-                        if (result == 0) {
-                            handleMessageUpdateStatus(mMessageUpdateStatus, messageIds, counts);
-                        } else {
-                            for (final MessageStateChange msc : mStateChanges) {
-                                messageIds[1][counts[1]] = msc.getMessageId();
-                                ++counts[1];
+            boolean retryMailbox = true;
+            // If we've already encountered a fatal error, don't even try to upsync subsequent
+            // mailboxes.
+            if (result >= 0) {
+                final Cursor mailboxCursor = mContext.getContentResolver().query(
+                        ContentUris.withAppendedId(Mailbox.CONTENT_URI, mMailboxId),
+                        Mailbox.ProjectionSyncData.PROJECTION, null, null, null);
+                if (mailboxCursor != null) {
+                    try {
+                        if (mailboxCursor.moveToFirst()) {
+                            mMailboxServerId = mailboxCursor.getString(
+                                    Mailbox.ProjectionSyncData.COLUMN_SERVER_ID);
+                            mMailboxSyncKey = mailboxCursor.getString(
+                                    Mailbox.ProjectionSyncData.COLUMN_SYNC_KEY);
+                            if (TextUtils.isEmpty(mMailboxSyncKey) || mMailboxSyncKey.equals("0")) {
+                                // For some reason we can get here without a valid mailbox sync key
+                                // b/10797675
+                                // TODO: figure out why and clean this up
+                                LogUtils.d(LOG_TAG,
+                                        "Tried to sync mailbox %d with invalid mailbox sync key",
+                                        mMailboxId);
+                            } else {
+                                result = performOperation();
+                                if (result >= 0) {
+                                    // Our request gave us back a legitimate answer; this is the
+                                    // only case in which we don't retry this mailbox.
+                                    retryMailbox = false;
+                                    if (result == RESULT_OK) {
+                                        handleMessageUpdateStatus(mMessageUpdateStatus, messageIds,
+                                                counts);
+                                    } else if (result == RESULT_NO_MAILBOX) {
+                                        // A retry here is pointless -- the message's mailbox (and
+                                        // therefore the message) is gone, so mark as success so
+                                        // that these entries get wiped from the change list.
+                                        for (final MessageStateChange msc : mStateChanges) {
+                                            messageIds[0][counts[0]] = msc.getMessageId();
+                                            ++counts[0];
+                                        }
+                                    } else {
+                                        LogUtils.wtf(LOG_TAG, "Unrecognized result code: %d",
+                                                result);
+                                    }
+                                }
                             }
                         }
+                    } finally {
+                        mailboxCursor.close();
                     }
-                } finally {
-                    mailboxCursor.close();
+                }
+            }
+            if (retryMailbox) {
+                for (final MessageStateChange msc : mStateChanges) {
+                    messageIds[1][counts[1]] = msc.getMessageId();
+                    ++counts[1];
                 }
             }
         }
@@ -162,7 +187,10 @@ public class EasSync extends EasOperation {
         MessageStateChange.upsyncSuccessful(cr, messageIds[0], counts[0]);
         MessageStateChange.upsyncRetry(cr, messageIds[1], counts[1]);
 
-        return 0;
+        if (result < 0) {
+            return result;
+        }
+        return counts[0];
     }
 
     @Override
@@ -182,26 +210,21 @@ public class EasSync extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
+    protected int handleResponse(final EasResponse response)
             throws IOException, CommandStatusException {
-        final Account account = Account.restoreAccountWithId(mContext, mAccountId);
-        if (account == null) {
-            // TODO: Make this some other error type, since the account is just gone now.
-            return RESULT_OTHER_FAILURE;
-        }
         final Mailbox mailbox = Mailbox.restoreMailboxWithId(mContext, mMailboxId);
         if (mailbox == null) {
-            return RESULT_OTHER_FAILURE;
+            return RESULT_NO_MAILBOX;
         }
         final EmailSyncParser parser = new EmailSyncParser(mContext, mContext.getContentResolver(),
-                response.getInputStream(), mailbox, account);
+                response.getInputStream(), mailbox, mAccount);
         try {
             parser.parse();
             mMessageUpdateStatus = parser.getMessageStatuses();
         } catch (final Parser.EmptyStreamException e) {
             // This indicates a compressed response which was empty, which is OK.
         }
-        return 0;
+        return RESULT_OK;
     }
 
     @Override

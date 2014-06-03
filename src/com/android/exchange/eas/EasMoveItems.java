@@ -4,7 +4,6 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.SyncResult;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
@@ -52,27 +51,39 @@ public class EasMoveItems extends EasOperation {
     }
 
     // TODO: Allow multiple messages in one request. Requires parser changes.
-    public int upsyncMovedMessages(final SyncResult syncResult) {
-        final List<MessageMove> moves = MessageMove.getMoves(mContext, mAccountId);
+    public int upsyncMovedMessages() {
+        final List<MessageMove> moves = MessageMove.getMoves(mContext, getAccountId());
         if (moves == null) {
             return RESULT_NO_MESSAGES;
         }
 
         final long[][] messageIds = new long[3][moves.size()];
         final int[] counts = new int[3];
+        int result = RESULT_NO_MESSAGES;
 
         for (final MessageMove move : moves) {
             mMove = move;
-            final int result = performOperation(syncResult);
+            if (result >= 0) {
+                // If our previous time through the loop succeeded, keep making server requests.
+                // Otherwise, we carry through the loop for all messages with the last error
+                // response, which will stop trying this iteration and force the rest of the
+                // messages into the retry state.
+                result = performOperation();
+            }
             final int status;
-            if (result == RESULT_OK) {
-                processResponse(mMove, mResponse);
-                status = mResponse.moveStatus;
+            if (result >= 0) {
+                if (result == RESULT_OK) {
+                    processResponse(mMove, mResponse);
+                    status = mResponse.moveStatus;
+                } else {
+                    // TODO: Should this really be a retry?
+                    // We got a 200 response with an empty payload. It's not clear we ought to
+                    // retry, but this is how our implementation has worked in the past.
+                    status = MoveItemsParser.STATUS_CODE_RETRY;
+                }
             } else {
-                // TODO: Perhaps not all errors should be retried?
-                // Notably, if the server returns 200 with an empty response, we retry. This is
-                // how the previous version worked, and I can't find documentation about what this
-                // response state really means.
+                // performOperation returned a negative status code, indicating a failure before the
+                // server actually was able to tell us yea or nay, so we must retry.
                 status = MoveItemsParser.STATUS_CODE_RETRY;
             }
             final int index;
@@ -91,7 +102,10 @@ public class EasMoveItems extends EasOperation {
         MessageMove.upsyncFail(cr, messageIds[1], counts[1]);
         MessageMove.upsyncRetry(cr, messageIds[2], counts[2]);
 
-        return RESULT_OK;
+        if (result >= 0) {
+            return RESULT_OK;
+        }
+        return result;
     }
 
     @Override
@@ -113,8 +127,7 @@ public class EasMoveItems extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+    protected int handleResponse(final EasResponse response) throws IOException {
         if (!response.isEmpty()) {
             final MoveItemsParser parser = new MoveItemsParser(response.getInputStream());
             parser.parse();

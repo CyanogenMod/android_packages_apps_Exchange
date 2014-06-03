@@ -17,7 +17,6 @@
 package com.android.exchange.eas;
 
 import android.content.Context;
-import android.content.SyncResult;
 import android.os.Bundle;
 
 import com.android.emailcommon.mail.MessagingException;
@@ -30,6 +29,7 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.FolderSyncParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.exchange.service.EasService;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -55,14 +55,25 @@ public class EasFolderSync extends EasOperation {
      */
     public static final int RESULT_WRONG_OPERATION = 2;
 
-    // TODO: Eliminate the need for mAccount (requires FolderSyncParser changes).
-    private final Account mAccount;
-
     /** Indicates whether this object is for validation rather than sync. */
     private final boolean mStatusOnly;
 
     /** During validation, this holds the policy we must enforce. */
     private Policy mPolicy;
+
+    /** During validation, this holds the result. */
+    private Bundle mValidationResult;
+
+    /**
+     * Constructor for use with {@link EasService} when performing an actual sync.
+     * @param context
+     * @param accountId
+     */
+    public EasFolderSync(final Context context, final long accountId) {
+        super(context, accountId);
+        mStatusOnly = false;
+        mPolicy = null;
+    }
 
     /**
      * Constructor for actually doing folder sync.
@@ -71,7 +82,6 @@ public class EasFolderSync extends EasOperation {
      */
     public EasFolderSync(final Context context, final Account account) {
         super(context, account);
-        mAccount = account;
         mStatusOnly = false;
         mPolicy = null;
     }
@@ -82,61 +92,93 @@ public class EasFolderSync extends EasOperation {
      * @param hostAuth
      */
     public EasFolderSync(final Context context, final HostAuth hostAuth) {
-        this(context, new Account(), hostAuth);
+        super(context, -1);
+        setDummyAccount(hostAuth);
+        mStatusOnly = true;
     }
 
-    private EasFolderSync(final Context context, final Account account, final HostAuth hostAuth) {
-        super(context, account, hostAuth);
-        mAccount = account;
-        mAccount.mEmailAddress = hostAuth.mLogin;
-        mStatusOnly = true;
+    @Override
+    public int performOperation() {
+        if (mStatusOnly) {
+            return validate();
+        } else {
+            LogUtils.d(LOG_TAG, "Performing FolderSync for account %d", getAccountId());
+            return super.performOperation();
+        }
+    }
+
+    /**
+     * Returns the validation results after this operation has been performed.
+     * @return The validation results.
+     */
+    public Bundle getValidationResult() {
+        return mValidationResult;
     }
 
     /**
      * Perform a folder sync.
-     * @param syncResult The {@link SyncResult} object for this sync operation.
+     * TODO: Remove this function when transition to EasService is complete.
      * @return A result code, either from above or from the base class.
      */
-    public int doFolderSync(final SyncResult syncResult) {
+    public int doFolderSync() {
         if (mStatusOnly) {
             return RESULT_WRONG_OPERATION;
         }
-        LogUtils.d(LOG_TAG, "Performing sync for account %d", mAccount.mId);
-        return performOperation(syncResult);
+        LogUtils.d(LOG_TAG, "Performing sync for account %d", getAccountId());
+        // This intentionally calls super.performOperation -- calling our performOperation
+        // will simply end up calling super.performOperation anyway. This is part of the transition
+        // to EasService and will go away when this function is deleted.
+        return super.performOperation();
     }
 
     /**
-     * Perform account validation.
-     * @return The response {@link Bundle} expected by the RPC.
+     * Helper function for {@link #performOperation} -- do some initial checks and, if they pass,
+     * perform a folder sync to verify that we can. This sets {@link #mValidationResult} as a side
+     * effect which holds the result details needed by the UI.
+     * @return A result code, either from above or from the base class.
      */
-    public Bundle validate() {
-        final Bundle bundle = new Bundle(3);
+    private int validate() {
+        mValidationResult = new Bundle(3);
         if (!mStatusOnly) {
-            writeResultCode(bundle, RESULT_OTHER_FAILURE);
-            return bundle;
+            writeResultCode(mValidationResult, RESULT_OTHER_FAILURE);
+            return RESULT_OTHER_FAILURE;
         }
         LogUtils.d(LOG_TAG, "Performing validation");
 
         if (!registerClientCert()) {
-            bundle.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
+            mValidationResult.putInt(EmailServiceProxy.VALIDATE_BUNDLE_RESULT_CODE,
                     MessagingException.CLIENT_CERTIFICATE_ERROR);
-            return bundle;
+            return RESULT_CLIENT_CERTIFICATE_REQUIRED;
         }
 
         if (shouldGetProtocolVersion()) {
             final EasOptions options = new EasOptions(this);
-            final int result = options.getProtocolVersionFromServer(null);
+            final int result = options.getProtocolVersionFromServer();
             if (result != EasOptions.RESULT_OK) {
-                writeResultCode(bundle, result);
-                return bundle;
+                writeResultCode(mValidationResult, result);
+                return result;
             }
             final String protocolVersion = options.getProtocolVersionString();
             setProtocolVersion(protocolVersion);
-            bundle.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION, protocolVersion);
+            mValidationResult.putString(EmailServiceProxy.VALIDATE_BUNDLE_PROTOCOL_VERSION,
+                    protocolVersion);
         }
 
-        writeResultCode(bundle, performOperation(null));
-        return bundle;
+        // This is intentionally a call to super.performOperation. This is a helper function for
+        // our version of perfomOperation so calling that function would infinite loop.
+        final int result = super.performOperation();
+        writeResultCode(mValidationResult, result);
+        return result;
+    }
+
+    /**
+     * Perform account validation.
+     * TODO: Remove this function when transition to EasService is complete.
+     * @return The response {@link Bundle} expected by the RPC.
+     */
+    public Bundle doValidate() {
+        validate();
+        return mValidationResult;
     }
 
     @Override
@@ -154,7 +196,7 @@ public class EasFolderSync extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
+    protected int handleResponse(final EasResponse response)
             throws IOException, CommandStatusException {
         if (!response.isEmpty()) {
             new FolderSyncParser(mContext, mContext.getContentResolver(),
@@ -169,7 +211,7 @@ public class EasFolderSync extends EasOperation {
     }
 
     @Override
-    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+    protected boolean handleProvisionError() {
         if (mStatusOnly) {
             final EasProvision provisionOperation = new EasProvision(this);
             mPolicy = provisionOperation.test();
@@ -177,7 +219,7 @@ public class EasFolderSync extends EasOperation {
             // no need to re-run the operation.
             return false;
         }
-        return super.handleProvisionError(syncResult, accountId);
+        return super.handleProvisionError();
     }
 
     /**

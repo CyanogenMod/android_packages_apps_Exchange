@@ -15,7 +15,7 @@
 
 package com.android.exchange.adapter;
 
-import com.android.exchange.service.EasAttachmentLoader.ProgressCallback;
+import com.android.exchange.eas.EasLoadAttachment.ProgressCallback;
 
 import java.io.IOException;
 import java.io.InputStream;

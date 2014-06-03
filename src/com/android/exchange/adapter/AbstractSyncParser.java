@@ -21,9 +21,11 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
+import android.os.Bundle;
 import android.os.RemoteException;
 
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.CommandStatusException;
@@ -64,6 +66,12 @@ public abstract class AbstractSyncParser extends Parser {
     public AbstractSyncParser(Parser p, AbstractSyncAdapter adapter) throws IOException {
         super(p);
         init(adapter);
+    }
+
+    public AbstractSyncParser(final Parser p, final Context context, final ContentResolver resolver,
+        final Mailbox mailbox, final Account account) throws IOException {
+        super(p);
+        init(context, resolver, mailbox, account);
     }
 
     private void init(final AbstractSyncAdapter adapter) {
@@ -158,8 +166,13 @@ public abstract class AbstractSyncParser extends Parser {
                         // Status 8 is Bad; it means the server doesn't recognize the serverId it
                         // sent us.  12 means that we're being asked to refresh the folder list.
                         // We'll do that with 8 also...
-                        // TODO: reloadFolderList simply sets all mailboxes to hold.
-                        //ExchangeService.reloadFolderList(mContext, mAccount.mId, true);
+                        // TODO: Improve this -- probably best to do this synchronously and then
+                        // immediately retry the current sync.
+                        final Bundle extras = new Bundle(1);
+                        extras.putBoolean(Mailbox.SYNC_EXTRA_ACCOUNT_ONLY, true);
+                        ContentResolver.requestSync(new android.accounts.Account(
+                                mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE),
+                                EmailContent.AUTHORITY, extras);
                         // We don't have any provision for telling the user "wait a minute while
                         // we sync folders"...
                         throw new IOException();

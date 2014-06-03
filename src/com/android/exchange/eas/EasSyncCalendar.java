@@ -1,4 +1,4 @@
-package com.android.exchange.service;
+package com.android.exchange.eas;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -6,7 +6,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Entity;
 import android.content.EntityIterator;
-import android.content.SyncResult;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
@@ -25,6 +24,7 @@ import com.android.calendarcommon2.DateException;
 import com.android.calendarcommon2.Duration;
 import com.android.emailcommon.TrafficFlags;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
@@ -49,11 +49,13 @@ import java.util.UUID;
 /**
  * Performs an Exchange Sync for a Calendar collection.
  */
-public class EasCalendarSyncHandler extends EasSyncHandler {
+public class EasSyncCalendar extends EasSyncCollectionTypeBase {
     private static final String TAG = Eas.LOG_TAG;
 
     // TODO: Some constants are copied from CalendarSyncAdapter and are still used by the parser.
     // These values need to stay in sync; when the parser is cleaned up, be sure to unify them.
+
+    private static final int PIM_WINDOW_SIZE_CALENDAR = 10;
 
     /** Projection for getting a calendar id. */
     private static final String[] CALENDAR_ID_PROJECTION = { Calendars._ID };
@@ -112,7 +114,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     private static final String EXTENDED_PROPERTY_ATTENDEES = "attendees";
     private static final String EXTENDED_PROPERTY_CATEGORIES = "categories";
 
-    private final android.accounts.Account mAccountManagerAccount;
+    private final android.accounts.Account mAndroidAccount;
     private final long mCalendarId;
 
     // The following lists are populated as part of upsync, and handled during cleanup.
@@ -123,15 +125,16 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     /** Emails that need to be sent due to this upsync. */
     private final ArrayList<Message> mOutgoingMailList = new ArrayList<Message>();
 
-    public EasCalendarSyncHandler(final Context context, final ContentResolver contentResolver,
-            final android.accounts.Account accountManagerAccount, final Account account,
-            final Mailbox mailbox, final Bundle syncExtras, final SyncResult syncResult) {
-        super(context, contentResolver, account, mailbox, syncExtras, syncResult);
-        mAccountManagerAccount = accountManagerAccount;
-        final Cursor c = mContentResolver.query(Calendars.CONTENT_URI, CALENDAR_ID_PROJECTION,
+    public EasSyncCalendar(final Context context, final Account account,
+            final Mailbox mailbox) {
+        super();
+        mAndroidAccount = new android.accounts.Account(account.mEmailAddress,
+            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+        final ContentResolver cr = context.getContentResolver();
+        final Cursor c = cr.query(Calendars.CONTENT_URI, CALENDAR_ID_PROJECTION,
                 CALENDAR_SELECTION_ACCOUNT_AND_SYNC_ID,
                 new String[] {
-                        mAccount.mEmailAddress,
+                        account.mEmailAddress,
                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE,
                         mailbox.mServerId,
                 }, null);
@@ -146,11 +149,11 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     // Check if we have a calendar for this account with no server Id. If so, it was
                     // synced with an older version of the sync adapter before serverId's were
                     // supported.
-                    final Cursor c1 = mContentResolver.query(Calendars.CONTENT_URI,
+                    final Cursor c1 = cr.query(Calendars.CONTENT_URI,
                             CALENDAR_ID_PROJECTION,
                             CALENDAR_SELECTION_ACCOUNT_AND_NO_SYNC,
                             new String[] {
-                                    mAccount.mEmailAddress,
+                                    account.mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE,
                             }, null);
                     if (c1 != null) {
@@ -158,10 +161,10 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                             if (c1.moveToFirst()) {
                                 id = c1.getLong(CALENDAR_ID_COLUMN);
                                 final ContentValues values = new ContentValues();
-                                values.put(Calendars._SYNC_ID, mMailbox.mServerId);
-                                mContentResolver.update(
+                                values.put(Calendars._SYNC_ID, mailbox.mServerId);
+                                cr.update(
                                         ContentUris.withAppendedId(
-                                                asSyncAdapter(Calendars.CONTENT_URI), id),
+                                                asSyncAdapter(Calendars.CONTENT_URI, account), id),
                                         values,
                                         null, /* where */
                                         null /* selectionArgs */);
@@ -174,8 +177,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     if (id >= 0) {
                         mCalendarId = id;
                     } else {
-                        mCalendarId = CalendarUtilities.createCalendar(mContext, mContentResolver,
-                            mAccount, mMailbox);
+                        mCalendarId = CalendarUtilities.createCalendar(context, cr, account,
+                            mailbox);
                     }
                 }
             } finally {
@@ -185,7 +188,27 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     }
 
     @Override
-    protected int getTrafficFlag() {
+    public void setSyncOptions(final Context context, final Serializer s,
+        final double protocolVersion, final Account account, final Mailbox mailbox,
+        final boolean isInitialSync, final int numWindows) throws IOException {
+        if (isInitialSync) {
+            setInitialSyncOptions(s);
+        } else {
+            setNonInitialSyncOptions(s, numWindows, protocolVersion);
+            setUpsyncCommands(context, account, protocolVersion, s);
+        }
+    }
+
+
+    @Override
+    public AbstractSyncParser getParser(final Context context, final Account account,
+        final Mailbox mailbox, final InputStream is) throws IOException {
+        return new CalendarSyncParser(context, context.getContentResolver(), is, mailbox, account,
+            mAndroidAccount, mCalendarId);
+    }
+
+    @Override
+    public int getTrafficFlag() {
         return TrafficFlags.DATA_CALENDAR;
     }
 
@@ -205,34 +228,25 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     /**
      * Convenience wrapper to {@link #asSyncAdapter(android.net.Uri, String)}.
      */
-    private Uri asSyncAdapter(final Uri uri) {
-        return asSyncAdapter(uri, mAccount.mEmailAddress);
+    private Uri asSyncAdapter(final Uri uri, final Account account) {
+        return asSyncAdapter(uri, account.mEmailAddress);
     }
 
-    @Override
     protected String getFolderClassName() {
         return "Calendar";
     }
 
-
-    @Override
-    protected AbstractSyncParser getParser(final InputStream is) throws IOException {
-        return new CalendarSyncParser(mContext, mContentResolver, is,
-                mMailbox, mAccount, mAccountManagerAccount, mCalendarId);
-    }
-
-    @Override
     protected void setInitialSyncOptions(final Serializer s) throws IOException {
         // Nothing to do for Calendar.
     }
 
-    @Override
-    protected void setNonInitialSyncOptions(final Serializer s, int numWindows) throws IOException {
+    protected void setNonInitialSyncOptions(final Serializer s, final int numWindows,
+        final double protocolVersion) throws IOException {
         final int windowSize = numWindows * PIM_WINDOW_SIZE_CALENDAR;
         if (windowSize > MAX_WINDOW_SIZE  + PIM_WINDOW_SIZE_CALENDAR) {
             throw new IOException("Max window size reached and still no data");
         }
-        setPimSyncOptions(s, Eas.FILTER_2_WEEKS,
+        setPimSyncOptions(s, Eas.FILTER_2_WEEKS, protocolVersion,
                 windowSize < MAX_WINDOW_SIZE ? windowSize : MAX_WINDOW_SIZE);
     }
 
@@ -242,12 +256,13 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @param calendarIdString {@link #mCalendarId}, as a String.
      * @param calendarIdArgument calendarIdString, in a String array.
      */
-    private void markParentsOfDirtyEvents(final String calendarIdString,
-            final String[] calendarIdArgument) {
+    private void markParentsOfDirtyEvents(final Context context, final Account account,
+            final String calendarIdString, final String[] calendarIdArgument) {
+        final ContentResolver cr = context.getContentResolver();
         // We've got to handle exceptions as part of the parent when changes occur, so we need
         // to find new/changed exceptions and mark the parent dirty
         final ArrayList<Long> orphanedExceptions = new ArrayList<Long>();
-        final Cursor c = mContentResolver.query(Events.CONTENT_URI,
+        final Cursor c = cr.query(Events.CONTENT_URI,
                 ORIGINAL_EVENT_PROJECTION, DIRTY_EXCEPTION_IN_CALENDAR, calendarIdArgument, null);
         if (c != null) {
             try {
@@ -258,7 +273,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 while (c.moveToNext()) {
                     // Mark the parents of dirty exceptions
                     final long parentId = c.getLong(ORIGINAL_EVENT_ORIGINAL_ID_COLUMN);
-                    final int cnt = mContentResolver.update(asSyncAdapter(Events.CONTENT_URI), cv,
+                    final int cnt = cr.update(asSyncAdapter(Events.CONTENT_URI, account), cv,
                             EVENT_ID_AND_CALENDAR_ID,
                             new String[] { Long.toString(parentId), calendarIdString });
                     // Keep track of any orphaned exceptions
@@ -274,8 +289,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         // Delete any orphaned exceptions
         for (final long orphan : orphanedExceptions) {
             LogUtils.d(TAG, "Deleted orphaned exception: %d", orphan);
-            mContentResolver.delete(asSyncAdapter(
-                    ContentUris.withAppendedId(Events.CONTENT_URI, orphan)), null, null);
+            cr.delete(asSyncAdapter(
+                    ContentUris.withAppendedId(Events.CONTENT_URI, orphan), account), null, null);
         }
     }
 
@@ -306,10 +321,11 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @param entity The {@link Entity} for this event.
      * @param clientId The client id for this event.
      */
-    private void sendDeclinedEmail(final Entity entity, final String clientId) {
+    private void sendDeclinedEmail(final Context context, final Account account,
+        final Entity entity, final String clientId) {
         final Message msg =
-                CalendarUtilities.createMessageForEntity(mContext, entity,
-                        Message.FLAG_OUTGOING_MEETING_DECLINE, clientId, mAccount);
+                CalendarUtilities.createMessageForEntity(context, entity,
+                        Message.FLAG_OUTGOING_MEETING_DECLINE, clientId, account);
         if (msg != null) {
             LogUtils.d(TAG, "Queueing declined response to %s", msg.mTo);
             mOutgoingMailList.add(msg);
@@ -363,13 +379,15 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @throws IOException
      * TODO: This can probably be refactored/cleaned up more.
      */
-    private void sendEvent(final Entity entity, final String clientId, final Serializer s)
+    private void sendEvent(final Context context, final Account account, final Entity entity,
+        final String clientId, final double protocolVersion, final Serializer s)
             throws IOException {
         // Serialize for EAS here
         // Set uid with the client id we created
         // 1) Serialize the top-level event
         // 2) Serialize attendees and reminders from subvalues
         // 3) Look for exceptions and serialize with the top-level event
+        final ContentResolver cr = context.getContentResolver();
         final ContentValues entityValues = entity.getEntityValues();
         final boolean isException = (clientId == null);
         boolean hasAttendees = false;
@@ -396,8 +414,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     final long eventId = entityValues.getAsLong(Events._ID);
                     final ContentValues cv = new ContentValues(1);
                     cv.put(Events.STATUS, Events.STATUS_CANCELED);
-                    mContentResolver.update(
-                            asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, eventId)),
+                    cr.update(asSyncAdapter(
+                        ContentUris.withAppendedId(Events.CONTENT_URI, eventId), account),
                             cv, null, null);
                 }
             } else {
@@ -468,7 +486,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
         String loc = entityValues.getAsString(Events.EVENT_LOCATION);
         if (!TextUtils.isEmpty(loc)) {
-            if (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+            if (protocolVersion < Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
                 // EAS 2.5 doesn't like bare line feeds
                 loc = Utility.replaceBareLfWithCrlf(loc);
             }
@@ -476,7 +494,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         }
         s.writeStringValue(entityValues, Events.TITLE, Tags.CALENDAR_SUBJECT);
 
-        if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+        if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
             s.start(Tags.BASE_BODY);
             s.data(Tags.BASE_TYPE, "1");
             s.writeStringValue(entityValues, Events.DESCRIPTION, Tags.BASE_DATA);
@@ -488,7 +506,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
         if (!isException) {
             // For Exchange 2003, only upsync if the event is new
-            if ((getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) || !isChange) {
+            if ((protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) || !isChange) {
                 s.writeStringValue(entityValues, Events.ORGANIZER, Tags.CALENDAR_ORGANIZER_EMAIL);
             }
 
@@ -580,7 +598,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     }
                     s.data(Tags.CALENDAR_ATTENDEE_NAME, attendeeName);
                     s.data(Tags.CALENDAR_ATTENDEE_EMAIL, attendeeEmail);
-                    if (getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
+                    if (protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) {
                         s.data(Tags.CALENDAR_ATTENDEE_TYPE, "1"); // Required
                     }
                     s.end(); // Attendee
@@ -601,14 +619,14 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         if (organizerEmail == null && entityValues.containsKey(Events.ORGANIZER)) {
             organizerEmail = entityValues.getAsString(Events.ORGANIZER);
         }
-        if (mAccount.mEmailAddress.equalsIgnoreCase(organizerEmail)) {
+        if (account.mEmailAddress.equalsIgnoreCase(organizerEmail)) {
             s.data(Tags.CALENDAR_MEETING_STATUS, hasAttendees ? "1" : "0");
         } else {
             s.data(Tags.CALENDAR_MEETING_STATUS, "3");
         }
 
         // For Exchange 2003, only upsync if the event is new
-        if (((getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) || !isChange) &&
+        if (((protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2007_DOUBLE) || !isChange) &&
                 organizerName != null) {
             s.data(Tags.CALENDAR_ORGANIZER_NAME, organizerName);
         }
@@ -635,12 +653,14 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @param selfOrganizer Whether the user is the organizer of this event.
      * @throws IOException
      */
-    private void handleExceptionsToRecurrenceRules(final Serializer s, final Entity entity,
-            final ContentValues entityValues, final String serverId, final String clientId,
-            final String calendarIdString, final boolean selfOrganizer) throws IOException {
-        final EntityIterator exIterator = EventsEntity.newEntityIterator(mContentResolver.query(
-                asSyncAdapter(Events.CONTENT_URI), null, ORIGINAL_EVENT_AND_CALENDAR,
-                new String[] { serverId, calendarIdString }, null), mContentResolver);
+    private void handleExceptionsToRecurrenceRules(final Serializer s, final Context context,
+            final Account account,final Entity entity, final ContentValues entityValues,
+            final String serverId, final String clientId, final String calendarIdString,
+            final boolean selfOrganizer, final double protocolVersion) throws IOException {
+        final ContentResolver cr = context.getContentResolver();
+        final EntityIterator exIterator = EventsEntity.newEntityIterator(cr.query(
+                asSyncAdapter(Events.CONTENT_URI, account), null, ORIGINAL_EVENT_AND_CALENDAR,
+                new String[] { serverId, calendarIdString }, null), cr);
         boolean exFirst = true;
         while (exIterator.hasNext()) {
             final Entity exEntity = exIterator.next();
@@ -649,7 +669,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 exFirst = false;
             }
             s.start(Tags.CALENDAR_EXCEPTION);
-            sendEvent(exEntity, null, s);
+            sendEvent(context, account, exEntity, null, protocolVersion, s);
             final ContentValues exValues = exEntity.getEntityValues();
             if (getInt(exValues, Events.DIRTY) == 1) {
                 // This is a new/updated exception, so we've got to notify our
@@ -666,7 +686,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                         // to the user, we have to reset it first to the original
                         // organizer
                         exValues.put(Events.ORGANIZER, entityValues.getAsString(Events.ORGANIZER));
-                        sendDeclinedEmail(exEntity, clientId);
+                        sendDeclinedEmail(context, account, exEntity, clientId);
                     }
                 } else {
                     flag = Message.FLAG_OUTGOING_MEETING_INVITE;
@@ -685,8 +705,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                 }
 
                 if (selfOrganizer) {
-                    final Message msg = CalendarUtilities.createMessageForEntity(mContext, exEntity,
-                            flag, clientId, mAccount);
+                    final Message msg = CalendarUtilities.createMessageForEntity(context, exEntity,
+                            flag, clientId, account);
                     if (msg != null) {
                         LogUtils.d(TAG, "Queueing exception update to %s", msg.mTo);
                         mOutgoingMailList.add(msg);
@@ -714,8 +734,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
 
                     // Now send a cancellation email
                     final Message removedMessage =
-                            CalendarUtilities.createMessageForEntity(mContext, removedEntity,
-                                    Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, mAccount);
+                            CalendarUtilities.createMessageForEntity(context, removedEntity,
+                                    Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, account);
                     if (removedMessage != null) {
                         LogUtils.d(TAG, "Queueing cancellation for removed attendees");
                         mOutgoingMailList.add(removedMessage);
@@ -737,10 +757,12 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @param eventId The id for this event.
      * @param clientId The client side id for this event.
      */
-    private void updateAttendeesAndSendMail(final Entity entity, final ContentValues entityValues,
-            final boolean selfOrganizer, final long eventId, final String clientId) {
+    private void updateAttendeesAndSendMail(final Context context, final Account account,
+            final Entity entity, final ContentValues entityValues, final boolean selfOrganizer,
+            final long eventId, final String clientId) {
         // Go through the extended properties of this Event and pull out our tokenized
         // attendees list and the user attendee status; we will need them later
+        final ContentResolver cr = context.getContentResolver();
         String attendeeString = null;
         long attendeeStringId = -1;
         String userAttendeeStatus = null;
@@ -764,8 +786,8 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
         // is dirty, in which case we DON'T send email about the Event)
         if (selfOrganizer && (getInt(entityValues, Events.DIRTY) == 1)) {
             final Message msg =
-                CalendarUtilities.createMessageForEventId(mContext, eventId,
-                        Message.FLAG_OUTGOING_MEETING_INVITE, clientId, mAccount);
+                CalendarUtilities.createMessageForEventId(context, eventId,
+                        Message.FLAG_OUTGOING_MEETING_INVITE, clientId, account);
             if (msg != null) {
                 LogUtils.d(TAG, "Queueing invitation to %s", msg.mTo);
                 mOutgoingMailList.add(msg);
@@ -797,20 +819,21 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             final ContentValues cv = new ContentValues();
             cv.put(ExtendedProperties.VALUE, newTokenizedAttendees.toString());
             if (attendeeString != null) {
-                mContentResolver.update(asSyncAdapter(ContentUris.withAppendedId(
-                        ExtendedProperties.CONTENT_URI, attendeeStringId)), cv, null, null);
+                cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                        ExtendedProperties.CONTENT_URI, attendeeStringId), account),
+                        cv, null, null);
             } else {
                 // If there wasn't an "attendees" property, insert one
                 cv.put(ExtendedProperties.NAME, EXTENDED_PROPERTY_ATTENDEES);
                 cv.put(ExtendedProperties.EVENT_ID, eventId);
-                mContentResolver.insert(asSyncAdapter(ExtendedProperties.CONTENT_URI), cv);
+                cr.insert(asSyncAdapter(ExtendedProperties.CONTENT_URI, account), cv);
             }
             // Whoever is left has been removed from the attendee list; send them
             // a cancellation
             for (final String removedAttendee: originalAttendeeList) {
                 // Send a cancellation message to each of them
-                final Message cancelMsg = CalendarUtilities.createMessageForEventId(mContext,
-                        eventId, Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, mAccount,
+                final Message cancelMsg = CalendarUtilities.createMessageForEventId(context,
+                        eventId, Message.FLAG_OUTGOING_MEETING_CANCEL, clientId, account,
                         removedAttendee);
                 if (cancelMsg != null) {
                     // Just send it to the removed attendee
@@ -854,12 +877,12 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
                     // Save away the new status
                     final ContentValues cv = new ContentValues(1);
                     cv.put(ExtendedProperties.VALUE, Integer.toString(currentStatus));
-                    mContentResolver.update(asSyncAdapter(ContentUris.withAppendedId(
-                            ExtendedProperties.CONTENT_URI, userAttendeeStatusId)),
+                    cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                            ExtendedProperties.CONTENT_URI, userAttendeeStatusId), account),
                             cv, null, null);
                     // Send mail to the organizer advising of the new status
-                    final Message msg = CalendarUtilities.createMessageForEventId(mContext, eventId,
-                            messageFlag, clientId, mAccount);
+                    final Message msg = CalendarUtilities.createMessageForEventId(context, eventId,
+                            messageFlag, clientId, account);
                     if (msg != null) {
                         LogUtils.d(TAG, "Queueing invitation reply to %s", msg.mTo);
                         mOutgoingMailList.add(msg);
@@ -878,9 +901,11 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
      * @return Whether this function added anything to s.
      * @throws IOException
      */
-    private boolean handleEntity(final Serializer s, final Entity entity,
-            final String calendarIdString, final boolean first) throws IOException {
+    private boolean handleEntity(final Serializer s, final Context context, final Account account,
+            final Entity entity, final String calendarIdString, final boolean first,
+            final double protocolVersion) throws IOException {
         // For each of these entities, create the change commands
+        final ContentResolver cr = context.getContentResolver();
         final ContentValues entityValues = entity.getEntityValues();
         // We first need to check whether we can upsync this event; our test for this
         // is currently the value of EXTENDED_PROPERTY_ATTENDEES_REDACTED
@@ -913,7 +938,7 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             LogUtils.d(TAG, "Sending Calendar changes to the server");
         }
 
-        final boolean selfOrganizer = organizerEmail.equalsIgnoreCase(mAccount.mEmailAddress);
+        final boolean selfOrganizer = organizerEmail.equalsIgnoreCase(account.mEmailAddress);
         // Find our uid in the entity; otherwise create one
         String clientId = entityValues.getAsString(Events.SYNC_DATA2);
         if (clientId == null) {
@@ -929,22 +954,22 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             final ContentValues cv = new ContentValues(2);
             cv.put(Events.SYNC_DATA2, clientId);
             cv.put(EVENT_SYNC_VERSION, "0");
-            mContentResolver.update(
-                    asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, eventId)),
+            cr.update(
+                    asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, eventId), account),
                     cv, null, null);
         } else if (entityValues.getAsInteger(Events.DELETED) == 1) {
             LogUtils.d(TAG, "Deleting event with serverId: %s", serverId);
             s.start(Tags.SYNC_DELETE).data(Tags.SYNC_SERVER_ID, serverId).end();
             mDeletedIdList.add(eventId);
             if (selfOrganizer) {
-                final Message msg = CalendarUtilities.createMessageForEventId(mContext,
-                        eventId, Message.FLAG_OUTGOING_MEETING_CANCEL, null, mAccount);
+                final Message msg = CalendarUtilities.createMessageForEventId(context,
+                        eventId, Message.FLAG_OUTGOING_MEETING_CANCEL, null, account);
                 if (msg != null) {
                     LogUtils.d(TAG, "Queueing cancellation to %s", msg.mTo);
                     mOutgoingMailList.add(msg);
                 }
             } else {
-                sendDeclinedEmail(entity, clientId);
+                sendDeclinedEmail(context, account, entity, clientId);
             }
             // For deletions, we don't need to add application data, so just bail here.
             return true;
@@ -955,44 +980,46 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
             final String version = getEntityVersion(entityValues);
             final ContentValues cv = new ContentValues(1);
             cv.put(EVENT_SYNC_VERSION, version);
-            mContentResolver.update(
-                    asSyncAdapter( ContentUris.withAppendedId(Events.CONTENT_URI, eventId)),
-                    cv, null, null);
+            cr.update( asSyncAdapter(ContentUris.withAppendedId(Events.CONTENT_URI, eventId),
+                    account), cv, null, null);
             // Also save in entityValues so that we send it this time around
             entityValues.put(EVENT_SYNC_VERSION, version);
         }
         s.start(Tags.SYNC_APPLICATION_DATA);
-        sendEvent(entity, clientId, s);
+        sendEvent(context, account, entity, clientId, protocolVersion, s);
 
         // Now, the hard part; find exceptions for this event
         if (serverId != null) {
-            handleExceptionsToRecurrenceRules(s, entity, entityValues, serverId, clientId,
-                    calendarIdString, selfOrganizer);
+            handleExceptionsToRecurrenceRules(s, context, account, entity, entityValues, serverId,
+                    clientId, calendarIdString, selfOrganizer, protocolVersion);
         }
 
         s.end().end();  // ApplicationData & Add/Change
         mUploadedIdList.add(eventId);
-        updateAttendeesAndSendMail(entity, entityValues, selfOrganizer, eventId, clientId);
+        updateAttendeesAndSendMail(context, account, entity, entityValues, selfOrganizer, eventId,
+            clientId);
         return true;
     }
 
-    @Override
-    protected void setUpsyncCommands(final Serializer s) throws IOException {
+    protected void setUpsyncCommands(Context context, final Account account,
+            final double protocolVersion, final Serializer s) throws IOException {
+        final ContentResolver cr = context.getContentResolver();
         final String calendarIdString = Long.toString(mCalendarId);
         final String[] calendarIdArgument = { calendarIdString };
 
-        markParentsOfDirtyEvents(calendarIdString, calendarIdArgument);
+        markParentsOfDirtyEvents(context, account, calendarIdString, calendarIdArgument);
 
         // Now go through dirty/marked top-level events and send them back to the server
         final EntityIterator eventIterator = EventsEntity.newEntityIterator(
-                mContentResolver.query(asSyncAdapter(Events.CONTENT_URI), null,
-                DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, calendarIdArgument, null), mContentResolver);
+                cr.query(asSyncAdapter(Events.CONTENT_URI, account), null,
+                DIRTY_OR_MARKED_TOP_LEVEL_IN_CALENDAR, calendarIdArgument, null), cr);
 
         try {
             boolean first = true;
             while (eventIterator.hasNext()) {
                 final boolean addedCommand =
-                        handleEntity(s, eventIterator.next(), calendarIdString, first);
+                        handleEntity(s, context, account, eventIterator.next(), calendarIdString,
+                            first, protocolVersion);
                 if (addedCommand) {
                     first = false;
                 }
@@ -1006,37 +1033,69 @@ public class EasCalendarSyncHandler extends EasSyncHandler {
     }
 
     @Override
-    protected void cleanup(final int syncResult) {
-        if (syncResult != SYNC_RESULT_FAILED) {
-            // Clear dirty and mark flags for updates sent to server
-            if (!mUploadedIdList.isEmpty()) {
-                final ContentValues cv = new ContentValues(2);
-                cv.put(Events.DIRTY, 0);
-                cv.put(EVENT_SYNC_MARK, "0");
-                for (final long eventId : mUploadedIdList) {
-                    mContentResolver.update(asSyncAdapter(ContentUris.withAppendedId(
-                            Events.CONTENT_URI, eventId)), cv, null, null);
-                }
-            }
-            // Delete events marked for deletion
-            if (!mDeletedIdList.isEmpty()) {
-                for (final long eventId : mDeletedIdList) {
-                    mContentResolver.delete(asSyncAdapter(ContentUris.withAppendedId(
-                            Events.CONTENT_URI, eventId)), null, null);
-                }
-            }
-            // Send all messages that were created during this sync.
-            for (final Message msg : mOutgoingMailList) {
-                sendMessage(mAccount, msg);
+    public void cleanup(final Context context, final Account account) {
+        final ContentResolver cr = context.getContentResolver();
+        // Clear dirty and mark flags for updates sent to server
+        if (!mUploadedIdList.isEmpty()) {
+            final ContentValues cv = new ContentValues(2);
+            cv.put(Events.DIRTY, 0);
+            cv.put(EVENT_SYNC_MARK, "0");
+            for (final long eventId : mUploadedIdList) {
+                cr.update(asSyncAdapter(ContentUris.withAppendedId(
+                        Events.CONTENT_URI, eventId), account), cv, null, null);
             }
         }
-        // Clear our lists for the next Sync request, if necessary.
-        if (syncResult != SYNC_RESULT_MORE_AVAILABLE) {
-            mDeletedIdList.clear();
-            mUploadedIdList.clear();
-            mOutgoingMailList.clear();
+        // Delete events marked for deletion
+        if (!mDeletedIdList.isEmpty()) {
+            for (final long eventId : mDeletedIdList) {
+                cr.delete(asSyncAdapter(ContentUris.withAppendedId(
+                        Events.CONTENT_URI, eventId), account), null, null);
+            }
         }
+        // Send all messages that were created during this sync.
+        for (final Message msg : mOutgoingMailList) {
+            sendMessage(context, account, msg);
+        }
+
+        mDeletedIdList.clear();
+        mUploadedIdList.clear();
+        mOutgoingMailList.clear();
     }
+
+    /**
+     * Convenience method for adding a Message to an account's outbox
+     * @param account The {@link Account} from which to send the message.
+     * @param msg The message to send
+     */
+    protected void sendMessage(final Context context, final Account account,
+        final EmailContent.Message msg) {
+        long mailboxId = Mailbox.findMailboxOfType(context, account.mId, Mailbox.TYPE_OUTBOX);
+        // TODO: Improve system mailbox handling.
+        if (mailboxId == Mailbox.NO_MAILBOX) {
+            LogUtils.d(TAG, "No outbox for account %d, creating it", account.mId);
+            final Mailbox outbox =
+                    Mailbox.newSystemMailbox(context, account.mId, Mailbox.TYPE_OUTBOX);
+            outbox.save(context);
+            mailboxId = outbox.mId;
+        }
+        msg.mMailboxKey = mailboxId;
+        msg.mAccountKey = account.mId;
+        msg.save(context);
+        requestSyncForMailbox(EmailContent.AUTHORITY, mailboxId);
+    }
+
+    /**
+     * Issue a {@link android.content.ContentResolver#requestSync} for a specific mailbox.
+     * @param authority The authority for the mailbox that needs to sync.
+     * @param mailboxId The id of the mailbox that needs to sync.
+     */
+    protected void requestSyncForMailbox(final String authority, final long mailboxId) {
+        final Bundle extras = Mailbox.createSyncBundle(mailboxId);
+        ContentResolver.requestSync(mAndroidAccount, authority, extras);
+        LogUtils.d(TAG, "requestSync EasServerConnection requestSyncForMailbox %s, %s",
+                mAndroidAccount.toString(), extras.toString());
+    }
+
 
     /**
      * Delete an account from the Calendar provider.

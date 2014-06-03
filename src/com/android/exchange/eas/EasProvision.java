@@ -16,9 +16,11 @@
 
 package com.android.exchange.eas;
 
+import android.content.ContentValues;
 import android.content.Context;
-import android.content.SyncResult;
 
+import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.service.PolicyServiceProxy;
 import com.android.exchange.Eas;
@@ -56,16 +58,16 @@ public class EasProvision extends EasOperation {
     public static final String EAS_12_POLICY_TYPE = "MS-EAS-Provisioning-WBXML";
 
     /** The EAS protocol Provision status for "we implement all of the policies" */
-    private static final String PROVISION_STATUS_OK = "1";
+    static final String PROVISION_STATUS_OK = "1";
     /** The EAS protocol Provision status meaning "we partially implement the policies" */
-    private static final String PROVISION_STATUS_PARTIAL = "2";
+    static final String PROVISION_STATUS_PARTIAL = "2";
 
     /** Value for {@link #mPhase} indicating we're performing the initial request. */
-    private static final int PHASE_INITIAL = 0;
+    static final int PHASE_INITIAL = 0;
     /** Value for {@link #mPhase} indicating we're performing the acknowledgement request. */
-    private static final int PHASE_ACKNOWLEDGE = 1;
+    static final int PHASE_ACKNOWLEDGE = 1;
     /** Value for {@link #mPhase} indicating we're performing the acknowledgement for a wipe. */
-    private static final int PHASE_WIPE = 2;
+    static final int PHASE_WIPE = 2;
 
     /**
      * This operation doesn't use public result codes because ultimately the operation answers
@@ -91,10 +93,9 @@ public class EasProvision extends EasOperation {
      */
     private int mPhase;
 
-    // TODO: Temporary until EasSyncHandler converts to EasOperation.
-    public EasProvision(final Context context, final long accountId,
+    public EasProvision(final Context context, final Account account,
             final EasServerConnection connection) {
-        super(context, accountId, connection);
+        super(context, account, connection);
         mPolicy = null;
         mPolicyKey = null;
         mStatus = null;
@@ -109,20 +110,20 @@ public class EasProvision extends EasOperation {
         mPhase = 0;
     }
 
-    private int performInitialRequest(final SyncResult syncResult) {
+    private int performInitialRequest() {
         mPhase = PHASE_INITIAL;
-        return performOperation(syncResult);
+        return performOperation();
     }
 
-    private void performAckRequestForWipe(final SyncResult syncResult) {
+    private void performAckRequestForWipe() {
         mPhase = PHASE_WIPE;
-        performOperation(syncResult);
+        performOperation();
     }
 
-    private int performAckRequest(final SyncResult syncResult, final boolean isPartial) {
+    private int performAckRequest(final boolean isPartial) {
         mPhase = PHASE_ACKNOWLEDGE;
         mStatus = isPartial ? PROVISION_STATUS_PARTIAL : PROVISION_STATUS_OK;
-        return performOperation(syncResult);
+        return performOperation();
     }
 
     /**
@@ -130,10 +131,10 @@ public class EasProvision extends EasOperation {
      * @return The {@link Policy} if we support it, or null otherwise.
      */
     public final Policy test() {
-        int result = performInitialRequest(null);
+        int result = performInitialRequest();
         if (result == RESULT_POLICY_UNSUPPORTED) {
             // Check if the server will permit partial policies.
-            result = performAckRequest(null, true);
+            result = performAckRequest(true);
         }
         if (result == RESULT_POLICY_SUPPORTED) {
             // The server is ok with us not supporting everything, so clear the unsupported ones.
@@ -144,24 +145,40 @@ public class EasProvision extends EasOperation {
     }
 
     /**
+     * Write the max attachment size that came out of the policy to the Account table in the db.
+     * Once this value is written, the mapping to Account.Settings.MAX_ATTACHMENT_SIZE was
+     * added to point to this column in this table.
+     * @param maxAttachmentSize The max attachment size value that we want to write to the db.
+     */
+    private void storeMaxAttachmentSize(final int maxAttachmentSize) {
+        final ContentValues values = new ContentValues(1);
+        values.put(EmailContent.AccountColumns.MAX_ATTACHMENT_SIZE, maxAttachmentSize);
+        Account.update(mContext, Account.CONTENT_URI, getAccountId(), values);
+    }
+
+    /**
      * Get the required policy from the server and enforce it.
-     * @param syncResult The {@link SyncResult}, if anym for this operation.
-     * @param accountId The id for the account for this request.
      * @return Whether we succeeded in provisioning this account.
      */
-    public final boolean provision(final SyncResult syncResult, final long accountId) {
-        final int result = performInitialRequest(syncResult);
+    public final boolean provision() {
+        final int result = performInitialRequest();
+        final long accountId = getAccountId();
 
         if (result < 0) {
             return false;
         }
 
         if (result == RESULT_REMOTE_WIPE) {
-            performAckRequestForWipe(syncResult);
+            performAckRequestForWipe();
             LogUtils.i(LOG_TAG, "Executing remote wipe");
             PolicyServiceProxy.remoteWipe(mContext);
             return false;
         }
+
+        // Even before the policy is accepted, we can honor this setting since it has nothing
+        // to do with the device policy manager and is requested by the Exchange server.
+        // TODO: This was an error, this is minimum change to disable it.
+        //storeMaxAttachmentSize(mPolicy.mMaxAttachmentSize);
 
         // Apply the policies (that we support) with the temporary key.
         mPolicy.mProtocolPoliciesUnsupported = null;
@@ -171,8 +188,7 @@ public class EasProvision extends EasOperation {
         }
 
         // Acknowledge to the server and make sure all's well.
-        if (performAckRequest(syncResult, result == RESULT_POLICY_UNSUPPORTED) ==
-                RESULT_POLICY_UNSUPPORTED) {
+        if (performAckRequest(result == RESULT_POLICY_UNSUPPORTED) == RESULT_POLICY_UNSUPPORTED) {
             return false;
         }
 
@@ -186,7 +202,7 @@ public class EasProvision extends EasOperation {
         if (version == Eas.SUPPORTED_PROTOCOL_EX2007_SP1_DOUBLE
                 || version == Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
             final EasSettings settingsOperation = new EasSettings(this);
-            if (!settingsOperation.sendDeviceInformation(syncResult)) {
+            if (!settingsOperation.sendDeviceInformation()) {
                 // TODO: Do something more useful when the settings command fails.
                 // The consequence here is that the server will not have device info.
                 // However, this is NOT a provisioning failure.
@@ -201,38 +217,68 @@ public class EasProvision extends EasOperation {
         return "Provision";
     }
 
-    @Override
-    protected HttpEntity getRequestEntity() throws IOException {
+    /**
+     * Add the device information to the current request.
+     * @param context The {@link Context} for the current device.
+     * @param userAgent The user agent string that our connection uses.
+     * @param policyKey EAS specific tag for Provision requests.
+     * @param policyType EAS specific tag for Provision requests.
+     * @param status The status value that we are sending to the server in our request.
+     * @param phase The phase of the provisioning process this requests is built for.
+     * @param protocolVersion The version of the EAS protocol that we should speak.
+     * @return The {@link Serializer} containing the payload for this request.
+     */
+    protected static Serializer generateRequestEntitySerializer(
+            final Context context, final String userAgent, final String policyKey,
+            final String policyType, final String status, final int phase,
+            final double protocolVersion) throws IOException {
         final Serializer s = new Serializer();
         s.start(Tags.PROVISION_PROVISION);
 
         // When requesting the policy in 14.1, we also need to send device information.
-        if (mPhase == PHASE_INITIAL &&
-                getProtocolVersion() >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
-            addDeviceInformationToSerlializer(s);
+        if (phase == PHASE_INITIAL &&
+                protocolVersion >= Eas.SUPPORTED_PROTOCOL_EX2010_SP1_DOUBLE) {
+            // The "inner" version of this function is being used because it is
+            // re-entrant and can be unit tested easier.  Until we are unit testing
+            // everything, the other version of this function still lives so that
+            // we are disrupting as little code as possible for now.
+            expandedAddDeviceInformationToSerializer(s, context, userAgent);
         }
-        s.start(Tags.PROVISION_POLICIES);
-        s.start(Tags.PROVISION_POLICY);
-        s.data(Tags.PROVISION_POLICY_TYPE, getPolicyType());
-
-        // When acknowledging a policy, we tell the server whether we applied the policy.
-        if (mPhase == PHASE_ACKNOWLEDGE) {
-            s.data(Tags.PROVISION_POLICY_KEY, mPolicyKey);
-            s.data(Tags.PROVISION_STATUS, mStatus);
-        }
-        if (mPhase == PHASE_WIPE) {
+        if (phase == PHASE_WIPE) {
             s.start(Tags.PROVISION_REMOTE_WIPE);
             s.data(Tags.PROVISION_STATUS, PROVISION_STATUS_OK);
-            s.end();
+            s.end(); // PROVISION_REMOTE_WIPE
+        } else {
+            s.start(Tags.PROVISION_POLICIES);
+            s.start(Tags.PROVISION_POLICY);
+            s.data(Tags.PROVISION_POLICY_TYPE, policyType);
+            // When acknowledging a policy, we tell the server whether we applied the policy.
+            if (phase == PHASE_ACKNOWLEDGE) {
+                s.data(Tags.PROVISION_POLICY_KEY, policyKey);
+                s.data(Tags.PROVISION_STATUS, status);
+            }
+            s.end().end(); // PROVISION_POLICY, PROVISION_POLICIES,
         }
-        s.end().end().end().done(); // PROVISION_POLICY, PROVISION_POLICIES, PROVISION_PROVISION
+        s.end().done(); // PROVISION_PROVISION
+        return s;
+    }
 
+    /**
+     * Generates a request entity based on the type of request and our current context.
+     * @return The {@link HttpEntity} that was generated for this request.
+     */
+    @Override
+    protected HttpEntity getRequestEntity() throws IOException {
+        final String policyType = getPolicyType();
+        final String userAgent = getUserAgent();
+        final double protocolVersion = getProtocolVersion();
+        final Serializer s = generateRequestEntitySerializer(mContext, userAgent, mPolicyKey,
+                policyType, mStatus, mPhase, protocolVersion);
         return makeEntity(s);
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult)
-            throws IOException {
+    protected int handleResponse(final EasResponse response) throws IOException {
         final ProvisionParser pp = new ProvisionParser(mContext, response.getInputStream());
         // If this is the response for a remote wipe ack, it doesn't have anything useful in it.
         // Just go ahead and return now.
@@ -267,7 +313,7 @@ public class EasProvision extends EasOperation {
     }
 
     @Override
-    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+    protected boolean handleProvisionError() {
         // If we get a provisioning error while doing provisioning, we should not recurse.
         return false;
     }

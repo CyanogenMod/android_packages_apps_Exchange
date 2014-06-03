@@ -31,15 +31,28 @@ import com.android.mail.utils.LogUtils;
  */
 public class PingTask extends AsyncTask<Void, Void, Void> {
     private final EasPing mOperation;
+    // TODO: Transition away from mSyncHandlerMap -> mPingSyncSynchronizer.
     private final EmailSyncAdapterService.SyncHandlerSynchronizer mSyncHandlerMap;
+    private final PingSyncSynchronizer mPingSyncSynchronizer;
 
     private static final String TAG = Eas.LOG_TAG;
 
     public PingTask(final Context context, final Account account,
             final android.accounts.Account amAccount,
             final EmailSyncAdapterService.SyncHandlerSynchronizer syncHandlerMap) {
+        assert syncHandlerMap != null;
         mOperation = new EasPing(context, account, amAccount);
         mSyncHandlerMap = syncHandlerMap;
+        mPingSyncSynchronizer = null;
+    }
+
+    public PingTask(final Context context, final Account account,
+            final android.accounts.Account amAccount,
+            final PingSyncSynchronizer pingSyncSynchronizer) {
+        assert pingSyncSynchronizer != null;
+        mOperation = new EasPing(context, account, amAccount);
+        mSyncHandlerMap = null;
+        mPingSyncSynchronizer = pingSyncSynchronizer;
     }
 
     /** Start the ping loop. */
@@ -74,8 +87,12 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
         }
         LogUtils.i(TAG, "Ping task ending with status: %d", pingStatus);
 
-        mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
-                pingStatus);
+        if (mSyncHandlerMap != null) {
+            mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
+                    pingStatus);
+        } else {
+            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), mOperation.getAmAccount());
+        }
         return null;
     }
 
@@ -84,7 +101,11 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
         // TODO: This is also hacky, should have a separate result code at minimum.
         // If the ping is cancelled, make sure it reports something to the sync adapter.
         LogUtils.w(TAG, "Ping cancelled for %d", mOperation.getAccountId());
-        mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
-                EasOperation.RESULT_REQUEST_FAILURE);
+        if (mSyncHandlerMap != null) {
+            mSyncHandlerMap.pingComplete(mOperation.getAmAccount(), mOperation.getAccountId(),
+                    EasOperation.RESULT_REQUEST_FAILURE);
+        } else {
+            mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), mOperation.getAmAccount());
+        }
     }
 }

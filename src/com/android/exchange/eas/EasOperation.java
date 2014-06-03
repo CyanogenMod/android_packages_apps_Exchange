@@ -39,6 +39,7 @@ import com.android.exchange.EasResponse;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
 import com.android.exchange.service.EasServerConnection;
+import com.android.mail.providers.UIProvider;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -56,15 +57,45 @@ import java.util.ArrayList;
  * a request, handling common errors, and setting fields on the {@link SyncResult} if there is one.
  * This class abstracts the connection handling from its subclasses and callers.
  *
- * A subclass must implement the abstract functions below that create the request and parse the
- * response. There are also a set of functions that a subclass may override if it's substantially
- * different from the "normal" operation (e.g. most requests use the same request URI, but auto
- * discover deviates since it's not account-specific), but the default implementation should suffice
- * for most. The subclass must also define a public function which calls {@link #performOperation},
- * possibly doing nothing other than that. (I chose to force subclasses to do this, rather than
- * provide that function in the base class, in order to force subclasses to consider, for example,
- * whether it needs a {@link SyncResult} parameter, and what the proper name for the "doWork"
- * function ought to be for the subclass.)
+ * {@link #performOperation} calls various abstract functions to create the request and parse the
+ * response. For the most part subclasses can implement just these bits of functionality and rely
+ * on {@link #performOperation} to do all the boilerplate etc.
+ *
+ * There are also a set of functions that a subclass may override if it's substantially
+ * different from the "normal" operation (e.g. autodiscover deviates from the standard URI since
+ * it's not account-specific so it needs to override {@link #getRequestUri()}), but the default
+ * implementations of these functions should suffice for most operations.
+ *
+ * Some subclasses may need to override {@link #performOperation} to add validation and results
+ * processing around a call to super.performOperation. Subclasses should avoid doing too much more
+ * than wrapping some handling around the chained call; if you find that's happening, it's likely
+ * a sign that the base class needs to be enhanced.
+ *
+ * One notable reason this wrapping happens is for operations that need to return a result directly
+ * to their callers (as opposed to simply writing the results to the provider, as is common with
+ * sync operations). This happens for example in
+ * {@link com.android.emailcommon.service.IEmailService} message handlers. In such cases, due to
+ * how {@link com.android.exchange.service.EasService} uses this class, the subclass needs to
+ * store the result as a member variable and then provide an accessor to read the result. Since
+ * different operations have different results (or none at all), there is no function in the base
+ * class for this.
+ *
+ * Note that it is not practical to avoid the race between when an operation loads its account data
+ * and when it uses it, as that would require some form of locking in the provider. There are three
+ * interesting situations where this might happen, and that this class must handle:
+ *
+ * 1) Deleted from provider: Any subsequent provider access should return an error. Operations
+ *    must detect this and terminate with an error.
+ * 2) Account sync settings change: Generally only affects Ping. We interrupt the operation and
+ *    load the new settings before proceeding.
+ * 3) Sync suspended due to hold: A special case of the previous, and affects all operations, but
+ *    fortunately doesn't need special handling here. Correct provider functionality must generate
+ *    write failures, so the handling for #1 should cover this case as well.
+ *
+ * This class attempts to defer loading of account data as long as possible -- ideally we load
+ * immediately before the network request -- but does not proactively check for changes after that.
+ * This approach is a a practical balance between minimizing the race without adding too much
+ * complexity beyond what's required.
  */
 public abstract class EasOperation {
     public static final String LOG_TAG = Eas.LOG_TAG;
@@ -74,6 +105,13 @@ public abstract class EasOperation {
 
     /** Message MIME type for EAS version 14 and later. */
     private static final String EAS_14_MIME_TYPE = "application/vnd.ms-sync.wbxml";
+
+    /**
+     * EasOperation error codes below.  All subclasses should try to create error codes
+     * that do not overlap these codes or the codes of other subclasses. The error
+     * code values for each subclass should start in a different 100 range (i.e. -100,
+     * -200, etc...).
+     */
 
     /** Error code indicating the operation was cancelled via {@link #abort}. */
     public static final int RESULT_ABORT = -1;
@@ -93,42 +131,111 @@ public abstract class EasOperation {
     public static final int RESULT_CLIENT_CERTIFICATE_REQUIRED = -8;
     /** Error code indicating we don't have a protocol version in common with the server. */
     public static final int RESULT_PROTOCOL_VERSION_UNSUPPORTED = -9;
+    /** Error code indicating a hard error when initializing the operation. */
+    public static final int RESULT_INITIALIZATION_FAILURE = -10;
+    /** Error code indicating a hard data layer error. */
+    public static final int RESULT_HARD_DATA_FAILURE = -11;
+    /** Error code indicating that this operation failed, but we should not abort the sync */
+    /** TODO: This is currently only used in EasOutboxSync, no other place handles it correctly */
+    public static final int RESULT_NON_FATAL_ERROR = -12;
     /** Error code indicating some other failure. */
-    public static final int RESULT_OTHER_FAILURE = -10;
+    public static final int RESULT_OTHER_FAILURE = -99;
+    /** Constant to delimit where op specific error codes begin. */
+    public static final int RESULT_OP_SPECIFIC_ERROR_RESULT = -100;
 
     protected final Context mContext;
 
-    /**
-     * The account id for this operation.
-     * NOTE: You will be tempted to add a reference to the {@link Account} here. Resist.
-     * It's too easy for that to lead to creep and stale data.
-     */
-    protected final long mAccountId;
-    private final EasServerConnection mConnection;
+    /** The provider id for the account this operation is on. */
+    private final long mAccountId;
 
-    // TODO: Make this private again when EasSyncHandler is converted to be a subclass.
-    protected EasOperation(final Context context, final long accountId,
-            final EasServerConnection connection) {
+    /** The cached {@link Account} state; can be null if it hasn't been loaded yet. */
+    protected Account mAccount;
+
+    /** The connection to use for this operation. This is created when {@link #mAccount} is set. */
+    private EasServerConnection mConnection;
+
+    public class MessageInvalidException extends Exception {
+        public MessageInvalidException(final String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Constructor which defers loading of account and connection info.
+     * @param context
+     * @param accountId
+     */
+    protected EasOperation(final Context context, final long accountId) {
         mContext = context;
         mAccountId = accountId;
+    }
+
+    protected EasOperation(final Context context, final Account account,
+            final EasServerConnection connection) {
+        this(context, account.mId);
+        mAccount = account;
         mConnection = connection;
     }
 
     protected EasOperation(final Context context, final Account account, final HostAuth hostAuth) {
-        this(context, account.mId, new EasServerConnection(context, account, hostAuth));
+        this(context, account, new EasServerConnection(context, account, hostAuth));
     }
 
     protected EasOperation(final Context context, final Account account) {
-        this(context, account, HostAuth.restoreHostAuthWithId(context, account.mHostAuthKeyRecv));
+        this(context, account, account.getOrCreateHostAuthRecv(context));
     }
 
     /**
      * This constructor is for use by operations that are created by other operations, e.g.
-     * {@link EasProvision}.
+     * {@link EasProvision}. It reuses the account and connection of its parent.
      * @param parentOperation The {@link EasOperation} that is creating us.
      */
     protected EasOperation(final EasOperation parentOperation) {
-        this(parentOperation.mContext, parentOperation.mAccountId, parentOperation.mConnection);
+        mContext = parentOperation.mContext;
+        mAccountId = parentOperation.mAccountId;
+        mAccount = parentOperation.mAccount;
+        mConnection = parentOperation.mConnection;
+    }
+
+    /**
+     * Some operations happen before the account exists (e.g. account validation).
+     * These operations cannot use {@link #init}, so instead we make a dummy account and
+     * supply a temporary {@link HostAuth}.
+     * @param hostAuth
+     */
+    protected final void setDummyAccount(final HostAuth hostAuth) {
+        mAccount = new Account();
+        mAccount.mEmailAddress = hostAuth.mLogin;
+        mConnection = new EasServerConnection(mContext, mAccount, hostAuth);
+    }
+
+    /**
+     * Loads (or reloads) the {@link Account} for this operation, and sets up our connection to the
+     * server. This can be overridden to add additional functionality, but child implementations
+     * should always call super().
+     * @param allowReload If false, do not perform a load if we already have an {@link Account}
+     *                    (i.e. just keep the existing one); otherwise allow replacement of the
+     *                    account. Note that this can result in a valid Account being replaced with
+     *                    null if the account no longer exists.
+     * @return Whether we now have a valid {@link Account} object.
+     */
+    public boolean init(final boolean allowReload) {
+        if (mAccount == null || allowReload) {
+            mAccount = Account.restoreAccountWithId(mContext, getAccountId());
+            if (mAccount != null) {
+                mConnection = new EasServerConnection(mContext, mAccount,
+                        mAccount.getOrCreateHostAuthRecv(mContext));
+            }
+        }
+        return (mAccount != null);
+    }
+
+    public final long getAccountId() {
+        return mAccountId;
+    }
+
+    public final Account getAccount() {
+        return mAccount;
     }
 
     /**
@@ -165,11 +272,16 @@ public abstract class EasOperation {
      * negative result code, which will be handled the same as if it had been indicated in the HTTP
      * response code.
      *
-     * @param syncResult If this operation is a sync, the {@link SyncResult} object that should
-     *                   be written to for this sync; otherwise null.
      * @return A result code for the outcome of this operation, as described above.
      */
-    protected final int performOperation(final SyncResult syncResult) {
+    public int performOperation() {
+        // Make sure the account is loaded if it hasn't already been.
+        if (!init(false)) {
+            LogUtils.i(LOG_TAG, "Failed to initialize %d before sending request for operation %s",
+                    getAccountId(), getCommand());
+            return RESULT_INITIALIZATION_FAILURE;
+        }
+
         // We handle server redirects by looping, but we need to protect against too much looping.
         int redirectCount = 0;
 
@@ -177,7 +289,11 @@ public abstract class EasOperation {
             // Perform the HTTP request and handle exceptions.
             final EasResponse response;
             try {
-                response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
+                try {
+                    response = mConnection.executeHttpUriRequest(makeRequest(), getTimeout());
+                } finally {
+                    onRequestMade();
+                }
             } catch (final IOException e) {
                 // If we were stopped, return the appropriate result code.
                 switch (mConnection.getStoppedReason()) {
@@ -194,26 +310,19 @@ public abstract class EasOperation {
                     message = "(no message)";
                 }
                 LogUtils.i(LOG_TAG, "IOException while sending request: %s", message);
-                if (syncResult != null) {
-                    ++syncResult.stats.numIoExceptions;
-                }
                 return RESULT_REQUEST_FAILURE;
             } catch (final CertificateException e) {
                 LogUtils.i(LOG_TAG, "CertificateException while sending request: %s",
                         e.getMessage());
-                if (syncResult != null) {
-                    // TODO: Is this the best stat to increment?
-                    ++syncResult.stats.numAuthExceptions;
-                }
                 return RESULT_CLIENT_CERTIFICATE_REQUIRED;
+            } catch (final MessageInvalidException e) {
+                LogUtils.d(LOG_TAG, "Exception sending request %s", e.getMessage());
+                return RESULT_NON_FATAL_ERROR;
             } catch (final IllegalStateException e) {
                 // Subclasses use ISE to signal a hard error when building the request.
                 // TODO: Switch away from ISEs.
                 LogUtils.e(LOG_TAG, e, "Exception while sending request");
-                if (syncResult != null) {
-                    syncResult.databaseError = true;
-                }
-                return RESULT_OTHER_FAILURE;
+                return RESULT_HARD_DATA_FAILURE;
             }
 
             // The POST completed, so process the response.
@@ -223,12 +332,9 @@ public abstract class EasOperation {
                 if (response.isSuccess()) {
                     int responseResult;
                     try {
-                        responseResult = handleResponse(response, syncResult);
+                        responseResult = handleResponse(response);
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
-                        if (syncResult != null) {
-                            ++syncResult.stats.numIoExceptions;
-                        }
                         return RESULT_REQUEST_FAILURE;
                     } catch (final CommandStatusException e) {
                         // For some operations (notably Sync & FolderSync), errors are signaled in
@@ -248,7 +354,7 @@ public abstract class EasOperation {
                     }
                     result = responseResult;
                 } else {
-                    result = RESULT_OTHER_FAILURE;
+                    result = handleHttpError(response.getStatus());
                 }
 
                 // Non-negative results indicate success. Return immediately and bypass the error
@@ -260,26 +366,17 @@ public abstract class EasOperation {
                 // If this operation has distinct handling for 403 errors, do that.
                 if (result == RESULT_FORBIDDEN || (response.isForbidden() && handleForbidden())) {
                     LogUtils.e(LOG_TAG, "Forbidden response");
-                    if (syncResult != null) {
-                        // TODO: Is this the best stat to increment?
-                        ++syncResult.stats.numAuthExceptions;
-                    }
                     return RESULT_FORBIDDEN;
                 }
 
                 // Handle provisioning errors.
                 if (result == RESULT_PROVISIONING_ERROR || response.isProvisionError()) {
-                    if (handleProvisionError(syncResult, mAccountId)) {
+                    if (handleProvisionError()) {
                         // The provisioning error has been taken care of, so we should re-do this
                         // request.
                         LogUtils.d(LOG_TAG, "Provisioning error handled during %s, retrying",
                                 getCommand());
                         continue;
-                    }
-                    if (syncResult != null) {
-                        LogUtils.e(LOG_TAG, "Issue with provisioning");
-                        // TODO: Is this the best stat to increment?
-                        ++syncResult.stats.numAuthExceptions;
                     }
                     return RESULT_PROVISIONING_ERROR;
                 }
@@ -287,9 +384,6 @@ public abstract class EasOperation {
                 // Handle authentication errors.
                 if (response.isAuthError()) {
                     LogUtils.e(LOG_TAG, "Authentication error");
-                    if (syncResult != null) {
-                        ++syncResult.stats.numAuthExceptions;
-                    }
                     if (response.isMissingCertificate()) {
                         return RESULT_CLIENT_CERTIFICATE_REQUIRED;
                     }
@@ -305,10 +399,7 @@ public abstract class EasOperation {
                     // All other errors.
                     LogUtils.e(LOG_TAG, "Generic error for operation %s: status %d, result %d",
                             getCommand(), response.getStatus(), result);
-                    if (syncResult != null) {
-                        // TODO: Is this the best stat to increment?
-                        ++syncResult.stats.numIoExceptions;
-                    }
+                    // TODO: This probably should return result.
                     return RESULT_OTHER_FAILURE;
                 }
             } finally {
@@ -319,10 +410,18 @@ public abstract class EasOperation {
         // Non-redirects return immediately after handling, so the only way to reach here is if we
         // looped too many times.
         LogUtils.e(LOG_TAG, "Too many redirects");
-        if (syncResult != null) {
-           syncResult.tooManyRetries = true;
-        }
         return RESULT_TOO_MANY_REDIRECTS;
+    }
+
+    protected void onRequestMade() {
+        // This can be overridden to do any cleanup that must happen after the request has
+        // been sent. It will always be called, regardless of the status of the request.
+    }
+
+    protected int handleHttpError(final int httpStatus) {
+        // This function can be overriden if the child class needs to change the result code
+        // based on the http response status.
+        return RESULT_OTHER_FAILURE;
     }
 
     /**
@@ -331,8 +430,9 @@ public abstract class EasOperation {
      * @param protocolVersion The new protocol version to use, as a string.
      */
     protected final void setProtocolVersion(final String protocolVersion) {
-        if (mConnection.setProtocolVersion(protocolVersion) && mAccountId != Account.NOT_SAVED) {
-            final Uri uri = ContentUris.withAppendedId(Account.CONTENT_URI, mAccountId);
+        final long accountId = getAccountId();
+        if (mConnection.setProtocolVersion(protocolVersion) && accountId != Account.NOT_SAVED) {
+            final Uri uri = ContentUris.withAppendedId(Account.CONTENT_URI, accountId);
             final ContentValues cv = new ContentValues(2);
             if (getProtocolVersion() >= 12.0) {
                 final int oldFlags = Utility.getFirstRowInt(mContext, uri,
@@ -355,7 +455,7 @@ public abstract class EasOperation {
      * @return An {@link HttpUriRequest}.
      * @throws IOException
      */
-    private final HttpUriRequest makeRequest() throws IOException {
+    private final HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
         final String requestUri = getRequestUri();
         if (requestUri == null) {
             return mConnection.makeOptions();
@@ -385,20 +485,18 @@ public abstract class EasOperation {
      * @return The {@link HttpEntity} to pass to {@link EasServerConnection#makePost}.
      * @throws IOException
      */
-    protected abstract HttpEntity getRequestEntity() throws IOException;
+    protected abstract HttpEntity getRequestEntity() throws IOException, MessageInvalidException;
 
     /**
      * Parse the response from the Exchange perform whatever actions are dictated by that.
      * @param response The {@link EasResponse} to our request.
-     * @param syncResult The {@link SyncResult} object for this operation, or null if we're not
-     *                   handling a sync.
      * @return A result code. Non-negative values are returned directly to the caller; negative
      *         values
      *
      * that is returned to the caller of {@link #performOperation}.
      * @throws IOException
      */
-    protected abstract int handleResponse(final EasResponse response, final SyncResult syncResult)
+    protected abstract int handleResponse(final EasResponse response)
             throws IOException, CommandStatusException;
 
     /**
@@ -448,13 +546,11 @@ public abstract class EasOperation {
     /**
      * Handle a provisioning error. Subclasses may override this to do something different, e.g.
      * to validate rather than actually do the provisioning.
-     * @param syncResult
-     * @param accountId
      * @return
      */
-    protected boolean handleProvisionError(final SyncResult syncResult, final long accountId) {
+    protected boolean handleProvisionError() {
         final EasProvision provisionOperation = new EasProvision(this);
-        return provisionOperation.provision(syncResult, accountId);
+        return provisionOperation.provision();
     }
 
     /**
@@ -502,14 +598,16 @@ public abstract class EasOperation {
     /**
      * Add the device information to the current request.
      * @param s The {@link Serializer} for our current request.
-     * @throws IOException
+     * @param context The {@link Context} for current device.
+     * @param userAgent The user agent string that our connection use.
      */
-    protected final void addDeviceInformationToSerlializer(final Serializer s) throws IOException {
-        final TelephonyManager tm = (TelephonyManager)mContext.getSystemService(
-                Context.TELEPHONY_SERVICE);
+    protected static void expandedAddDeviceInformationToSerializer(final Serializer s,
+            final Context context, final String userAgent) throws IOException {
         final String deviceId;
         final String phoneNumber;
         final String operator;
+        final TelephonyManager tm = (TelephonyManager)context.getSystemService(
+                Context.TELEPHONY_SERVICE);
         if (tm != null) {
             deviceId = tm.getDeviceId();
             phoneNumber = tm.getLine1Number();
@@ -541,10 +639,10 @@ public abstract class EasOperation {
         }
         // Set the device friendly name, if we have one.
         // TODO: Longer term, this should be done without a provider call.
-        final Bundle bundle = mContext.getContentResolver().call(
+        final Bundle deviceName = context.getContentResolver().call(
                 EmailContent.CONTENT_URI, EmailContent.DEVICE_FRIENDLY_NAME, null, null);
-        if (bundle != null) {
-            final String friendlyName = bundle.getString(EmailContent.DEVICE_FRIENDLY_NAME);
+        if (deviceName != null) {
+            final String friendlyName = deviceName.getString(EmailContent.DEVICE_FRIENDLY_NAME);
             if (!TextUtils.isEmpty(friendlyName)) {
                 s.data(Tags.SETTINGS_FRIENDLY_NAME, friendlyName);
             }
@@ -558,11 +656,21 @@ public abstract class EasOperation {
         // idea of the language will be wrong. Since we're not sure what this is used for,
         // right now we're leaving it out.
         //s.data(Tags.SETTINGS_OS_LANGUAGE, Locale.getDefault().getDisplayLanguage());
-        s.data(Tags.SETTINGS_USER_AGENT, getUserAgent());
+        s.data(Tags.SETTINGS_USER_AGENT, userAgent);
         if (operator != null) {
             s.data(Tags.SETTINGS_MOBILE_OPERATOR, operator);
         }
         s.end().end();  // SETTINGS_SET, SETTINGS_DEVICE_INFORMATION
+    }
+
+    /**
+     * Add the device information to the current request.
+     * @param s The {@link Serializer} that contains the payload for this request.
+     */
+    protected final void addDeviceInformationToSerializer(final Serializer s)
+            throws IOException {
+        final String userAgent = getUserAgent();
+        expandedAddDeviceInformationToSerializer(s, mContext, userAgent);
     }
 
     /**
@@ -603,6 +711,15 @@ public abstract class EasOperation {
     protected static void requestSyncForMailboxes(final android.accounts.Account amAccount,
             final ArrayList<Long> mailboxIds) {
         final Bundle extras = Mailbox.createSyncBundle(mailboxIds);
+        /**
+         * Please note that it is very possible that we are trying to send a request to the
+         * email sync adapter even though email push is turned off (i.e. this account might only
+         * be syncing calendar or contacts). In this situation we need to make sure that
+         * this request is marked as manual as to ensure that the sync manager does not drop it
+         * on the floor. Right now, this function is only called by EasPing, if it is every called
+         * by another caller, then we should reconsider if manual=true is the right thing to do.
+         */
+        extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
         ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
         LogUtils.i(LOG_TAG, "requestSync EasOperation requestSyncForMailboxes  %s, %s",
                 amAccount.toString(), extras.toString());
@@ -624,5 +741,64 @@ public abstract class EasOperation {
         ContentResolver.requestSync(amAccount, authority, extras);
         LogUtils.d(LOG_TAG, "requestSync EasOperation requestNoOpSync %s, %s",
                 amAccount.toString(), extras.toString());
+    }
+
+    /**
+     * Interpret a result code from an {@link EasOperation} and, if it's an error, write it to
+     * the appropriate field in {@link SyncResult}.
+     * @param result
+     * @param syncResult
+     * @return Whether an error code was written to syncResult.
+     */
+    public static boolean writeResultToSyncResult(final int result, final SyncResult syncResult) {
+        switch (result) {
+            case RESULT_TOO_MANY_REDIRECTS:
+                syncResult.tooManyRetries = true;
+                return true;
+            case RESULT_REQUEST_FAILURE:
+                syncResult.stats.numIoExceptions = 1;
+                return true;
+            case RESULT_FORBIDDEN:
+            case RESULT_PROVISIONING_ERROR:
+            case RESULT_AUTHENTICATION_ERROR:
+            case RESULT_CLIENT_CERTIFICATE_REQUIRED:
+                syncResult.stats.numAuthExceptions = 1;
+                return true;
+            case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
+                // Only used in validate, so there's never a syncResult to write to here.
+                break;
+            case RESULT_INITIALIZATION_FAILURE:
+            case RESULT_HARD_DATA_FAILURE:
+                syncResult.databaseError = true;
+                return true;
+            case RESULT_OTHER_FAILURE:
+                // TODO: Is this correct?
+                syncResult.stats.numIoExceptions = 1;
+                return true;
+        }
+        return false;
+    }
+
+    public static int translateSyncResultToUiResult(final int result) {
+        switch (result) {
+              case RESULT_TOO_MANY_REDIRECTS:
+                return UIProvider.LastSyncResult.INTERNAL_ERROR;
+            case RESULT_REQUEST_FAILURE:
+                return UIProvider.LastSyncResult.CONNECTION_ERROR;
+            case RESULT_FORBIDDEN:
+            case RESULT_PROVISIONING_ERROR:
+            case RESULT_AUTHENTICATION_ERROR:
+            case RESULT_CLIENT_CERTIFICATE_REQUIRED:
+                return UIProvider.LastSyncResult.AUTH_ERROR;
+            case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
+                // Only used in validate, so there's never a syncResult to write to here.
+                break;
+            case RESULT_INITIALIZATION_FAILURE:
+            case RESULT_HARD_DATA_FAILURE:
+                return UIProvider.LastSyncResult.INTERNAL_ERROR;
+            case RESULT_OTHER_FAILURE:
+                return UIProvider.LastSyncResult.INTERNAL_ERROR;
+        }
+        return UIProvider.LastSyncResult.SUCCESS;
     }
 }

@@ -1,16 +1,15 @@
-package com.android.exchange.service;
+package com.android.exchange.eas;
 
 import android.content.ContentUris;
 import android.content.Context;
-import android.database.Cursor;
-import android.net.TrafficStats;
 import android.net.Uri;
 import android.text.format.DateUtils;
 import android.util.Log;
 
-import com.android.emailcommon.TrafficFlags;
+import com.android.emailcommon.internet.MimeUtility;
 import com.android.emailcommon.internet.Rfc822Output;
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.Body;
 import com.android.emailcommon.provider.EmailContent.BodyColumns;
@@ -18,15 +17,15 @@ import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
-import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
-import com.android.exchange.CommandStatusException.CommandStatus;
+import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
-import com.android.exchange.adapter.Parser;
-import com.android.exchange.adapter.Parser.EmptyStreamException;
+import com.android.exchange.CommandStatusException.CommandStatus;
+import com.android.exchange.adapter.SendMailParser;
 import com.android.exchange.adapter.Serializer;
 import com.android.exchange.adapter.Tags;
+import com.android.exchange.adapter.Parser.EmptyStreamException;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -39,70 +38,211 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.cert.CertificateException;
 import java.util.ArrayList;
 
-/**
- * Performs an Exchange Outbox sync, i.e. sends all mail from the Outbox.
- */
-public class EasOutboxSyncHandler extends EasServerConnection {
+public class EasOutboxSync extends EasOperation {
+
     // Value for a message's server id when sending fails.
     public static final int SEND_FAILED = 1;
-
-    // WHERE clause to query for unsent messages.
-    // TODO: Is the SEND_FAILED check actually what we want?
-    public static final String MAILBOX_KEY_AND_NOT_SEND_FAILED =
-            MessageColumns.MAILBOX_KEY + "=? and (" + SyncColumns.SERVER_ID + " is null or " +
-            SyncColumns.SERVER_ID + "!=" + SEND_FAILED + ')';
-
     // This needs to be long enough to send the longest reasonable message, without being so long
     // as to effectively "hang" sending of mail.  The standard 30 second timeout isn't long enough
     // for pictures and the like.  For now, we'll use 15 minutes, in the knowledge that any socket
     // failure would probably generate an Exception before timing out anyway
     public static final long SEND_MAIL_TIMEOUT = 15 * DateUtils.MINUTE_IN_MILLIS;
 
-    private final Mailbox mMailbox;
-    private final File mCacheDir;
+    public static final int RESULT_OK = 1;
+    public static final int RESULT_IO_ERROR = -100;
+    public static final int RESULT_ITEM_NOT_FOUND = -101;
+    public static final int RESULT_SEND_FAILED = -102;
 
-    public EasOutboxSyncHandler(final Context context, final Account account,
-            final Mailbox mailbox) {
+    private final Message mMessage;
+    private final boolean mIsEas14;
+    private final File mCacheDir;
+    private final SmartSendInfo mSmartSendInfo;
+    private final int mModeTag;
+    private File mTmpFile;
+    private FileInputStream mFileStream;
+
+    public EasOutboxSync(final Context context, final Account account, final Message message,
+            final boolean useSmartSend) {
         super(context, account);
-        mMailbox = mailbox;
+        mMessage = message;
+        mIsEas14 = (Double.parseDouble(mAccount.mProtocolVersion) >=
+                Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE);
         mCacheDir = context.getCacheDir();
+        if (useSmartSend) {
+            mSmartSendInfo = SmartSendInfo.getSmartSendInfo(mContext, mAccount, mMessage);
+        } else {
+            mSmartSendInfo = null;
+        }
+        mModeTag = getModeTag(mSmartSendInfo);
     }
 
-    public void performSync() {
-        // Use SMTP flags for sending mail
-        TrafficStats.setThreadStatsTag(TrafficFlags.getSmtpFlags(mContext, mAccount));
-        // Get a cursor to Outbox messages
-        final Cursor c = mContext.getContentResolver().query(Message.CONTENT_URI,
-                Message.CONTENT_PROJECTION, MAILBOX_KEY_AND_NOT_SEND_FAILED,
-                new String[] {Long.toString(mMailbox.mId)}, null);
-        try {
-            // Loop through the messages, sending each one
-            while (c.moveToNext()) {
-                final Message message = new Message();
-                message.restore(c);
-                if (Utility.hasUnloadedAttachments(mContext, message.mId)) {
-                    // We'll just have to wait on this...
-                    continue;
-                }
-
-                // TODO: Fix -- how do we want to signal to UI that we started syncing?
-                // Note the entire callback mechanism here needs improving.
-                //sendMessageStatus(message.mId, null, EmailServiceStatus.IN_PROGRESS, 0);
-
-                if (!sendOneMessage(message,
-                        SmartSendInfo.getSmartSendInfo(mContext, mAccount, message))) {
-                    break;
-                }
+    @Override
+    protected String getCommand() {
+        String cmd = "SendMail";
+        if (mSmartSendInfo != null) {
+            // In EAS 14, we don't send itemId and collectionId in the command
+            if (mIsEas14) {
+                cmd = mSmartSendInfo.isForward() ? "SmartForward" : "SmartReply";
+            } else {
+                cmd = mSmartSendInfo.generateSmartSendCmd();
             }
-        } finally {
-            // TODO: Some sort of sendMessageStatus() is needed here.
-            c.close();
         }
+        // If we're not EAS 14, add our save-in-sent setting here
+        if (!mIsEas14) {
+            cmd += "&SaveInSent=T";
+        }
+        return cmd;
+    }
+
+    @Override
+    protected HttpEntity getRequestEntity() throws IOException, MessageInvalidException {
+        try {
+            mTmpFile = File.createTempFile("eas_", "tmp", mCacheDir);
+        } catch (final IOException e) {
+            LogUtils.w(LOG_TAG, "IO error creating temp file");
+            throw new IllegalStateException("Failure creating temp file");
+        }
+
+        if (!writeMessageToTempFile(mTmpFile, mMessage, mSmartSendInfo)) {
+            // There are several reasons this could happen, possibly the message is corrupt (e.g.
+            // the To header is null) or the disk is too full to handle the temporary message.
+            // We can't send this message, but we don't want to abort the entire sync. Returning
+            // this error code will let the caller recognize that this operation failed, but we
+            // should continue on with the rest of the sync.
+            LogUtils.w(LOG_TAG, "IO error writing to temp file");
+            throw new MessageInvalidException("Failure writing to temp file");
+        }
+
+        try {
+            mFileStream = new FileInputStream(mTmpFile);
+        } catch (final FileNotFoundException e) {
+            LogUtils.w(LOG_TAG, "IO error creating fileInputStream");
+            throw new IllegalStateException("Failure creating fileInputStream");
+        }
+          final long fileLength = mTmpFile.length();
+          final HttpEntity entity;
+          if (mIsEas14) {
+              entity = new SendMailEntity(mFileStream, fileLength, mModeTag, mMessage,
+                      mSmartSendInfo);
+          } else {
+              entity = new InputStreamEntity(mFileStream, fileLength);
+          }
+
+          return entity;
+    }
+
+    @Override
+    protected int handleHttpError(int httpStatus) {
+        if (httpStatus == HttpStatus.SC_INTERNAL_SERVER_ERROR && mSmartSendInfo != null) {
+            // Let's retry without "smart" commands.
+            return RESULT_ITEM_NOT_FOUND;
+        } else {
+            return RESULT_OTHER_FAILURE;
+        }
+    }
+
+    @Override
+    protected void onRequestMade() {
+        try {
+            mFileStream.close();
+        } catch (IOException e) {
+            LogUtils.w(LOG_TAG, "IOException closing fileStream %s", e);
+        }
+        if (mTmpFile != null && mTmpFile.exists()) {
+            mTmpFile.delete();
+        }
+    }
+
+    @Override
+    protected int handleResponse(EasResponse response) throws IOException, CommandStatusException {
+        if (mIsEas14) {
+            try {
+                // Try to parse the result
+                final SendMailParser p = new SendMailParser(response.getInputStream(), mModeTag);
+                // If we get here, the SendMail failed; go figure
+                p.parse();
+                // The parser holds the status
+                final int status = p.getStatus();
+                if (CommandStatus.isNeedsProvisioning(status)) {
+                    LogUtils.w(LOG_TAG, "Needs provisioning sending mail");
+                    return RESULT_PROVISIONING_ERROR;
+                } else if (status == CommandStatus.ITEM_NOT_FOUND &&
+                        mSmartSendInfo != null) {
+                    // Let's retry without "smart" commands.
+                    LogUtils.w(LOG_TAG, "Needs provisioning sending mail");
+                    return RESULT_ITEM_NOT_FOUND;
+                }
+
+                // TODO: Set syncServerId = SEND_FAILED in DB?
+                LogUtils.d(LOG_TAG, "General failure sending mail");
+                return RESULT_SEND_FAILED;
+            } catch (final EmptyStreamException e) {
+                // This is actually fine; an empty stream means SendMail succeeded
+                LogUtils.d(LOG_TAG, "empty response sending mail");
+                // Don't return here, fall through so that we'll delete the sent message.
+            } catch (final IOException e) {
+                // Parsing failed in some other way.
+                LogUtils.w(LOG_TAG, "IOException sending mail");
+                return RESULT_IO_ERROR;
+            }
+        } else {
+            // FLAG: Do we need to parse results for earlier versions?
+        }
+        mContext.getContentResolver().delete(
+            ContentUris.withAppendedId(Message.CONTENT_URI, mMessage.mId), null, null);
+        return RESULT_OK;
+    }
+
+    /**
+     * Writes message to the temp file.
+     * @param tmpFile The temp file to use.
+     * @param message The {@link Message} to write.
+     * @param smartSendInfo The {@link SmartSendInfo} for this message send attempt.
+     * @return Whether we could successfully write the file.
+     */
+    private boolean writeMessageToTempFile(final File tmpFile, final Message message,
+            final SmartSendInfo smartSendInfo) {
+        final FileOutputStream fileStream;
+        try {
+            fileStream = new FileOutputStream(tmpFile);
+            Log.d(LogUtils.TAG, "created outputstream");
+        } catch (final FileNotFoundException e) {
+            Log.e(LogUtils.TAG, "Failed to create message file", e);
+            return false;
+        }
+        try {
+            final boolean smartSend = smartSendInfo != null;
+            final ArrayList<Attachment> attachments =
+                    smartSend ? smartSendInfo.mRequiredAtts : null;
+            Rfc822Output.writeTo(mContext, message, fileStream, smartSend, true, attachments);
+        } catch (final Exception e) {
+            Log.e(LogUtils.TAG, "Failed to write message file", e);
+            return false;
+        } finally {
+            try {
+                fileStream.close();
+            } catch (final IOException e) {
+                // should not happen
+                Log.e(LogUtils.TAG, "Failed to close file - should not happen", e);
+            }
+        }
+        return true;
+    }
+
+    private int getModeTag(final SmartSendInfo smartSendInfo) {
+        if (mIsEas14) {
+            if (smartSendInfo == null) {
+                return Tags.COMPOSE_SEND_MAIL;
+            } else if (smartSendInfo.isForward()) {
+                return Tags.COMPOSE_SMART_FORWARD;
+            } else {
+                return Tags.COMPOSE_SMART_REPLY;
+            }
+        }
+        return 0;
     }
 
     /**
@@ -118,8 +258,8 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         final boolean mIsReply;
         final ArrayList<Attachment> mRequiredAtts;
 
-        private SmartSendInfo(final String itemId, final String collectionId, final boolean isReply,
-                final ArrayList<Attachment> requiredAtts) {
+        private SmartSendInfo(final String itemId, final String collectionId,
+                final boolean isReply,ArrayList<Attachment> requiredAtts) {
             mItemId = itemId;
             mCollectionId = collectionId;
             mIsReply = isReply;
@@ -252,6 +392,16 @@ public class EasOutboxSyncHandler extends EasServerConnection {
         }
     }
 
+    @Override
+    public String getRequestContentType() {
+        // When using older protocols, we need to use a different MIME type for sending messages.
+        if (getProtocolVersion() < Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE) {
+            return MimeUtility.MIME_TYPE_RFC822;
+        } else {
+            return super.getRequestContentType();
+        }
+    }
+
     /**
      * Our own HttpEntity subclass that is able to insert opaque data (in this case the MIME
      * representation of the message body as stored in a temporary file) into the serializer stream
@@ -353,222 +503,5 @@ public class EasOutboxSyncHandler extends EasServerConnection {
             // And we're done
             s.end().end().done();
         }
-    }
-
-    private static class SendMailParser extends Parser {
-        private final int mStartTag;
-        private int mStatus;
-
-        public SendMailParser(final InputStream in, final int startTag) throws IOException {
-            super(in);
-            mStartTag = startTag;
-        }
-
-        public int getStatus() {
-            return mStatus;
-        }
-
-        /**
-         * The only useful info in the SendMail response is the status; we capture and save it
-         */
-        @Override
-        public boolean parse() throws IOException {
-            if (nextTag(START_DOCUMENT) != mStartTag) {
-                throw new IOException();
-            }
-            while (nextTag(START_DOCUMENT) != END_DOCUMENT) {
-                if (tag == Tags.COMPOSE_STATUS) {
-                    mStatus = getValueInt();
-                } else {
-                    skipTag();
-                }
-            }
-            return true;
-        }
-    }
-
-    /**
-     * Attempt to send one message.
-     * @param message The message to send.
-     * @param smartSendInfo The SmartSendInfo for this message, or null if we don't have or don't
-     *      want to use smart send.
-     * @return Whether or not sending this message succeeded.
-     * TODO: Improve how we handle the types of failures. I've left the old error codes in as TODOs
-     * for future reference.
-     */
-    private boolean sendOneMessage(final Message message, final SmartSendInfo smartSendInfo) {
-        final File tmpFile;
-        try {
-            tmpFile = File.createTempFile("eas_", "tmp", mCacheDir);
-        } catch (final IOException e) {
-            return false; // TODO: Handle SyncStatus.FAILURE_IO;
-        }
-
-        final EasResponse resp;
-        // Send behavior differs pre and post EAS14.
-        final boolean isEas14 = (Double.parseDouble(mAccount.mProtocolVersion) >=
-                Eas.SUPPORTED_PROTOCOL_EX2010_DOUBLE);
-        final int modeTag = getModeTag(isEas14, smartSendInfo);
-        try {
-            if (!writeMessageToTempFile(tmpFile, message, smartSendInfo)) {
-                return false; // TODO: Handle SyncStatus.FAILURE_IO;
-            }
-
-            final FileInputStream fileStream;
-            try {
-                fileStream = new FileInputStream(tmpFile);
-            } catch (final FileNotFoundException e) {
-                return false; // TODO: Handle SyncStatus.FAILURE_IO;
-            }
-            try {
-
-                final long fileLength = tmpFile.length();
-                final HttpEntity entity;
-                if (isEas14) {
-                    entity = new SendMailEntity(fileStream, fileLength, modeTag, message,
-                            smartSendInfo);
-                } else {
-                    entity = new InputStreamEntity(fileStream, fileLength);
-                }
-
-                // Create the appropriate command.
-                String cmd = "SendMail";
-                if (smartSendInfo != null) {
-                    // In EAS 14, we don't send itemId and collectionId in the command
-                    if (isEas14) {
-                        cmd = smartSendInfo.isForward() ? "SmartForward" : "SmartReply";
-                    } else {
-                        cmd = smartSendInfo.generateSmartSendCmd();
-                    }
-                }
-                // If we're not EAS 14, add our save-in-sent setting here
-                if (!isEas14) {
-                    cmd += "&SaveInSent=T";
-                }
-                // Finally, post SendMail to the server
-                try {
-                    resp = sendHttpClientPost(cmd, entity, SEND_MAIL_TIMEOUT);
-                } catch (final IOException e) {
-                    return false; // TODO: Handle SyncStatus.FAILURE_IO;
-                } catch (final CertificateException e) {
-                    return false;
-                }
-
-            } finally {
-                try {
-                    fileStream.close();
-                } catch (final IOException e) {
-                    // TODO: Should we do anything here, or is it ok to just proceed?
-                }
-            }
-        } finally {
-            if (tmpFile.exists()) {
-                tmpFile.delete();
-            }
-        }
-
-        try {
-            final int code = resp.getStatus();
-            if (code == HttpStatus.SC_OK) {
-                // HTTP OK before EAS 14 is a thumbs up; in EAS 14, we've got to parse
-                // the reply
-                if (isEas14) {
-                    try {
-                        // Try to parse the result
-                        final SendMailParser p = new SendMailParser(resp.getInputStream(), modeTag);
-                        // If we get here, the SendMail failed; go figure
-                        p.parse();
-                        // The parser holds the status
-                        final int status = p.getStatus();
-                        if (CommandStatus.isNeedsProvisioning(status)) {
-                            return false; // TODO: Handle SyncStatus.FAILURE_SECURITY;
-                        } else if (status == CommandStatus.ITEM_NOT_FOUND &&
-                                smartSendInfo != null) {
-                            // Let's retry without "smart" commands.
-                            return sendOneMessage(message, null);
-                        }
-                        // TODO: Set syncServerId = SEND_FAILED in DB?
-                        return false; // TODO: Handle SyncStatus.FAILURE_MESSAGE;
-                    } catch (final EmptyStreamException e) {
-                        // This is actually fine; an empty stream means SendMail succeeded
-                    } catch (final IOException e) {
-                        // Parsing failed in some other way.
-                        return false; // TODO: Handle SyncStatus.FAILURE_IO;
-                    }
-                }
-            } else if (code == HttpStatus.SC_INTERNAL_SERVER_ERROR && smartSendInfo != null) {
-                // Let's retry without "smart" commands.
-                return sendOneMessage(message, null);
-            } else {
-                if (resp.isAuthError()) {
-                    LogUtils.d(LogUtils.TAG, "Got auth error from server during outbox sync");
-                    return false; // TODO: Handle SyncStatus.FAILURE_LOGIN;
-                } else if (resp.isProvisionError()) {
-                    LogUtils.d(LogUtils.TAG, "Got provision error from server during outbox sync.");
-                    return false; // TODO: Handle SyncStatus.FAILURE_SECURITY;
-                } else {
-                    // TODO: Handle some other error
-                    LogUtils.d(LogUtils.TAG,
-                            "Got other HTTP error from server during outbox sync: %d", code);
-                    return false;
-                }
-            }
-        } finally {
-            resp.close();
-        }
-
-        // If we manage to get here, the message sent successfully. Hooray!
-        // Delete the sent message.
-        mContext.getContentResolver().delete(
-                ContentUris.withAppendedId(Message.CONTENT_URI, message.mId), null, null);
-        return true;
-    }
-
-    /**
-     * Writes message to the temp file.
-     * @param tmpFile The temp file to use.
-     * @param message The {@link Message} to write.
-     * @param smartSendInfo The {@link SmartSendInfo} for this message send attempt.
-     * @return Whether we could successfully write the file.
-     */
-    private boolean writeMessageToTempFile(final File tmpFile, final Message message,
-            final SmartSendInfo smartSendInfo) {
-        final FileOutputStream fileStream;
-        try {
-            fileStream = new FileOutputStream(tmpFile);
-        } catch (final FileNotFoundException e) {
-            Log.e(LogUtils.TAG, "Failed to create message file", e);
-            return false;
-        }
-        try {
-            final boolean smartSend = smartSendInfo != null;
-            final ArrayList<Attachment> attachments =
-                    smartSend ? smartSendInfo.mRequiredAtts : null;
-            Rfc822Output.writeTo(mContext, message, fileStream, smartSend, true, attachments);
-        } catch (final Exception e) {
-            Log.e(LogUtils.TAG, "Failed to write message file", e);
-            return false;
-        } finally {
-            try {
-                fileStream.close();
-            } catch (final IOException e) {
-                // should not happen
-                Log.e(LogUtils.TAG, "Failed to close file - should not happen", e);
-            }
-        }
-        return true;
-    }
-
-    private static int getModeTag(final boolean isEas14, final SmartSendInfo smartSendInfo) {
-        if (isEas14) {
-            if (smartSendInfo == null) {
-                return Tags.COMPOSE_SEND_MAIL;
-            } else if (smartSendInfo.isForward()) {
-                return Tags.COMPOSE_SMART_FORWARD;
-            } else {
-                return Tags.COMPOSE_SMART_REPLY;
-            }
-        }
-        return 0;
     }
 }

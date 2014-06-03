@@ -17,7 +17,7 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.exchange"
-    android:versionCode="500060" >
+    android:versionCode="500064" >
 
     <uses-permission
         android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -78,6 +78,17 @@
             android:name="com.android.emailsync.EmailSyncAlarmReceiver"/>
         <receiver
             android:name="com.android.emailsync.MailboxAlarmReceiver"/>
+
+        <service
+                android:name="com.android.exchange.service.EasService"
+                android:exported="true">
+<!-- TODO: Switch this from EmailSyncAdapterService
+            <intent-filter>
+                <action
+                        android:name="com.android.email.EXCHANGE_INTENT" />
+            </intent-filter>
+-->
+        </service>
 
         <!--Required stanza to register the EAS EmailSyncAdapterService with SyncManager -->
         <service

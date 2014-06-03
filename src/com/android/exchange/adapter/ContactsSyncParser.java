@@ -40,8 +40,8 @@ import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
-import com.android.exchange.service.EasContactsSyncHandler;
-import com.android.exchange.service.EasSyncHandler;
+import com.android.exchange.eas.EasSyncCollectionTypeBase;
+import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.utility.CalendarUtilities;
 import com.android.mail.utils.LogUtils;
 
@@ -799,7 +799,7 @@ public class ContactsSyncParser extends AbstractSyncParser {
         private int mCount = 0;
         private int mContactBackValue = mCount;
         // Make an array big enough for the max possible window size.
-        private final int[] mContactIndexArray = new int[EasSyncHandler.MAX_WINDOW_SIZE];
+        private final int[] mContactIndexArray = new int[EasSyncCollectionTypeBase.MAX_WINDOW_SIZE];
         private int mContactIndexCount = 0;
         private ContentProviderResult[] mResults = null;
 
@@ -1308,7 +1308,7 @@ public class ContactsSyncParser extends AbstractSyncParser {
     @Override
     protected void wipe() {
         LogUtils.w(TAG, "Wiping contacts for account %d", mAccount.mId);
-        EasContactsSyncHandler.wipeAccountFromContentProvider(mContext,
+        EasSyncContacts.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
     }
 }

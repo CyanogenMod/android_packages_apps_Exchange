@@ -16,8 +16,6 @@
 
 package com.android.exchange.eas;
 
-import android.content.SyncResult;
-
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.mail.utils.LogUtils;
@@ -53,11 +51,10 @@ public class EasOptions extends EasOperation {
     /**
      * Perform the server request. If successful, callers should use
      * {@link #getProtocolVersionString} to get the actual protocol version value.
-     * @param syncResult The {@link SyncResult} to use for this operation.
      * @return A result code; {@link #RESULT_OK} is the only value that indicates success.
      */
-    public int getProtocolVersionFromServer(final SyncResult syncResult) {
-        return performOperation(syncResult);
+    public int getProtocolVersionFromServer() {
+        return performOperation();
     }
 
     /**
@@ -82,7 +79,7 @@ public class EasOptions extends EasOperation {
     }
 
     @Override
-    protected int handleResponse(final EasResponse response, final SyncResult syncResult) {
+    protected int handleResponse(final EasResponse response) {
         final Header commands = response.getHeader("MS-ASProtocolCommands");
         final Header versions = response.getHeader("ms-asprotocolversions");
         final boolean hasProtocolVersion;

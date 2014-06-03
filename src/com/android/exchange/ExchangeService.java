@@ -33,12 +33,10 @@ import android.provider.CalendarContract;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
 
-import com.android.emailcommon.Api;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.Attachment;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.EmailContent.Message;
-import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.MailboxUtilities;
@@ -51,7 +49,7 @@ import com.android.emailcommon.service.SearchParams;
 import com.android.emailsync.AbstractSyncService;
 import com.android.emailsync.PartRequest;
 import com.android.emailsync.SyncManager;
-import com.android.exchange.adapter.Search;
+import com.android.exchange.eas.EasSearch;
 import com.android.exchange.utility.FileLogger;
 import com.android.mail.providers.UIProvider.AccountCapabilities;
 import com.android.mail.utils.LogUtils;
@@ -118,11 +116,6 @@ public class ExchangeService extends SyncManager {
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
 
         @Override
-        public int getApiLevel() {
-            return Api.LEVEL;
-        }
-
-        @Override
         public Bundle validate(HostAuth hostAuth) throws RemoteException {
             return AbstractSyncService.validate(EasSyncService.class,
                     hostAuth, ExchangeService.this);
@@ -138,64 +131,9 @@ public class ExchangeService extends SyncManager {
             return new EasSyncService().tryAutodiscover(ExchangeService.this, hostAuth);
         }
 
-        /**
-         * This is the remote call from the Email app, currently unused.
-         * TODO: remove this when it's been deleted from IEmailService.aidl.
-         */
-        @Deprecated
         @Override
-        public void startSync(long mailboxId, boolean userRequest, int deltaMessageCount)
-                throws RemoteException {
-            SyncManager exchangeService = INSTANCE;
-            if (exchangeService == null) return;
-            checkExchangeServiceServiceRunning();
-            Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
-            if (m == null) return;
-            Account acct = Account.restoreAccountWithId(exchangeService, m.mAccountKey);
-            if (acct == null) return;
-            // If this is a user request and we're being held, release the hold; this allows us to
-            // try again (the hold might have been specific to this account and released already)
-            if (userRequest) {
-                if (onSyncDisabledHold(acct)) {
-                    releaseSyncHolds(exchangeService, AbstractSyncService.EXIT_ACCESS_DENIED, acct);
-                    log("User requested sync of account in sync disabled hold; releasing");
-                } else if (onSecurityHold(acct)) {
-                    releaseSyncHolds(exchangeService, AbstractSyncService.EXIT_SECURITY_FAILURE,
-                            acct);
-                    log("User requested sync of account in security hold; releasing");
-                }
-                if (sConnectivityHold) {
-                    return;
-                }
-            }
-            if (m.mType == Mailbox.TYPE_OUTBOX) {
-                // We're using SERVER_ID to indicate an error condition (it has no other use for
-                // sent mail)  Upon request to sync the Outbox, we clear this so that all messages
-                // are candidates for sending.
-                ContentValues cv = new ContentValues();
-                cv.put(SyncColumns.SERVER_ID, 0);
-                exchangeService.getContentResolver().update(Message.CONTENT_URI,
-                    cv, WHERE_MAILBOX_KEY, new String[] {Long.toString(mailboxId)});
-                // Clear the error state; the Outbox sync will be started from checkMailboxes
-                exchangeService.mSyncErrorMap.remove(mailboxId);
-                kick("start outbox");
-                // Outbox can't be synced in EAS
-                return;
-            } else if (!isSyncable(m)) {
-                return;
-            }
-            startManualSync(mailboxId, userRequest ? ExchangeService.SYNC_UI_REQUEST :
-                ExchangeService.SYNC_SERVICE_START_SYNC, null);
-        }
-
-        @Override
-        public void stopSync(long mailboxId) throws RemoteException {
-            stopManualSync(mailboxId);
-        }
-
-        @Override
-        public void loadAttachment(final IEmailServiceCallback callback, final long attachmentId,
-                final boolean background) throws RemoteException {
+        public void loadAttachment(final IEmailServiceCallback callback, final long accountId,
+                final long attachmentId, final boolean background) throws RemoteException {
             Attachment att = Attachment.restoreAttachmentWithId(ExchangeService.this, attachmentId);
             log("loadAttachment " + attachmentId + ": " + att.mFileName);
             sendMessageRequest(new PartRequest(att, null, null));
@@ -204,31 +142,6 @@ public class ExchangeService extends SyncManager {
         @Override
         public void updateFolderList(long accountId) throws RemoteException {
             reloadFolderList(ExchangeService.this, accountId, false);
-        }
-
-        @Override
-        public void hostChanged(long accountId) throws RemoteException {
-            SyncManager exchangeService = INSTANCE;
-            if (exchangeService == null) return;
-            ConcurrentHashMap<Long, SyncError> syncErrorMap = exchangeService.mSyncErrorMap;
-            // Go through the various error mailboxes
-            for (long mailboxId: syncErrorMap.keySet()) {
-                SyncError error = syncErrorMap.get(mailboxId);
-                // If it's a login failure, look a little harder
-                Mailbox m = Mailbox.restoreMailboxWithId(exchangeService, mailboxId);
-                // If it's for the account whose host has changed, clear the error
-                // If the mailbox is no longer around, remove the entry in the map
-                if (m == null) {
-                    syncErrorMap.remove(mailboxId);
-                } else if (error != null && m.mAccountKey == accountId) {
-                    error.fatal = false;
-                    error.holdEndTime = 0;
-                }
-            }
-            // Stop any running syncs
-            exchangeService.stopAccountSyncs(accountId, true);
-            // Kick ExchangeService
-            kick("host changed");
         }
 
         @Override
@@ -242,27 +155,6 @@ public class ExchangeService extends SyncManager {
         @Override
         public void sendMeetingResponse(long messageId, int response) throws RemoteException {
             sendMessageRequest(new MeetingResponseRequest(messageId, response));
-        }
-
-        @Override
-        public void loadMore(long messageId) throws RemoteException {
-        }
-
-        // The following three methods are not implemented in this version
-        @Override
-        public boolean createFolder(long accountId, String name) throws RemoteException {
-            return false;
-        }
-
-        @Override
-        public boolean deleteFolder(long accountId, String name) throws RemoteException {
-            return false;
-        }
-
-        @Override
-        public boolean renameFolder(long accountId, String oldName, String newName)
-                throws RemoteException {
-            return false;
         }
 
         /**
@@ -280,36 +172,20 @@ public class ExchangeService extends SyncManager {
         public int searchMessages(long accountId, SearchParams searchParams, long destMailboxId) {
             SyncManager exchangeService = INSTANCE;
             if (exchangeService == null) return 0;
-            return Search.searchMessages(exchangeService, accountId, searchParams,
-                    destMailboxId);
+            EasSearch op = new EasSearch(exchangeService, accountId, searchParams, destMailboxId);
+            op.performOperation();
+            return op.getTotalResults();
         }
 
         @Override
-        public void sendMail(long accountId) throws RemoteException {
-        }
+        public void sendMail(long accountId) throws RemoteException {}
 
         @Override
-        public int getCapabilities(Account acct) throws RemoteException {
-            String easVersion = acct.mProtocolVersion;
-            Double easVersionDouble = 2.5D;
-            if (easVersion != null) {
-                try {
-                    easVersionDouble = Double.parseDouble(easVersion);
-                } catch (NumberFormatException e) {
-                    // Stick with 2.5
-                }
-            }
-            if (easVersionDouble >= 12.0D) {
-                return EAS_12_CAPABILITIES;
-            } else {
-                return EAS_2_CAPABILITIES;
-            }
-        }
+        public void pushModify(long accountId) throws RemoteException {}
 
         @Override
-        public void serviceUpdated(String emailAddress) throws RemoteException {
-            // Not required for EAS
-        }
+        public void sync(final long accountId, final boolean updateFolderList,
+                final int mailboxType, final long[] folders) {}
     };
 
     /**

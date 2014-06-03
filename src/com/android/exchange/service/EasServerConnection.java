@@ -39,6 +39,7 @@ import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
 import com.android.exchange.eas.EasConnectionCache;
 import com.android.exchange.utility.CurlLogger;
+import com.android.exchange.utility.WbxmlResponseLogger;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
@@ -181,6 +182,7 @@ public class EasServerConnection {
                 protected BasicHttpProcessor createHttpProcessor() {
                     final BasicHttpProcessor processor = super.createHttpProcessor();
                     processor.addRequestInterceptor(new CurlLogger());
+                    processor.addResponseInterceptor(new WbxmlResponseLogger());
                     return processor;
                 }
             };
@@ -286,7 +288,9 @@ public class EasServerConnection {
         post.setHeader("MS-ASProtocolVersion", String.valueOf(mProtocolVersion));
         post.setHeader("User-Agent", getUserAgent());
         post.setHeader("Accept-Encoding", "gzip");
-        if (contentType != null) {
+        // If there is no entity, we should not be setting a content-type since this will
+        // result in a 400 from the server in the case of loading an attachment.
+        if (contentType != null && entity != null) {
             post.setHeader("Content-Type", contentType);
         }
         if (usePolicyKey) {
@@ -337,6 +341,8 @@ public class EasServerConnection {
         final boolean isPingCommand = cmd.equals("Ping");
 
         // Split the mail sending commands
+        // TODO: This logic should not be here, the command should be generated correctly
+        // in a subclass of EasOperation.
         String extra = null;
         boolean msg = false;
         if (cmd.startsWith("SmartForward&") || cmd.startsWith("SmartReply&")) {
@@ -356,8 +362,7 @@ public class EasServerConnection {
             contentType = MimeUtility.MIME_TYPE_RFC822;
         } else if (entity != null) {
             contentType = EAS_14_MIME_TYPE;
-        }
-        else {
+        } else {
             contentType = null;
         }
         final String uriString;

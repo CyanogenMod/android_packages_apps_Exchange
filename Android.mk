@@ -47,4 +47,4 @@ LOCAL_EMMA_COVERAGE_FILTER += +com.android.exchange.*
 include $(BUILD_PACKAGE)
 
 # additionally, build unit tests in a separate .apk
-# include $(call all-makefiles-under,$(LOCAL_PATH))
+include $(call all-makefiles-under,$(LOCAL_PATH))
