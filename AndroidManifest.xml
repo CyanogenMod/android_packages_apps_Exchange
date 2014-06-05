@@ -82,12 +82,11 @@
         <service
                 android:name="com.android.exchange.service.EasService"
                 android:exported="true">
-<!-- TODO: Switch this from EmailSyncAdapterService
             <intent-filter>
                 <action
                         android:name="com.android.email.EXCHANGE_INTENT" />
             </intent-filter>
--->
+
         </service>
 
         <!--Required stanza to register the EAS EmailSyncAdapterService with SyncManager -->
@@ -97,8 +96,6 @@
             <intent-filter>
                 <action
                     android:name="android.content.SyncAdapter" />
-                <action
-                    android:name="com.android.email.EXCHANGE_INTENT" />
             </intent-filter>
             <meta-data android:name="android.content.SyncAdapter"
                        android:resource="@xml/syncadapter_email" />
