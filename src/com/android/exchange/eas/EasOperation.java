@@ -114,6 +114,9 @@ public abstract class EasOperation {
      * -200, etc...).
      */
 
+    /** Minimum value for any non failure result. There may be multiple different non-failure
+     * results, if so they should all be greater than or equal to this value. */
+    public static final int RESULT_MIN_OK_RESULT = 0;
     /** Error code indicating the operation was cancelled via {@link #abort}. */
     public static final int RESULT_ABORT = -1;
     /** Error code indicating the operation was cancelled via {@link #restart}. */
@@ -121,7 +124,7 @@ public abstract class EasOperation {
     /** Error code indicating the Exchange servers redirected too many times. */
     public static final int RESULT_TOO_MANY_REDIRECTS = -3;
     /** Error code indicating the request failed due to a network problem. */
-    public static final int RESULT_REQUEST_FAILURE = -4;
+    public static final int RESULT_NETWORK_PROBLEM = -4;
     /** Error code indicating a 403 (forbidden) error. */
     public static final int RESULT_FORBIDDEN = -5;
     /** Error code indicating an unresolved provisioning error. */
@@ -164,6 +167,10 @@ public abstract class EasOperation {
     @VisibleForTesting
     public void replaceEasServerConnection(EasServerConnection connection) {
         mConnection = connection;
+    }
+
+    public static boolean isFatal(int result) {
+        return result < RESULT_MIN_OK_RESULT;
     }
 
     /**
@@ -329,12 +336,16 @@ public abstract class EasOperation {
                     message = "(no message)";
                 }
                 LogUtils.i(LOG_TAG, "IOException while sending request: %s", message);
-                return RESULT_REQUEST_FAILURE;
+                return RESULT_NETWORK_PROBLEM;
             } catch (final CertificateException e) {
                 LogUtils.i(LOG_TAG, "CertificateException while sending request: %s",
                         e.getMessage());
                 return RESULT_CLIENT_CERTIFICATE_REQUIRED;
             } catch (final MessageInvalidException e) {
+                // This indicates that there is something wrong with the message locally, and it
+                // cannot be sent. We don't want to return success, because that's misleading,
+                // but on the other hand, we don't want to abort the sync, because that would
+                // prevent other messages from being sent.
                 LogUtils.d(LOG_TAG, "Exception sending request %s", e.getMessage());
                 return RESULT_NON_FATAL_ERROR;
             } catch (final IllegalStateException e) {
@@ -354,7 +365,7 @@ public abstract class EasOperation {
                         responseResult = handleResponse(response);
                     } catch (final IOException e) {
                         LogUtils.e(LOG_TAG, e, "Exception while handling response");
-                        return RESULT_REQUEST_FAILURE;
+                        return RESULT_NETWORK_PROBLEM;
                     } catch (final CommandStatusException e) {
                         // For some operations (notably Sync & FolderSync), errors are signaled in
                         // the payload of the response. These will have a HTTP 200 response, and the
@@ -378,7 +389,7 @@ public abstract class EasOperation {
 
                 // Non-negative results indicate success. Return immediately and bypass the error
                 // handling.
-                if (result >= 0) {
+                if (result >= EasOperation.RESULT_MIN_OK_RESULT) {
                     return result;
                 }
 
@@ -770,47 +781,11 @@ public abstract class EasOperation {
                 amAccount.toString(), extras.toString());
     }
 
-    /**
-     * Interpret a result code from an {@link EasOperation} and, if it's an error, write it to
-     * the appropriate field in {@link SyncResult}.
-     * @param result
-     * @param syncResult
-     * @return Whether an error code was written to syncResult.
-     */
-    public static boolean writeResultToSyncResult(final int result, final SyncResult syncResult) {
-        switch (result) {
-            case RESULT_TOO_MANY_REDIRECTS:
-                syncResult.tooManyRetries = true;
-                return true;
-            case RESULT_REQUEST_FAILURE:
-                syncResult.stats.numIoExceptions = 1;
-                return true;
-            case RESULT_FORBIDDEN:
-            case RESULT_PROVISIONING_ERROR:
-            case RESULT_AUTHENTICATION_ERROR:
-            case RESULT_CLIENT_CERTIFICATE_REQUIRED:
-                syncResult.stats.numAuthExceptions = 1;
-                return true;
-            case RESULT_PROTOCOL_VERSION_UNSUPPORTED:
-                // Only used in validate, so there's never a syncResult to write to here.
-                break;
-            case RESULT_INITIALIZATION_FAILURE:
-            case RESULT_HARD_DATA_FAILURE:
-                syncResult.databaseError = true;
-                return true;
-            case RESULT_OTHER_FAILURE:
-                // TODO: Is this correct?
-                syncResult.stats.numIoExceptions = 1;
-                return true;
-        }
-        return false;
-    }
-
     public static int translateSyncResultToUiResult(final int result) {
         switch (result) {
               case RESULT_TOO_MANY_REDIRECTS:
                 return UIProvider.LastSyncResult.INTERNAL_ERROR;
-            case RESULT_REQUEST_FAILURE:
+            case RESULT_NETWORK_PROBLEM:
                 return UIProvider.LastSyncResult.CONNECTION_ERROR;
             case RESULT_FORBIDDEN:
             case RESULT_PROVISIONING_ERROR:
