@@ -18,6 +18,7 @@ package com.android.exchange.service;
 
 import android.app.Service;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -30,23 +31,29 @@ import android.text.TextUtils;
 
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceProxy;
+import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.service.ServiceProxy;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.eas.EasAutoDiscover;
 import com.android.exchange.eas.EasFolderSync;
+import com.android.exchange.eas.EasFullSyncOperation;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
+import com.android.exchange.eas.EasOutboxSync;
 import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSearchGal;
 import com.android.exchange.eas.EasSendMeetingResponse;
 import com.android.exchange.eas.EasSyncBase;
 import com.android.exchange.provider.GalResult;
+import com.android.mail.providers.UIProvider;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashSet;
@@ -78,11 +85,6 @@ public class EasService extends Service {
      */
     private final IEmailService.Stub mBinder = new IEmailService.Stub() {
         @Override
-        public void sendMail(final long accountId) {
-            LogUtils.d(TAG, "IEmailService.sendMail: %d", accountId);
-        }
-
-        @Override
         public void loadAttachment(final IEmailServiceCallback callback, final long accountId,
                 final long attachmentId, final boolean background) {
             LogUtils.d(TAG, "IEmailService.loadAttachment: %d", attachmentId);
@@ -97,26 +99,14 @@ public class EasService extends Service {
             doOperation(operation, "IEmailService.updateFolderList");
         }
 
-        @Override
-        public void syncFolders(final long accountId, final boolean updateFolderList,
-                         final long[] folders) {
-            final Account account = Account.restoreAccountWithId(EasService.this, accountId);
-            for (final long folderId : folders) {
-                // TODO: Performance would be improved if we could do multiple folders in
-                // a single operation.
-                final Mailbox mailbox = Mailbox.restoreMailboxWithId(EasService.this, folderId);
-                EasOperation op = new EasSyncBase(EasService.this, account, mailbox);
-            }
+        public void sendMail(final long accountId) {
+            // TODO: We should get rid of sendMail, and this is done in sync.
+            LogUtils.wtf(TAG, "unexpected call to EasService.sendMail");
         }
 
-        @Override
-        public void syncMailboxType(final long accountId, final boolean updateFolderList,
-                         final int mailboxType) {
-            final Account account = Account.restoreAccountWithId(EasService.this, accountId);
-            // TODO: What if there are multiple mailboxes of this type?
-            final Mailbox mailbox = Mailbox.restoreMailboxOfType(EasService.this, accountId,
-                    mailboxType);
-            EasOperation op = new EasSyncBase(EasService.this, account, mailbox);
+        public int sync(final long accountId, Bundle syncExtras) {
+            EasFullSyncOperation op = new EasFullSyncOperation(EasService.this, accountId, syncExtras);
+            return convertToEmailServiceStatus(doOperation(op, "IEmailService.sync"));
         }
 
         @Override
@@ -315,10 +305,8 @@ public class EasService extends Service {
     }
 
     public int doOperation(final EasOperation operation, final String loggingName) {
-        final long accountId = operation.getAccountId();
-        final Account account = Account.restoreAccountWithId(this, accountId);
-        LogUtils.d(TAG, "%s: %d", loggingName, accountId);
-        mSynchronizer.syncStart(accountId);
+        LogUtils.d(TAG, "%s: %d", loggingName, operation.getAccountId());
+        mSynchronizer.syncStart(operation.getAccountId());
         // TODO: Do we need a wakelock here? For RPC coming from sync adapters, no -- the SA
         // already has one. But for others, maybe? Not sure what's guaranteed for AIDL calls.
         // If we add a wakelock (or anything else for that matter) here, must remember to undo
@@ -327,7 +315,7 @@ public class EasService extends Service {
         try {
             return operation.performOperation();
         } finally {
-            mSynchronizer.syncEnd(account);
+            mSynchronizer.syncEnd(operation.getAccount());
         }
     }
 
@@ -389,23 +377,6 @@ public class EasService extends Service {
         return false;
     }
 
-    /**
-     * Determine which content types are set to sync for an account.
-     * @param account The account whose sync settings we're looking for.
-     * @param authorities All possible authorities we could care about.
-     * @return The authorities for the content types we want to sync for account.
-     */
-    private static Set<String> getAuthoritiesToSync(final android.accounts.Account account,
-            final String[] authorities) {
-        final HashSet<String> authsToSync = new HashSet();
-        for (final String authority : authorities) {
-            if (ContentResolver.getSyncAutomatically(account, authority)) {
-                authsToSync.add(authority);
-            }
-        }
-        return authsToSync;
-    }
-
     static public GalResult searchGal(final Context context, final long accountId,
                                       final String filter, final int limit) {
         final EasSearchGal operation = new EasSearchGal(context, accountId, filter, limit);
@@ -422,4 +393,77 @@ public class EasService extends Service {
         }
     }
 
+    /**
+     * Converts from an EasOperation status to a status code defined in EmailServiceStatus.
+     * This is used to communicate the status of a sync operation to the caller.
+     * @param easStatus result returned from an EasOperation
+     * @return EmailServiceStatus
+     */
+    private int convertToEmailServiceStatus(int easStatus) {
+        switch (easStatus) {
+            case EasOperation.RESULT_MIN_OK_RESULT:
+                return EmailServiceStatus.SUCCESS;
+
+            case EasOperation.RESULT_ABORT:
+            case EasOperation.RESULT_RESTART:
+                // This should only happen if a ping is interruped for some reason. We would not
+                // expect see that here, since this should only be called for a sync.
+                LogUtils.e(TAG, "unexpected easStatus %d", easStatus);
+                return EmailServiceStatus.SUCCESS;
+
+            case EasOperation.RESULT_TOO_MANY_REDIRECTS:
+                return EmailServiceStatus.INTERNAL_ERROR;
+
+            case EasOperation.RESULT_NETWORK_PROBLEM:
+                // This is due to an IO error, we need the caller to know about this so that it
+                // can let the syncManager know.
+                return EmailServiceStatus.IO_ERROR;
+
+            case EasOperation.RESULT_FORBIDDEN:
+            case EasOperation.RESULT_AUTHENTICATION_ERROR:
+                return EmailServiceStatus.LOGIN_FAILED;
+
+            case EasOperation.RESULT_PROVISIONING_ERROR:
+                return EmailServiceStatus.PROVISIONING_ERROR;
+
+            case EasOperation.RESULT_CLIENT_CERTIFICATE_REQUIRED:
+                return EmailServiceStatus.CLIENT_CERTIFICATE_ERROR;
+
+            case EasOperation.RESULT_PROTOCOL_VERSION_UNSUPPORTED:
+                return EmailServiceStatus.PROTOCOL_ERROR;
+
+            case EasOperation.RESULT_INITIALIZATION_FAILURE:
+            case EasOperation.RESULT_HARD_DATA_FAILURE:
+            case EasOperation.RESULT_OTHER_FAILURE:
+                return EmailServiceStatus.INTERNAL_ERROR;
+
+            case EasOperation.RESULT_NON_FATAL_ERROR:
+                // We do not expect to see this error here: This should be consumed in
+                // EasFullSyncOperation. The only case this occurs in is when we try to send
+                // a message in the outbox, and there's some problem with the message locally
+                // that prevents it from being sent. We return a
+                LogUtils.e(TAG, "unexpected easStatus %d", easStatus);
+                return EmailServiceStatus.SUCCESS;
+        }
+        LogUtils.e(TAG, "Unexpected easStatus %d");
+        return EmailServiceStatus.INTERNAL_ERROR;
+    }
+
+
+    /**
+     * Determine which content types are set to sync for an account.
+     * @param account The account whose sync settings we're looking for.
+     * @param authorities All possible authorities we could care about.
+     * @return The authorities for the content types we want to sync for account.
+     */
+    public static Set<String> getAuthoritiesToSync(final android.accounts.Account account,
+                                                    final String[] authorities) {
+        final HashSet<String> authsToSync = new HashSet();
+        for (final String authority : authorities) {
+            if (ContentResolver.getSyncAutomatically(account, authority)) {
+                authsToSync.add(authority);
+            }
+        }
+        return authsToSync;
+    }
 }

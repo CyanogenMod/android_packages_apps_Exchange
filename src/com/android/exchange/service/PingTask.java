@@ -72,7 +72,7 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
             // If we get any sort of exception here, treat it like the ping returned a connection
             // failure.
             LogUtils.e(TAG, e, "Ping exception for account %d", mOperation.getAccountId());
-            pingStatus = EasOperation.RESULT_REQUEST_FAILURE;
+            pingStatus = EasOperation.RESULT_NETWORK_PROBLEM;
         }
         LogUtils.i(TAG, "Ping task ending with status: %d", pingStatus);
 

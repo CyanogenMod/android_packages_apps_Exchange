@@ -104,7 +104,7 @@ public class EasPing extends EasOperation {
         final int result = performOperation();
         if (result == RESULT_RESTART) {
             return PingParser.STATUS_EXPIRED;
-        } else  if (result == RESULT_REQUEST_FAILURE) {
+        } else  if (result == RESULT_NETWORK_PROBLEM) {
             final long timeoutDuration = SystemClock.elapsedRealtime() - startTime;
             LogUtils.d(TAG, "doPing request failure, timed out after %d millis", timeoutDuration);
             decreasePingDuration();
