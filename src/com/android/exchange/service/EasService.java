@@ -315,8 +315,8 @@ public class EasService extends Service {
     }
 
     public int doOperation(final EasOperation operation, final String loggingName) {
-        final Account account = operation.getAccount();
-        final long accountId = account.getId();
+        final long accountId = operation.getAccountId();
+        final Account account = Account.restoreAccountWithId(this, accountId);
         LogUtils.d(TAG, "%s: %d", loggingName, accountId);
         mSynchronizer.syncStart(accountId);
         // TODO: Do we need a wakelock here? For RPC coming from sync adapters, no -- the SA
