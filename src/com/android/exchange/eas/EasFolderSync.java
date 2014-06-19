@@ -116,22 +116,6 @@ public class EasFolderSync extends EasOperation {
     }
 
     /**
-     * Perform a folder sync.
-     * TODO: Remove this function when transition to EasService is complete.
-     * @return A result code, either from above or from the base class.
-     */
-    public int doFolderSync() {
-        if (mStatusOnly) {
-            return RESULT_WRONG_OPERATION;
-        }
-        LogUtils.d(LOG_TAG, "Performing sync for account %d", getAccountId());
-        // This intentionally calls super.performOperation -- calling our performOperation
-        // will simply end up calling super.performOperation anyway. This is part of the transition
-        // to EasService and will go away when this function is deleted.
-        return super.performOperation();
-    }
-
-    /**
      * Helper function for {@link #performOperation} -- do some initial checks and, if they pass,
      * perform a folder sync to verify that we can. This sets {@link #mValidationResult} as a side
      * effect which holds the result details needed by the UI.
@@ -169,16 +153,6 @@ public class EasFolderSync extends EasOperation {
         final int result = super.performOperation();
         writeResultCode(mValidationResult, result);
         return result;
-    }
-
-    /**
-     * Perform account validation.
-     * TODO: Remove this function when transition to EasService is complete.
-     * @return The response {@link Bundle} expected by the RPC.
-     */
-    public Bundle doValidate() {
-        validate();
-        return mValidationResult;
     }
 
     @Override
@@ -240,7 +214,7 @@ public class EasFolderSync extends EasOperation {
             case RESULT_TOO_MANY_REDIRECTS:
                 messagingExceptionCode = MessagingException.UNSPECIFIED_EXCEPTION;
                 break;
-            case RESULT_REQUEST_FAILURE:
+            case RESULT_NETWORK_PROBLEM:
                 messagingExceptionCode = MessagingException.IOERROR;
                 break;
             case RESULT_FORBIDDEN:

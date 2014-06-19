@@ -280,7 +280,7 @@ public final class EasLoadAttachment extends EasOperation {
         // the errors that are being returned to the caller of performOperation().
         if (response.isEmpty()) {
             LogUtils.e(LOG_TAG, "Error, empty response.");
-            return RESULT_REQUEST_FAILURE;
+            return RESULT_NETWORK_PROBLEM;
         }
 
         // This is a 2 step process.
@@ -291,7 +291,7 @@ public final class EasLoadAttachment extends EasOperation {
             tmpFile = File.createTempFile("eas_", "tmp", mContext.getCacheDir());
         } catch (final IOException e) {
             LogUtils.e(LOG_TAG, "Could not open temp file: %s", e.getMessage());
-            return RESULT_REQUEST_FAILURE;
+            return RESULT_NETWORK_PROBLEM;
         }
 
         try {
