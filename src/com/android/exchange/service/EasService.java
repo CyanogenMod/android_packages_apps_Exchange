@@ -408,7 +408,7 @@ public class EasService extends Service {
             case EasOperation.RESULT_RESTART:
                 // This should only happen if a ping is interruped for some reason. We would not
                 // expect see that here, since this should only be called for a sync.
-                LogUtils.e(TAG, "unexpected easStatus %d", easStatus);
+                LogUtils.e(TAG, "Abort or Restart easStatus");
                 return EmailServiceStatus.SUCCESS;
 
             case EasOperation.RESULT_TOO_MANY_REDIRECTS:
@@ -442,10 +442,10 @@ public class EasService extends Service {
                 // EasFullSyncOperation. The only case this occurs in is when we try to send
                 // a message in the outbox, and there's some problem with the message locally
                 // that prevents it from being sent. We return a
-                LogUtils.e(TAG, "unexpected easStatus %d", easStatus);
+                LogUtils.e(TAG, "Other non-fatal error easStatus %d", easStatus);
                 return EmailServiceStatus.SUCCESS;
         }
-        LogUtils.e(TAG, "Unexpected easStatus %d");
+        LogUtils.e(TAG, "Unexpected easStatus %d", easStatus);
         return EmailServiceStatus.INTERNAL_ERROR;
     }
 
