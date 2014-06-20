@@ -328,7 +328,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                     // Get results from the Exchange account
                     final GalResult galResult = EasService.searchGal(getContext(), accountId,
                             filter, queryLimit);
-                    if (galResult != null) {
+                    if (galResult != null && (galResult.getNumEntries() > 0)) {
                          return buildGalResultCursor(
                                  projection, galResult, sortOrder, limit, isEmail, isPhone);
                     }

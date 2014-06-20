@@ -42,6 +42,8 @@ public class GalResult {
         galData.add(data);
     }
 
+    public int getNumEntries() { return galData.size(); }
+
     public static class GalData {
         // PackedString constants for GalData
         public static final String ID = "_id";
