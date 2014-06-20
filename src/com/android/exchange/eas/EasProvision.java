@@ -181,7 +181,9 @@ public class EasProvision extends EasOperation {
         //storeMaxAttachmentSize(mPolicy.mMaxAttachmentSize);
 
         // Apply the policies (that we support) with the temporary key.
-        mPolicy.mProtocolPoliciesUnsupported = null;
+        if (mPolicy != null) {
+            mPolicy.mProtocolPoliciesUnsupported = null;
+        }
         PolicyServiceProxy.setAccountPolicy(mContext, accountId, mPolicy, null);
         if (!PolicyServiceProxy.isActive(mContext, mPolicy)) {
             return false;
