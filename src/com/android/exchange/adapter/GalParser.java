@@ -51,7 +51,10 @@ public class GalParser extends Parser {
                 skipTag();
             }
          }
-         return mGalResult.total > 0;
+        // TODO: IO Exception if we can't get the result to parse and a false should be returned
+        // here if we can't parse the input stream in the case where the schema may have changed.
+        // To implement this, we'll have to dig a bit deeper into the parsing code.
+        return true;
      }
 
     private void parseProperties(final GalResult galResult) throws IOException {

@@ -70,7 +70,7 @@ public class EasSearchGal extends EasOperation {
                 if (gp.parse()) {
                     mResult = gp.getGalResult();
                 } else {
-                    LogUtils.wtf(LogUtils.TAG, "failure to parse GalResult");
+                    LogUtils.wtf(LogUtils.TAG, "Failure to parse GalResult");
                 }
             } finally {
                 is.close();
