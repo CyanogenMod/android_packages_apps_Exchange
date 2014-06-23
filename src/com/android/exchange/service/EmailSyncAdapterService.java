@@ -102,8 +102,53 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     /**
      * {@link AsyncTask} for restarting pings for all accounts that need it.
      */
+    private static final String[] PUSH_ACCOUNTS_PROJECTION = new String[] {AccountColumns._ID};
     private static final String PUSH_ACCOUNTS_SELECTION =
             AccountColumns.SYNC_INTERVAL + "=" + Integer.toString(Account.CHECK_INTERVAL_PUSH);
+    private class RestartPingsTask extends AsyncTask<Void, Void, Void> {
+
+        private final ContentResolver mContentResolver;
+        private final IEmailService mEasService;
+        private boolean mAnyAccounts;
+
+        public RestartPingsTask(final ContentResolver contentResolver,
+                                final IEmailService easService) {
+            mContentResolver = contentResolver;
+            mEasService = easService;
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            final Cursor c = mContentResolver.query(Account.CONTENT_URI,
+                    PUSH_ACCOUNTS_PROJECTION, PUSH_ACCOUNTS_SELECTION, null, null);
+            if (c != null) {
+                try {
+                    mAnyAccounts = (c.getCount() != 0);
+                    while (c.moveToNext()) {
+                        try {
+                            mEasService.pushModify(c.getLong(0));
+                        } catch (RemoteException re) {
+                            LogUtils.wtf(TAG, re, "While trying to pushModify in RestartPingsTask");
+                            // TODO: how to handle this?
+                        }
+                    }
+                } finally {
+                    c.close();
+                }
+            } else {
+                mAnyAccounts = false;
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            if (!mAnyAccounts) {
+                LogUtils.d(TAG, "stopping for no accounts");
+                EmailSyncAdapterService.this.stopSelf();
+            }
+        }
+    }
 
     @Override
     public void onCreate() {
@@ -122,6 +167,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             }
         };
         bindService(new Intent(this, EasService.class), mConnection, Context.BIND_AUTO_CREATE);
+        // Start up the initial pings.
+        new RestartPingsTask(getContentResolver(), mEasService).executeOnExecutor(
+                AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     @Override
