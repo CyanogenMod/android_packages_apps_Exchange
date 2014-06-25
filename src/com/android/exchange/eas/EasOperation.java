@@ -99,7 +99,7 @@ import java.util.ArrayList;
  * complexity beyond what's required.
  */
 public abstract class EasOperation {
-    public static final String LOG_TAG = Eas.LOG_TAG;
+    public static final String LOG_TAG = LogUtils.TAG;
 
     /** The maximum number of server redirects we allow before returning failure. */
     private static final int MAX_REDIRECTS = 3;
@@ -747,7 +747,7 @@ public abstract class EasOperation {
     }
 
     protected static void requestSyncForMailboxes(final android.accounts.Account amAccount,
-            final ArrayList<Long> mailboxIds) {
+            final String authority, final ArrayList<Long> mailboxIds) {
         final Bundle extras = Mailbox.createSyncBundle(mailboxIds);
         /**
          * Please note that it is very possible that we are trying to send a request to the
@@ -758,26 +758,8 @@ public abstract class EasOperation {
          * by another caller, then we should reconsider if manual=true is the right thing to do.
          */
         extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-        ContentResolver.requestSync(amAccount, EmailContent.AUTHORITY, extras);
-        LogUtils.i(LOG_TAG, "requestSync EasOperation requestSyncForMailboxes  %s, %s",
-                amAccount.toString(), extras.toString());
-    }
-
-    /**
-     * RequestNoOpSync
-     * This requests a sync for a particular authority purely so that that account
-     * in settings will recognize that it is trying to sync, and will display the
-     * appropriate UI. In fact, all exchange data syncing actually happens through the
-     * EmailSyncAdapterService.
-     * @param amAccount
-     * @param authority
-     */
-    protected static void requestNoOpSync(final android.accounts.Account amAccount,
-            final String authority) {
-        final Bundle extras = new Bundle(1);
-        extras.putBoolean(Mailbox.SYNC_EXTRA_NOOP, true);
         ContentResolver.requestSync(amAccount, authority, extras);
-        LogUtils.d(LOG_TAG, "requestSync EasOperation requestNoOpSync %s, %s",
+        LogUtils.i(LOG_TAG, "EasOperation requestSyncForMailboxes  %s, %s",
                 amAccount.toString(), extras.toString());
     }
 
