@@ -80,6 +80,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
     private static final String EXTRA_START_PING = "START_PING";
     private static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
 
+    // The call to ServiceConnection.onServiceConnected is asynchronous to bindService. It's
+    // possible for that to be delayed if, in which case, a call to onPerformSync
+    // could occur before we have a connection to the service.
+    // In onPerformSync, if we don't yet have our EasService, we will wait for up to 10
+    // seconds for it to appear. If it takes longer than that, we will fail the sync.
+    private static final long MAX_WAIT_FOR_SERVICE_MS = 10 * DateUtils.SECOND_IN_MILLIS;
+
     // TODO: Do we need to use this?
     private static final long SYNC_ERROR_BACKOFF_MILLIS = 5 * DateUtils.MINUTE_IN_MILLIS;
 
@@ -113,7 +120,11 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
         mConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name,  IBinder binder) {
-                mEasService = IEmailService.Stub.asInterface(binder);
+                LogUtils.v(TAG, "onServiceConnected");
+                synchronized (mConnection) {
+                    mEasService = IEmailService.Stub.asInterface(binder);
+                    mConnection.notify();
+                }
             }
 
             @Override
@@ -185,6 +196,21 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             } else {
                 LogUtils.i(TAG, "onPerformSync: %s", extras.toString());
             }
+            synchronized(mConnection) {
+                if (mEasService == null) {
+                    LogUtils.d(TAG, "service not yet connected");
+                    try {
+                        mConnection.wait(MAX_WAIT_FOR_SERVICE_MS);
+                    } catch (InterruptedException e) {
+                        LogUtils.wtf(TAG, "InterrupedException waiting for EasService to connect");
+                    }
+                    if (mEasService == null) {
+                        LogUtils.wtf(TAG, "timed out waiting for EasService to connect");
+                        return;
+                    }
+                }
+            }
+
             TempDirectory.setTempDirectory(EmailSyncAdapterService.this);
 
             // TODO: Perform any connectivity checks, bail early if we don't have proper network
@@ -221,14 +247,12 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             if (pushOnly) {
                 LogUtils.d(TAG, "onPerformSync: mailbox push only");
-                if (mEasService != null) {
-                    try {
-                        mEasService.pushModify(account.mId);
-                        return;
-                    } catch (final RemoteException re) {
-                        LogUtils.e(TAG, re, "While trying to pushModify within onPerformSync");
-                        // TODO: how to handle this?
-                    }
+                try {
+                    mEasService.pushModify(account.mId);
+                    return;
+                } catch (final RemoteException re) {
+                    LogUtils.e(TAG, re, "While trying to pushModify within onPerformSync");
+                    // TODO: how to handle this?
                 }
                 return;
             } else {
