@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  Copyright (C) 2008 The Android Open Source Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="exchange_name_alternate" msgid="5772529644749041052">"Microsoft Exchange ActiveSync"</string>
+    <string name="meeting_accepted" msgid="8796609373330400268">"അംഗീകരിച്ചു: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_declined" msgid="6707617183246608552">"നിരസിച്ചു: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_tentative" msgid="8250995722130443785">"പരീക്ഷണാത്മകം: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_canceled" msgid="3949893881872084244">"റദ്ദാക്കി: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_updated" msgid="8529675857361702860">"അപ്‌ഡേറ്റുചെയ്‌തു: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_when" msgid="2765696159697448656">"എപ്പോൾ: <xliff:g id="WHEN">%s</xliff:g>"</string>
+    <string name="meeting_where" msgid="5992367535856553079">"എവിടെ: <xliff:g id="WHERE">%s</xliff:g>"</string>
+    <string name="meeting_recurring" msgid="3134262212606714023">"എപ്പോൾ: <xliff:g id="EVENTDATE">%s</xliff:g> (ആവർത്തിക്കുന്നത്‌)"</string>
+    <string name="meeting_allday" msgid="6696389765484663513">"എപ്പോൾ: <xliff:g id="EVENTDATE">%s</xliff:g> (എല്ലാ ദിവസവും)"</string>
+    <string name="meeting_allday_recurring" msgid="2320264182781062684">"എപ്പോൾ: <xliff:g id="EVENTDATE">%s</xliff:g> (എല്ലാ ദിവസവും, ആവർത്തിക്കുന്നത്)"</string>
+    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Exchange കലണ്ടർ ചേർത്തു"</string>
+    <string name="app_name" msgid="5316597712787122829">"Exchange സേവനങ്ങൾ"</string>
+    <string name="exception_cancel" msgid="6160117429428313805">"ഈ തീയതിയ്‌ക്കുള്ള ഇവന്റ് റദ്ദാക്കി: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_updated" msgid="3397583105901142050">"ഈ ഇവന്റിനായുള്ള വിശദാംശങ്ങൾ മാറ്റി: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"സംഭരണ കാർഡുകൾ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"സൈൻ ചെയ്‌തിട്ടില്ലാത്ത അപ്ലിക്കേഷനുകളെ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"സൈൻ ചെയ്‌തിട്ടില്ലാത്ത അപ്ലിക്കേഷൻ ഇൻസ്റ്റാളറുകളെ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Wi-Fi അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"വാചക സന്ദേശമയയ്‌ക്കൽ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"POP3 അല്ലെങ്കിൽ IMAP അക്കൗണ്ടുകൾ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"ഇൻഫ്രാറെഡ് ആശയവിനിമയങ്ങൾ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_html" msgid="5888652525907651489">"HTML ഇമെയിൽ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"ബ്രൗസറുകൾ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ഉപയോക്തൃ ഇമെയിൽ അനുവദിക്കരുത്"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"ഇന്റർനെറ്റ് പങ്കിടൽ അനുവദിക്കരുത്"</string>
+    <string name="policy_require_smime" msgid="673557150920820590">"SMIME സന്ദേശങ്ങൾ ആവശ്യമാണ്"</string>
+    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Bluetooth ഉപയോഗം നിയന്ത്രിക്കുക"</string>
+    <string name="policy_app_blacklist" msgid="8169194058285873461">"വ്യക്തമാക്കിയ അപ്ലിക്കേഷനുകളെ അനുവദിക്കരുത്"</string>
+    <string name="policy_app_whitelist" msgid="3670572644342165306">"വ്യക്തമാക്കിയ അപ്ലിക്കേഷനുകളെ മാത്രം അനുവദിക്കുക"</string>
+    <string name="policy_text_truncation" msgid="1783448050735715818">"ടെക്‌സ്റ്റ് ഇമെയിൽ വലുപ്പം നിയന്ത്രിക്കുക"</string>
+    <string name="policy_html_truncation" msgid="102158408055486343">"HTML ഇമെയിൽ വലുപ്പം നിയന്ത്രിക്കുക"</string>
+    <string name="policy_require_sd_encryption" msgid="366468398301273342">"SD കാർഡ് എൻക്രിപ്‌ഷൻ ആവശ്യമാണ്"</string>
+    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"അറ്റാച്ചുമെന്റുകൾ അനുവദിക്കരുത്"</string>
+    <string name="policy_max_attachment_size" msgid="4020279603050888661">"അറ്റാച്ചുമെന്റ് വലുപ്പം നിയന്ത്രിക്കുക"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"റോമിംഗിലായിരിക്കുമ്പോൾ സ്വമേധയാലുള്ള സമന്വയം മാത്രം അനുവദിക്കുക"</string>
+    <string name="policy_require_encryption" msgid="7984702283392885348">"ഉപകരണ എൻക്രിപ്‌ഷൻ ആവശ്യമാണ്"</string>
+    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"യാന്ത്രികം"</string>
+    <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"ഒരു ദിവസം"</string>
+    <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"മൂന്ന് ദിവസം"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"ഒരു ആഴ്‌ച"</string>
+    <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"രണ്ട് ആഴ്‌ച"</string>
+    <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"ഒരു മാസം"</string>
+    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"എല്ലാം"</string>
+    <string name="auth_error_notification_title" msgid="8108639432449021675">"പ്രാമാണീകരണ പിശക്"</string>
+    <string name="auth_error_notification_text" msgid="6813530336397532878">"<xliff:g id="ACCOUNT">%s</xliff:g> എന്നതിനായി അക്കൗണ്ട് ക്രമീകരണങ്ങൾ എഡിറ്റുചെയ്യാൻ സ്‌പർശിക്കുക"</string>
+    <string name="email_settings_not_available" msgid="3139586580003323185">"ക്രമീകരണങ്ങൾ കാണുന്നതിന് ഇമെയിൽ അപ്ലിക്കേഷൻ വീണ്ടും പ്രവർത്തനക്ഷമമാക്കുക."</string>
+</resources>
