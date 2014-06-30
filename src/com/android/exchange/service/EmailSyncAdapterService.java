@@ -168,6 +168,9 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
                 LogUtils.v(TAG, "onServiceConnected");
                 synchronized (mConnection) {
                     mEasService = IEmailService.Stub.asInterface(binder);
+                    // Start up the initial pings now that we have an EasService
+                    new RestartPingsTask(getContentResolver(), mEasService).executeOnExecutor(
+                            AsyncTask.THREAD_POOL_EXECUTOR);
                     mConnection.notify();
                 }
             }
@@ -178,9 +181,6 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
             }
         };
         bindService(new Intent(this, EasService.class), mConnection, Context.BIND_AUTO_CREATE);
-        // Start up the initial pings.
-        new RestartPingsTask(getContentResolver(), mEasService).executeOnExecutor(
-                AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     @Override
