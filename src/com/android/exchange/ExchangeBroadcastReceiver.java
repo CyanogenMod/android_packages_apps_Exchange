@@ -14,7 +14,7 @@ import android.provider.ContactsContract;
 
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.Mailbox;
-import com.android.exchange.R.string;
+import com.android.exchange.R;
 import com.android.mail.utils.LogUtils;
 
 public class ExchangeBroadcastReceiver extends BroadcastReceiver {
@@ -22,7 +22,7 @@ public class ExchangeBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(final Context context, final Intent intent) {
         final Account[] accounts = AccountManager.get(context)
-                .getAccountsByType(context.getString(string.account_manager_type_exchange));
+                .getAccountsByType(context.getString(R.string.account_manager_type_exchange));
         LogUtils.i(Eas.LOG_TAG, "Accounts changed - requesting FolderSync for unsynced accounts");
         for (final Account account : accounts) {
             // Only do a sync for accounts that are not configured to sync any types, since the

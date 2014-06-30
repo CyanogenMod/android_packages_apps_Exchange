@@ -22,6 +22,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.provider.CalendarContract;
+import android.provider.ContactsContract;
 import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
@@ -181,6 +183,8 @@ public class EasPing extends EasOperation {
             throw new IOException("Empty ping response");
         }
 
+        LogUtils.d(TAG, "EasPing.handleResponse");
+
         // Handle a valid response.
         final PingParser pp = new PingParser(response.getInputStream());
         pp.parse();
@@ -319,8 +323,9 @@ public class EasPing extends EasOperation {
         final String[] bindArguments = new String[2];
         bindArguments[0] = Long.toString(getAccountId());
 
-        final ArrayList<Long> mailboxIds = new ArrayList<Long>();
-        final HashSet<Integer> contentTypes = new HashSet<Integer>();
+        final ArrayList<Long> emailMailboxIds = new ArrayList<Long>();
+        final ArrayList<Long> calendarMailboxIds = new ArrayList<Long>();
+        final ArrayList<Long> contactsMailboxIds = new ArrayList<Long>();
 
         for (final String serverId : syncList) {
             bindArguments[1] = serverId;
@@ -350,28 +355,29 @@ public class EasPing extends EasOperation {
                 if (c.moveToFirst()) {
                     final long mailboxId = c.getLong(Mailbox.CONTENT_ID_COLUMN);
                     final int contentType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
-                    mailboxIds.add(mailboxId);
-                    contentTypes.add(contentType);
+                    switch (contentType) {
+                        case Mailbox.TYPE_MAIL:
+                        case Mailbox.TYPE_INBOX:
+                        case Mailbox.TYPE_DRAFTS:
+                        case Mailbox.TYPE_SENT:
+                        case Mailbox.TYPE_TRASH:
+                        case Mailbox.TYPE_JUNK:
+                            emailMailboxIds.add(mailboxId);
+                        case Mailbox.TYPE_CALENDAR:
+                            calendarMailboxIds.add(mailboxId);
+                        case Mailbox.TYPE_CONTACTS:
+                            contactsMailboxIds.add(mailboxId);
+                        default:
+                            LogUtils.e(LOG_TAG, "unexpected collectiontype %d in EasPing", contentType);
+                    }
                 }
             } finally {
                 c.close();
             }
         }
-
-        for (final int type : contentTypes) {
-            switch (type) {
-                case Mailbox.TYPE_CALENDAR:
-                case Mailbox.TYPE_CONTACTS:
-                    // Ask for a no-op sync so that we'll see calendar or contacts
-                    // syncing in settings.
-                    requestNoOpSync(mAmAccount, Mailbox.getAuthority(type));
-                default:
-                    // Do nothing, we're already doing an Email sync.
-            }
-        }
-        // Ask the EmailSyncAdapter to sync all of these mailboxes, whether they're regular
-        // mailboxes or calendar or contacts.
-        requestSyncForMailboxes(mAmAccount, mailboxIds);
+        requestSyncForMailboxes(mAmAccount, EmailContent.AUTHORITY, emailMailboxIds);
+        requestSyncForMailboxes(mAmAccount, CalendarContract.AUTHORITY, calendarMailboxIds);
+        requestSyncForMailboxes(mAmAccount, ContactsContract.AUTHORITY, contactsMailboxIds);
     }
 
     /**
@@ -381,7 +387,7 @@ public class EasPing extends EasOperation {
         final Bundle extras = new Bundle(1);
         extras.putBoolean(Mailbox.SYNC_EXTRA_ACCOUNT_ONLY, true);
         ContentResolver.requestSync(mAmAccount, EmailContent.AUTHORITY, extras);
-        LogUtils.i(LOG_TAG, "requestFolderSync EasOperation %s, %s",
+        LogUtils.i(LOG_TAG, "requestFolderSync EasPing %s, %s",
                 mAmAccount.toString(), extras.toString());
     }
 
