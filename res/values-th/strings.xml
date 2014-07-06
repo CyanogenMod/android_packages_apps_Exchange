@@ -41,7 +41,7 @@
     <string name="policy_dont_allow_html" msgid="5888652525907651489">"ไม่อนุญาตให้รับอีเมลแบบ HTML"</string>
     <string name="policy_dont_allow_browser" msgid="1018764395507493616">"ไม่อนุญาตให้ใช้เบราว์เซอร์"</string>
     <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ไม่อนุญาตให้รับอีเมลลูกค้า"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"ไม่อนุญาตการแบ่งปันอินเทอร์เน็ต"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"ไม่อนุญาตการแชร์อินเทอร์เน็ต"</string>
     <string name="policy_require_smime" msgid="673557150920820590">"ต้องมีข้อความรูปแบบ SMIME"</string>
     <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"จำกัดการใช้บลูทูธ"</string>
     <string name="policy_app_blacklist" msgid="8169194058285873461">"ไม่อนุญาตให้ใช้แอปพลิเคชันที่ระบุ"</string>
