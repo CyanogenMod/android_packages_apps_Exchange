@@ -35,6 +35,8 @@ public class EasAutoDiscover extends EasServerConnection {
 
     private static final String AUTO_DISCOVER_SCHEMA_PREFIX =
         "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
+    private static final String AUTODISCOVER_EXTRYPOINT_PREFIX_1 = "";
+    private static final String AUTODISCOVER_EXTRYPOINT_PREFIX_2 = "autodiscover.";
     private static final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
 
     // Set of string constants for parsing the autodiscover response.
@@ -68,6 +70,23 @@ public class EasAutoDiscover extends EasServerConnection {
      *     an appropriate error code. Otherwise, we return null.
      */
     public Bundle doAutodiscover() {
+        // Source: http://msdn.microsoft.com/en-us/library/office/jj900169%28v=exchg.150%29.aspx
+        // The Exchange's entry point for email based autodiscover could be one of the following:
+        //
+        //    * "https://" + domain + "/autodiscover/autodiscover" + fileExtension
+        //    * "https://autodiscover." + domain + "/autodiscover/autodiscover" + fileExtension
+        //
+        // Try in both entry points
+        //
+        Bundle data = performAutodiscover(AUTODISCOVER_EXTRYPOINT_PREFIX_1);
+        if (data == null || data.getInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
+                MessagingException.NO_ERROR) != MessagingException.NO_ERROR) {
+            data = performAutodiscover(AUTODISCOVER_EXTRYPOINT_PREFIX_2);
+        }
+        return data;
+    }
+
+    private Bundle performAutodiscover(String entryPointPrefix) {
         final String domain = getDomain();
         if (domain == null) {
             return null;
@@ -78,8 +97,8 @@ public class EasAutoDiscover extends EasServerConnection {
             return null;
         }
         try {
-            final HttpPost post = makePost("https://" + domain + AUTO_DISCOVER_PAGE, entity,
-                    "text/xml", false);
+            final HttpPost post = makePost("https://" + entryPointPrefix + domain +
+                    AUTO_DISCOVER_PAGE, entity, "text/xml", false);
             final EasResponse resp = getResponse(post, domain);
             if (resp == null) {
                 return null;
