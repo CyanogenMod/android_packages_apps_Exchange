@@ -122,7 +122,7 @@ public class EasAutoDiscover extends EasServerConnection {
                         hostAuth.mPassword = mHostAuth.mPassword;
                         // Note: there is no way we can auto-discover the proper client
                         // SSL certificate to use, if one is needed.
-                        hostAuth.mPort = 443;
+                        hostAuth.mPort = mHostAuth.mPort;
                         hostAuth.mProtocol = Eas.PROTOCOL;
                         hostAuth.mFlags = HostAuth.FLAG_SSL | HostAuth.FLAG_AUTHENTICATE;
                         final Bundle bundle = new Bundle(2);
@@ -278,7 +278,12 @@ public class EasAutoDiscover extends EasServerConnection {
                     final String url = parser.nextText();
                     if (url != null) {
                         LogUtils.d(TAG, "Autodiscover URL: %s", url);
-                        hostAuth.mAddress = Uri.parse(url).getHost();
+                        final Uri uri = Uri.parse(url);
+                        hostAuth.mAddress = uri.getHost();
+                        int port = uri.getPort();
+                        if (port != -1) {
+                            hostAuth.mPort = port;
+                        }
                     }
                 }
             }
