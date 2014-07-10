@@ -750,14 +750,9 @@ public abstract class EasOperation {
             final String authority, final ArrayList<Long> mailboxIds) {
         final Bundle extras = Mailbox.createSyncBundle(mailboxIds);
         /**
-         * Please note that it is very possible that we are trying to send a request to the
-         * email sync adapter even though email push is turned off (i.e. this account might only
-         * be syncing calendar or contacts). In this situation we need to make sure that
-         * this request is marked as manual as to ensure that the sync manager does not drop it
-         * on the floor. Right now, this function is only called by EasPing, if it is every called
-         * by another caller, then we should reconsider if manual=true is the right thing to do.
+         * TODO: Right now, this function is only called by EasPing, should this function be
+         * moved there?
          */
-        extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
         ContentResolver.requestSync(amAccount, authority, extras);
         LogUtils.i(LOG_TAG, "EasOperation requestSyncForMailboxes  %s, %s",
                 amAccount.toString(), extras.toString());
