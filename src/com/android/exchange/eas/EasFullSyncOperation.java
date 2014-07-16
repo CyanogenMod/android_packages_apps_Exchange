@@ -111,6 +111,7 @@ public class EasFullSyncOperation extends EasOperation {
         final int mailboxType = mSyncExtras.getInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE,
                 Mailbox.TYPE_NONE);
 
+        final boolean isManual = mSyncExtras.getBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, false);
         // Push only means this sync request should only refresh the ping (either because
         // settings changed, or we need to restart it for some reason).
         final boolean pushOnly = Mailbox.isPushOnlyExtras(mSyncExtras);
@@ -171,13 +172,7 @@ public class EasFullSyncOperation extends EasOperation {
         if (mailboxIds != null) {
             // Sync the mailbox that was explicitly requested.
             for (final long mailboxId : mailboxIds) {
-                // TODO: how to tell if a sync was user requested or not.
-                // We should be able to check the MANUAL flag in the sync extras, but right now
-                // all of our syncs are manual. This is because Calender and Contacts sync adapters
-                // actually just forward the request through the EmailSyncAdapterService.
-                // When this changes we can determine for certain whether or not this is a manual
-                // sync.
-                result = syncMailbox(mailboxId, hasCallbackMethod, true);
+                result = syncMailbox(mailboxId, hasCallbackMethod, isManual);
                 if (isFatal(result)) {
                     // This is a failure, abort the sync.
                     LogUtils.i(TAG, "Fatal result %d on syncMailbox", result);

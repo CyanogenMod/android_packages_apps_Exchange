@@ -35,6 +35,7 @@ import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailcommon.service.EmailServiceVersion;
 import com.android.emailcommon.service.HostAuthCompat;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
@@ -49,6 +50,8 @@ import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSearchGal;
 import com.android.exchange.eas.EasSendMeetingResponse;
+import com.android.exchange.eas.EasSyncCalendar;
+import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.provider.GalResult;
 import com.android.mail.utils.LogUtils;
 
@@ -203,9 +206,18 @@ public class EasService extends Service {
         }
 
         @Override
-        public void deleteAccountPIMData(final String emailAddress) {
+        public void deleteExternalAccountPIMData(final String emailAddress) {
             LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
-            // TODO: remove this, move it completely to Email code.
+            if (emailAddress != null) {
+                // TODO: stop pings
+                final Context context = EasService.this;
+                EasSyncContacts.wipeAccountFromContentProvider(context, emailAddress);
+                EasSyncCalendar.wipeAccountFromContentProvider(context, emailAddress);
+            }
+        }
+
+        public int getApiVersion() {
+            return EmailServiceVersion.CURRENT;
         }
     };
 
