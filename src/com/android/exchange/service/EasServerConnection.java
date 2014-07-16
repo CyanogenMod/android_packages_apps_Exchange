@@ -496,40 +496,4 @@ public class EasServerConnection {
     public boolean isProtocolVersionSet() {
         return mProtocolVersionIsSet;
     }
-
-    /**
-     * Convenience method for adding a Message to an account's outbox
-     * @param account The {@link Account} from which to send the message.
-     * @param msg The message to send
-     */
-    protected void sendMessage(final Account account, final EmailContent.Message msg) {
-        long mailboxId = Mailbox.findMailboxOfType(mContext, account.mId, Mailbox.TYPE_OUTBOX);
-        // TODO: Improve system mailbox handling.
-        if (mailboxId == Mailbox.NO_MAILBOX) {
-            LogUtils.d(TAG, "No outbox for account %d, creating it", account.mId);
-            final Mailbox outbox =
-                    Mailbox.newSystemMailbox(mContext, account.mId, Mailbox.TYPE_OUTBOX);
-            outbox.save(mContext);
-            mailboxId = outbox.mId;
-        }
-        msg.mMailboxKey = mailboxId;
-        msg.mAccountKey = account.mId;
-        msg.save(mContext);
-        requestSyncForMailbox(new android.accounts.Account(account.mEmailAddress,
-                Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE), EmailContent.AUTHORITY, mailboxId);
-    }
-
-    /**
-     * Issue a {@link android.content.ContentResolver#requestSync} for a specific mailbox.
-     * @param amAccount The {@link android.accounts.Account} for the account we're pinging.
-     * @param authority The authority for the mailbox that needs to sync.
-     * @param mailboxId The id of the mailbox that needs to sync.
-     */
-    protected static void requestSyncForMailbox(final android.accounts.Account amAccount,
-            final String authority, final long mailboxId) {
-        final Bundle extras = Mailbox.createSyncBundle(mailboxId);
-        ContentResolver.requestSync(amAccount, authority, extras);
-        LogUtils.d(TAG, "requestSync EasServerConnection requestSyncForMailbox %s, %s",
-                amAccount.toString(), extras.toString());
-    }
 }

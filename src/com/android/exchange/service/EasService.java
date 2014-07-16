@@ -29,6 +29,7 @@ import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 
+import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.EmailContent.Message;
@@ -233,6 +234,7 @@ public class EasService extends Service {
                 try {
                     while (c.moveToNext()) {
                         final Account account = new Account();
+                        LogUtils.d(TAG, "RestartPingsTask starting ping for %s", account);
                         account.restore(c);
                         if (EasService.this.pingNeededForAccount(account)) {
                             mHasRestartedPing = true;
@@ -262,7 +264,9 @@ public class EasService extends Service {
 
     @Override
     public void onCreate() {
+        LogUtils.d(TAG, "EasService.onCreate");
         super.onCreate();
+        TempDirectory.setTempDirectory(this);
         EmailContent.init(this);
         AUTHORITIES_TO_SYNC = new String[] {
                 EmailContent.AUTHORITY,

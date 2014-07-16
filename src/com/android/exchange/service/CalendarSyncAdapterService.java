@@ -16,25 +16,27 @@
 
 package com.android.exchange.service;
 
-import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.ServiceConnection;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.provider.CalendarContract.Events;
 import android.util.Log;
 
-import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent.MailboxColumns;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.exchange.Eas;
 import com.android.mail.utils.LogUtils;
 
 public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
-    private static final String TAG = Eas.LOG_TAG;
+    private static final String TAG = LogUtils.TAG;
     private static final String ACCOUNT_AND_TYPE_CALENDAR =
         MailboxColumns.ACCOUNT_KEY + "=? AND " + MailboxColumns.TYPE + '=' + Mailbox.TYPE_CALENDAR;
     private static final String DIRTY_IN_ACCOUNT =
@@ -57,75 +59,80 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
         }
     }
 
-    private static class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
+    private class SyncAdapterImpl extends AbstractThreadedSyncAdapter {
         public SyncAdapterImpl(Context context) {
             super(context, true /* autoInitialize */);
         }
 
         @Override
-        public void onPerformSync(Account account, Bundle extras,
+        public void onPerformSync(android.accounts.Account acct, Bundle extras,
                 String authority, ContentProviderClient provider, SyncResult syncResult) {
             if (LogUtils.isLoggable(TAG, Log.DEBUG)) {
-                LogUtils.d(TAG, "onPerformSync Calendar starting %s, %s", account.toString(),
-                        extras.toString());
+                LogUtils.d(TAG, "onPerformSync calendar: %s, %s",
+                        acct.toString(), extras.toString());
             } else {
-                LogUtils.i(TAG, "onPerformSync Calendar starting %s", extras.toString());
+                LogUtils.i(TAG, "onPerformSync calendar: %s", extras.toString());
             }
-            CalendarSyncAdapterService.performSync(getContext(), account, extras);
-            LogUtils.d(TAG, "onPerformSync Calendar finished");
-        }
-    }
 
-    /**
-     * Partial integration with system SyncManager; we tell our EasService to start a
-     * calendar sync when we get the signal from SyncManager.
-     * The missing piece at this point is integration with the push/ping mechanism in EAS; this will
-     * be put in place at a later time.
-     */
-    private static void performSync(Context context, Account account, Bundle extras) {
-        if (extras.getBoolean(Mailbox.SYNC_EXTRA_NOOP, false)) {
-            LogUtils.d(TAG, "No-op sync requested, done");
-            return;
-        }
-
-        final ContentResolver cr = context.getContentResolver();
-        final boolean logging = Eas.USER_LOG;
-        if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
-            final Cursor c = cr.query(Events.CONTENT_URI,
-                    new String[] {Events._ID}, DIRTY_IN_ACCOUNT, new String[] {account.name}, null);
-            if (c == null) {
-                LogUtils.e(TAG, "Null changes cursor in CalendarSyncAdapterService");
+            if (!waitForService()) {
+                // The service didn't connect, nothing we can do.
                 return;
             }
-            try {
-                if (!c.moveToFirst()) {
-                    if (logging) {
-                        LogUtils.d(TAG, "No changes for " + account.name);
-                    }
+            final Account emailAccount = Account.restoreAccountWithAddress(
+                    CalendarSyncAdapterService.this, acct.name);
+
+            // TODO: is this still needed?
+            if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
+                final Cursor c = getContentResolver().query(Events.CONTENT_URI,
+                        new String[] {Events._ID}, DIRTY_IN_ACCOUNT,
+                        new String[] {acct.name}, null);
+                if (c == null) {
+                    LogUtils.e(TAG, "Null changes cursor in CalendarSyncAdapterService");
                     return;
                 }
-            } finally {
-                c.close();
+                try {
+                    if (!c.moveToFirst()) {
+                        if (Eas.USER_LOG) {
+                            LogUtils.d(TAG, "No changes for " + acct.name);
+                        }
+                        return;
+                    }
+                } finally {
+                    c.close();
+                }
             }
-        }
 
-        // Forward the sync request to the EmailSyncAdapterService.
-        final long [] mailboxIds = Mailbox.getMailboxIdsFromBundle(extras);
-        final Bundle mailExtras;
-        if (mailboxIds == null) {
-            // We weren't given any particular mailboxId, specify a sync for all calendars.
-            mailExtras = new Bundle();
-            mailExtras.putInt(Mailbox.SYNC_EXTRA_MAILBOX_TYPE, Mailbox.TYPE_CALENDAR);
-        } else {
-            // Otherwise, add all of the mailboxes specified in the original sync extras.
-            mailExtras = Mailbox.createSyncBundle(mailboxIds);
+            // TODO: move this logic to some common place.
+            // Push only means this sync request should only refresh the ping (either because
+            // settings changed, or we need to restart it for some reason).
+            final boolean pushOnly = Mailbox.isPushOnlyExtras(extras);
+
+            if (pushOnly) {
+                LogUtils.d(TAG, "onPerformSync calendar: mailbox push only");
+                if (mEasService != null) {
+                    try {
+                        mEasService.pushModify(emailAccount.mId);
+                        return;
+                    } catch (final RemoteException re) {
+                        LogUtils.e(TAG, re, "While trying to pushModify within onPerformSync");
+                        // TODO: how to handle this?
+                    }
+                }
+                return;
+            } else {
+                try {
+                    final int result = mEasService.sync(emailAccount.mId, extras);
+                    writeResultToSyncResult(result, syncResult);
+                    if (syncResult.stats.numAuthExceptions > 0 &&
+                            result != EmailServiceStatus.PROVISIONING_ERROR) {
+                        showAuthNotification(emailAccount.mId, emailAccount.mEmailAddress);
+                    }
+                } catch (RemoteException e) {
+                    LogUtils.e(TAG, e, "While trying to pushModify within onPerformSync");
+                }
+            }
+
+            LogUtils.d(TAG, "onPerformSync calendar: finished");
         }
-        mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-        mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_DO_NOT_RETRY, true);
-        if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, false)) {
-            mailExtras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-        }
-        ContentResolver.requestSync(account, EmailContent.AUTHORITY, mailExtras);
-        LogUtils.d(TAG, "requestSync CalendarSyncAdapter %s", mailExtras.toString());
     }
 }
