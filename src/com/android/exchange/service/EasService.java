@@ -18,7 +18,6 @@ package com.android.exchange.service;
 
 import android.app.Service;
 import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -32,29 +31,25 @@ import android.text.TextUtils;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
-import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
+import com.android.emailcommon.service.HostAuthCompat;
 import com.android.emailcommon.service.IEmailService;
 import com.android.emailcommon.service.IEmailServiceCallback;
 import com.android.emailcommon.service.SearchParams;
 import com.android.emailcommon.service.ServiceProxy;
-import com.android.emailcommon.utility.Utility;
 import com.android.exchange.Eas;
 import com.android.exchange.eas.EasAutoDiscover;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasFullSyncOperation;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
-import com.android.exchange.eas.EasOutboxSync;
 import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSearchGal;
 import com.android.exchange.eas.EasSendMeetingResponse;
-import com.android.exchange.eas.EasSyncBase;
 import com.android.exchange.provider.GalResult;
-import com.android.mail.providers.UIProvider;
 import com.android.mail.utils.LogUtils;
 
 import java.util.HashSet;
@@ -122,7 +117,8 @@ public class EasService extends Service {
         }
 
         @Override
-        public Bundle validate(final HostAuth hostAuth) {
+        public Bundle validate(final HostAuthCompat hostAuthCom) {
+            final HostAuth hostAuth = hostAuthCom.toHostAuth();
             final EasFolderSync operation = new EasFolderSync(EasService.this, hostAuth);
             doOperation(operation, "IEmailService.validate");
             return operation.getValidationResult();
