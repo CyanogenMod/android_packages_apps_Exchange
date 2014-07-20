@@ -8,6 +8,7 @@ import android.util.Xml;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.service.EmailServiceProxy;
+import com.android.emailcommon.service.HostAuthCompat;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasResponse;
@@ -179,8 +180,9 @@ public class EasAutoDiscover extends EasOperation {
 
     public Bundle getResultBundle() {
         final Bundle bundle = new Bundle(2);
+        final HostAuthCompat hostAuthCompat = new HostAuthCompat(mHostAuth);
         bundle.putParcelable(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_HOST_AUTH,
-                mHostAuth);
+                hostAuthCompat);
         bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
                 RESULT_OK);
         return bundle;
