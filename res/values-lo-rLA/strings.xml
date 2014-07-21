@@ -16,51 +16,51 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="exchange_name_alternate" msgid="5772529644749041052">"Microsoft Exchange ActiveSync"</string>
-    <string name="meeting_accepted" msgid="8796609373330400268">"ຍອມຮັບແລ້ວ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_declined" msgid="6707617183246608552">"ປະຕິເສດ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_tentative" msgid="8250995722130443785">"ບໍ່ແນ່ນອນ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_canceled" msgid="3949893881872084244">"ຍົກເລີກແລ້ວ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_updated" msgid="8529675857361702860">"ອັບເດດ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_when" msgid="2765696159697448656">"ເວລາ: <xliff:g id="WHEN">%s</xliff:g>"</string>
-    <string name="meeting_where" msgid="5992367535856553079">"ຢູ່ທີ່: <xliff:g id="WHERE">%s</xliff:g>"</string>
-    <string name="meeting_recurring" msgid="3134262212606714023">"ເມື່ອ: <xliff:g id="EVENTDATE">%s</xliff:g> (ເກີດຂຶ້ນຊ້ຳໆ)"</string>
-    <string name="meeting_allday" msgid="6696389765484663513">"ເມື່ອ: <xliff:g id="EVENTDATE">%s</xliff:g> (ຫມົດມື້)"</string>
-    <string name="meeting_allday_recurring" msgid="2320264182781062684">"ເມື່ອ: <xliff:g id="EVENTDATE">%s</xliff:g> (ຫມົດມື້, ເກີດຂຶ້ນຊ້ຳໆ)"</string>
-    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"ເພີ່ມປະຕິທິນ Exchange ແລ້ວ"</string>
-    <string name="app_name" msgid="5316597712787122829">"Exchange Services"</string>
-    <string name="exception_cancel" msgid="6160117429428313805">"ກິດຈະກຳນີ້ໄດ້ຖືກຍົກເລີກສຳລັບ: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="exception_updated" msgid="3397583105901142050">"ລາຍລະອຽດຂອງກິດຈະກຳນີ້ໄດ້ມີການປ່ຽນແປງສໍາລັບ: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"ບໍ່ອະນຸຍາດກາດເກັບຂໍ້ມູນ"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"ບໍ່ອະນຸຍາດແອັບຯທີ່ບໍ່ມີລາຍເຊັນ"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"ບໍ່ອະນຸຍາດໂຕຕິດຕັ້ງແອັບຯທີ່ບໍ່ມີລາຍເຊັນ"</string>
-    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"ບໍ່ອະນຸຍາດໃຫ້ໃຊ້ Wi-Fi"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"ບໍ່ອະນຸຍາດໃຫ້ສົ່ງຂໍ້ຄວາມ"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"ບໍ່ອະນຸຍາດບັນຊີ POP3 ຫຼື IMAP"</string>
-    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"ບໍ່ອະນຸຍາດໃຫ້ໃຊ້ອິນຟາເຣດໃນການສື່ສານ"</string>
-    <string name="policy_dont_allow_html" msgid="5888652525907651489">"ບໍ່ອະນຸຍາດອີເມວເປັນ HTML"</string>
-    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"ບໍ່ອະນຸຍາດໂປຣແກຣມທ່ອງເວັບ"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"ບໍ່ອະນຸຍາດໃຫ້ຮັບອີເມວຜູ່ບໍລິໂພກ"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"ບໍ່ອະນຸຍາດໃຫ້ແບ່ງປັນອິນເຕີເນັດ"</string>
-    <string name="policy_require_smime" msgid="673557150920820590">"ຂໍ້ຄວາມຕ້ອງເປັນ SMIME"</string>
-    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"ຈຳກັດການນຳໃຊ້ Bluetooth"</string>
-    <string name="policy_app_blacklist" msgid="8169194058285873461">"ບໍ່ອະນຸຍາດແອັບຯທີ່ລະບຸໄວ້"</string>
-    <string name="policy_app_whitelist" msgid="3670572644342165306">"ອະນຸຍາດໃຫ້ສະເພາະແອັບຯທີ່ລະບຸໄວ້"</string>
-    <string name="policy_text_truncation" msgid="1783448050735715818">"ຈໍາກັດຂະໜາດຂໍ້ຄວາມຂອງອີເມວ"</string>
-    <string name="policy_html_truncation" msgid="102158408055486343">"ຈໍາກັດຂະໜາດອີເມວແບບ HTML"</string>
-    <string name="policy_require_sd_encryption" msgid="366468398301273342">"ຈຳເປັນຕ້ອງມີການເຂົ້າລະຫັດ SD ກາດ"</string>
-    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"ບໍ່ອະນຸຍາດໃຫ້ແນບໄຟລ໌"</string>
-    <string name="policy_max_attachment_size" msgid="4020279603050888661">"ຈໍາກັດຂະໜາດໄຟລ໌ແນບ"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"ອະນຸຍາດໃຫ້ຊິ້ງຂໍ້ມູນດ້ວຍຕົນເອງເທົ່ານັ້ນໃນເວລາໂຣມມິງ"</string>
-    <string name="policy_require_encryption" msgid="7984702283392885348">"ຈຳເປັນຕ້ອງມີການເຂົ້າລະຫັດອຸປະກອນ"</string>
-    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"ອັດຕະໂນມັດ"</string>
-    <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"ນຶ່ງມື້"</string>
-    <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"ສາມມື້"</string>
-    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"ອາທິດນຶ່ງ"</string>
-    <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"ສອງອາທິດ"</string>
-    <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"ນຶ່ງເດືອນ"</string>
-    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"ທັງໝົດ"</string>
-    <string name="auth_error_notification_title" msgid="8108639432449021675">"ການພິສູດຢືນຢັນຜິດພາດ"</string>
-    <string name="auth_error_notification_text" msgid="6813530336397532878">"ແຕະເພື່ອແກ້ໄຂການຕັ້ງຄ່າບັນຊີຂອງ <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
-    <string name="email_settings_not_available" msgid="3139586580003323185">"ເປີດ​ນຳ​ໃຊ້​ແອັບ​ພ​ລິ​ເຄ​ຊັນ​ອີ​ເມວ​ອີກ​ຄັ້ງ​ເພື່ອ​ເບິ່ງ​ການ​ຕັ້ງ​ຄ່າ."</string>
+    <string name="exchange_name_alternate" msgid="293118547772095111">"Microsoft Exchange ActiveSync"</string>
+    <string name="meeting_accepted" msgid="3212429159225789973">"ຕອບ​ຮັບ​ແລ້ວ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_declined" msgid="1171426219920875691">"ປະຕິເສດແລ້ວ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_tentative" msgid="5057443956630531997">"ບໍ່ແນ່ນອນ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_canceled" msgid="3913922862382539900">"ຍົກເລີກແລ້ວ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_updated" msgid="5960663236439072658">"ອັບເດດ: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_when" msgid="1905576664682173880">"ເວລາ: <xliff:g id="WHEN">%s</xliff:g>"</string>
+    <string name="meeting_where" msgid="6498631574145121862">"ຢູ່ທີ່: <xliff:g id="WHERE">%s</xliff:g>"</string>
+    <string name="meeting_recurring" msgid="2752008481765880928">"ເມື່ອ: <xliff:g id="EVENTDATE">%s</xliff:g> (ເກີດຂຶ້ນຊ້ຳໆ)"</string>
+    <string name="meeting_allday" msgid="7251209063071628040">"ເມື່ອ: <xliff:g id="EVENTDATE">%s</xliff:g> (ຫມົດມື້)"</string>
+    <string name="meeting_allday_recurring" msgid="4545762363537362545">"ເມື່ອ: <xliff:g id="EVENTDATE">%s</xliff:g> (ຫມົດມື້, ເກີດຂຶ້ນຊ້ຳໆ)"</string>
+    <string name="notification_exchange_calendar_added" msgid="8998454267739748113">"ເພີ່ມປະຕິທິນ Exchange ແລ້ວ"</string>
+    <string name="app_name" msgid="1707639359526090662">"Exchange Services"</string>
+    <string name="exception_cancel" msgid="8972887597771126871">"ກິດຈະກຳນີ້ໄດ້ຖືກຍົກເລີກສຳລັບ: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_updated" msgid="329192591551400871">"ລາຍລະອຽດ​ຂອງ​ກິດຈະກຳນີ້ໄດ້ມີການ​ປ່ຽນແປງ​ສໍາລັບ: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="1305111581282078881">"ບໍ່ອະນຸຍາດກາດເກັບຂໍ້ມູນ"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"ບໍ່ອະນຸຍາດແອັບຯທີ່ບໍ່ມີລາຍເຊັນ"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"ບໍ່​ອະນຸຍາດ​ໂຕ​ຕິດຕັ້ງ​ແອັບຯ​ທີ່​ບໍ່ມີ​ລາຍເຊັນ"</string>
+    <string name="policy_dont_allow_wifi" msgid="8501275982154914194">"ບໍ່​ອະນຸຍາດ​ໃຫ້ໃຊ້ Wi-Fi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"ບໍ່ອະນຸຍາດໃຫ້ສົ່ງຂໍ້ຄວາມ"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"ບໍ່ອະນຸຍາດບັນຊີ POP3 ຫຼື IMAP"</string>
+    <string name="policy_dont_allow_irda" msgid="8230803019935893114">"ບໍ່​ອະນຸຍາດ​ໃຫ້​ໃຊ້​ອິນຟາເຣດ​ໃນ​ການ​ສື່ສານ"</string>
+    <string name="policy_dont_allow_html" msgid="3909470006782362967">"ບໍ່​ອະນຸຍາດ​ອີເມວ​ເປັນ HTML"</string>
+    <string name="policy_dont_allow_browser" msgid="241728112385525092">"ບໍ່ອະນຸຍາດ​ໂປຣແກຣມ​ທ່ອງເວັບ"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="2473755560531860915">"ບໍ່​ອະນຸຍາດ​ໃຫ້​ຮັບ​ອີເມວ​ຜູ່​ບໍລິໂພກ"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8926902533477728994">"ບໍ່​ອະນຸຍາດ​ໃຫ້​ແບ່ງ​ປັນ​ອິນເຕີເນັດ"</string>
+    <string name="policy_require_smime" msgid="6445017199744800426">"ຕ້ອງ​ໃຊ້​ຂໍ້​ຄວາມ SMIME"</string>
+    <string name="policy_bluetooth_restricted" msgid="2877695021606992022">"ຈຳກັດການນຳໃຊ້ Bluetooth"</string>
+    <string name="policy_app_blacklist" msgid="6955451921925210944">"ບໍ່ອະນຸຍາດ​ແອັບຯ​ທີ່ລະບຸໄວ້"</string>
+    <string name="policy_app_whitelist" msgid="73673250614393830">"ອະນຸຍາດໃຫ້​ສະເພາະ​ແອັບຯ​ທີ່ລະບຸໄວ້"</string>
+    <string name="policy_text_truncation" msgid="2098855720139889616">"ຈໍາກັດ​ຂະໜາດ​ຂໍ້ຄວາມ​ຂອງອີເມວ"</string>
+    <string name="policy_html_truncation" msgid="4913206221060438112">"ຈໍາກັດຂະໜາດອີເມວແບບ HTML"</string>
+    <string name="policy_require_sd_encryption" msgid="3911913080904633038">"ຈຳເປັນຕ້ອງ​ມີ​ການ​ເຂົ້າລະຫັດ SD ກາດ"</string>
+    <string name="policy_dont_allow_attachments" msgid="8422502533001368811">"ບໍ່ອະນຸຍາດໃຫ້ແນບໄຟລ໌"</string>
+    <string name="policy_max_attachment_size" msgid="8872049367518056209">"ຈໍາກັດຂະໜາດໄຟລ໌ແນບ"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="4779633041935012627">"ອະນຸຍາດໃຫ້​ຊິ້ງຂໍ້ມູນ​ດ້ວຍຕົນເອງເທົ່ານັ້ນ​ໃນເວລາໂຣມມິງ"</string>
+    <string name="policy_require_encryption" msgid="4176146021220010140">"ຈຳເປັນ​ຕ້ອງມີການ​ເຂົ້າລະຫັດ​ອຸປະກອນ"</string>
+    <string name="account_setup_options_mail_window_auto" msgid="7407981634952005775">"ອັດຕະໂນມັດ"</string>
+    <string name="account_setup_options_mail_window_1day" msgid="4169162439752592189">"ນຶ່ງມື້"</string>
+    <string name="account_setup_options_mail_window_3days" msgid="2330167870774583574">"ສາມມື້"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5066291978475859713">"ອາທິດນຶ່ງ"</string>
+    <string name="account_setup_options_mail_window_2weeks" msgid="2127842445792663461">"ສອງອາທິດ"</string>
+    <string name="account_setup_options_mail_window_1month" msgid="4785039795926771180">"ນຶ່ງເດືອນ"</string>
+    <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"ທັງໝົດ"</string>
+    <string name="auth_error_notification_title" msgid="6768042010440968454">"ການ​ພິສູດ​ຢືນຢັນ​ຜິດພາດ"</string>
+    <string name="auth_error_notification_text" msgid="3590528965691740509">"ແຕະ​ເພື່ອ​ແກ້ໄຂ​ການຕັ້ງຄ່າບັນຊີຂອງ <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <string name="email_settings_not_available" msgid="59579952494440349">"ເປີດ​ນຳ​ໃຊ້​ແອັບ​ພ​ລິ​ເຄ​ຊັນ​ອີ​ເມວ​ອີກ​ຄັ້ງ​ເພື່ອ​ເບິ່ງ​ການ​ຕັ້ງ​ຄ່າ."</string>
 </resources>
