@@ -80,6 +80,13 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
 
             final Account emailAccount = Account.restoreAccountWithAddress(
                     ContactsSyncAdapterService.this, acct.name);
+            if (emailAccount == null) {
+                // There could be a timing issue with onPerformSync() being called and
+                // the account being removed from our database.
+                LogUtils.w(TAG,
+                        "onPerformSync() - Could not find an Account, skipping contacts sync.");
+                return;
+            }
 
             // TODO: is this still needed?
             // If we've been asked to do an upload, make sure we've got work to do

@@ -119,6 +119,13 @@ public class EmailSyncAdapterService extends AbstractSyncAdapterService {
 
             final Account emailAccount = Account.restoreAccountWithAddress(
                     EmailSyncAdapterService.this, acct.name);
+            if (emailAccount == null) {
+                // There could be a timing issue with onPerformSync() being called and
+                // the account being removed from our database.
+                LogUtils.w(TAG,
+                        "onPerformSync() - Could not find an Account, skipping email sync.");
+                return;
+            }
 
             // Push only means this sync request should only refresh the ping (either because
             // settings changed, or we need to restart it for some reason).

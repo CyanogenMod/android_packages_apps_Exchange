@@ -80,6 +80,13 @@ public class CalendarSyncAdapterService extends AbstractSyncAdapterService {
             }
             final Account emailAccount = Account.restoreAccountWithAddress(
                     CalendarSyncAdapterService.this, acct.name);
+            if (emailAccount == null) {
+                // There could be a timing issue with onPerformSync() being called and
+                // the account being removed from our database.
+                LogUtils.w(TAG,
+                        "onPerformSync() - Could not find an Account, skipping calendar sync.");
+                return;
+            }
 
             // TODO: is this still needed?
             if (extras.getBoolean(ContentResolver.SYNC_EXTRAS_UPLOAD)) {
