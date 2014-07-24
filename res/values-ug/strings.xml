@@ -15,14 +15,5 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="meeting_accepted">
-        Acceptéiert:
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
-  <string name="meeting_canceled">
-        Ofgebrach:
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
-  <string name="app_name">Exchange-Servicer</string>
-  <string name="account_setup_options_mail_window_all">All</string>
+  <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
 </resources>
