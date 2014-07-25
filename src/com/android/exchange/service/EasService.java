@@ -153,26 +153,30 @@ public class EasService extends Service {
         @Override
         public Bundle autoDiscover(final String username, final String password) {
             final String domain = EasAutoDiscover.getDomain(username);
-            final String uri = EasAutoDiscover.createUri(domain);
-            final Bundle result = autoDiscoverInternal(uri, username, password, true);
-            final int resultCode = result.getInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE);
-            if (resultCode == EasAutoDiscover.RESULT_BAD_RESPONSE) {
-                // Try the alternate uri
-                final String alternateUri = EasAutoDiscover.createAlternateUri(domain);
-                return autoDiscoverInternal(alternateUri, username, password, true);
-            } else {
-                return result;
+            for (int attempt = 0; attempt <= EasAutoDiscover.ATTEMPT_MAX; attempt++) {
+                LogUtils.d(TAG, "autodiscover attempt %d", attempt);
+                final String uri = EasAutoDiscover.genUri(domain, attempt);
+                Bundle result = autoDiscoverInternal(uri, attempt, username, password, true);
+                int resultCode = result.getInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE);
+                if (resultCode != EasAutoDiscover.RESULT_BAD_RESPONSE) {
+                    return result;
+                } else {
+                    LogUtils.d(TAG, "got BAD_RESPONSE");
+                }
             }
+            return null;
         }
 
-        private Bundle autoDiscoverInternal(final String uri, final String username,
-                                            final String password, final boolean canRetry) {
-            final EasAutoDiscover op = new EasAutoDiscover(EasService.this, uri, username, password);
+        private Bundle autoDiscoverInternal(final String uri, final int attempt,
+                                            final String username, final String password,
+                                            final boolean canRetry) {
+            final EasAutoDiscover op = new EasAutoDiscover(EasService.this, uri, attempt,
+                    username, password);
             final int result = op.performOperation();
             if (result == EasAutoDiscover.RESULT_REDIRECT) {
                 // Try again recursively with the new uri. TODO we should limit the number of redirects.
                 final String redirectUri = op.getRedirectUri();
-                return autoDiscoverInternal(redirectUri, username, password, canRetry);
+                return autoDiscoverInternal(redirectUri, attempt, username, password, canRetry);
             } else if (result == EasAutoDiscover.RESULT_SC_UNAUTHORIZED) {
                 if (canRetry && username.contains("@")) {
                     // Try again using the bare user name
@@ -180,7 +184,7 @@ public class EasService extends Service {
                     final String bareUsername = username.substring(0, atSignIndex);
                     LogUtils.d(TAG, "%d received; trying username: %s", result, atSignIndex);
                     // Try again recursively, but this time don't allow retries for username.
-                    return autoDiscoverInternal(uri, bareUsername, password, false);
+                    return autoDiscoverInternal(uri, attempt, bareUsername, password, false);
                 } else {
                     // Either we're already on our second try or the username didn't have an "@"
                     // to begin with. Either way, failure.

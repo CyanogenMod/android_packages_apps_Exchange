@@ -44,6 +44,7 @@ import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -311,6 +312,11 @@ public class EasServerConnection {
         }
         post.setEntity(entity);
         return post;
+    }
+
+    public HttpGet makeGet(final String uri) {
+        final HttpGet get = new HttpGet(uri);
+        return get;
     }
 
     /**

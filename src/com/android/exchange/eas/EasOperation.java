@@ -156,7 +156,7 @@ public abstract class EasOperation {
     protected Account mAccount;
 
     /** The connection to use for this operation. This is created when {@link #mAccount} is set. */
-    private EasServerConnection mConnection;
+    protected EasServerConnection mConnection;
 
     public class MessageInvalidException extends Exception {
         public MessageInvalidException(final String message) {
@@ -487,16 +487,12 @@ public abstract class EasOperation {
 
     /**
      * Create the request object for this operation.
-     * Most operations use a POST, but some use other request types (e.g. Options).
+     * The default is to use a POST, but some use other request types (e.g. Options).
      * @return An {@link HttpUriRequest}.
      * @throws IOException
      */
-    private final HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
+    protected HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
         final String requestUri = getRequestUri();
-        if (requestUri == null) {
-            return mConnection.makeOptions();
-        }
-
         HttpUriRequest req = mConnection.makePost(requestUri, getRequestEntity(),
                 getRequestContentType(), addPolicyKeyHeaderToRequest());
         return req;

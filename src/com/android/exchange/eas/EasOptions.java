@@ -23,7 +23,9 @@ import com.google.common.collect.Sets;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.HttpUriRequest;
 
+import java.io.IOException;
 import java.util.HashSet;
 
 /**
@@ -102,6 +104,9 @@ public class EasOptions extends EasOperation {
         return null;
     }
 
+    protected HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
+        return mConnection.makeOptions();
+    }
     /**
      * Find the best protocol version to use from the header.
      * @param versionHeader The {@link Header} for the server's supported versions.

@@ -16,6 +16,7 @@ import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -26,6 +27,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class EasAutoDiscover extends EasOperation {
+
+    public final static int ATTEMPT_PRIMARY = 0;
+    public final static int ATTEMPT_ALTERNATE = 1;
+    public final static int ATTEMPT_UNAUTHENTICATED_GET = 2;
+    public final static int ATTEMPT_MAX = 2;
 
     public final static int RESULT_OK = 1;
     public final static int RESULT_SC_UNAUTHORIZED = RESULT_OP_SPECIFIC_ERROR_RESULT - 0;
@@ -55,17 +61,19 @@ public class EasAutoDiscover extends EasOperation {
     private static final String ELEMENT_NAME_RESPONSE = "Response";
     private static final String ELEMENT_NAME_AUTODISCOVER = "Autodiscover";
 
+    private final int mAttemptNumber;
     private final String mUri;
     private final String mUsername;
     private final String mPassword;
     private HostAuth mHostAuth;
     private String mRedirectUri;
 
-    public EasAutoDiscover(final Context context, final String uri, final String username,
-                           final String password) {
+    public EasAutoDiscover(final Context context, final String uri, final int attemptNumber,
+                           final String username, final String password) {
         // We don't actually need an account or a hostAuth, but the EasServerConnection requires
         // one. Just create dummy values.
         super(context, -1);
+        mAttemptNumber = attemptNumber;
         mUri = uri;
         mUsername = username;
         mPassword = password;
@@ -78,6 +86,25 @@ public class EasAutoDiscover extends EasOperation {
         setAccount(new Account(), mHostAuth);
     }
 
+    public static String genUri(final String domain, final int attemptNumber) {
+        // Try the following uris in order, as per
+        // http://msdn.microsoft.com/en-us/library/office/jj900169(v=exchg.150).aspx
+        // TODO: That document also describes a fallback strategy to query DNS for an SRV record,
+        // but this would require additional DNS lookup services that are not currently available
+        // in the android platform,
+        switch (attemptNumber) {
+            case ATTEMPT_PRIMARY:
+                return "https://" + domain + AUTO_DISCOVER_PAGE;
+            case ATTEMPT_ALTERNATE:
+                return "https://autodiscover." + domain + AUTO_DISCOVER_PAGE;
+            case ATTEMPT_UNAUTHENTICATED_GET:
+                return "http://autodiscover." + domain + AUTO_DISCOVER_PAGE;
+            default:
+                LogUtils.wtf(TAG, "Illegal attempt number %d", attemptNumber);
+                return null;
+        }
+    }
+
     protected String getRequestUri() {
         return mUri;
     }
@@ -88,14 +115,6 @@ public class EasAutoDiscover extends EasOperation {
             return null;
         }
         return login.substring(amp + 1);
-    }
-
-    public static String createUri(final String domain) {
-        return "https://" + domain + AUTO_DISCOVER_PAGE;
-    }
-
-    public static String createAlternateUri(final String domain) {
-        return "https://autodiscover." + domain + AUTO_DISCOVER_PAGE;
     }
 
     @Override
@@ -127,6 +146,24 @@ public class EasAutoDiscover extends EasOperation {
         } catch (final IllegalStateException e) {
         }
         return null;
+    }
+
+    /**
+     * Create the request object for this operation.
+     * The default is to use a POST, but some use other request types (e.g. Options).
+     * @return An {@link org.apache.http.client.methods.HttpUriRequest}.
+     * @throws IOException
+     */
+    protected HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
+        final String requestUri = getRequestUri();
+        HttpUriRequest req;
+        if (mAttemptNumber == ATTEMPT_UNAUTHENTICATED_GET) {
+            req = mConnection.makeGet(requestUri);
+        } else {
+            req = mConnection.makePost(requestUri, getRequestEntity(),
+                    getRequestContentType(), addPolicyKeyHeaderToRequest());
+        }
+        return req;
     }
 
     public String getRedirectUri() {
