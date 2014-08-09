@@ -15,14 +15,71 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+  <string name="exchange_name">Firma</string>
+  <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
   <string name="meeting_accepted">
         Acceptéiert:
+        <xliff:g id="subject">%s</xliff:g>
+    </string>
+  <string name="meeting_declined">
+        Ofgeleent:
+        <xliff:g id="subject">%s</xliff:g>
+    </string>
+  <string name="meeting_tentative">
+        Eventuell:
         <xliff:g id="subject">%s</xliff:g>
     </string>
   <string name="meeting_canceled">
         Ofgebrach:
         <xliff:g id="subject">%s</xliff:g>
     </string>
+  <string name="meeting_updated">
+        Aktualiséiert:
+        <xliff:g id="subject">%s</xliff:g>
+    </string>
+  <string name="meeting_when">
+        Wéini:
+        <xliff:g id="when">%s</xliff:g>
+    </string>
+  <string name="meeting_where">
+        Wou:
+        <xliff:g id="where">%s</xliff:g>
+    </string>
+  <string name="meeting_recurring">
+        Wéini:
+        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 at 2:30 pm">%s</xliff:g>
+        (widderhuelend)
+    </string>
+  <string name="meeting_allday">
+        Wéini:
+        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
+        (de ganzen Dag)
+    </string>
+  <string name="meeting_allday_recurring">
+        Wéini:
+        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
+        (de ganzen Dag, widderhuelend)
+    </string>
+  <string name="notification_exchange_calendar_added">Exchange-Kalenner dobäigesat</string>
   <string name="app_name">Exchange-Servicer</string>
+  <string name="policy_dont_allow_storage_cards">Späicherkaarten net erlaben</string>
+  <string name="policy_dont_allow_wifi">WLAN net erlaben</string>
+  <string name="policy_dont_allow_text_messaging">SMSen net erlaben</string>
+  <string name="policy_dont_allow_pop_imap">POP3- an IMAP-Konten net erlaben</string>
+  <string name="policy_dont_allow_irda">Infrarout-Kommunikatiounen net erlaben</string>
+  <string name="policy_dont_allow_html">HTML-E-Mailen net erlaben</string>
+  <string name="policy_dont_allow_browser">Browseren net erlaben</string>
+  <string name="policy_dont_allow_consumer_email">Privat E-Mailen net erlaben</string>
+  <string name="policy_dont_allow_internet_sharing">D\'Deele vun der Internetconnectioun net erlaben</string>
+  <string name="policy_bluetooth_restricted">D\'Bluetooth-Benotzung aschränken</string>
+  <string name="policy_app_blacklist">Spezifesch Appen net erlaben</string>
+  <string name="policy_app_whitelist">Just spezifesch Appen erlaben</string>
+  <string name="account_setup_options_mail_window_auto">Automatesch</string>
+  <string name="account_setup_options_mail_window_1day">Een Dag</string>
+  <string name="account_setup_options_mail_window_3days">Dräi Deeg</string>
+  <string name="account_setup_options_mail_window_1week">Eng Woch</string>
+  <string name="account_setup_options_mail_window_2weeks">Zwou Wochen</string>
+  <string name="account_setup_options_mail_window_1month">Ee Mount</string>
   <string name="account_setup_options_mail_window_all">All</string>
+  <string name="auth_error_notification_title">Authentifizéierungsfeeler</string>
 </resources>
