@@ -16,12 +16,20 @@
 
 package com.android.exchange.service;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.v4.util.LongSparseArray;
+import android.text.format.DateUtils;
 
 import com.android.emailcommon.provider.Account;
+import com.android.emailcommon.provider.EmailContent;
+import com.android.emailcommon.provider.Mailbox;
 import com.android.exchange.Eas;
 import com.android.exchange.eas.EasPing;
 import com.android.mail.utils.LogUtils;
@@ -73,6 +81,18 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PingSyncSynchronizer {
 
     private static final String TAG = Eas.LOG_TAG;
+
+    private static final long SYNC_ERROR_BACKOFF_MILLIS =  DateUtils.MINUTE_IN_MILLIS;
+    private static final String EXTRA_START_PING = "START_PING";
+    private static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
+
+    // Enable this to make pings get automatically renewed every hour. This
+    // should not be needed, but if there is a software error that results in
+    // the ping being lost, this is a fallback to make sure that messages are
+    // not delayed more than an hour.
+    private static final boolean SCHEDULE_KICK = false;
+    private static final long KICK_SYNC_INTERVAL_SECONDS =
+            DateUtils.HOUR_IN_MILLIS / DateUtils.SECOND_IN_MILLIS;
 
     /**
      * This class handles bookkeeping for a single account.
@@ -133,7 +153,8 @@ public class PingSyncSynchronizer {
          * go ahead, or starting the ping if appropriate and there are no waiting ops.
          * @return Whether this account is now idle.
          */
-        public boolean syncEnd(final Account account, final PingSyncSynchronizer synchronizer) {
+        public boolean syncEnd(final boolean lastSyncHadError, final Account account,
+                               final PingSyncSynchronizer synchronizer) {
             --mSyncCount;
             if (mSyncCount > 0) {
                 LogUtils.d(TAG, "Signalling a pending sync to proceed.");
@@ -141,13 +162,21 @@ public class PingSyncSynchronizer {
                 return false;
             } else {
                 if (mPushEnabled) {
-                    final android.accounts.Account amAccount =
-                            new android.accounts.Account(account.mEmailAddress,
+                    if (lastSyncHadError) {
+                        final android.accounts.Account amAccount =
+                                new android.accounts.Account(account.mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                    mPingTask = new PingTask(synchronizer.getContext(), account, amAccount,
-                            synchronizer);
-                    mPingTask.start();
-                    return false;
+                        scheduleDelayedPing(synchronizer.getContext(), amAccount);
+                        return true;
+                    } else {
+                        final android.accounts.Account amAccount =
+                                new android.accounts.Account(account.mEmailAddress,
+                                        Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                        mPingTask = new PingTask(synchronizer.getContext(), account, amAccount,
+                                synchronizer);
+                        mPingTask.start();
+                        return false;
+                    }
                 }
             }
             return true;
@@ -157,7 +186,7 @@ public class PingSyncSynchronizer {
          * Update bookkeeping when the ping task terminates, including signaling any waiting ops.
          * @return Whether this account is now idle.
          */
-        public boolean pingEnd(final android.accounts.Account amAccount) {
+        private boolean pingEnd(final android.accounts.Account amAccount) {
             mPingTask = null;
             if (mSyncCount > 0) {
                 mCondition.signal();
@@ -176,17 +205,32 @@ public class PingSyncSynchronizer {
             return true;
         }
 
+        private void scheduleDelayedPing(final Context context,
+                                         final android.accounts.Account amAccount) {
+            LogUtils.d(TAG, "Scheduling a delayed ping.");
+            final Intent intent = new Intent(context, EmailSyncAdapterService.class);
+            intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
+            intent.putExtra(EXTRA_START_PING, true);
+            intent.putExtra(EXTRA_PING_ACCOUNT, amAccount);
+            final PendingIntent pi = PendingIntent.getService(context, 0, intent,
+                    PendingIntent.FLAG_ONE_SHOT);
+            final AlarmManager am = (AlarmManager)context.getSystemService(
+                    Context.ALARM_SERVICE);
+            final long atTime = SystemClock.elapsedRealtime() + SYNC_ERROR_BACKOFF_MILLIS;
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, atTime, pi);
+        }
+
         /**
          * Modifies or starts a ping for this account if no syncs are running.
          */
         public void pushModify(final Account account, final PingSyncSynchronizer synchronizer) {
             mPushEnabled = true;
+            final android.accounts.Account amAccount =
+                    new android.accounts.Account(account.mEmailAddress,
+                            Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
             if (mSyncCount == 0) {
                 if (mPingTask == null) {
                     // No ping, no running syncs -- start a new ping.
-                    final android.accounts.Account amAccount =
-                            new android.accounts.Account(account.mEmailAddress,
-                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
                     mPingTask = new PingTask(synchronizer.getContext(), account, amAccount,
                             synchronizer);
                     mPingTask.start();
@@ -194,6 +238,12 @@ public class PingSyncSynchronizer {
                     // Ping is already running, so tell it to restart to pick up any new params.
                     mPingTask.restart();
                 }
+            }
+            if (SCHEDULE_KICK) {
+                final Bundle extras = new Bundle(1);
+                extras.putBoolean(Mailbox.SYNC_EXTRA_PUSH_ONLY, true);
+                ContentResolver.addPeriodicSync(amAccount, EmailContent.AUTHORITY, extras,
+                        KICK_SYNC_INTERVAL_SECONDS);
             }
         }
 
@@ -286,7 +336,7 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void syncEnd(final Account account) {
+    public void syncEnd(final boolean lastSyncHadError, final Account account) {
         mLock.lock();
         try {
             final long accountId = account.getId();
@@ -296,7 +346,7 @@ public class PingSyncSynchronizer {
                 LogUtils.w(TAG, "PSS syncEnd for account %d but no state found", accountId);
                 return;
             }
-            if (accountState.syncEnd(account, this)) {
+            if (accountState.syncEnd(lastSyncHadError, account, this)) {
                 removeAccount(accountId);
             }
         } finally {
