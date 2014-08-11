@@ -281,6 +281,12 @@ public abstract class EasOperation {
     }
 
     /**
+     * Should return true if the last operation encountered an error. Default implementation
+     * always returns false, child classes can override.
+     */
+    public final boolean lastSyncHadError() { return false; }
+
+    /**
      * The skeleton of performing an operation. This function handles all the common code and
      * error handling, calling into virtual functions that are implemented or overridden by the
      * subclass to do the operation-specific logic.
