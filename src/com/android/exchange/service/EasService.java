@@ -323,15 +323,19 @@ public class EasService extends Service {
     public int doOperation(final EasOperation operation, final String loggingName) {
         LogUtils.d(TAG, "%s: %d", loggingName, operation.getAccountId());
         mSynchronizer.syncStart(operation.getAccountId());
+        int result = EasOperation.RESULT_MIN_OK_RESULT;
         // TODO: Do we need a wakelock here? For RPC coming from sync adapters, no -- the SA
         // already has one. But for others, maybe? Not sure what's guaranteed for AIDL calls.
         // If we add a wakelock (or anything else for that matter) here, must remember to undo
         // it in the finally block below.
         // On the other hand, even for SAs, it doesn't hurt to get a wakelock here.
         try {
-            return operation.performOperation();
+            result = operation.performOperation();
+            LogUtils.d(TAG, "Operation result %d", result);
+            return result;
         } finally {
-            mSynchronizer.syncEnd(operation.getAccount());
+            mSynchronizer.syncEnd(result >= EasOperation.RESULT_MIN_OK_RESULT,
+                    operation.getAccount());
         }
     }
 
@@ -416,10 +420,10 @@ public class EasService extends Service {
      * @return EmailServiceStatus
      */
     private int convertToEmailServiceStatus(int easStatus) {
+        if (easStatus >= EasOperation.RESULT_MIN_OK_RESULT) {
+            return EmailServiceStatus.SUCCESS;
+        }
         switch (easStatus) {
-            case EasOperation.RESULT_MIN_OK_RESULT:
-                return EmailServiceStatus.SUCCESS;
-
             case EasOperation.RESULT_ABORT:
             case EasOperation.RESULT_RESTART:
                 // This should only happen if a ping is interruped for some reason. We would not
