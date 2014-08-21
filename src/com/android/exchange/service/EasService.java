@@ -141,6 +141,11 @@ public class EasService extends Service {
         public void deleteAccountPIMData(final String emailAddress) {
             LogUtils.d(TAG, "IEmailService.deleteAccountPIMData");
         }
+
+        @Override
+        public void loadMore(long messageId) {
+            LogUtils.d(TAG, "IEmailService.loadMore");
+        }
     };
 
     /**
