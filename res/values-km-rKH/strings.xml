@@ -59,7 +59,7 @@
     <string name="account_setup_options_mail_window_1week" msgid="5066291978475859713">"មួយ​​សប្ដាហ៍"</string>
     <string name="account_setup_options_mail_window_2weeks" msgid="2127842445792663461">"ពីរ​សប្ដាហ៍"</string>
     <string name="account_setup_options_mail_window_1month" msgid="4785039795926771180">"មួយ​ខែ"</string>
-    <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"ទាំង​អស់"</string>
+    <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"ទាំង​អស់​"</string>
     <string name="auth_error_notification_title" msgid="6768042010440968454">"កំហុស​ក្នុង​ការ​ផ្ទៀងផ្ទាត់"</string>
     <string name="auth_error_notification_text" msgid="3590528965691740509">"ប៉ះ​ដើម្បី​កែ​សម្រួល​ការ​កំណត់​សម្រាប់​គណនី <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
 </resources>
