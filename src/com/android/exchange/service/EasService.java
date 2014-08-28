@@ -54,6 +54,7 @@ import com.android.exchange.eas.EasSyncCalendar;
 import com.android.exchange.eas.EasSyncContacts;
 import com.android.exchange.provider.GalResult;
 import com.android.mail.utils.LogUtils;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -77,7 +78,8 @@ public class EasService extends Service {
     /** Bookkeeping for ping tasks & sync threads management. */
     private final PingSyncSynchronizer mSynchronizer;
 
-    private boolean mDebuggingEnabled;
+    private static boolean sProtocolLogging;
+    private static boolean sFileLogging;
 
     /**
      * Implementation of the IEmailService interface.
@@ -210,8 +212,9 @@ public class EasService extends Service {
         public void setLogging(final int flags) {
             // TODO: This isn't persisted. If Exchange goes down and restarts, debugging will
             // be turned off.
-            mDebuggingEnabled = ((flags & EmailServiceProxy.DEBUG_EXCHANGE_BIT) != 0);
-            LogUtils.d(TAG, "IEmailService.setLogging");
+            sProtocolLogging = ((flags & EmailServiceProxy.DEBUG_EXCHANGE_BIT) != 0);
+            sFileLogging = ((flags & EmailServiceProxy.DEBUG_FILE_BIT) != 0);
+            LogUtils.d(TAG, "IEmailService.setLogging %d", flags);
         }
 
         @Override
@@ -277,7 +280,8 @@ public class EasService extends Service {
     public EasService() {
         super();
         mSynchronizer = new PingSyncSynchronizer(this);
-        mDebuggingEnabled = false;
+        sProtocolLogging = false;
+        sFileLogging = false;
     }
 
     @Override
@@ -492,4 +496,23 @@ public class EasService extends Service {
         }
         return authsToSync;
     }
+
+    @VisibleForTesting
+    public static void setProtocolLogging(final boolean val) {
+        sProtocolLogging = val;
+    }
+
+    @VisibleForTesting
+    public static void setFileLogging(final boolean val) {
+        sFileLogging = val;
+    }
+
+    public static boolean getProtocolLogging() {
+        return sProtocolLogging;
+    }
+
+    public static boolean getFileLogging() {
+        return sFileLogging;
+    }
+
 }
