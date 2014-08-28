@@ -77,6 +77,8 @@ public class EasService extends Service {
     /** Bookkeeping for ping tasks & sync threads management. */
     private final PingSyncSynchronizer mSynchronizer;
 
+    private boolean mDebuggingEnabled;
+
     /**
      * Implementation of the IEmailService interface.
      * For the most part these calls should consist of creating the correct {@link EasOperation}
@@ -206,6 +208,9 @@ public class EasService extends Service {
 
         @Override
         public void setLogging(final int flags) {
+            // TODO: This isn't persisted. If Exchange goes down and restarts, debugging will
+            // be turned off.
+            mDebuggingEnabled = ((flags & EmailServiceProxy.DEBUG_EXCHANGE_BIT) != 0);
             LogUtils.d(TAG, "IEmailService.setLogging");
         }
 
@@ -272,6 +277,7 @@ public class EasService extends Service {
     public EasService() {
         super();
         mSynchronizer = new PingSyncSynchronizer(this);
+        mDebuggingEnabled = false;
     }
 
     @Override
