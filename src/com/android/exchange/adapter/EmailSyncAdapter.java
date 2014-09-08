@@ -115,8 +115,6 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
     private static final int FETCH_REQUEST_SERVER_ID = 1;
 
     private static final String EMAIL_WINDOW_SIZE = "5";
-    private static final String ENTIRE_EMAIL_SYNC_SIZE =
-            String.valueOf(SyncSize.SYNC_SIZE_ENTIRE_MAIL);
 
     @VisibleForTesting
     static final int LAST_VERB_REPLY = 1;
@@ -240,14 +238,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 s.start(Tags.BASE_BODY_PREFERENCE);
                 // HTML for email
                 s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
-                if (mAccount.isSetSyncSizeEnabled()) {
-                    String sizeTruncation = Integer.toString(mAccount.mSyncSize);
-                    if (!ENTIRE_EMAIL_SYNC_SIZE.equals(sizeTruncation)) {
-                        s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
-                    }
-                } else {
-                    s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
-                }
+                String sizeTruncation = mAccount.getSyncSize() == SyncSize.SYNC_SIZE_ENTIRE_MAIL ?
+                    Eas.EAS12_TRUNCATION_SIZE : Integer.toString(mAccount.getSyncSize());
+                s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
                 s.end();
             } else {
                 // Use MIME data for EAS 2.5
