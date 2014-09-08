@@ -240,11 +240,9 @@ public class EmailSyncAdapter extends AbstractSyncAdapter {
                 s.start(Tags.BASE_BODY_PREFERENCE);
                 // HTML for email
                 s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
-                if (mAccount.isSetSyncSizeEnabled()) {
-                    String sizeTruncation = Integer.toString(mAccount.mSyncSize);
-                    if (!ENTIRE_EMAIL_SYNC_SIZE.equals(sizeTruncation)) {
-                        s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
-                    }
+                String sizeTruncation = Integer.toString(mAccount.getSyncSize());
+                if (!ENTIRE_EMAIL_SYNC_SIZE.equals(sizeTruncation)) {
+                    s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
                 } else {
                     s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
                 }

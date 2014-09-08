@@ -87,11 +87,9 @@ public class EasSyncMail extends EasSyncCollectionTypeBase {
                 s.start(Tags.BASE_BODY_PREFERENCE);
                 // HTML for email
                 s.data(Tags.BASE_TYPE, Eas.BODY_PREFERENCE_HTML);
-                if (account.isSetSyncSizeEnabled()) {
-                    String sizeTruncation = Integer.toString(account.mSyncSize);
-                    if (!ENTIRE_EMAIL_SYNC_SIZE.equals(sizeTruncation)) {
-                        s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
-                    }
+                String sizeTruncation = Integer.toString(account.getSyncSize());
+                if (!ENTIRE_EMAIL_SYNC_SIZE.equals(sizeTruncation)) {
+                    s.data(Tags.BASE_TRUNCATION_SIZE, sizeTruncation);
                 } else {
                     s.data(Tags.BASE_TRUNCATION_SIZE, Eas.EAS12_TRUNCATION_SIZE);
                 }
