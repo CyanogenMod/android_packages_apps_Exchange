@@ -344,7 +344,7 @@ public class EasService extends Service {
             LogUtils.d(TAG, "Operation result %d", result);
             return result;
         } finally {
-            mSynchronizer.syncEnd(result > EasOperation.RESULT_MIN_OK_RESULT,
+            mSynchronizer.syncEnd(result < EasOperation.RESULT_MIN_OK_RESULT,
                     operation.getAccount());
         }
     }
