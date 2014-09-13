@@ -101,7 +101,7 @@
   <string name="account_setup_options_mail_window_1week">یه‌ک هه‌فته‌</string>
   <string name="account_setup_options_mail_window_2weeks">دوو هه‌فته‌</string>
   <string name="account_setup_options_mail_window_1month">یه‌ک مانگ</string>
-  <string name="account_setup_options_mail_window_all">هەموو</string>
+  <string name="account_setup_options_mail_window_all">گشت</string>
   <string name="auth_error_notification_title">یه‌کناساندن هه‌ڵه‌ی هه‌یه‌</string>
   <string name="auth_error_notification_text">تاپ بکه‌ بۆ ده‌ستکاریکردنی هه‌ژمار بۆ <xliff:g id="account">%s</xliff:g></string>
 </resources>
