@@ -27,7 +27,6 @@
     <string name="meeting_recurring" msgid="2752008481765880928">"जब: <xliff:g id="EVENTDATE">%s</xliff:g> (पुनरावर्ती)"</string>
     <string name="meeting_allday" msgid="7251209063071628040">"जब: <xliff:g id="EVENTDATE">%s</xliff:g> (सबै दिन)"</string>
     <string name="meeting_allday_recurring" msgid="4545762363537362545">"जब: <xliff:g id="EVENTDATE">%s</xliff:g> (सबै दिन, पुनरावर्ती)"</string>
-    <string name="notification_exchange_calendar_added" msgid="8998454267739748113">"एक्स्चेन्ञ पात्रो थपियो"</string>
     <string name="app_name" msgid="1707639359526090662">"सेवाहरु परिवर्तन गर्नुहोस्"</string>
     <string name="exception_cancel" msgid="8972887597771126871">"<xliff:g id="DATE">%s</xliff:g> को लागि यस घटना रद्द भयो:"</string>
     <string name="exception_updated" msgid="329192591551400871">"<xliff:g id="DATE">%s</xliff:g> को लागि यस घटनाको पूर्ण विवरण परिवर्तन भयो:"</string>
