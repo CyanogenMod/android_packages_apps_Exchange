@@ -60,7 +60,7 @@
     <string name="account_setup_options_mail_window_2weeks" msgid="2127842445792663461">"دو هفته"</string>
     <string name="account_setup_options_mail_window_1month" msgid="4785039795926771180">"یک ماه"</string>
     <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"همه"</string>
-    <string name="auth_error_notification_title" msgid="6768042010440968454">"خطای احراز هویت"</string>
+    <string name="auth_error_notification_title" msgid="6768042010440968454">"خطا در احراز هویت"</string>
     <string name="auth_error_notification_text" msgid="3590528965691740509">"برای ویرایش تنظیمات حساب <xliff:g id="ACCOUNT">%s</xliff:g> لمس کنید"</string>
     <string name="email_settings_not_available" msgid="59579952494440349">"برنامه ایمیل را برای مشاهده تنظیمات، دوباره فعال کنید."</string>
 </resources>
