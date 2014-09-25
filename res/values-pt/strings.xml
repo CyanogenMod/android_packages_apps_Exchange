@@ -32,7 +32,7 @@
     <string name="exception_updated" msgid="329192591551400871">"Os detalhes deste evento foram alterados para: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="1305111581282078881">"Não permitir cartões de armazenamento"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"Não permitir apps não assinados"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Não permitir instal. aplic. não assinado"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Não permitir instal. app não assinado"</string>
     <string name="policy_dont_allow_wifi" msgid="8501275982154914194">"Não permitir Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"Não permitir mensagens de texto"</string>
     <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"Não permitir contas POP3 ou IMAP"</string>
@@ -44,7 +44,7 @@
     <string name="policy_require_smime" msgid="6445017199744800426">"Exigir mensagens em SMIME"</string>
     <string name="policy_bluetooth_restricted" msgid="2877695021606992022">"Restringir o uso de Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="6955451921925210944">"Desautorizar apps especificados"</string>
-    <string name="policy_app_whitelist" msgid="73673250614393830">"Permitir somente aplic. especificados"</string>
+    <string name="policy_app_whitelist" msgid="73673250614393830">"Permitir somente apps especificados"</string>
     <string name="policy_text_truncation" msgid="2098855720139889616">"Restringir o tamanho do e-mail em texto"</string>
     <string name="policy_html_truncation" msgid="4913206221060438112">"Restringir tamanho do e-mail em HTML"</string>
     <string name="policy_require_sd_encryption" msgid="3911913080904633038">"Exigir criptografia do cartão SD"</string>

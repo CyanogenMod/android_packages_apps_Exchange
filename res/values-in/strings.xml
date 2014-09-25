@@ -32,7 +32,7 @@
     <string name="exception_updated" msgid="329192591551400871">"Detail acara ini telah diubah untuk: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="1305111581282078881">"Jangan izinkan kartu penyimpanan"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"Jangan izinkan apl tak bertanda tangan"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Jgn izinkan pmasang apl tak bertanda tgn"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Pemasang apl tak bertanda tangan dilarang"</string>
     <string name="policy_dont_allow_wifi" msgid="8501275982154914194">"Jangan izinkan Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"Jangan izinkan pesan teks"</string>
     <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"Jangan izinkan akun POP3 atau IMAP"</string>
