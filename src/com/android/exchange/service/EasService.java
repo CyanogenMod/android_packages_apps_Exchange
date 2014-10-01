@@ -68,6 +68,9 @@ public class EasService extends Service {
 
     private static final String TAG = Eas.LOG_TAG;
 
+    public static final String EXTRA_START_PING = "START_PING";
+    public static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
+
     /**
      * The content authorities that can be synced for EAS accounts. Initialization must wait until
      * after we have a chance to call {@link EmailContent#init} (and, for future content types,
@@ -325,6 +328,10 @@ public class EasService extends Service {
                 // if accounts disappear out from under us.
                 LogUtils.d(TAG, "Forced shutdown, killing process");
                 System.exit(-1);
+            } else if (intent.getBooleanExtra(EXTRA_START_PING, false)) {
+                LogUtils.d(LogUtils.TAG, "Restarting ping");
+                final Account account = intent.getParcelableExtra(EXTRA_PING_ACCOUNT);
+                mSynchronizer.pushModify(account);
             }
         }
         return START_STICKY;
