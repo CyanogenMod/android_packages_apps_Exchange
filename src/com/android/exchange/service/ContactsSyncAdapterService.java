@@ -20,6 +20,7 @@ import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncResult;
 import android.database.Cursor;
@@ -27,6 +28,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract.Groups;
 import android.provider.ContactsContract.RawContacts;
+import android.provider.ContactsContract.Settings;
 import android.util.Log;
 
 import com.android.emailcommon.provider.EmailContent;
@@ -72,8 +74,42 @@ public class ContactsSyncAdapterService extends AbstractSyncAdapterService {
                 LogUtils.i(TAG, "onPerformSync Contacts starting %s", extras.toString());
             }
             ContactsSyncAdapterService.performSync(getContext(), account, extras);
+            ContactsSyncAdapterService.maybeSetAccountContactsVisibility(getContext(), account);
             LogUtils.d(TAG, "onPerformSync Contacts finished");
         }
+    }
+
+    private static void maybeSetAccountContactsVisibility(Context context, Account account) {
+        String[] projection = new String[]{
+                Settings.ACCOUNT_NAME,
+                Settings.ACCOUNT_TYPE
+        };
+        String selection = Settings.ACCOUNT_NAME + "=? AND " +
+                Settings.ACCOUNT_TYPE + "=?";
+        String[] selectionArgs = new String[]{
+                account.name,
+                account.type
+        };
+        ContentResolver resolver = context.getContentResolver();
+        Cursor c = resolver.query(Settings.CONTENT_URI,
+                projection, selection, selectionArgs, null);
+        if (c != null) {
+            if (c.getCount() == 0) {
+                LogUtils.d(TAG, "setting account visibility true for account: " + account.name);
+                setAccountContactsVisibility(context, account, true);
+            }
+            c.close();
+        }
+    }
+
+    private static void setAccountContactsVisibility(Context context, Account account,
+                                                     boolean visible) {
+        ContentValues values = new ContentValues();
+        values.put(RawContacts.ACCOUNT_NAME, account.name);
+        values.put(RawContacts.ACCOUNT_TYPE, account.type);
+        values.put(Settings.UNGROUPED_VISIBLE, visible ? 1 : 0);
+
+        context.getContentResolver().insert(Settings.CONTENT_URI, values);
     }
 
     private static boolean hasDirtyRows(ContentResolver resolver, Uri uri, String dirtyColumn) {
