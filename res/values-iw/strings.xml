@@ -37,7 +37,7 @@
     <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"אל תאפשר העברת הודעות טקסט"</string>
     <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"‏אל תאפשר חשבונות מסוג POP3 או IMAP"</string>
     <string name="policy_dont_allow_irda" msgid="8230803019935893114">"אל תאפשר תקשורת אינפרא-אדום"</string>
-    <string name="policy_dont_allow_html" msgid="3909470006782362967">"‏אל תאפשר דוא\"ל בפורמט HTML"</string>
+    <string name="policy_dont_allow_html" msgid="3909470006782362967">"‏אל תאפשר אימייל בפורמט HTML"</string>
     <string name="policy_dont_allow_browser" msgid="241728112385525092">"אל תאפשר דפדפנים"</string>
     <string name="policy_dont_allow_consumer_email" msgid="2473755560531860915">"אל תאפשר אימיילים פרסומיים"</string>
     <string name="policy_dont_allow_internet_sharing" msgid="8926902533477728994">"אל תאפשר שיתוף באינטרנט"</string>
@@ -45,7 +45,7 @@
     <string name="policy_bluetooth_restricted" msgid="2877695021606992022">"‏הגבל את השימוש ב-Bluetooth"</string>
     <string name="policy_app_blacklist" msgid="6955451921925210944">"אל תאפשר יישומים שצוינו"</string>
     <string name="policy_app_whitelist" msgid="73673250614393830">"אפשר רק יישומים שצוינו"</string>
-    <string name="policy_text_truncation" msgid="2098855720139889616">"הגבל את גודל הטקסט בדוא\"ל"</string>
+    <string name="policy_text_truncation" msgid="2098855720139889616">"הגבל את גודל הטקסט באימייל"</string>
     <string name="policy_html_truncation" msgid="4913206221060438112">"‏הגבל גודל אימיילים בפורמט HTML"</string>
     <string name="policy_require_sd_encryption" msgid="3911913080904633038">"‏נדרשת הצפנת כרטיס SD"</string>
     <string name="policy_dont_allow_attachments" msgid="8422502533001368811">"אל תאפשר קבצים מצורפים"</string>
@@ -61,5 +61,5 @@
     <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"הכל"</string>
     <string name="auth_error_notification_title" msgid="6768042010440968454">"שגיאת אימות"</string>
     <string name="auth_error_notification_text" msgid="3590528965691740509">"גע כדי לערוך את הגדרות החשבון עבור <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
-    <string name="email_settings_not_available" msgid="59579952494440349">"הפעל מחדש את האפליקציה \'דוא\"ל\' כדי להציג הגדרות."</string>
+    <string name="email_settings_not_available" msgid="59579952494440349">"הפעל מחדש את האפליקציה \'אימייל\' כדי להציג הגדרות."</string>
 </resources>
