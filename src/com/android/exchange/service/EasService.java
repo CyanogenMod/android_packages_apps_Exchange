@@ -48,6 +48,7 @@ import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasFullSyncOperation;
 import com.android.exchange.eas.EasLoadAttachment;
 import com.android.exchange.eas.EasOperation;
+import com.android.exchange.eas.EasPing;
 import com.android.exchange.eas.EasSearch;
 import com.android.exchange.eas.EasSearchGal;
 import com.android.exchange.eas.EasSendMeetingResponse;
@@ -341,7 +342,10 @@ public class EasService extends Service {
             } else if (intent.getBooleanExtra(EXTRA_START_PING, false)) {
                 LogUtils.d(LogUtils.TAG, "Restarting ping");
                 final Account account = intent.getParcelableExtra(EXTRA_PING_ACCOUNT);
-                mSynchronizer.pushModify(account);
+                final android.accounts.Account amAccount =
+                                new android.accounts.Account(account.mEmailAddress,
+                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
+                EasPing.requestPing(amAccount);
             }
         }
         return START_STICKY;
