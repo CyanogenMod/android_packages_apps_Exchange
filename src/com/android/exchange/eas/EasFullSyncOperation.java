@@ -30,7 +30,7 @@ public class EasFullSyncOperation extends EasOperation {
     private final static String TAG = LogUtils.TAG;
 
     private final static int RESULT_SUCCESS = 0;
-    private final static int RESULT_SECURITY_HOLD = -100;
+    public final static int RESULT_SECURITY_HOLD = -100;
 
     public static final int SEND_FAILED = 1;
     public static final String MAILBOX_KEY_AND_NOT_SEND_FAILED =
@@ -310,12 +310,17 @@ public class EasFullSyncOperation extends EasOperation {
                     result = op.performOperation();
                 }
                 // If we got some connection error or other fatal error, terminate the sync.
-                // RESULT_NON_FATAL_ERROR
+                // If we get some non-fatal error, continue.
                 if (result != EasOutboxSync.RESULT_OK &&
                         result != EasOutboxSync.RESULT_NON_FATAL_ERROR &&
                         result > EasOutboxSync.RESULT_OP_SPECIFIC_ERROR_RESULT) {
                     LogUtils.w(TAG, "Aborting outbox sync for error %d", result);
                     return result;
+                } else if (result <= EasOutboxSync.RESULT_OP_SPECIFIC_ERROR_RESULT) {
+                    // There are several different conditions that can cause outbox syncing to fail,
+                    // but they shouldn't prevent us from continuing and trying to downsync
+                    // other mailboxes.
+                    LogUtils.i(TAG, "Outbox sync failed with result %d", result);
                 }
             }
         } finally {
