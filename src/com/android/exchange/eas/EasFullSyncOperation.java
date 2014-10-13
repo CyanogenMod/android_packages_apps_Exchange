@@ -56,9 +56,9 @@ public class EasFullSyncOperation extends EasOperation {
     final Bundle mSyncExtras;
     Set<String> mAuthsToSync;
 
-    public EasFullSyncOperation(final Context context, final long accountId,
+    public EasFullSyncOperation(final Context context, final Account account,
                                 final Bundle syncExtras) {
-        super(context, accountId);
+        super(context, account);
         mSyncExtras = syncExtras;
     }
 
@@ -94,12 +94,12 @@ public class EasFullSyncOperation extends EasOperation {
 
     @Override
     public int performOperation() {
-        // Make sure the account is loaded if it hasn't already been.
-        if (!init(false)) {
-            LogUtils.i(LOG_TAG, "Failed to initialize %d before operation EasFullSyncOperation",
-                    getAccountId());
+        if (!init()) {
+            LogUtils.i(LOG_TAG, "Failed to initialize %d before sending request for operation %s",
+                    getAccountId(), getCommand());
             return RESULT_INITIALIZATION_FAILURE;
         }
+
         final android.accounts.Account amAccount = new android.accounts.Account(
                 mAccount.mEmailAddress, Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
         mAuthsToSync = EasService.getAuthoritiesToSync(amAccount, AUTHORITIES_TO_SYNC);
