@@ -62,7 +62,17 @@
     </string>
   <string name="notification_exchange_calendar_added">Exchange-Kalenner dobäigesat</string>
   <string name="app_name">Exchange-Servicer</string>
+  <string name="exception_cancel">
+        Dëse Rendezvous gouf anuléiert fir:
+        <xliff:g id="date">%s</xliff:g>
+    </string>
+  <string name="exception_updated">
+        D\'Detailer vun dësem Rendezvous goufe geännert fir:
+        <xliff:g id="date">%s</xliff:g>
+    </string>
   <string name="policy_dont_allow_storage_cards">Späicherkaarten net erlaben</string>
+  <string name="policy_dont_allow_unsigned_apps">Onsignéiert Appen net erlaben</string>
+  <string name="policy_dont_allow_unsigned_installers">D\'Installatioun vun onsignéierten Appen net erlaben</string>
   <string name="policy_dont_allow_wifi">WLAN net erlaben</string>
   <string name="policy_dont_allow_text_messaging">SMSen net erlaben</string>
   <string name="policy_dont_allow_pop_imap">POP3- an IMAP-Konten net erlaben</string>
@@ -71,9 +81,17 @@
   <string name="policy_dont_allow_browser">Browseren net erlaben</string>
   <string name="policy_dont_allow_consumer_email">Privat E-Mailen net erlaben</string>
   <string name="policy_dont_allow_internet_sharing">D\'Deele vun der Internetconnectioun net erlaben</string>
+  <string name="policy_require_smime">SMIME-Messagen verlaangen</string>
   <string name="policy_bluetooth_restricted">D\'Bluetooth-Benotzung aschränken</string>
   <string name="policy_app_blacklist">Spezifesch Appen net erlaben</string>
   <string name="policy_app_whitelist">Just spezifesch Appen erlaben</string>
+  <string name="policy_text_truncation">Text-E-Mail-Gréisst aschränken</string>
+  <string name="policy_html_truncation">HTML-E-Mail-Gréisst aschränken</string>
+  <string name="policy_require_sd_encryption">Verschlësselung vun der SD-Kaart verlaangen</string>
+  <string name="policy_dont_allow_attachments">Unhäng net erlaben</string>
+  <string name="policy_max_attachment_size">Gréisst vun den Unhäng limitéieren</string>
+  <string name="policy_require_manual_sync_roaming">Just manuell Synchroniséierung beim Roaming erlaben</string>
+  <string name="policy_require_encryption">Verschlësselung vum Apparat verlaangen</string>
   <string name="account_setup_options_mail_window_auto">Automatesch</string>
   <string name="account_setup_options_mail_window_1day">Een Dag</string>
   <string name="account_setup_options_mail_window_3days">Dräi Deeg</string>
@@ -82,4 +100,5 @@
   <string name="account_setup_options_mail_window_1month">Ee Mount</string>
   <string name="account_setup_options_mail_window_all">All</string>
   <string name="auth_error_notification_title">Authentifizéierungsfeeler</string>
+  <string name="auth_error_notification_text">Drécke fir d\'Kontenastellunge fir <xliff:g id="account">%s</xliff:g> z\'änneren</string>
 </resources>
