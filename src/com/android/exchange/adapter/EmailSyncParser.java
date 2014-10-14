@@ -901,16 +901,6 @@ public class EmailSyncParser extends AbstractSyncParser {
             boolean force)
             throws RemoteException, OperationApplicationException {
         if (force ||  ops.size() >= maxOpsPerBatch) {
-            // STOPSHIP Remove calculating size of data before ship
-            if (LogUtils.isLoggable(TAG, Log.DEBUG)) {
-                final Parcel parcel = Parcel.obtain();
-                for (ContentProviderOperation op : ops) {
-                    op.writeToParcel(parcel, 0);
-                }
-                Log.d(TAG, String.format("Committing %d ops total size=%d",
-                        ops.size(), parcel.dataSize()));
-                parcel.recycle();
-            }
             mContentResolver.applyBatch(EmailContent.AUTHORITY, ops);
             ops.clear();
         }
