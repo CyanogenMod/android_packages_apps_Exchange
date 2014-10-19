@@ -62,5 +62,5 @@
     <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"सभी"</string>
     <string name="auth_error_notification_title" msgid="6768042010440968454">"प्रमाणीकरण त्रुटि"</string>
     <string name="auth_error_notification_text" msgid="3590528965691740509">"<xliff:g id="ACCOUNT">%s</xliff:g> खाते की सेटिंग संपादित करने के लिए स्पर्श करें"</string>
-    <string name="email_settings_not_available" msgid="59579952494440349">"सेटिंग देखने के लिए ईमेल ऐप्लिकेशन पुनः सक्षम करें."</string>
+    <string name="email_settings_not_available" msgid="59579952494440349">"सेटिंग देखने के लिए ईमेल ऐप्लिकेशन फिर से सक्षम करें."</string>
 </resources>
