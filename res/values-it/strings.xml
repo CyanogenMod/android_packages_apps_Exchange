@@ -16,51 +16,51 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="exchange_name_alternate" msgid="5772529644749041052">"Microsoft Exchange ActiveSync"</string>
-    <string name="meeting_accepted" msgid="8796609373330400268">"Accettato: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_declined" msgid="6707617183246608552">"Rifiutato: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_tentative" msgid="8250995722130443785">"Tentativo: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_canceled" msgid="3949893881872084244">"Annullato: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_updated" msgid="8529675857361702860">"Aggiornamento riuscito: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
-    <string name="meeting_when" msgid="2765696159697448656">"Quando: <xliff:g id="WHEN">%s</xliff:g>"</string>
-    <string name="meeting_where" msgid="5992367535856553079">"Dove: <xliff:g id="WHERE">%s</xliff:g>"</string>
-    <string name="meeting_recurring" msgid="3134262212606714023">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (ricorrente)"</string>
-    <string name="meeting_allday" msgid="6696389765484663513">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (tutto il giorno)"</string>
-    <string name="meeting_allday_recurring" msgid="2320264182781062684">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (tutto il giorno, ricorrente)"</string>
-    <string name="notification_exchange_calendar_added" msgid="6823659622379350159">"Calendario Exchange aggiunto"</string>
-    <string name="app_name" msgid="5316597712787122829">"Servizi Exchange"</string>
-    <string name="exception_cancel" msgid="6160117429428313805">"Questo evento è stato annullato per la data: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="exception_updated" msgid="3397583105901142050">"I dettagli di questo evento sono cambiati per la data: <xliff:g id="DATE">%s</xliff:g>"</string>
-    <string name="policy_dont_allow_storage_cards" msgid="2765447013574188473">"Non consentire schede di memoria"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="4896164334956001479">"Non consentire applicazioni non firmate"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="1326544905185523540">"Non consentire installer app. non firmate"</string>
-    <string name="policy_dont_allow_wifi" msgid="3109487776704143995">"Non consentire Wi-Fi"</string>
-    <string name="policy_dont_allow_text_messaging" msgid="7846141657345860427">"Non consentire messaggi di testo"</string>
-    <string name="policy_dont_allow_pop_imap" msgid="4702932192358698651">"Non consentire account POP3 o IMAP"</string>
-    <string name="policy_dont_allow_irda" msgid="1848561629495912430">"Non consentire comunicazione a infrarossi"</string>
-    <string name="policy_dont_allow_html" msgid="5888652525907651489">"Non consentire email HTML"</string>
-    <string name="policy_dont_allow_browser" msgid="1018764395507493616">"Non consentire browser"</string>
-    <string name="policy_dont_allow_consumer_email" msgid="6958427300686692292">"Non consentire email di livello consumer"</string>
-    <string name="policy_dont_allow_internet_sharing" msgid="2370083814654927695">"Non consentire condivisione Internet"</string>
-    <string name="policy_require_smime" msgid="673557150920820590">"Richiedi messaggi SMIME"</string>
-    <string name="policy_bluetooth_restricted" msgid="5248824127186039567">"Limita utilizzo Bluetooth"</string>
-    <string name="policy_app_blacklist" msgid="8169194058285873461">"Non consentire applicazioni specificate"</string>
-    <string name="policy_app_whitelist" msgid="3670572644342165306">"Consenti solo applicazioni specificate"</string>
-    <string name="policy_text_truncation" msgid="1783448050735715818">"Limita dimensioni testo email"</string>
-    <string name="policy_html_truncation" msgid="102158408055486343">"Limita dimensioni email HTML"</string>
-    <string name="policy_require_sd_encryption" msgid="366468398301273342">"Richiedi crittografia scheda SD"</string>
-    <string name="policy_dont_allow_attachments" msgid="6250520458670348907">"Non consentire allegati"</string>
-    <string name="policy_max_attachment_size" msgid="4020279603050888661">"Limita dimensioni allegati"</string>
-    <string name="policy_require_manual_sync_roaming" msgid="6637416341015662148">"Consenti solo sincr. manuale in roaming"</string>
-    <string name="policy_require_encryption" msgid="7984702283392885348">"Richiedi crittografia dispositivo"</string>
-    <string name="account_setup_options_mail_window_auto" msgid="4188895354366183790">"Automatico"</string>
-    <string name="account_setup_options_mail_window_1day" msgid="3965715241135811407">"Un giorno"</string>
-    <string name="account_setup_options_mail_window_3days" msgid="736181102295878114">"Tre giorni"</string>
-    <string name="account_setup_options_mail_window_1week" msgid="5639718031108023741">"Una settimana"</string>
-    <string name="account_setup_options_mail_window_2weeks" msgid="4567049268124213035">"Due settimane"</string>
-    <string name="account_setup_options_mail_window_1month" msgid="5846359669750047081">"Un mese"</string>
-    <string name="account_setup_options_mail_window_all" msgid="5372861827683632364">"Tutto"</string>
-    <string name="auth_error_notification_title" msgid="8108639432449021675">"Errore di autenticazione"</string>
-    <string name="auth_error_notification_text" msgid="6813530336397532878">"Tocca per modificare le impostazioni dell\'account <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
-    <string name="email_settings_not_available" msgid="3139586580003323185">"Riattiva l\'app Email per visualizzare le impostazioni."</string>
+    <string name="exchange_name_alternate" msgid="293118547772095111">"Microsoft Exchange ActiveSync"</string>
+    <string name="meeting_accepted" msgid="3212429159225789973">"Accettato: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_declined" msgid="1171426219920875691">"Rifiutato: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_tentative" msgid="5057443956630531997">"Tentativo: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_canceled" msgid="3913922862382539900">"Annullato: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_updated" msgid="5960663236439072658">"Aggiornamento riuscito: <xliff:g id="SUBJECT">%s</xliff:g>"</string>
+    <string name="meeting_when" msgid="1905576664682173880">"Quando: <xliff:g id="WHEN">%s</xliff:g>"</string>
+    <string name="meeting_where" msgid="6498631574145121862">"Dove: <xliff:g id="WHERE">%s</xliff:g>"</string>
+    <string name="meeting_recurring" msgid="2752008481765880928">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (ricorrente)"</string>
+    <string name="meeting_allday" msgid="7251209063071628040">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (tutto il giorno)"</string>
+    <string name="meeting_allday_recurring" msgid="4545762363537362545">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (tutto il giorno, ricorrente)"</string>
+    <string name="notification_exchange_calendar_added" msgid="8998454267739748113">"Calendario Exchange aggiunto"</string>
+    <string name="app_name" msgid="1707639359526090662">"Servizi Exchange"</string>
+    <string name="exception_cancel" msgid="8972887597771126871">"Questo evento è stato annullato per la data: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="exception_updated" msgid="329192591551400871">"I dettagli di questo evento sono cambiati per la data: <xliff:g id="DATE">%s</xliff:g>"</string>
+    <string name="policy_dont_allow_storage_cards" msgid="1305111581282078881">"Non consentire schede di memoria"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"Non consentire applicazioni non firmate"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Non consentire installer app. non firmate"</string>
+    <string name="policy_dont_allow_wifi" msgid="8501275982154914194">"Non consentire Wi-Fi"</string>
+    <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"Non consentire messaggi di testo"</string>
+    <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"Non consentire account POP3 o IMAP"</string>
+    <string name="policy_dont_allow_irda" msgid="8230803019935893114">"Non consentire comunicazione a infrarossi"</string>
+    <string name="policy_dont_allow_html" msgid="3909470006782362967">"Non consentire email HTML"</string>
+    <string name="policy_dont_allow_browser" msgid="241728112385525092">"Non consentire browser"</string>
+    <string name="policy_dont_allow_consumer_email" msgid="2473755560531860915">"Non consentire email di livello consumer"</string>
+    <string name="policy_dont_allow_internet_sharing" msgid="8926902533477728994">"Non consentire condivisione Internet"</string>
+    <string name="policy_require_smime" msgid="6445017199744800426">"Richiedi messaggi SMIME"</string>
+    <string name="policy_bluetooth_restricted" msgid="2877695021606992022">"Limita utilizzo Bluetooth"</string>
+    <string name="policy_app_blacklist" msgid="6955451921925210944">"Non consentire applicazioni specificate"</string>
+    <string name="policy_app_whitelist" msgid="73673250614393830">"Consenti solo applicazioni specificate"</string>
+    <string name="policy_text_truncation" msgid="2098855720139889616">"Limita dimensioni testo email"</string>
+    <string name="policy_html_truncation" msgid="4913206221060438112">"Limita dimensioni email HTML"</string>
+    <string name="policy_require_sd_encryption" msgid="3911913080904633038">"Richiedi crittografia scheda SD"</string>
+    <string name="policy_dont_allow_attachments" msgid="8422502533001368811">"Non consentire allegati"</string>
+    <string name="policy_max_attachment_size" msgid="8872049367518056209">"Limita dimensioni allegati"</string>
+    <string name="policy_require_manual_sync_roaming" msgid="4779633041935012627">"Consenti solo sincr. manuale in roaming"</string>
+    <string name="policy_require_encryption" msgid="4176146021220010140">"Richiedi crittografia dispositivo"</string>
+    <string name="account_setup_options_mail_window_auto" msgid="7407981634952005775">"Automatico"</string>
+    <string name="account_setup_options_mail_window_1day" msgid="4169162439752592189">"Un giorno"</string>
+    <string name="account_setup_options_mail_window_3days" msgid="2330167870774583574">"Tre giorni"</string>
+    <string name="account_setup_options_mail_window_1week" msgid="5066291978475859713">"Una settimana"</string>
+    <string name="account_setup_options_mail_window_2weeks" msgid="2127842445792663461">"Due settimane"</string>
+    <string name="account_setup_options_mail_window_1month" msgid="4785039795926771180">"Un mese"</string>
+    <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"Tutto"</string>
+    <string name="auth_error_notification_title" msgid="6768042010440968454">"Errore di autenticazione"</string>
+    <string name="auth_error_notification_text" msgid="3590528965691740509">"Tocca per modificare le impostazioni dell\'account <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
+    <string name="email_settings_not_available" msgid="59579952494440349">"Riattiva l\'app Email per visualizzare le impostazioni."</string>
 </resources>
