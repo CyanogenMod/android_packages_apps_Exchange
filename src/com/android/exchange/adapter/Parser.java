@@ -420,7 +420,7 @@ public abstract class Parser {
         push(id);
     }
 
-    private void pop() {
+    protected void pop() {
         // Retrieve the now-current startTag from our stack
         startTag = startTagArray.removeFirst();
         log("</" + startTag + '>');
