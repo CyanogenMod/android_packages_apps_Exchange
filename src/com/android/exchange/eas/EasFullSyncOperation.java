@@ -5,7 +5,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 
@@ -240,31 +239,34 @@ public class EasFullSyncOperation extends EasOperation {
             return EmailServiceStatus.SUCCESS;
         }
 
-        int result = 0;
+        int syncResult = 0;
         // Non-mailbox syncs are whole account syncs initiated by the AccountManager and are
         // treated as background syncs.
         if (mailbox.mType == Mailbox.TYPE_OUTBOX || mailbox.isSyncable()) {
             final ContentValues cv = new ContentValues(2);
-            updateMailbox(mailbox, cv, isUserSync ?
-                    EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND);
+            final int syncStatus = isUserSync ?
+                    EmailContent.SYNC_STATUS_USER : EmailContent.SYNC_STATUS_BACKGROUND;
+            updateMailbox(mailbox, cv, syncStatus);
             try {
                 if (mailbox.mType == Mailbox.TYPE_OUTBOX) {
                     return syncOutbox(mailbox.mId);
                 }
                 if (hasCallbackMethod) {
-                    EmailServiceStatus.syncMailboxStatus(mContext.getContentResolver(), mSyncExtras,
-                            mailbox.mId, EmailServiceStatus.IN_PROGRESS, 0,
+                    final int lastSyncResult = UIProvider.createSyncValue(syncStatus,
                             UIProvider.LastSyncResult.SUCCESS);
+                    EmailServiceStatus.syncMailboxStatus(mContext.getContentResolver(), mSyncExtras,
+                            mailbox.mId, EmailServiceStatus.IN_PROGRESS, 0, lastSyncResult);
                 }
                 final EasSyncBase operation = new EasSyncBase(mContext, mAccount, mailbox);
                 LogUtils.d(TAG, "IEmailService.syncMailbox account %d", mAccount.mId);
-                result = operation.performOperation();
+                syncResult = operation.performOperation();
             } finally {
                 updateMailbox(mailbox, cv, EmailContent.SYNC_STATUS_NONE);
                 if (hasCallbackMethod) {
+                    final int uiSyncResult = translateSyncResultToUiResult(syncResult);
+                    final int lastSyncResult = UIProvider.createSyncValue(syncStatus, uiSyncResult);
                     EmailServiceStatus.syncMailboxStatus(mContext.getContentResolver(), mSyncExtras,
-                            mailbox.mId, EmailServiceStatus.SUCCESS, 0,
-                            EasOperation.translateSyncResultToUiResult(result));
+                            mailbox.mId, EmailServiceStatus.SUCCESS, 0, lastSyncResult);
                 }
             }
         } else {
@@ -272,7 +274,7 @@ public class EasFullSyncOperation extends EasOperation {
             LogUtils.d(TAG, "Skipping sync of non syncable folder");
         }
 
-        return result;
+        return syncResult;
     }
 
     private int syncOutbox(final long mailboxId) {
