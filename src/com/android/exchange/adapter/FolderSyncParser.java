@@ -430,6 +430,11 @@ public class FolderSyncParser extends AbstractSyncParser {
 
         final boolean shouldSync = fromServer && Mailbox.getDefaultSyncStateForType(mailboxType);
         cv.put(MailboxColumns.SYNC_INTERVAL, shouldSync ? 1 : 0);
+        if (shouldSync) {
+            cv.put(MailboxColumns.UI_SYNC_STATUS, UIProvider.SyncStatus.INITIAL_SYNC_NEEDED);
+        } else {
+            cv.put(MailboxColumns.UI_SYNC_STATUS, UIProvider.SyncStatus.NO_SYNC);
+        }
 
         // Set basic flags
         int flags = 0;
