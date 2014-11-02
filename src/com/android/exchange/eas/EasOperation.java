@@ -314,6 +314,14 @@ public abstract class EasOperation {
             return RESULT_INITIALIZATION_FAILURE;
         }
 
+        try {
+            return performOperationInternal();
+        } finally {
+            onRequestComplete();
+        }
+    }
+
+    private int performOperationInternal() {
         // We handle server redirects by looping, but we need to protect against too much looping.
         int redirectCount = 0;
 
@@ -452,6 +460,13 @@ public abstract class EasOperation {
     protected void onRequestMade() {
         // This can be overridden to do any cleanup that must happen after the request has
         // been sent. It will always be called, regardless of the status of the request.
+    }
+
+    protected void onRequestComplete() {
+        // This can be overridden to do any cleanup that must happen after the request has
+        // finished. (i.e. either the response has come back and been processed, or some error
+        // has occurred and we have given up.
+        // It will always be called, regardless of the status of the response.
     }
 
     protected int handleHttpError(final int httpStatus) {
