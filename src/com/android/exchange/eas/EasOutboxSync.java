@@ -348,8 +348,10 @@ public class EasOutboxSync extends EasOperation {
             if (reply && forward) {
                 return null;
             }
-            // If we don't support SmartForward and it's a forward, then don't proceed.
-            if (forward && (account.mFlags & Account.FLAGS_SUPPORTS_SMART_FORWARD) == 0) {
+            // If we don't support SmartForward, then don't proceed.
+            // TODO: For now, we assume that if we do not support Smart Forward, we also don't
+            // support Smart Reply. At some point, perhaps these should be separate flags.
+            if ((account.mFlags & Account.FLAGS_SUPPORTS_SMART_FORWARD) == 0) {
                 return null;
             }
 
