@@ -96,10 +96,6 @@
         (all day, recurring)
     </string>
 
-    <!-- Notification message in notifications window when calendar sync is
-        automatically enabled for pre-existing Exchange accounts on upgrade -->
-    <string name="notification_exchange_calendar_added">Exchange calendar added</string>
-
     <!-- The name of this APK as shown in manage applications settings. [CHAR LIMIT=30] -->
     <string name="app_name" >Exchange Services</string>
 
