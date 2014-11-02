@@ -83,10 +83,9 @@ public class EasOutboxSync extends EasOperation {
      * need to reset any derived values (eg, mIsEas14).
      */
     @Override
-    public boolean init(final boolean allowReload) {
-        final boolean haveValidAccount = super.init(allowReload);
+    public boolean init() {
         initEas14();
-        return haveValidAccount;
+        return true;
     }
 
     private void initEas14() {
