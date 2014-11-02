@@ -20,6 +20,7 @@ import android.app.Service;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -67,6 +68,10 @@ import java.util.Set;
 public class EasService extends Service {
 
     private static final String TAG = Eas.LOG_TAG;
+
+    private static final String PREFERENCES_FILE = "ExchangePrefs";
+    private static final String PROTOCOL_LOGGING_PREF = "ProtocolLogging";
+    private static final String FILE_LOGGING_PREF = "FileLogging";
 
     public static final String EXTRA_START_PING = "START_PING";
     public static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
@@ -217,7 +222,11 @@ public class EasService extends Service {
             // be turned off.
             sProtocolLogging = ((flags & EmailServiceProxy.DEBUG_EXCHANGE_BIT) != 0);
             sFileLogging = ((flags & EmailServiceProxy.DEBUG_FILE_BIT) != 0);
-            LogUtils.d(TAG, "IEmailService.setLogging %d", flags);
+            SharedPreferences sharedPrefs = EasService.this.getSharedPreferences(PREFERENCES_FILE,
+                    Context.MODE_PRIVATE);
+            sharedPrefs.edit().putBoolean(PROTOCOL_LOGGING_PREF, sProtocolLogging).apply();
+            sharedPrefs.edit().putBoolean(FILE_LOGGING_PREF, sFileLogging).apply();
+            LogUtils.d(TAG, "IEmailService.setLogging %d, storing to shared pref", flags);
         }
 
         @Override
@@ -283,8 +292,6 @@ public class EasService extends Service {
     public EasService() {
         super();
         mSynchronizer = new PingSyncSynchronizer(this);
-        sProtocolLogging = false;
-        sFileLogging = false;
     }
 
     @Override
@@ -298,7 +305,10 @@ public class EasService extends Service {
                 CalendarContract.AUTHORITY,
                 ContactsContract.AUTHORITY
         };
-
+        SharedPreferences sharedPrefs = EasService.this.getSharedPreferences(PREFERENCES_FILE,
+                Context.MODE_PRIVATE);
+        sProtocolLogging = sharedPrefs.getBoolean(PROTOCOL_LOGGING_PREF, false);
+        sFileLogging = sharedPrefs.getBoolean(FILE_LOGGING_PREF, false);
         // Restart push for all accounts that need it. Because this requires DB loads, we do it in
         // an AsyncTask, and we startService to ensure that we stick around long enough for the
         // task to complete. The task will stop the service if necessary after it's done.
