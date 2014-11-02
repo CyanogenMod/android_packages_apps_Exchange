@@ -88,7 +88,7 @@ public class PingSyncSynchronizer {
     // should not be needed, but if there is a software error that results in
     // the ping being lost, this is a fallback to make sure that messages are
     // not delayed more than an hour.
-    private static final boolean SCHEDULE_KICK = false;
+    private static final boolean SCHEDULE_KICK = true;
     private static final long KICK_SYNC_INTERVAL_SECONDS =
             DateUtils.HOUR_IN_MILLIS / DateUtils.SECOND_IN_MILLIS;
 
