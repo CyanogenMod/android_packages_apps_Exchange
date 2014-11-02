@@ -764,6 +764,12 @@ public class FolderSyncParser extends AbstractSyncParser {
 
     @Override
     protected void wipe() {
+        if (mAccountId == EmailContent.NOT_SAVED) {
+            // This is a dummy account so we don't need to do anything yet.
+            return;
+        }
+
+        // For real accounts, let's go ahead and wipe some data.
         EasSyncCalendar.wipeAccountFromContentProvider(mContext,
                 mAccount.mEmailAddress);
         EasSyncContacts.wipeAccountFromContentProvider(mContext,
