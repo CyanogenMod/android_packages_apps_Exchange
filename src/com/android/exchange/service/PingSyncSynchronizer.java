@@ -187,10 +187,12 @@ public class PingSyncSynchronizer {
         private boolean pingEnd(final android.accounts.Account amAccount) {
             mPingTask = null;
             if (mSyncCount > 0) {
+                LogUtils.d(TAG, "PSS pingEnd, syncs still in progress.");
                 mCondition.signal();
                 return false;
             } else {
                 if (mPushEnabled) {
+                    LogUtils.d(TAG, "PSS pingEnd, starting new ping.");
                     /**
                      * This situation only arises if we encountered some sort of error that
                      * stopped our ping but not due to a sync interruption. In this scenario
@@ -200,6 +202,7 @@ public class PingSyncSynchronizer {
                     return false;
                 }
             }
+            LogUtils.d(TAG, "PSS pingEnd, no longer need ping.");
             return true;
         }
 
@@ -223,6 +226,7 @@ public class PingSyncSynchronizer {
          * Modifies or starts a ping for this account if no syncs are running.
          */
         public void pushModify(final Account account, final PingSyncSynchronizer synchronizer) {
+            LogUtils.d(LogUtils.TAG, "PSS pushModify");
             mPushEnabled = true;
             final android.accounts.Account amAccount =
                     new android.accounts.Account(account.mEmailAddress,
@@ -250,6 +254,7 @@ public class PingSyncSynchronizer {
          * Stop the currently running ping.
          */
         public void pushStop() {
+            LogUtils.d(LogUtils.TAG, "PSS pushStop");
             mPushEnabled = false;
             if (mPingTask != null) {
                 mPingTask.stop();
