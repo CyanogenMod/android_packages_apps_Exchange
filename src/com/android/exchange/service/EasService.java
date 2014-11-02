@@ -118,7 +118,12 @@ public class EasService extends Service {
 
         public int sync(final long accountId, Bundle syncExtras) {
             EasFullSyncOperation op = new EasFullSyncOperation(EasService.this, accountId, syncExtras);
-            return convertToEmailServiceStatus(doOperation(op, "IEmailService.sync"));
+            final int result = doOperation(op, "IEmailService.sync");
+            if (result == EasFullSyncOperation.RESULT_SECURITY_HOLD) {
+                LogUtils.i(LogUtils.TAG, "Security Hold trying to sync");
+                return EmailServiceStatus.INTERNAL_ERROR;
+            }
+            return convertToEmailServiceStatus(result);
         }
 
         @Override
