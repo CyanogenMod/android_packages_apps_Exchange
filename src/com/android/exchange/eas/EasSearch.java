@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SyncResult;
 
 import com.android.emailcommon.Logging;
+import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.service.SearchParams;
 import com.android.exchange.CommandStatusException;
@@ -41,9 +42,9 @@ public class EasSearch extends EasOperation {
     int mTotalResults;
     Mailbox mSearchMailbox;
 
-    public EasSearch(final Context context, final long accountId, final SearchParams searchParams,
+    public EasSearch(final Context context, final Account account, final SearchParams searchParams,
         final long destMailboxId) {
-        super(context, accountId);
+        super(context, account);
         mSearchParams = searchParams;
         mDestMailboxId = destMailboxId;
     }
