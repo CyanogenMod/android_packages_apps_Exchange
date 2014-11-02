@@ -133,7 +133,7 @@ public class Eas {
         // DEBUG takes precedence and is never true in a user build
         if (!DEBUG) {
             USER_LOG = (state & EmailServiceProxy.DEBUG_BIT) != 0;
-            PARSER_LOG = (state & EmailServiceProxy.DEBUG_VERBOSE_BIT) != 0;
+            PARSER_LOG = (state & EmailServiceProxy.DEBUG_EXCHANGE_BIT) != 0;
             FILE_LOG = (state & EmailServiceProxy.DEBUG_FILE_BIT) != 0;
             if (FILE_LOG || PARSER_LOG) {
                 USER_LOG = true;
