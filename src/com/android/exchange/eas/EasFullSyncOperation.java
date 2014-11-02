@@ -307,6 +307,8 @@ public class EasFullSyncOperation extends EasOperation {
                 if (result == EasOutboxSync.RESULT_ITEM_NOT_FOUND) {
                     // This can happen if we are using smartReply, and the message we are referring
                     // to has disappeared from the server. Try again with smartReply disabled.
+                    // This should be a legitimate, but unusual case. Log a warning.
+                    LogUtils.w(TAG, "WARNING: EasOutboxSync falling back from smartReply");
                     op = new EasOutboxSync(mContext, mAccount, message, false);
                     result = op.performOperation();
                 }
