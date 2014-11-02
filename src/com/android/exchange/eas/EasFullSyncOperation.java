@@ -147,6 +147,7 @@ public class EasFullSyncOperation extends EasOperation {
 
         // Do not permit further syncs if we're on security hold.
         if ((mAccount.mFlags & Account.FLAGS_SECURITY_HOLD) != 0) {
+            LogUtils.d(TAG, "Account is on security hold %d", mAccount.getId());
             return RESULT_SECURITY_HOLD;
         }
 
