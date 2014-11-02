@@ -402,6 +402,7 @@ public class EasService extends Service {
                     while (c.moveToNext()) {
                         final int mailboxType = c.getInt(Mailbox.CONTENT_TYPE_COLUMN);
                         if (authsToSync.contains(Mailbox.getAuthority(mailboxType))) {
+                            LogUtils.d(TAG, "should ping for account %d", account.mId);
                             return true;
                         }
                     }
