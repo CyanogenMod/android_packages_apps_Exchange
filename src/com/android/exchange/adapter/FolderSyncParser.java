@@ -202,8 +202,8 @@ public class FolderSyncParser extends AbstractSyncParser {
         mInitialSync = (mAccount.mSyncKey == null) || "0".equals(mAccount.mSyncKey);
         if (mInitialSync) {
             // We're resyncing all folders for this account, so nuke any existing ones.
-            mContentResolver.delete(Mailbox.CONTENT_URI, WHERE_ACCOUNT_KEY,
-                    new String[] {mAccountIdAsString});
+            // wipe() will also backup and then restore non default sync settings.
+            wipe();
         }
         if (nextTag(START_DOCUMENT) != Tags.FOLDER_FOLDER_SYNC)
             throw new EasParserException();
