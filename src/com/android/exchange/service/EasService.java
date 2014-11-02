@@ -100,15 +100,22 @@ public class EasService extends Service {
         public void loadAttachment(final IEmailServiceCallback callback, final long accountId,
                 final long attachmentId, final boolean background) {
             LogUtils.d(TAG, "IEmailService.loadAttachment: %d", attachmentId);
-            final EasLoadAttachment operation = new EasLoadAttachment(EasService.this, accountId,
-                    attachmentId, callback);
-            doOperation(operation, "IEmailService.loadAttachment");
+            final Account account = loadAccount(EasService.this, accountId);
+            if (account != null) {
+                final EasLoadAttachment operation = new EasLoadAttachment(EasService.this, account,
+                        attachmentId, callback);
+                doOperation(operation, "IEmailService.loadAttachment");
+            }
         }
 
         @Override
         public void updateFolderList(final long accountId) {
-            final EasFolderSync operation = new EasFolderSync(EasService.this, accountId);
-            doOperation(operation, "IEmailService.updateFolderList");
+            LogUtils.d(TAG, "IEmailService.updateFolderList: %d", accountId);
+            final Account account = loadAccount(EasService.this, accountId);
+            if (account != null) {
+                final EasFolderSync operation = new EasFolderSync(EasService.this, account);
+                doOperation(operation, "IEmailService.updateFolderList");
+            }
         }
 
         public void sendMail(final long accountId) {
@@ -117,13 +124,20 @@ public class EasService extends Service {
         }
 
         public int sync(final long accountId, Bundle syncExtras) {
-            EasFullSyncOperation op = new EasFullSyncOperation(EasService.this, accountId, syncExtras);
-            final int result = doOperation(op, "IEmailService.sync");
-            if (result == EasFullSyncOperation.RESULT_SECURITY_HOLD) {
-                LogUtils.i(LogUtils.TAG, "Security Hold trying to sync");
+            LogUtils.d(TAG, "IEmailService.updateFolderList: %d", accountId);
+            final Account account = loadAccount(EasService.this, accountId);
+            if (account != null) {
+                EasFullSyncOperation op = new EasFullSyncOperation(EasService.this, account,
+                        syncExtras);
+                final int result = doOperation(op, "IEmailService.sync");
+                if (result == EasFullSyncOperation.RESULT_SECURITY_HOLD) {
+                    LogUtils.i(LogUtils.TAG, "Security Hold trying to sync");
+                    return EmailServiceStatus.INTERNAL_ERROR;
+                }
+                return convertToEmailServiceStatus(result);
+            } else {
                 return EmailServiceStatus.INTERNAL_ERROR;
             }
-            return convertToEmailServiceStatus(result);
         }
 
         @Override
@@ -139,6 +153,7 @@ public class EasService extends Service {
 
         @Override
         public Bundle validate(final HostAuthCompat hostAuthCom) {
+            LogUtils.d(TAG, "IEmailService.validate");
             final HostAuth hostAuth = hostAuthCom.toHostAuth();
             final EasFolderSync operation = new EasFolderSync(EasService.this, hostAuth);
             doOperation(operation, "IEmailService.validate");
@@ -148,24 +163,33 @@ public class EasService extends Service {
         @Override
         public int searchMessages(final long accountId, final SearchParams searchParams,
                 final long destMailboxId) {
-            final EasSearch operation = new EasSearch(EasService.this, accountId, searchParams,
-                    destMailboxId);
-            doOperation(operation, "IEmailService.searchMessages");
-            return operation.getTotalResults();
+            LogUtils.d(TAG, "IEmailService.searchMessages");
+            final Account account = loadAccount(EasService.this, accountId);
+            if (account != null) {
+                final EasSearch operation = new EasSearch(EasService.this, account, searchParams,
+                        destMailboxId);
+                doOperation(operation, "IEmailService.searchMessages");
+                return operation.getTotalResults();
+            } else {
+                return 0;
+            }
         }
 
         @Override
         public void sendMeetingResponse(final long messageId, final int response) {
             EmailContent.Message msg = EmailContent.Message.restoreMessageWithId(EasService.this,
                     messageId);
+            LogUtils.d(TAG, "IEmailService.sendMeetingResponse");
             if (msg == null) {
                 LogUtils.e(TAG, "Could not load message %d in sendMeetingResponse", messageId);
                 return;
             }
-
-            final EasSendMeetingResponse operation = new EasSendMeetingResponse(EasService.this,
-                    msg.mAccountKey, msg, response);
-            doOperation(operation, "IEmailService.sendMeetingResponse");
+            final Account account = loadAccount(EasService.this, msg.mAccountKey);
+            if (account != null) {
+                final EasSendMeetingResponse operation = new EasSendMeetingResponse(EasService.this,
+                        account, msg, response);
+                doOperation(operation, "IEmailService.sendMeetingResponse");
+            }
         }
 
         @Override
@@ -224,8 +248,6 @@ public class EasService extends Service {
 
         @Override
         public void setLogging(final int flags) {
-            // TODO: This isn't persisted. If Exchange goes down and restarts, debugging will
-            // be turned off.
             sProtocolLogging = ((flags & EmailServiceProxy.DEBUG_EXCHANGE_BIT) != 0);
             sFileLogging = ((flags & EmailServiceProxy.DEBUG_FILE_BIT) != 0);
             SharedPreferences sharedPrefs = EasService.this.getSharedPreferences(PREFERENCES_FILE,
@@ -250,6 +272,14 @@ public class EasService extends Service {
             return EmailServiceVersion.CURRENT;
         }
     };
+
+    private static Account loadAccount(final Context context, final long accountId) {
+        Account account = Account.restoreAccountWithId(context, accountId);
+        if (account == null) {
+            LogUtils.e(TAG, "Could not load account %d", accountId);
+        }
+        return account;
+    }
 
     /**
      * Content selection string for getting all accounts that are configured for push.
@@ -439,18 +469,21 @@ public class EasService extends Service {
 
     static public GalResult searchGal(final Context context, final long accountId,
                                       final String filter, final int limit) {
-        final EasSearchGal operation = new EasSearchGal(context, accountId, filter, limit);
-        // We don't use doOperation() here for two reasons:
-        // 1. This is a static function, doOperation is not, and we don't have an instance of
-        // EasService.
-        // 2. All doOperation() does besides this is stop the ping and then restart it. This is
-        // required during syncs, but not for GalSearches.
-        final int result = operation.performOperation();
-        if (result == EasSearchGal.RESULT_OK) {
-            return operation.getResult();
-        } else {
-            return null;
+        GalResult galResult = null;
+        final Account account = loadAccount(context, accountId);
+        if (account != null) {
+            final EasSearchGal operation = new EasSearchGal(context, account, filter, limit);
+            // We don't use doOperation() here for two reasons:
+            // 1. This is a static function, doOperation is not, and we don't have an instance of
+            // EasService.
+            // 2. All doOperation() does besides this is stop the ping and then restart it. This is
+            // required during syncs, but not for GalSearches.
+            final int result = operation.performOperation();
+            if (result == EasSearchGal.RESULT_OK) {
+                galResult = operation.getResult();
+            }
         }
+        return galResult;
     }
 
     /**
