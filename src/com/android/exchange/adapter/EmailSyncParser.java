@@ -791,8 +791,12 @@ public class EmailSyncParser extends AbstractSyncParser {
             // Try again but apply batch after every message. The max message size defined in
             // Eas.EAS12_TRUNCATION_SIZE or Eas.EAS2_5_TRUNCATION_SIZE is small enough to fit
             // in a single Binder call.
-            LogUtils.w(TAG, "Transaction too large, retrying in single mode", e);
-            commitImpl(1);
+            LogUtils.w(TAG, e, "Transaction too large, retrying in single mode");
+            try {
+                commitImpl(1);
+            } catch (TransactionTooLargeException e) {
+                LogUtils.wtf(TAG, e, "Transaction too large with batch size one");
+            }
         }
     }
 
