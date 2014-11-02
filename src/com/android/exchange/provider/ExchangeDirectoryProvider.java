@@ -262,7 +262,7 @@ public class ExchangeDirectoryProvider extends ContentProvider {
                                 if (bundle != null && !bundle.getBoolean(
                                         Configuration.EXCHANGE_CONFIGURATION_USE_ALTERNATE_STRINGS,
                                         true)) {
-                                    exchangeName = R.string.exchange_name;
+                                    exchangeName = R.string.exchange_eas_name;
                                 }
                                 row[i] = exchangeName;
                             } else if (column.equals(Directory.DISPLAY_NAME)) {
