@@ -83,8 +83,6 @@ public class PingSyncSynchronizer {
     private static final String TAG = Eas.LOG_TAG;
 
     private static final long SYNC_ERROR_BACKOFF_MILLIS =  DateUtils.MINUTE_IN_MILLIS;
-    private static final String EXTRA_START_PING = "START_PING";
-    private static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
 
     // Enable this to make pings get automatically renewed every hour. This
     // should not be needed, but if there is a software error that results in
@@ -157,18 +155,17 @@ public class PingSyncSynchronizer {
                                final PingSyncSynchronizer synchronizer) {
             --mSyncCount;
             if (mSyncCount > 0) {
-                LogUtils.d(TAG, "Signalling a pending sync to proceed.");
+                LogUtils.d(TAG, "PSS Signalling a pending sync to proceed.");
                 mCondition.signal();
                 return false;
             } else {
                 if (mPushEnabled) {
                     if (lastSyncHadError) {
-                        final android.accounts.Account amAccount =
-                                new android.accounts.Account(account.mEmailAddress,
-                                    Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                        scheduleDelayedPing(synchronizer.getContext(), amAccount);
+                        LogUtils.d(TAG, "PSS last sync had error.");
+                        scheduleDelayedPing(synchronizer.getContext(), account);
                         return true;
                     } else {
+                        LogUtils.d(TAG, "PSS last sync succeeded.");
                         final android.accounts.Account amAccount =
                                 new android.accounts.Account(account.mEmailAddress,
                                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
@@ -179,6 +176,7 @@ public class PingSyncSynchronizer {
                     }
                 }
             }
+            LogUtils.d(TAG, "PSS no push enabled.");
             return true;
         }
 
@@ -206,12 +204,13 @@ public class PingSyncSynchronizer {
         }
 
         private void scheduleDelayedPing(final Context context,
-                                         final android.accounts.Account amAccount) {
-            LogUtils.d(TAG, "Scheduling a delayed ping.");
-            final Intent intent = new Intent(context, EmailSyncAdapterService.class);
+                                         final Account account) {
+            LogUtils.d(TAG, "PSS Scheduling a delayed ping.");
+            final Intent intent = new Intent(context, EasService.class);
             intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
-            intent.putExtra(EXTRA_START_PING, true);
-            intent.putExtra(EXTRA_PING_ACCOUNT, amAccount);
+            intent.putExtra(EasService.EXTRA_START_PING, true);
+            intent.putExtra(EasService.EXTRA_PING_ACCOUNT, account);
+
             final PendingIntent pi = PendingIntent.getService(context, 0, intent,
                     PendingIntent.FLAG_ONE_SHOT);
             final AlarmManager am = (AlarmManager)context.getSystemService(
