@@ -95,15 +95,20 @@ public class PingSyncSynchronizer {
     /**
      * This class handles bookkeeping for a single account.
      */
-    private static class AccountSyncState {
+    private class AccountSyncState {
         /** The currently running {@link PingTask}, or null if we aren't in the middle of a Ping. */
         private PingTask mPingTask;
+
+        // Values for mPushEnabled.
+        public static final int PUSH_UNKNOWN = 0;
+        public static final int PUSH_ENABLED = 1;
+        public static final int PUSH_DISABLED = 2;
 
         /**
          * Tracks whether this account wants to get push notifications, based on calls to
          * {@link #pushModify} and {@link #pushStop} (i.e. it tracks the last requested push state).
          */
-        private boolean mPushEnabled;
+        private int mPushEnabled;
 
         /**
          * The number of syncs that are blocked waiting for the current operation to complete.
@@ -115,9 +120,12 @@ public class PingSyncSynchronizer {
         /** The condition on which to block syncs that need to wait. */
         private Condition mCondition;
 
-        public AccountSyncState(final Lock lock ) {
+        public AccountSyncState(final Lock lock) {
             mPingTask = null;
-            mPushEnabled = false;
+            // We don't yet have enough information to know whether or not push should be enabled.
+            // We need to look up the account and it's folders, which won't yet exist for a newly
+            // created account.
+            mPushEnabled = PUSH_UNKNOWN;
             mSyncCount = 0;
             mCondition = lock.newCondition();
         }
@@ -155,17 +163,22 @@ public class PingSyncSynchronizer {
                                final PingSyncSynchronizer synchronizer) {
             --mSyncCount;
             if (mSyncCount > 0) {
-                LogUtils.d(TAG, "PSS Signalling a pending sync to proceed.");
+                LogUtils.i(TAG, "PSS Signalling a pending sync to proceed.");
                 mCondition.signal();
                 return false;
             } else {
-                if (mPushEnabled) {
+                if (mPushEnabled == PUSH_UNKNOWN) {
+                    LogUtils.i(TAG, "PSS push enabled is unknown");
+                    mPushEnabled = (EasService.pingNeededForAccount(mService, account) ?
+                            PUSH_ENABLED : PUSH_DISABLED);
+                }
+                if (mPushEnabled == PUSH_ENABLED) {
                     if (lastSyncHadError) {
-                        LogUtils.d(TAG, "PSS last sync had error.");
+                        LogUtils.i(TAG, "PSS last sync had error.");
                         scheduleDelayedPing(synchronizer.getContext(), account);
                         return true;
                     } else {
-                        LogUtils.d(TAG, "PSS last sync succeeded.");
+                        LogUtils.i(TAG, "PSS last sync succeeded.");
                         final android.accounts.Account amAccount =
                                 new android.accounts.Account(account.mEmailAddress,
                                         Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
@@ -176,7 +189,7 @@ public class PingSyncSynchronizer {
                     }
                 }
             }
-            LogUtils.d(TAG, "PSS no push enabled.");
+            LogUtils.i(TAG, "PSS no push enabled.");
             return true;
         }
 
@@ -191,8 +204,16 @@ public class PingSyncSynchronizer {
                 mCondition.signal();
                 return false;
             } else {
-                if (mPushEnabled) {
-                    LogUtils.d(TAG, "PSS pingEnd, starting new ping.");
+                if (mPushEnabled == PUSH_ENABLED || mPushEnabled == PUSH_UNKNOWN) {
+                    if (mPushEnabled == PUSH_UNKNOWN) {
+                        // This should not occur. If mPushEnabled is unknown, we should not
+                        // have started a ping. Still, we'd rather err on the side of restarting
+                        // the ping, so log an error and request a new ping. Eventually we should
+                        // do a sync, and then we'll correctly initialize mPushEnabled in
+                        // syncEnd().
+                        LogUtils.e(TAG, "PSS pingEnd, with mPushEnabled UNKNOWN?");
+                    }
+                    LogUtils.i(TAG, "PSS pingEnd, starting new ping.");
                     /**
                      * This situation only arises if we encountered some sort of error that
                      * stopped our ping but not due to a sync interruption. In this scenario
@@ -208,7 +229,7 @@ public class PingSyncSynchronizer {
 
         private void scheduleDelayedPing(final Context context,
                                          final Account account) {
-            LogUtils.d(TAG, "PSS Scheduling a delayed ping.");
+            LogUtils.i(TAG, "PSS Scheduling a delayed ping.");
             final Intent intent = new Intent(context, EasService.class);
             intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
             intent.putExtra(EasService.EXTRA_START_PING, true);
@@ -226,8 +247,8 @@ public class PingSyncSynchronizer {
          * Modifies or starts a ping for this account if no syncs are running.
          */
         public void pushModify(final Account account, final PingSyncSynchronizer synchronizer) {
-            LogUtils.d(LogUtils.TAG, "PSS pushModify");
-            mPushEnabled = true;
+            LogUtils.i(LogUtils.TAG, "PSS pushModify");
+            mPushEnabled = PUSH_ENABLED;
             final android.accounts.Account amAccount =
                     new android.accounts.Account(account.mEmailAddress,
                             Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
@@ -254,8 +275,8 @@ public class PingSyncSynchronizer {
          * Stop the currently running ping.
          */
         public void pushStop() {
-            LogUtils.d(LogUtils.TAG, "PSS pushStop");
-            mPushEnabled = false;
+            LogUtils.i(LogUtils.TAG, "PSS pushStop");
+            mPushEnabled = PUSH_DISABLED;
             if (mPingTask != null) {
                 mPingTask.stop();
             }

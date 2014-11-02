@@ -125,7 +125,7 @@ public class EasService extends Service {
         public void pushModify(final long accountId) {
             LogUtils.d(TAG, "IEmailService.pushModify: %d", accountId);
             final Account account = Account.restoreAccountWithId(EasService.this, accountId);
-            if (pingNeededForAccount(account)) {
+            if (pingNeededForAccount(EasService.this, account)) {
                 mSynchronizer.pushModify(account);
             } else {
                 mSynchronizer.pushStop(accountId);
@@ -261,15 +261,16 @@ public class EasService extends Service {
 
         @Override
         protected Void doInBackground(Void... params) {
+            LogUtils.i(TAG, "RestartPingTask");
             final Cursor c = EasService.this.getContentResolver().query(Account.CONTENT_URI,
                     Account.CONTENT_PROJECTION, PUSH_ACCOUNTS_SELECTION, null, null);
             if (c != null) {
                 try {
                     while (c.moveToNext()) {
                         final Account account = new Account();
-                        LogUtils.d(TAG, "RestartPingsTask starting ping for %s", account);
                         account.restore(c);
-                        if (EasService.this.pingNeededForAccount(account)) {
+                        LogUtils.i(TAG, "RestartPingsTask starting ping for %d", account.getId());
+                        if (pingNeededForAccount(EasService.this, account)) {
                             mHasRestartedPing = true;
                             EasService.this.mSynchronizer.pushModify(account);
                         }
@@ -284,7 +285,7 @@ public class EasService extends Service {
         @Override
         protected void onPostExecute(Void result) {
             if (!mHasRestartedPing) {
-                LogUtils.d(TAG, "RestartPingsTask did not start any pings.");
+                LogUtils.i(TAG, "RestartPingsTask did not start any pings.");
                 EasService.this.mSynchronizer.stopServiceIfIdle();
             }
         }
@@ -297,7 +298,7 @@ public class EasService extends Service {
 
     @Override
     public void onCreate() {
-        LogUtils.d(TAG, "EasService.onCreate");
+        LogUtils.i(TAG, "EasService.onCreate");
         super.onCreate();
         TempDirectory.setTempDirectory(this);
         EmailContent.init(this);
@@ -319,6 +320,7 @@ public class EasService extends Service {
 
     @Override
     public void onDestroy() {
+        LogUtils.i(TAG, "onDestroy");
         mSynchronizer.stopAllPings();
     }
 
@@ -374,9 +376,10 @@ public class EasService extends Service {
      * Determine whether this account is configured with folders that are ready for push
      * notifications.
      * @param account The {@link Account} that we're interested in.
+     * @param context The context
      * @return Whether this account needs to ping.
      */
-    public boolean pingNeededForAccount(final Account account) {
+    public static boolean pingNeededForAccount(final Context context, final Account account) {
         // Check account existence.
         if (account == null || account.mId == Account.NO_ACCOUNT) {
             LogUtils.d(TAG, "Do not ping: Account not found or not valid");
@@ -410,7 +413,7 @@ public class EasService extends Service {
         final Set<String> authsToSync = getAuthoritiesToSync(amAccount, AUTHORITIES_TO_SYNC);
         // If we have at least one sync-enabled content type, check for syncing mailboxes.
         if (!authsToSync.isEmpty()) {
-            final Cursor c = Mailbox.getMailboxesForPush(getContentResolver(), account.mId);
+            final Cursor c = Mailbox.getMailboxesForPush(context.getContentResolver(), account.mId);
             if (c != null) {
                 try {
                     while (c.moveToNext()) {
