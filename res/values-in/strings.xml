@@ -27,13 +27,12 @@
     <string name="meeting_recurring" msgid="2752008481765880928">"Waktu: <xliff:g id="EVENTDATE">%s</xliff:g> (terjadi berulang)"</string>
     <string name="meeting_allday" msgid="7251209063071628040">"Kapan: <xliff:g id="EVENTDATE">%s</xliff:g> (sepanjang hari)"</string>
     <string name="meeting_allday_recurring" msgid="4545762363537362545">"Kapan: <xliff:g id="EVENTDATE">%s</xliff:g> (sepanjang hari, berulang)"</string>
-    <string name="notification_exchange_calendar_added" msgid="8998454267739748113">"Tukar kalender yang ditambahkan"</string>
     <string name="app_name" msgid="1707639359526090662">"Layanan Exchange"</string>
     <string name="exception_cancel" msgid="8972887597771126871">"Acara ini telah dibatalkan untuk: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="329192591551400871">"Detail acara ini telah diubah untuk: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="1305111581282078881">"Jangan izinkan kartu penyimpanan"</string>
     <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"Jangan izinkan apl tak bertanda tangan"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Jgn izinkan pmasang apl tak bertanda tgn"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Pemasang apl tak bertanda tangan dilarang"</string>
     <string name="policy_dont_allow_wifi" msgid="8501275982154914194">"Jangan izinkan Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"Jangan izinkan pesan teks"</string>
     <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"Jangan izinkan akun POP3 atau IMAP"</string>
