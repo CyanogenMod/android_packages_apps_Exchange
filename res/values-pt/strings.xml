@@ -27,13 +27,12 @@
     <string name="meeting_recurring" msgid="2752008481765880928">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (recorrente)"</string>
     <string name="meeting_allday" msgid="7251209063071628040">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (o dia todo)"</string>
     <string name="meeting_allday_recurring" msgid="4545762363537362545">"Quando: <xliff:g id="EVENTDATE">%s</xliff:g> (o dia todo, recorrente)"</string>
-    <string name="notification_exchange_calendar_added" msgid="8998454267739748113">"Agenda do Exchange adicionada"</string>
     <string name="app_name" msgid="1707639359526090662">"Serviços Exchange"</string>
     <string name="exception_cancel" msgid="8972887597771126871">"Este evento foi cancelado para: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="exception_updated" msgid="329192591551400871">"Os detalhes deste evento foram alterados para: <xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="policy_dont_allow_storage_cards" msgid="1305111581282078881">"Não permitir cartões de armazenamento"</string>
-    <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"Não permitir aplicativos não assinados"</string>
-    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Não permitir instal. aplic. não assinado"</string>
+    <string name="policy_dont_allow_unsigned_apps" msgid="7663879438028397642">"Não permitir apps não assinados"</string>
+    <string name="policy_dont_allow_unsigned_installers" msgid="8227232531632246827">"Não permitir instal. app não assinado"</string>
     <string name="policy_dont_allow_wifi" msgid="8501275982154914194">"Não permitir Wi-Fi"</string>
     <string name="policy_dont_allow_text_messaging" msgid="860590081742537792">"Não permitir mensagens de texto"</string>
     <string name="policy_dont_allow_pop_imap" msgid="5772539239469636191">"Não permitir contas POP3 ou IMAP"</string>
@@ -44,8 +43,8 @@
     <string name="policy_dont_allow_internet_sharing" msgid="8926902533477728994">"Não permitir compart. pela Internet"</string>
     <string name="policy_require_smime" msgid="6445017199744800426">"Exigir mensagens em SMIME"</string>
     <string name="policy_bluetooth_restricted" msgid="2877695021606992022">"Restringir o uso de Bluetooth"</string>
-    <string name="policy_app_blacklist" msgid="6955451921925210944">"Desautorizar aplicativos especificados"</string>
-    <string name="policy_app_whitelist" msgid="73673250614393830">"Permitir somente aplic. especificados"</string>
+    <string name="policy_app_blacklist" msgid="6955451921925210944">"Desautorizar apps especificados"</string>
+    <string name="policy_app_whitelist" msgid="73673250614393830">"Permitir somente apps especificados"</string>
     <string name="policy_text_truncation" msgid="2098855720139889616">"Restringir o tamanho do e-mail em texto"</string>
     <string name="policy_html_truncation" msgid="4913206221060438112">"Restringir tamanho do e-mail em HTML"</string>
     <string name="policy_require_sd_encryption" msgid="3911913080904633038">"Exigir criptografia do cartão SD"</string>
@@ -62,5 +61,5 @@
     <string name="account_setup_options_mail_window_all" msgid="4794683936065721438">"Todos"</string>
     <string name="auth_error_notification_title" msgid="6768042010440968454">"Erro de autenticação"</string>
     <string name="auth_error_notification_text" msgid="3590528965691740509">"Toque para editar as configurações de conta para <xliff:g id="ACCOUNT">%s</xliff:g>"</string>
-    <string name="email_settings_not_available" msgid="59579952494440349">"Reative o aplicativo E-mail para ver as configurações."</string>
+    <string name="email_settings_not_available" msgid="59579952494440349">"Reative o app E-mail para ver as configurações."</string>
 </resources>
