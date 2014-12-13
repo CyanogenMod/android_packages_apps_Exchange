@@ -315,6 +315,17 @@ public class EasService extends Service {
                 // if accounts disappear out from under us.
                 LogUtils.d(TAG, "Forced shutdown, killing process");
                 System.exit(-1);
+            } else if (intent.getBooleanExtra(PingSyncSynchronizer.EXTRA_START_PING, false)) {
+                LogUtils.d(TAG, "Restarting ping from alarm");
+                // We've been woken up by an alarm to restart our ping. This happens if a sync
+                // fails, rather that instantly starting the ping, we'll hold off for a few minutes.
+                final long accountId = intent.getLongExtra(
+                        PingSyncSynchronizer.EXTRA_PING_ACCOUNT_ID, -1);
+                final android.accounts.Account account =
+                        intent.getParcelableExtra(PingSyncSynchronizer.EXTRA_PING_ACCOUNT);
+
+                // End any ping and request a new one
+                mSynchronizer.requestPing(accountId, account);
             }
         }
         return START_STICKY;
