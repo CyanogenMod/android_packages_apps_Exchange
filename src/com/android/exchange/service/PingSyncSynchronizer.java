@@ -83,8 +83,9 @@ public class PingSyncSynchronizer {
     private static final String TAG = Eas.LOG_TAG;
 
     private static final long SYNC_ERROR_BACKOFF_MILLIS =  DateUtils.MINUTE_IN_MILLIS;
-    private static final String EXTRA_START_PING = "START_PING";
-    private static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
+    public static final String EXTRA_START_PING = "START_PING";
+    public static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
+    public static final String EXTRA_PING_ACCOUNT_ID = "PING_ACCOUNT_ID";
 
     // Enable this to make pings get automatically renewed every hour. This
     // should not be needed, but if there is a software error that results in
@@ -166,7 +167,7 @@ public class PingSyncSynchronizer {
                         final android.accounts.Account amAccount =
                                 new android.accounts.Account(account.mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
-                        scheduleDelayedPing(synchronizer.getContext(), amAccount);
+                        scheduleDelayedPing(synchronizer, account.getId(), amAccount);
                         return true;
                     } else {
                         final android.accounts.Account amAccount =
@@ -205,13 +206,15 @@ public class PingSyncSynchronizer {
             return true;
         }
 
-        private void scheduleDelayedPing(final Context context,
-                                         final android.accounts.Account amAccount) {
+        private void scheduleDelayedPing(final PingSyncSynchronizer synchronizer,
+                final long accountId, final android.accounts.Account amAccount) {
             LogUtils.d(TAG, "Scheduling a delayed ping.");
-            final Intent intent = new Intent(context, EmailSyncAdapterService.class);
+            final Context context = synchronizer.getContext();
+            final Intent intent = new Intent(context, synchronizer.mService.getClass());
             intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
             intent.putExtra(EXTRA_START_PING, true);
             intent.putExtra(EXTRA_PING_ACCOUNT, amAccount);
+            intent.putExtra(EXTRA_PING_ACCOUNT_ID, accountId);
             final PendingIntent pi = PendingIntent.getService(context, 0, intent,
                     PendingIntent.FLAG_ONE_SHOT);
             final AlarmManager am = (AlarmManager)context.getSystemService(
