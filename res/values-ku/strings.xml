@@ -15,7 +15,6 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="exchange_name">هاوبەشی</string>
   <string name="exchange_name_alternate">گواستنه‌وه‌ی گۆڕینه‌وه‌ی مایکرۆسۆفت</string>
   <string name="meeting_accepted">
         ڕه‌زامه‌ندی کرا:
@@ -95,13 +94,11 @@
   <string name="policy_max_attachment_size">دیاریکردنی قه‌باره‌ی هاوپێچ</string>
   <string name="policy_require_manual_sync_roaming">ته‌نیا ڕێگه‌دان به‌ گواستنه‌وه‌ له‌کاتی خولانه‌وه‌</string>
   <string name="policy_require_encryption">پێویستی به‌ نهێنیکردنی ئامێر هه‌یه‌</string>
-  <string name="account_setup_options_mail_window_auto">خۆکارانە</string>
   <string name="account_setup_options_mail_window_1day">یه‌ک ڕۆژ</string>
   <string name="account_setup_options_mail_window_3days">سێ ڕۆژ</string>
   <string name="account_setup_options_mail_window_1week">یه‌ک هه‌فته‌</string>
   <string name="account_setup_options_mail_window_2weeks">دوو هه‌فته‌</string>
   <string name="account_setup_options_mail_window_1month">یه‌ک مانگ</string>
-  <string name="account_setup_options_mail_window_all">گشت</string>
   <string name="auth_error_notification_title">یه‌کناساندن هه‌ڵه‌ی هه‌یه‌</string>
   <string name="auth_error_notification_text">تاپ بکه‌ بۆ ده‌ستکاریکردنی هه‌ژمار بۆ <xliff:g id="account">%s</xliff:g></string>
 </resources>

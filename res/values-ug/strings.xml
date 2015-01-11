@@ -15,8 +15,6 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="exchange_name">شىركەت</string>
-  <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
   <string name="meeting_accepted">قوبۇل قىلغان: <xliff:g id="SUBJECT">%s</xliff:g></string>
   <string name="meeting_declined">رەت قىلغان: <xliff:g id="SUBJECT">%s</xliff:g></string>
   <string name="meeting_tentative">تەجرىبە: <xliff:g id="SUBJECT">%s</xliff:g></string>
