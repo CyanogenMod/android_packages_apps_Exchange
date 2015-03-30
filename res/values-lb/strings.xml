@@ -81,7 +81,7 @@
   <string name="policy_dont_allow_browser">Browseren net erlaben</string>
   <string name="policy_dont_allow_consumer_email">Privat E-Mailen net erlaben</string>
   <string name="policy_dont_allow_internet_sharing">D\'Deele vun der Internetconnectioun net erlaben</string>
-  <string name="policy_require_smime">SMIME-Messagen verlaangen</string>
+  <string name="policy_require_smime">SMIME-Messagë verlaangen</string>
   <string name="policy_bluetooth_restricted">D\'Bluetooth-Benotzung aschränken</string>
   <string name="policy_app_blacklist">Spezifesch Appen net erlaben</string>
   <string name="policy_app_whitelist">Just spezifesch Appen erlaben</string>
