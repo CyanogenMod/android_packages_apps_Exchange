@@ -143,6 +143,8 @@ public abstract class EasOperation {
     /** Error code indicating that this operation failed, but we should not abort the sync */
     /** TODO: This is currently only used in EasOutboxSync, no other place handles it correctly */
     public static final int RESULT_NON_FATAL_ERROR = -12;
+    /** Error code indicating that the server encountered and error. */
+    public static final int RESULT_SERVER_ERROR = -13;
     /** Error code indicating some other failure. */
     public static final int RESULT_OTHER_FAILURE = -99;
     /** Constant to delimit where op specific error codes begin. */
@@ -350,6 +352,11 @@ public abstract class EasOperation {
                 // Non-negative results indicate success. Return immediately and bypass the error
                 // handling.
                 if (result >= EasOperation.RESULT_MIN_OK_RESULT) {
+                    return result;
+                }
+
+                // if it is a server error, just return that result
+                if (result == EasOperation.RESULT_SERVER_ERROR) {
                     return result;
                 }
 
