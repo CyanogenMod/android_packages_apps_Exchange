@@ -76,7 +76,8 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
         }
         LogUtils.i(TAG, "Ping task ending with status: %d", pingStatus);
 
-        mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), mOperation.getAmAccount());
+        mPingSyncSynchronizer.pingEnd(mOperation.getAccount(), mOperation.getAmAccount(),
+                pingStatus == EasOperation.RESULT_SERVER_ERROR);
         return null;
     }
 
@@ -85,6 +86,6 @@ public class PingTask extends AsyncTask<Void, Void, Void> {
         // TODO: This is also hacky, should have a separate result code at minimum.
         // If the ping is cancelled, make sure it reports something to the sync adapter.
         LogUtils.w(TAG, "Ping cancelled for %d", mOperation.getAccountId());
-        mPingSyncSynchronizer.pingEnd(mOperation.getAccountId(), mOperation.getAmAccount());
+        mPingSyncSynchronizer.pingEnd(mOperation.getAccount(), mOperation.getAmAccount(), false);
     }
 }
