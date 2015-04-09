@@ -40,8 +40,10 @@ import com.android.exchange.adapter.Tags;
 import com.android.mail.utils.LogUtils;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.client.HttpClient;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -272,6 +274,13 @@ public class EasPing extends EasOperation {
         return pingStatus;
     }
 
+    protected int handleHttpError(final int httpStatus) {
+        if (httpStatus >= HttpURLConnection.HTTP_INTERNAL_ERROR) {
+            LogUtils.w(TAG, "Server error while pinging for account %d", getAccountId());
+            return RESULT_SERVER_ERROR;
+        }
+        return RESULT_OTHER_FAILURE;
+    }
 
     @Override
     protected boolean addPolicyKeyHeaderToRequest() {

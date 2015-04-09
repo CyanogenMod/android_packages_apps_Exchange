@@ -83,6 +83,8 @@ public class PingSyncSynchronizer {
     private static final String TAG = Eas.LOG_TAG;
 
     private static final long SYNC_ERROR_BACKOFF_MILLIS =  DateUtils.MINUTE_IN_MILLIS;
+    private static final long PING_SERVER_ERROR_WAIT_MILLIS =  5 * DateUtils.MINUTE_IN_MILLIS;
+
     public static final String EXTRA_PING_ACCOUNT_ID = "PING_ACCOUNT_ID";
 
     // Enable this to make pings get automatically renewed every hour. This
@@ -183,7 +185,8 @@ public class PingSyncSynchronizer {
                     if (lastSyncHadError) {
                         LogUtils.i(TAG, "PSS last sync had error, scheduling delayed ping acct:%d.",
                                 account.getId());
-                        scheduleDelayedPing(synchronizer.getContext(), account);
+                        scheduleDelayedPing(synchronizer.getContext(), account,
+                                SYNC_ERROR_BACKOFF_MILLIS);
                         return true;
                     } else {
                         LogUtils.i(TAG, "PSS last sync succeeded, starting new ping acct:%d.",
@@ -206,7 +209,8 @@ public class PingSyncSynchronizer {
          * Update bookkeeping when the ping task terminates, including signaling any waiting ops.
          * @return Whether this account is now idle.
          */
-        private boolean pingEnd(final android.accounts.Account amAccount) {
+        private boolean pingEnd(final Account account, final android.accounts.Account amAccount,
+                final PingSyncSynchronizer synchronizer, boolean hasServerError) {
             mPingTask = null;
             if (mSyncCount > 0) {
                 LogUtils.i(TAG, "PSS pingEnd, syncs still in progress acct:%d.", mAccountId);
@@ -228,7 +232,12 @@ public class PingSyncSynchronizer {
                      * stopped our ping but not due to a sync interruption. In this scenario
                      * we'll leverage the SyncManager to request a push only sync that will
                      * restart the ping when the time is right. */
-                    EasPing.requestPing(amAccount);
+                    if (hasServerError) {
+                        scheduleDelayedPing(synchronizer.getContext(), account,
+                                PING_SERVER_ERROR_WAIT_MILLIS);
+                    } else {
+                        EasPing.requestPing(amAccount);
+                    }
                     return false;
                 }
             }
@@ -236,8 +245,8 @@ public class PingSyncSynchronizer {
             return true;
         }
 
-        private void scheduleDelayedPing(final Context context,
-                                         final Account account) {
+        private void scheduleDelayedPing(final Context context, final Account account,
+                final long scheduleTo) {
             LogUtils.i(TAG, "PSS Scheduling a delayed ping acct:%d.", account.getId());
             final Intent intent = new Intent(context, EasService.class);
             intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
@@ -248,7 +257,7 @@ public class PingSyncSynchronizer {
                     PendingIntent.FLAG_ONE_SHOT);
             final AlarmManager am = (AlarmManager)context.getSystemService(
                     Context.ALARM_SERVICE);
-            final long atTime = SystemClock.elapsedRealtime() + SYNC_ERROR_BACKOFF_MILLIS;
+            final long atTime = SystemClock.elapsedRealtime() + scheduleTo;
             am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, atTime, pi);
         }
 
@@ -392,11 +401,11 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void requestPing(final long accountId, final android.accounts.Account amAccount) {
+    public void requestPing(final Account account, final android.accounts.Account amAccount) {
         mLock.lock();
         try {
-            LogUtils.d(TAG, "PSS requestPing for account %d", accountId);
-            final AccountSyncState accountState = getAccountState(accountId, false);
+            LogUtils.d(TAG, "PSS requestPing for account %d", account.getId());
+            final AccountSyncState accountState = getAccountState(account.getId(), false);
             if (accountState == null) {
                 /**
                  * This situation only arises if we encountered some sort of error that
@@ -406,25 +415,26 @@ public class PingSyncSynchronizer {
                 EasPing.requestPing(amAccount);
                 return;
             }
-            if (accountState.pingEnd(amAccount)) {
-                removeAccount(accountId);
+            if (accountState.pingEnd(account, amAccount, this, false)) {
+                removeAccount(account.getId());
             }
         } finally {
             mLock.unlock();
         }
     }
 
-    public void pingEnd(final long accountId, final android.accounts.Account amAccount) {
+    public void pingEnd(final Account account, final android.accounts.Account amAccount,
+            final boolean hasServerError) {
         mLock.lock();
         try {
-            LogUtils.i(TAG, "PSS pingEnd for account %d", accountId);
-            final AccountSyncState accountState = getAccountState(accountId, false);
+            LogUtils.i(TAG, "PSS pingEnd for account %d", account.getId());
+            final AccountSyncState accountState = getAccountState(account.getId(), false);
             if (accountState == null) {
-                LogUtils.w(TAG, "PSS pingEnd for account %d but no state found", accountId);
+                LogUtils.w(TAG, "PSS pingEnd for account %d but no state found", account.getId());
                 return;
             }
-            if (accountState.pingEnd(amAccount)) {
-                removeAccount(accountId);
+            if (accountState.pingEnd(account, amAccount, this, hasServerError)) {
+                removeAccount(account.getId());
             }
         } finally {
             mLock.unlock();
