@@ -25,6 +25,7 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Parcel;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
@@ -76,6 +77,7 @@ public class EasService extends Service {
 
     public static final String EXTRA_START_PING = "START_PING";
     public static final String EXTRA_PING_ACCOUNT = "PING_ACCOUNT";
+    public static final String EXTRA_PING_ACCOUNT_AS_DATA = "PING_ACCOUNT_AS_DATA";
 
     /**
      * The content authorities that can be synced for EAS accounts. Initialization must wait until
@@ -378,7 +380,16 @@ public class EasService extends Service {
                 System.exit(-1);
             } else if (intent.getBooleanExtra(EXTRA_START_PING, false)) {
                 LogUtils.d(LogUtils.TAG, "Restarting ping");
-                final Account account = intent.getParcelableExtra(EXTRA_PING_ACCOUNT);
+                Account account = null;
+                if (intent.hasExtra(EXTRA_PING_ACCOUNT_AS_DATA)) {
+                    byte[] byteArrayExtra = intent.getByteArrayExtra(EXTRA_PING_ACCOUNT_AS_DATA);
+                    Parcel parcel = Parcel.obtain();
+                    parcel.unmarshall(byteArrayExtra, 0, byteArrayExtra.length);
+                    parcel.setDataPosition(0);
+                    account = Account.CREATOR.createFromParcel(parcel);
+                } else {
+                    account = intent.getParcelableExtra(EXTRA_PING_ACCOUNT);
+                }
                 final android.accounts.Account amAccount =
                                 new android.accounts.Account(account.mEmailAddress,
                                     Eas.EXCHANGE_ACCOUNT_MANAGER_TYPE);
