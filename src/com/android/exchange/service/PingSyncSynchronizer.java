@@ -23,6 +23,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcel;
 import android.os.SystemClock;
 import android.support.v4.util.LongSparseArray;
 import android.text.format.DateUtils;
@@ -241,7 +242,12 @@ public class PingSyncSynchronizer {
             final Intent intent = new Intent(context, EasService.class);
             intent.setAction(Eas.EXCHANGE_SERVICE_INTENT_ACTION);
             intent.putExtra(EasService.EXTRA_START_PING, true);
-            intent.putExtra(EasService.EXTRA_PING_ACCOUNT, account);
+            // AlarmManager cannot deal with ClasspathLoaders to properly restore the
+            // parcelable, so we serialize to a byte array and restore it in the EasService
+            Parcel parcel = Parcel.obtain();
+            account.writeToParcel(parcel, 0);
+            parcel.setDataPosition(0);
+            intent.putExtra(EasService.EXTRA_PING_ACCOUNT_AS_DATA, parcel.marshall());
 
             final PendingIntent pi = PendingIntent.getService(context, 0, intent,
                     PendingIntent.FLAG_ONE_SHOT);
