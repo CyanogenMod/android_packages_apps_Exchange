@@ -363,10 +363,13 @@ public class EasPing extends EasOperation {
                         case Mailbox.TYPE_TRASH:
                         case Mailbox.TYPE_JUNK:
                             emailMailboxIds.add(mailboxId);
+                            break;
                         case Mailbox.TYPE_CALENDAR:
                             calendarMailboxIds.add(mailboxId);
+                            break;
                         case Mailbox.TYPE_CONTACTS:
                             contactsMailboxIds.add(mailboxId);
+                            break;
                         default:
                             LogUtils.e(LOG_TAG, "unexpected collectiontype %d in EasPing",
                                     contentType);
