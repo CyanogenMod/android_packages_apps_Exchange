@@ -203,6 +203,12 @@ public class EasService extends Service {
                 Bundle result = autoDiscoverInternal(uri, attempt, username, password, true);
                 int resultCode = result.getInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE);
                 if (resultCode != EasAutoDiscover.RESULT_BAD_RESPONSE) {
+                    // To fix autodiscover setup we need to fill the bundle with the appropriate
+                    // MessagingException to code, which can be interpreted by our Email app.
+                    // We leave untouched the original extra so it can be used by Gmail and other
+                    // email clients.
+                    result.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_MESSAGING_ERROR_CODE,
+                            EasAutoDiscover.translateToMessagingException(resultCode));
                     return result;
                 } else {
                     LogUtils.d(TAG, "got BAD_RESPONSE");
@@ -221,7 +227,8 @@ public class EasService extends Service {
                 // Try again recursively with the new uri. TODO we should limit the number of redirects.
                 final String redirectUri = op.getRedirectUri();
                 return autoDiscoverInternal(redirectUri, attempt, username, password, canRetry);
-            } else if (result == EasAutoDiscover.RESULT_SC_UNAUTHORIZED) {
+            } else if (result == EasAutoDiscover.RESULT_SC_UNAUTHORIZED ||
+                    result == EasAutoDiscover.RESULT_AUTHENTICATION_ERROR) {
                 if (canRetry && username.contains("@")) {
                     // Try again using the bare user name
                     final int atSignIndex = username.indexOf('@');
@@ -234,7 +241,7 @@ public class EasService extends Service {
                     // to begin with. Either way, failure.
                     final Bundle bundle = new Bundle(1);
                     bundle.putInt(EmailServiceProxy.AUTO_DISCOVER_BUNDLE_ERROR_CODE,
-                            EasAutoDiscover.RESULT_OTHER_FAILURE);
+                            EasAutoDiscover.RESULT_SC_UNAUTHORIZED);
                     return bundle;
                 }
             } else if (result != EasAutoDiscover.RESULT_OK) {

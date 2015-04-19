@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Xml;
 
+import com.android.emailcommon.mail.MessagingException;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.service.EmailServiceProxy;
@@ -410,5 +411,16 @@ public class EasAutoDiscover extends EasOperation {
             // Error reading parser.
         }
         return null;
+    }
+
+    public static int translateToMessagingException(int easDiscoveryResultCode) {
+        switch (easDiscoveryResultCode) {
+        case RESULT_SC_UNAUTHORIZED:
+            return MessagingException.AUTODISCOVER_AUTHENTICATION_FAILED;
+        case RESULT_OK:
+            return MessagingException.AUTODISCOVER_AUTHENTICATION_RESULT;
+        default:
+            return MessagingException.UNSPECIFIED_EXCEPTION;
+        }
     }
 }
