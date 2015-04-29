@@ -142,6 +142,12 @@ public class EasFolderSync extends EasOperation {
                     protocolVersion);
         }
 
+        // Include shared email capabilities in the response
+        //  - Eas always have push capability
+        int capabilities = EmailServiceProxy.CAPABILITY_PUSH;
+        mValidationResult.putInt(EmailServiceProxy.SETTINGS_BUNDLE_CAPABILITIES,
+                EmailServiceProxy.CAPABILITY_PUSH);
+
         // This is intentionally a call to super.performOperation. This is a helper function for
         // our version of perfomOperation so calling that function would infinite loop.
         final int result = super.performOperation();
