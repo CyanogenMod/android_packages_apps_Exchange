@@ -440,7 +440,7 @@ public class EasService extends Service {
         }
 
         // Check if account is configured for a push sync interval.
-        if (account.mSyncInterval != Account.CHECK_INTERVAL_PUSH) {
+        if (account.getSyncInterval() != Account.CHECK_INTERVAL_PUSH) {
             LogUtils.d(TAG, "Do not ping: Account %d not configured for push", account.mId);
             return false;
         }
