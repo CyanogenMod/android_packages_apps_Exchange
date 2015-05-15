@@ -15,7 +15,6 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="exchange_name">Firma</string>
   <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
   <string name="meeting_accepted">
         Acceptéiert:
@@ -60,7 +59,6 @@
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
         (de ganzen Dag, widderhuelend)
     </string>
-  <string name="notification_exchange_calendar_added">Exchange-Kalenner dobäigesat</string>
   <string name="app_name">Exchange-Servicer</string>
   <string name="exception_cancel">
         Dëse Rendezvous gouf anuléiert fir:
@@ -81,7 +79,7 @@
   <string name="policy_dont_allow_browser">Browseren net erlaben</string>
   <string name="policy_dont_allow_consumer_email">Privat E-Mailen net erlaben</string>
   <string name="policy_dont_allow_internet_sharing">D\'Deele vun der Internetconnectioun net erlaben</string>
-  <string name="policy_require_smime">SMIME-Messagen verlaangen</string>
+  <string name="policy_require_smime">SMIME-Messagë verlaangen</string>
   <string name="policy_bluetooth_restricted">D\'Bluetooth-Benotzung aschränken</string>
   <string name="policy_app_blacklist">Spezifesch Appen net erlaben</string>
   <string name="policy_app_whitelist">Just spezifesch Appen erlaben</string>

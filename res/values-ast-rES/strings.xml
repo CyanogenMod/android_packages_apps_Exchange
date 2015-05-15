@@ -15,7 +15,6 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="exchange_name">Cuenta de trabayu</string>
   <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
   <string name="meeting_accepted">
         Aceutada:
@@ -57,7 +56,6 @@
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
         (tol día, periódicu)
     </string>
-  <string name="notification_exchange_calendar_added">Amestóse un calendariu d\'Exchange.</string>
   <string name="app_name">Servicios d\'Exchange</string>
   <string name="exception_cancel">
         Esti eventu encaboxóse\'l día:
