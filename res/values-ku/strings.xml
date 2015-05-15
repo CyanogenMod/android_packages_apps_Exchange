@@ -15,7 +15,6 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-  <string name="exchange_name">دامەزراوەیی</string>
   <string name="exchange_name_alternate">گواستنه‌وه‌ی گۆڕینه‌وه‌ی مایکرۆسۆفت</string>
   <string name="meeting_accepted">
         ڕه‌زامه‌ندی کرا:
@@ -60,7 +59,6 @@
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
         (هه‌مووڕۆژه‌کان.چاککردنه‌وه‌)
     </string>
-  <string name="notification_exchange_calendar_added">گۆڕینه‌وه‌ی ڕۆژژمێر زیادکرا</string>
   <string name="app_name">خزمه‌تگوزاری گۆڕینه‌وه‌</string>
   <string name="exception_cancel">
         ئه‌م ڕووداوه‌ ناتوانرێ هه‌ڵبوه‌شێنرێته‌وه‌
