@@ -25,7 +25,6 @@
   <string name="meeting_recurring">قاچان: <xliff:g id="EVENTDATE">%s</xliff:g> (قايتىلاش)</string>
   <string name="meeting_allday">قاچان: <xliff:g id="EVENTDATE">%s</xliff:g> (پۈتۈن كۈن)</string>
   <string name="meeting_allday_recurring">قاچان: <xliff:g id="EVENTDATE">%s</xliff:g> (پۈتۈن كۈن، تەكرار)</string>
-  <string name="notification_exchange_calendar_added">Exchange يىلنامە قوشۇلدى</string>
   <string name="app_name">Exchange مۇلازىمەتلىرى</string>
   <string name="exception_cancel">تۆۋەندىكى چېسلاغا بىكىتىلگەن پائالىيەت بىكار قىلىندى: <xliff:g id="DATE">%s</xliff:g></string>
   <string name="exception_updated">تۆۋەندىكى چېسلاغا بىكىتىلگەن پائالىيەت تەپسىلاتى ئۆزگەردى: <xliff:g id="DATE">%s</xliff:g></string>
