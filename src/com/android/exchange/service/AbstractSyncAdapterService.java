@@ -112,7 +112,9 @@ public abstract class AbstractSyncAdapterService extends Service {
                 IntentUtilities.PATH_SETTINGS);
         IntentUtilities.setAccountId(builder, accountId);
         IntentUtilities.setAccountName(builder, accountName);
-        return new Intent(Intent.ACTION_EDIT, builder.build());
+        ComponentName setupPrefComponent = new ComponentName("com.android.email",
+                "com.android.mail.ui.settings.PublicPreferenceActivity");
+        return new Intent(Intent.ACTION_EDIT, builder.build()).setComponent(setupPrefComponent);
     }
 
     protected void showAuthNotification(long accountId, String accountName) {
