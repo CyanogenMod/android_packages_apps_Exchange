@@ -84,6 +84,7 @@ public class PingSyncSynchronizer {
     private static final String TAG = Eas.LOG_TAG;
 
     private static final long SYNC_ERROR_BACKOFF_MILLIS =  DateUtils.MINUTE_IN_MILLIS;
+    private static final long AUTH_ERROR_BACKOFF_MILLIS =  30 * DateUtils.MINUTE_IN_MILLIS;
 
     private static final long PING_MIN_SERVER_ERROR_BACKOFF = 5 * DateUtils.SECOND_IN_MILLIS;
     private static final long PING_MAX_SERVER_ERROR_BACKOFF = 10 * DateUtils.MINUTE_IN_MILLIS;
@@ -173,8 +174,8 @@ public class PingSyncSynchronizer {
          * go ahead, or starting the ping if appropriate and there are no waiting ops.
          * @return Whether this account is now idle.
          */
-        public boolean syncEnd(final boolean lastSyncHadError, final Account account,
-                               final PingSyncSynchronizer synchronizer) {
+        public boolean syncEnd(final boolean lastSyncHadError, final boolean authError,
+                final Account account, final PingSyncSynchronizer synchronizer) {
             --mSyncCount;
             if (mSyncCount > 0) {
                 LogUtils.i(TAG, "PSS Signalling a pending sync to proceed acct:%d.",
@@ -192,7 +193,7 @@ public class PingSyncSynchronizer {
                         LogUtils.i(TAG, "PSS last sync had error, scheduling delayed ping acct:%d.",
                                 account.getId());
                         scheduleDelayedPing(synchronizer.getContext(), account,
-                                SYNC_ERROR_BACKOFF_MILLIS);
+                                authError ? AUTH_ERROR_BACKOFF_MILLIS : SYNC_ERROR_BACKOFF_MILLIS);
                         return true;
                     } else {
                         LogUtils.i(TAG, "PSS last sync succeeded, starting new ping acct:%d.",
@@ -398,7 +399,8 @@ public class PingSyncSynchronizer {
         }
     }
 
-    public void syncEnd(final boolean lastSyncHadError, final Account account) {
+    public void syncEnd(final boolean lastSyncHadError, final boolean authError,
+            final Account account) {
         mLock.lock();
         try {
             final long accountId = account.getId();
@@ -408,7 +410,7 @@ public class PingSyncSynchronizer {
                 LogUtils.w(TAG, "PSS syncEnd for account %d but no state found", accountId);
                 return;
             }
-            if (accountState.syncEnd(lastSyncHadError, account, this)) {
+            if (accountState.syncEnd(lastSyncHadError, authError, account, this)) {
                 removeAccount(accountId);
             }
         } finally {

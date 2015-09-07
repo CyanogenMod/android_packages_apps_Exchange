@@ -421,6 +421,7 @@ public class EasService extends Service {
             return result;
         } finally {
             mSynchronizer.syncEnd(result < EasOperation.RESULT_MIN_OK_RESULT,
+                    result == EasOperation.RESULT_AUTHENTICATION_ERROR,
                     operation.getAccount());
         }
     }
