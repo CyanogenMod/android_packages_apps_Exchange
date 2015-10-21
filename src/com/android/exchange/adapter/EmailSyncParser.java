@@ -32,6 +32,8 @@ import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.provider.Mailbox;
 import com.android.emailcommon.provider.Policy;
 import com.android.emailcommon.provider.ProviderUnavailableException;
+import com.android.emailcommon.provider.EmailContent.Attachment;
+import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.utility.AttachmentUtilities;
 import com.android.emailcommon.utility.ConversionUtilities;
 import com.android.emailcommon.utility.TextUtilities;
@@ -170,7 +172,7 @@ public class EmailSyncParser extends AbstractSyncParser {
                     msg.mFlagRead = getValueInt() == 1;
                     break;
                 case Tags.BASE_BODY:
-                    bodyParser(msg);
+                    bodyParser(atts, msg);
                     break;
                 case Tags.EMAIL_FLAG:
                     msg.mFlagFavorite = flagParser();
@@ -397,9 +399,13 @@ public class EmailSyncParser extends AbstractSyncParser {
         return state;
     }
 
-    private void bodyParser(EmailContent.Message msg) throws IOException {
+    private void bodyParser(ArrayList<EmailContent.Attachment> atts,
+            EmailContent.Message msg) throws IOException {
         String bodyType = Eas.BODY_PREFERENCE_TEXT;
         String body = "";
+        String length = null;
+        boolean truncated = false;
+
         while (nextTag(Tags.BASE_BODY) != END) {
             switch (tag) {
                 case Tags.BASE_TYPE:
@@ -407,6 +413,18 @@ public class EmailSyncParser extends AbstractSyncParser {
                     break;
                 case Tags.BASE_DATA:
                     body = getValue();
+                    break;
+                case Tags.BASE_TRUNCATED:
+                    String value = getValue();
+                    if (!TextUtils.isEmpty(value)) {
+                        truncated = (value.equals("1")) || (value.toLowerCase().equals("true"));
+                    } else {
+                        LogUtils.w(TAG, "TRUNCATED value is missing, then assumed to be true.");
+                        truncated = true;
+                    }
+                    break;
+                case Tags.BASE_ESTIMATED_DATA_SIZE:
+                    length = getValue();
                     break;
                 default:
                     skipTag();
@@ -417,6 +435,20 @@ public class EmailSyncParser extends AbstractSyncParser {
             msg.mHtml = body;
         } else {
             msg.mText = body;
+        }
+
+        // If the content is truncated, we will insert one dummy attachment
+        // as the placeholder which is same as POP3 and IMAP. More details
+        // please refer to the Utilities in the Email.
+        if (truncated) {
+            msg.mFlagLoaded = Message.FLAG_LOADED_PARTIAL_COMPLETE;
+            EmailContent.Attachment att = new EmailContent.Attachment();
+            att.mFileName = "";
+            att.mSize = Long.parseLong(length);
+            att.mMimeType = "text/plain";
+            att.mAccountKey = mAccount.mId;
+            att.mFlags = Attachment.FLAG_DUMMY_ATTACHMENT;
+            atts.add(att);
         }
     }
 
@@ -512,6 +544,9 @@ public class EmailSyncParser extends AbstractSyncParser {
             // contentId rather than contentLocation, when sent from Ex03, Ex07, and Ex10
             if (isInline && !TextUtils.isEmpty(contentId)) {
                 att.mContentId = contentId;
+            } else {
+                // This isn't the viewable part, set the local message has attachment.
+                msg.mFlagAttachment = true;
             }
             // Check if this attachment can't be downloaded due to an account policy
             if (mPolicy != null) {
@@ -522,7 +557,6 @@ public class EmailSyncParser extends AbstractSyncParser {
                 }
             }
             atts.add(att);
-            msg.mFlagAttachment = true;
         }
     }
 
