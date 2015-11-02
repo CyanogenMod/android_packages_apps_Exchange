@@ -29,11 +29,13 @@ import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 
+import com.android.emailcommon.Logging;
 import com.android.emailcommon.TempDirectory;
 import com.android.emailcommon.provider.Account;
 import com.android.emailcommon.provider.EmailContent;
 import com.android.emailcommon.provider.HostAuth;
 import com.android.emailcommon.provider.Mailbox;
+import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.service.EmailServiceProxy;
 import com.android.emailcommon.service.EmailServiceStatus;
 import com.android.emailcommon.service.EmailServiceVersion;
@@ -47,6 +49,7 @@ import com.android.exchange.eas.EasAutoDiscover;
 import com.android.exchange.eas.EasFolderSync;
 import com.android.exchange.eas.EasFullSyncOperation;
 import com.android.exchange.eas.EasLoadAttachment;
+import com.android.exchange.eas.EasLoadMore;
 import com.android.exchange.eas.EasOperation;
 import com.android.exchange.eas.EasPing;
 import com.android.exchange.eas.EasSearch;
@@ -106,6 +109,25 @@ public class EasService extends Service {
                         attachmentId, callback);
                 doOperation(operation, "IEmailService.loadAttachment");
             }
+        }
+
+        @Override
+        public void loadMore(long messageId) {
+            LogUtils.d(TAG, "IEmailService.loadMore for message: %d", messageId);
+            Message msg = Message.restoreMessageWithId(EasService.this, messageId);
+            if (msg == null) {
+                LogUtils.e(Logging.LOG_TAG, "Retrive msg faild, messageId:" + messageId);
+                return;
+            }
+
+            Account account = Account.restoreAccountWithId(EasService.this, msg.mAccountKey);
+            if (account == null) {
+                LogUtils.e(Logging.LOG_TAG, "Retrive account faild, accountId:" + msg.mAccountKey);
+                return;
+            }
+
+            final EasLoadMore operation = new EasLoadMore(EasService.this, account, msg);
+            doOperation(operation, "IEmailService.loadMore");
         }
 
         @Override
