@@ -43,6 +43,7 @@ import com.android.emailcommon.provider.EmailContent.Message;
 import com.android.emailcommon.provider.EmailContent.MessageColumns;
 import com.android.emailcommon.provider.EmailContent.SyncColumns;
 import com.android.emailcommon.utility.ConversionUtilities;
+import com.android.emailcommon.utility.Utility;
 import com.android.exchange.CommandStatusException;
 import com.android.exchange.Eas;
 import com.android.exchange.EasAuthenticationException;
@@ -220,9 +221,9 @@ public class EasLoadMore extends EasOperation {
             ContentValues cv = new ContentValues();
             cv.put(BodyColumns.MESSAGE_KEY, mMessage.mId);
             if (mBodyType.equals(Eas.BODY_PREFERENCE_HTML)) {
-                cv.put(BodyColumns.HTML_CONTENT, mMessage.mHtml);
+                cv.put(BodyColumns.HTML_CONTENT, Utility.compress(mMessage.mHtml));
             } else {
-                cv.put(BodyColumns.TEXT_CONTENT, mMessage.mText);
+                cv.put(BodyColumns.TEXT_CONTENT, Utility.compress(mMessage.mText));
             }
             ContentResolver contentResolver = context.getContentResolver();
             int res = contentResolver.update(Body.CONTENT_URI, cv,
