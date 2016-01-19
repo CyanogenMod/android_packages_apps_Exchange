@@ -1433,7 +1433,7 @@ public class CalendarUtilities {
         // Don't show attendee status if we're the organizer
         cv.put(Calendars.CAN_ORGANIZER_RESPOND, 0);
         cv.put(Calendars.CAN_MODIFY_TIME_ZONE, 0);
-        cv.put(Calendars.MAX_REMINDERS, 1);
+        cv.put(Calendars.MAX_REMINDERS, 5);
         cv.put(Calendars.ALLOWED_REMINDERS, ALLOWED_REMINDER_TYPES);
         cv.put(Calendars.ALLOWED_ATTENDEE_TYPES, ALLOWED_ATTENDEE_TYPES);
         cv.put(Calendars.ALLOWED_AVAILABILITY, ALLOWED_AVAILABILITIES);
