@@ -135,6 +135,15 @@ public class EasResponse {
     }
 
     /**
+     * Returns the redirect address from this response in {@link Uri} form or {@code null} if the
+     * location field is missing from the header.
+     */
+    public Uri getRedirectUri() {
+        final Header locHeader = getHeader("Location");
+        return locHeader != null ? Uri.parse(locHeader.getValue()) : null;
+    }
+
+    /**
      * Return an appropriate input stream for the response, either a GZIPInputStream, for
      * compressed data, or a generic InputStream otherwise
      * @return the input stream for the response
