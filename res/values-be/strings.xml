@@ -21,167 +21,80 @@
   <!-- Do Not Translate. Unused string. -->
   <!-- Short name of Microsoft Exchange account type; used by AccountManager -->
   <!-- Long name of Microsoft Exchange account type; used by AccountManager -->
-  <string name="exchange_name_alternate">گواستنه‌وه‌ی گۆڕینه‌وه‌ی مایکرۆسۆفت</string>
   <!-- Message subject for meeting accepted response. This will be followed
         by a colon and the title of the meeting (i.e. the title of the meeting becomes
         part of the subject of the message that's sent) -->
-  <string name="meeting_accepted">
-        ڕه‌زامه‌ندی کرا:
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
   <!-- Message subject for meeting declined response. This is followed by
         a colon and the title of the meeting (i.e. the title of the meeting becomes
         part of the subject of the message that's sent) -->
-  <string name="meeting_declined">
-        ڕه‌زامه‌ندی نه‌کرا
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
   <!-- Message subject for meeting tentative response. This is followed by
         a colon and the title of the meeting (i.e. the title of the meeting becomes
         part of the subject of the message that's sent) -->
-  <string name="meeting_tentative">
-        ئه‌زمونی:
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
   <!-- Message subject for a canceled meeting email. This is followed by a
         colon and the title of the meeting (i.e. the title of the meeting becomes
         part of the subject of the message that's sent) -->
-  <string name="meeting_canceled">
-        هه‌ڵوه‌شێنرایه‌وه‌:
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
   <!-- Message subject for an updated meeting email. This is followed by a
         colon and the title of the meeting (i.e. the title of the meeting becomes
         part of the subject of the message that's sent) -->
-  <string name="meeting_updated">
-        نوێکراوه‌ته‌وه‌:
-        <xliff:g id="subject">%s</xliff:g>
-    </string>
   <!-- Indicate when a meeting takes place. This is presented in in bullet
         form, as in, "When: xxx" followed by "Where: xxx" -->
-  <string name="meeting_when">
-        کاتێک:
-        <xliff:g id="when">%s</xliff:g>
-    </string>
   <!-- Indicate where a meeting takes place. This is presented in in bullet
         form, as in, "When: xxx" followed by "Where: xxx" -->
-  <string name="meeting_where">
-        له‌ شوێنێک:
-        <xliff:g id="where">%s</xliff:g>
-    </string>
   <!-- Indicate that a meeting is recurring. This would normally be presented
         after "When: xxx", e.g. "When: Tue, Mar 10, 2010 at 2:30pm (recurring)" -->
-  <string name="meeting_recurring">
-        کاتێک:
-        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 at 2:30 pm">%s</xliff:g>
-        (چاککردنه‌وه‌)
-    </string>
   <!-- Indicate that a meeting lasts all day. This would normally be presented
         after "When: xxx", e.g. "When: Tue, Mar 10, 2010 (all day)" -->
-  <string name="meeting_allday">
-        کاتێک:
-        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
-        (هه‌موو ڕۆژه‌کان)
-    </string>
   <!-- Indicate that a meeting lasts all day and is recurring. This would normally be presented
         after "When: xxx", e.g. "When: Tue, Mar 10, 2010 (all day, recurring)" -->
-  <string name="meeting_allday_recurring">
-        کاتێک:
-        <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
-        (هه‌مووڕۆژه‌کان.چاککردنه‌وه‌)
-    </string>
   <!-- The name of this APK as shown in manage applications settings. [CHAR LIMIT=30] -->
-  <string name="app_name">خزمه‌تگوزاری گۆڕینه‌وه‌</string>
   <!-- Used as the body text of a message reporting to an attendee that a
         specific instance of a recurring meeting has been canceled -->
-  <string name="exception_cancel">
-        ئه‌م ڕووداوه‌ ناتوانرێ هه‌ڵبوه‌شێنرێته‌وه‌
-        بۆ:
-        <xliff:g id="date">%s</xliff:g>
-    </string>
   <!-- Used as the body text of a message reporting to an attendee that a
         specific instance of a recurring meeting has been changed -->
-  <string name="exception_updated">
-        ڕوونکراوه‌کانی ئه‌م ڕووداوه‌ گۆڕدرا
-        بۆ:
-        <xliff:g id="date">%s</xliff:g>
-    </string>
   <!-- The following are a list of policies that the user's server might require, but that can't
         be enforced by our device.  We will list them separated by commas, as required -->
   <!-- A policy in which the device may not have a storage card [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_storage_cards">ڕێگه‌ مه‌ده‌ به‌ بیرگه‌کان</string>
   <!-- A policy in which the device may not have unsigned applications installed
         [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_unsigned_apps">ڕێگه‌ مه‌ده‌ به‌ به‌رنامه‌ی بێ ناسنامه‌</string>
   <!-- A policy in which the device may not allow application installation via an unsigned
         installer [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_unsigned_installers">ڕێگه‌نه‌دان به‌ به‌رنامه‌ی بێ ناسنامه‌
-        دابه‌زێنه‌ره‌کان</string>
   <!-- A policy in which the device may not allow wifi communications [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_wifi">ڕێگه‌نه‌دان به‌ Wi-Fi</string>
   <!-- A policy in which the device may not allow text messaging [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_text_messaging">ڕێگه‌نه‌دان به‌ ده‌قی نامه‌کردن</string>
   <!-- A policy in which the device may not allow POP3 or IMAP email accounts [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_pop_imap">ڕێگه‌ نه‌دان به‌ POP3 یان هه‌ژماری IMAP</string>
   <!-- A policy in which the device may allow infrared communications [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_irda">ڕێگه‌نه‌دان به‌ په‌یوه‌ندییه‌کانی گواستنه‌وه‌ی ژێرسوور</string>
   <!-- A policy in which the device may allow HTML email to be received [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_html">ڕێگه‌ نه‌دان به‌ پۆستی ئه‌لیکترۆنی HTML</string>
   <!-- A policy in which the device may not allow the user of web browsers [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_browser">ڕێگه‌نه‌دان به‌ وێبگه‌ر</string>
   <!-- A policy in which the device may not allow the receipt of consumer email
         [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_consumer_email">ڕێگه‌نه‌دان به‌ پۆستی ئه‌لیکترۆنی له‌کارکردن</string>
   <!-- A policy in which the device may not allow internet connection sharing
         [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_internet_sharing">ڕێگه‌نه‌دان به‌ به‌شداریکردنی ئینته‌رنێت</string>
   <!-- A policy in which messages must be in SMIME format [CHAR LIMIT=50] -->
-  <string name="policy_require_smime">پێویستی به‌ نامه‌ی SMIME </string>
   <!-- A policy in which the device's bluetooth capabilities are restricted [CHAR LIMIT=50] -->
-  <string name="policy_bluetooth_restricted">ڕێژه‌ی به‌کارهێنانی بلوتوس</string>
   <!-- A policy in which the device blocks specified applications [CHAR LIMIT=50]-->
-  <string name="policy_app_blacklist">ڕێگه‌نه‌دان به‌ به‌رنامه‌ی دیاریکراو</string>
   <!-- A policy in which the device allows only specified applications [CHAR LIMIT=50] -->
-  <string name="policy_app_whitelist">ته‌نیا ڕێگه‌دان به‌ به‌رنامه‌ی دیاریکراو</string>
   <!-- A policy in which the device limits the amount of text that can be displayed for a
         given message [CHAR LIMIT=50] -->
-  <string name="policy_text_truncation">دیاریکردنی قه‌باره‌ی ده‌قی پۆستی ئه‌لیکترۆنی</string>
   <!-- A policy in which the device limits the amount of HTML text that can be displayed for a
         given message [CHAR LIMIT=50] -->
-  <string name="policy_html_truncation">دیاریکردنی قه‌باره‌ی HTML پۆستی ئه‌لیکترۆنی</string>
   <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=50] -->
-  <string name="policy_require_sd_encryption">پێویستی به‌ نهێنیکردنی بیرگه‌ی ده‌ره‌کییه‌</string>
   <!-- The following are a list of policies that the user's server requires and that are
          in force.  We will list them separated by commas, as required -->
   <!-- A policy in which attachments aren't allowed to be downloaded [CHAR LIMIT=50] -->
-  <string name="policy_dont_allow_attachments">ڕێگه‌ نه‌دان به‌ هاوپێچ</string>
   <!-- A policy in which the device restricts the size of attachments that can be downloaded
         [CHAR LIMIT=50] -->
-  <string name="policy_max_attachment_size">دیاریکردنی قه‌باره‌ی هاوپێچ</string>
   <!-- A policy in which the device may only sync manually while roaming [CHAR LIMIT=50] -->
-  <string name="policy_require_manual_sync_roaming">ته‌نیا ڕێگه‌دان به‌ گواستنه‌وه‌ له‌کاتی خولانه‌وه‌</string>
   <!-- The following is a policy that may or not be supported on a particular device -->
   <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=50] -->
-  <string name="policy_require_encryption">پێویستی به‌ نهێنیکردنی ئامێر هه‌یه‌</string>
   <!--  The window length strings below MUST remain in sync with those in com.android.email -->
   <!-- In account setup options & account settings screens (exchange), sync window length; this
         implies loading a 'reasonable' number of messages [CHAR LIMIT=25] -->
-  <string name="account_setup_options_mail_window_auto">خۆکارانە</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_1day">یه‌ک ڕۆژ</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_3days">سێ ڕۆژ</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_1week">یه‌ک هه‌فته‌</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_2weeks">دوو هه‌فته‌</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_1month">یه‌ک مانگ</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_all">هه‌موو</string>
   <!-- Title for notification warning about an authentication error [CHAR LIMIT=40]  -->
-  <string name="auth_error_notification_title">یه‌کناساندن هه‌ڵه‌ی هه‌یه‌</string>
   <!-- text for notification warning about an authentication error [CHAR LIMIT=60]  -->
-  <string name="auth_error_notification_text">تاپ بکه‌ بۆ ده‌ستکاریکردنی هه‌ژمار بۆ <xliff:g id="account">%s</xliff:g></string>
   <!-- Message displayed when there is no application to handle the settings option. [CHAR LIMIT=NONE] -->
 </resources>
