@@ -15,6 +15,7 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
+ifeq (0,1) # compilation error
 #
 # Exchange2
 #
@@ -48,3 +49,4 @@ include $(BUILD_PACKAGE)
 
 # additionally, build unit tests in a separate .apk
 include $(call all-makefiles-under,$(LOCAL_PATH))
+endif
