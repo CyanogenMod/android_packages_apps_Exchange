@@ -45,6 +45,7 @@ public class EasAutoDiscover extends EasOperation {
     private static final String AUTO_DISCOVER_SCHEMA_PREFIX =
             "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
     private static final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
+    private static final String AUTO_DISCOVER_REQUEST_TYPE = "text/xml";
 
     // Set of string constants for parsing the autodiscover response.
     // TODO: Merge this into Tags.java? It's not quite the same but conceptually belongs there.
@@ -170,7 +171,7 @@ public class EasAutoDiscover extends EasOperation {
             req = mConnection.makeGet(requestUri);
         } else {
             req = mConnection.makePost(requestUri, getRequestEntity(),
-                    getRequestContentType(), addPolicyKeyHeaderToRequest());
+                    AUTO_DISCOVER_REQUEST_TYPE, addPolicyKeyHeaderToRequest());
         }
         return req;
     }
