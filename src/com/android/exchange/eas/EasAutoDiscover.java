@@ -18,6 +18,7 @@ import com.android.mail.utils.LogUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.entity.StringEntity;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -31,8 +32,7 @@ public class EasAutoDiscover extends EasOperation {
 
     public final static int ATTEMPT_PRIMARY = 0;
     public final static int ATTEMPT_ALTERNATE = 1;
-    public final static int ATTEMPT_UNAUTHENTICATED_GET = 2;
-    public final static int ATTEMPT_MAX = 2;
+    public final static int ATTEMPT_MAX = 1;
 
     public final static int RESULT_OK = 1;
     public final static int RESULT_SC_UNAUTHORIZED = RESULT_OP_SPECIFIC_ERROR_RESULT - 0;
@@ -45,6 +45,8 @@ public class EasAutoDiscover extends EasOperation {
     private static final String AUTO_DISCOVER_SCHEMA_PREFIX =
             "http://schemas.microsoft.com/exchange/autodiscover/mobilesync/";
     private static final String AUTO_DISCOVER_PAGE = "/autodiscover/autodiscover.xml";
+    private static final String AUTODISCOVER_CONTENT_TYPE = "text/xml";
+    private static final String HTTPS_SCHEME = "https";
 
     // Set of string constants for parsing the autodiscover response.
     // TODO: Merge this into Tags.java? It's not quite the same but conceptually belongs there.
@@ -106,8 +108,6 @@ public class EasAutoDiscover extends EasOperation {
                 return "https://" + domain + AUTO_DISCOVER_PAGE;
             case ATTEMPT_ALTERNATE:
                 return "https://autodiscover." + domain + AUTO_DISCOVER_PAGE;
-            case ATTEMPT_UNAUTHENTICATED_GET:
-                return "http://autodiscover." + domain + AUTO_DISCOVER_PAGE;
             default:
                 LogUtils.wtf(TAG, "Illegal attempt number %d", attemptNumber);
                 return null;
@@ -157,6 +157,12 @@ public class EasAutoDiscover extends EasOperation {
         return null;
     }
 
+    /** Returns the content type of Autodiscover requests. */
+    @Override
+    protected String getRequestContentType() {
+        return AUTODISCOVER_CONTENT_TYPE;
+    }
+
     /**
      * Create the request object for this operation.
      * The default is to use a POST, but some use other request types (e.g. Options).
@@ -165,13 +171,10 @@ public class EasAutoDiscover extends EasOperation {
      */
     protected HttpUriRequest makeRequest() throws IOException, MessageInvalidException {
         final String requestUri = getRequestUri();
-        HttpUriRequest req;
-        if (mAttemptNumber == ATTEMPT_UNAUTHENTICATED_GET) {
-            req = mConnection.makeGet(requestUri);
-        } else {
-            req = mConnection.makePost(requestUri, getRequestEntity(),
-                    getRequestContentType(), addPolicyKeyHeaderToRequest());
-        }
+        final HttpUriRequest req = mConnection.makePost(requestUri, getRequestEntity(),
+                getRequestContentType(), addPolicyKeyHeaderToRequest());
+        // Disable auto-redirecting for this request.
+        HttpClientParams.setRedirecting(req.getParams(), false);
         return req;
     }
 
@@ -186,10 +189,10 @@ public class EasAutoDiscover extends EasOperation {
         final int code = response.getStatus();
 
         if (response.isRedirectError()) {
-            final String loc = response.getRedirectAddress();
-            if (loc != null && loc.startsWith("http")) {
-                LogUtils.d(TAG, "Posting autodiscover to redirect: " + loc);
-                mRedirectUri = loc;
+            final Uri loc = response.getRedirectUri();
+            if (loc != null && HTTPS_SCHEME.equalsIgnoreCase(loc.getScheme())) {
+                mRedirectUri = loc.toString();
+                LogUtils.d(TAG, "Posting autodiscover to redirect: " + mRedirectUri);
                 return RESULT_REDIRECT;
             } else {
                 LogUtils.w(TAG, "Invalid redirect %s", loc);
@@ -378,7 +381,10 @@ public class EasAutoDiscover extends EasOperation {
     private static HostAuth parseAutodiscover(final EasResponse resp) {
         // The response to Autodiscover is regular XML (not WBXML)
         try {
-            final XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
+            final XmlPullParserFactory parserFactory = XmlPullParserFactory.newInstance();
+            // Calling setNamespaceAware(true) will enable parsing the autodiscover namespace tag.
+            parserFactory.setNamespaceAware(true);
+            final XmlPullParser parser = parserFactory.newPullParser();
             parser.setInput(resp.getInputStream(), "UTF-8");
             if (parser.getEventType() != XmlPullParser.START_DOCUMENT) {
                 return null;
