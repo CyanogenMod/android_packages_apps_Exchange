@@ -15,87 +15,169 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+  <!-- Deprecated strings - Move the identifiers to this section, mark as
+        DO NOT TRANSLATE, and remove the actual text. These will be removed in a
+        bulk operation. -->
+  <!-- Do Not Translate. Unused string. -->
+  <!-- Short name of Microsoft Exchange account type; used by AccountManager -->
+  <!-- Long name of Microsoft Exchange account type; used by AccountManager -->
   <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
+  <!-- Message subject for meeting accepted response. This will be followed
+        by a colon and the title of the meeting (i.e. the title of the meeting becomes
+        part of the subject of the message that's sent) -->
   <string name="meeting_accepted">
         Aceutada:
         <xliff:g id="subject">%s</xliff:g>
     </string>
+  <!-- Message subject for meeting declined response. This is followed by
+        a colon and the title of the meeting (i.e. the title of the meeting becomes
+        part of the subject of the message that's sent) -->
   <string name="meeting_declined">
         Refugada:
 <xliff:g id="subject">%s</xliff:g>
     </string>
+  <!-- Message subject for meeting tentative response. This is followed by
+        a colon and the title of the meeting (i.e. the title of the meeting becomes
+        part of the subject of the message that's sent) -->
   <string name="meeting_tentative">
         Provisional:
         <xliff:g id="subject">%s</xliff:g>
     </string>
+  <!-- Message subject for a canceled meeting email. This is followed by a
+        colon and the title of the meeting (i.e. the title of the meeting becomes
+        part of the subject of the message that's sent) -->
   <string name="meeting_canceled">
         Encaboxada:
         <xliff:g id="subject">%s</xliff:g>
     </string>
+  <!-- Message subject for an updated meeting email. This is followed by a
+        colon and the title of the meeting (i.e. the title of the meeting becomes
+        part of the subject of the message that's sent) -->
   <string name="meeting_updated">Anováu: <xliff:g id="SUBJECT">%s</xliff:g></string>
+  <!-- Indicate when a meeting takes place. This is presented in in bullet
+        form, as in, "When: xxx" followed by "Where: xxx" -->
   <string name="meeting_when">
         Cuándo:
         <xliff:g id="when">%s</xliff:g>
     </string>
+  <!-- Indicate where a meeting takes place. This is presented in in bullet
+        form, as in, "When: xxx" followed by "Where: xxx" -->
   <string name="meeting_where">
         Ónde:
         <xliff:g id="where">%s</xliff:g>
     </string>
+  <!-- Indicate that a meeting is recurring. This would normally be presented
+        after "When: xxx", e.g. "When: Tue, Mar 10, 2010 at 2:30pm (recurring)" -->
   <string name="meeting_recurring">
         Cuándo:
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 at 2:30 pm">%s</xliff:g>
         (periódicu)
     </string>
+  <!-- Indicate that a meeting lasts all day. This would normally be presented
+        after "When: xxx", e.g. "When: Tue, Mar 10, 2010 (all day)" -->
   <string name="meeting_allday">
         Cuándo:
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
         (tol día)
     </string>
+  <!-- Indicate that a meeting lasts all day and is recurring. This would normally be presented
+        after "When: xxx", e.g. "When: Tue, Mar 10, 2010 (all day, recurring)" -->
   <string name="meeting_allday_recurring">
         Cuándo:
         <xliff:g id="eventdate" example="Tue, Mar 10, 2010 ">%s</xliff:g>
         (tol día, periódicu)
     </string>
+  <!-- The name of this APK as shown in manage applications settings. [CHAR LIMIT=30] -->
   <string name="app_name">Servicios d\'Exchange</string>
+  <!-- Used as the body text of a message reporting to an attendee that a
+        specific instance of a recurring meeting has been canceled -->
   <string name="exception_cancel">
         Esti eventu encaboxóse\'l día:
         <xliff:g id="date">%s</xliff:g>
     </string>
+  <!-- Used as the body text of a message reporting to an attendee that a
+        specific instance of a recurring meeting has been changed -->
   <string name="exception_updated">
         Los detalles d\'esti eventu camudáronse
         al día:
         <xliff:g id="date">%s</xliff:g>
     </string>
+  <!-- The following are a list of policies that the user's server might require, but that can't
+        be enforced by our device.  We will list them separated by commas, as required -->
+  <!-- A policy in which the device may not have a storage card [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_storage_cards">Nun permitir tarxetes d\'almacenamientu</string>
+  <!-- A policy in which the device may not have unsigned applications installed
+        [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_unsigned_apps">Nun permitir aplicaciones ensin roblar</string>
+  <!-- A policy in which the device may not allow application installation via an unsigned
+        installer [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_unsigned_installers">Nun permitir instaladores ensin roblar</string>
+  <!-- A policy in which the device may not allow wifi communications [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_wifi">Nun permitir Wi-Fi</string>
+  <!-- A policy in which the device may not allow text messaging [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_text_messaging">Nun permitir mensaxes de testu</string>
+  <!-- A policy in which the device may not allow POP3 or IMAP email accounts [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_pop_imap">Nun permitir cuentes POP3 nin IMAP</string>
+  <!-- A policy in which the device may allow infrared communications [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_irda">Nun permitir comunicación por infrabermeyos</string>
+  <!-- A policy in which the device may allow HTML email to be received [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_html">Nun permitir correos HTML</string>
+  <!-- A policy in which the device may not allow the user of web browsers [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_browser">Nun permitir navegadores</string>
+  <!-- A policy in which the device may not allow the receipt of consumer email
+        [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_consumer_email">Nun permitir correos comerciales</string>
+  <!-- A policy in which the device may not allow internet connection sharing
+        [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_internet_sharing">Nun permitir compartir conexón a Internet</string>
+  <!-- A policy in which messages must be in SMIME format [CHAR LIMIT=50] -->
   <string name="policy_require_smime">Solicitar mensaxes SMIME</string>
+  <!-- A policy in which the device's bluetooth capabilities are restricted [CHAR LIMIT=50] -->
   <string name="policy_bluetooth_restricted">Restrinxir usu de Bluetooth</string>
+  <!-- A policy in which the device blocks specified applications [CHAR LIMIT=50]-->
   <string name="policy_app_blacklist">Nun permitir aplicaciones especificaes</string>
+  <!-- A policy in which the device allows only specified applications [CHAR LIMIT=50] -->
   <string name="policy_app_whitelist">Permitir namái aplicaciones especificaes</string>
+  <!-- A policy in which the device limits the amount of text that can be displayed for a
+        given message [CHAR LIMIT=50] -->
   <string name="policy_text_truncation">Restrinxir tamañu de lletra del corréu</string>
+  <!-- A policy in which the device limits the amount of HTML text that can be displayed for a
+        given message [CHAR LIMIT=50] -->
   <string name="policy_html_truncation">Restrinxir el tamañu del corréu HTML</string>
+  <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=50] -->
   <string name="policy_require_sd_encryption">Solicitar cifráu de tarxeta SD</string>
+  <!-- The following are a list of policies that the user's server requires and that are
+         in force.  We will list them separated by commas, as required -->
+  <!-- A policy in which attachments aren't allowed to be downloaded [CHAR LIMIT=50] -->
   <string name="policy_dont_allow_attachments">Nun permitir ficheros axuntos</string>
+  <!-- A policy in which the device restricts the size of attachments that can be downloaded
+        [CHAR LIMIT=50] -->
   <string name="policy_max_attachment_size">Restrinxir tamañu de ficheros axuntos</string>
+  <!-- A policy in which the device may only sync manually while roaming [CHAR LIMIT=50] -->
   <string name="policy_require_manual_sync_roaming">Sincronización manual namái n\'itinerancia</string>
+  <!-- The following is a policy that may or not be supported on a particular device -->
+  <!-- A policy in which the device requires device or sd card encryption [CHAR LIMIT=50] -->
   <string name="policy_require_encryption">Solicitar cifráu de preséu</string>
+  <!--  The window length strings below MUST remain in sync with those in com.android.email -->
+  <!-- In account setup options & account settings screens (exchange), sync window length; this
+        implies loading a 'reasonable' number of messages [CHAR LIMIT=25] -->
   <string name="account_setup_options_mail_window_auto">Automática</string>
+  <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <string name="account_setup_options_mail_window_1day">Un día</string>
+  <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <string name="account_setup_options_mail_window_3days">Trés díes</string>
+  <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <string name="account_setup_options_mail_window_1week">Una selmana</string>
+  <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <string name="account_setup_options_mail_window_2weeks">Dos selmanes</string>
+  <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <string name="account_setup_options_mail_window_1month">Un mes</string>
+  <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <string name="account_setup_options_mail_window_all">Too</string>
+  <!-- Title for notification warning about an authentication error [CHAR LIMIT=40]  -->
   <string name="auth_error_notification_title">Fallu d\'autenticación</string>
+  <!-- text for notification warning about an authentication error [CHAR LIMIT=60]  -->
   <string name="auth_error_notification_text">Toca pa editar la configuración de la cuenta <xliff:g id="ACCOUNT">%s</xliff:g></string>
+  <!-- Message displayed when there is no application to handle the settings option. [CHAR LIMIT=NONE] -->
   <string name="email_settings_not_available">Re-habilitar l\'aplicación Corréu pa ver axustes.</string>
 </resources>
