@@ -21,6 +21,7 @@
   <!-- Do Not Translate. Unused string. -->
   <!-- Short name of Microsoft Exchange account type; used by AccountManager -->
   <!-- Long name of Microsoft Exchange account type; used by AccountManager -->
+  <string name="exchange_name_alternate">Microsoft Exchange ActiveSync</string>
   <!-- Message subject for meeting accepted response. This will be followed
         by a colon and the title of the meeting (i.e. the title of the meeting becomes
         part of the subject of the message that's sent) -->
