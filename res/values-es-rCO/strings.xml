@@ -38,16 +38,8 @@
         part of the subject of the message that's sent) -->
   <!-- Indicate when a meeting takes place. This is presented in in bullet
         form, as in, "When: xxx" followed by "Where: xxx" -->
-  <string name="meeting_when">
-        Kiam:
-        <xliff:g id="when">%s</xliff:g>
-    </string>
   <!-- Indicate where a meeting takes place. This is presented in in bullet
         form, as in, "When: xxx" followed by "Where: xxx" -->
-  <string name="meeting_where">
-        Kie:
-        <xliff:g id="where">%s</xliff:g>
-    </string>
   <!-- Indicate that a meeting is recurring. This would normally be presented
         after "When: xxx", e.g. "When: Tue, Mar 10, 2010 at 2:30pm (recurring)" -->
   <!-- Indicate that a meeting lasts all day. This would normally be presented
@@ -97,15 +89,10 @@
   <!-- In account setup options & account settings screens (exchange), sync window length; this
         implies loading a 'reasonable' number of messages [CHAR LIMIT=25] -->
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_1day">Unu tago</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_3days">Tri tagoj</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_1week">Unu semajno</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_2weeks">Du semajnoj</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
-  <string name="account_setup_options_mail_window_1month">Unu monato</string>
   <!-- A sync window length setting (i.e. load messages this far back) [CHAR LIMIT=25]  -->
   <!-- Title for notification warning about an authentication error [CHAR LIMIT=40]  -->
   <!-- text for notification warning about an authentication error [CHAR LIMIT=60]  -->
